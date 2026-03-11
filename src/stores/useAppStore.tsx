@@ -11,6 +11,11 @@ interface AppState {
   requestPasswordReset: (email: string) => void
   addDemand: (demand: Omit<Demand, 'id' | 'createdAt' | 'status' | 'createdBy'>) => void
   updateDemandStatus: (id: string, status: DemandStatus) => void
+  submitDemandResponse: (
+    id: string,
+    action: 'encontrei' | 'nao_encontrei',
+    payload: any,
+  ) => { success: boolean; message: string }
   addPoints: (amount: number) => void
   sessionExpiresAt: number | null
 }
@@ -37,7 +42,7 @@ const mockDemands: Demand[] = [
     type: 'Venda',
     status: 'Pendente',
     createdBy: '2',
-    createdAt: new Date().toISOString(),
+    createdAt: new Date(Date.now() - 50 * 60 * 60 * 1000).toISOString(), // > 48h ago
   },
   {
     id: 'd2',
@@ -146,7 +151,6 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const requestPasswordReset = (email: string) => {
     const user = users.find((u) => u.email === email)
     if (!user) throw new Error('Email não cadastrado')
-
     console.log(`[EMAIL] Reset link sent to ${email}. Valid for 1 hour.`)
   }
 
@@ -161,13 +165,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       createdBy: currentUser.id,
     }
 
-    // Simulate Supabase insertion based on type
-    const tableName = newDemand.type === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
-    console.log(`[SUPABASE MOCK] Inserting data into table: ${tableName}`, newDemand)
-
-    // Simulate Webhook queue insertion
-    console.log(`[WEBHOOK MOCK] Generating record in webhook_queue for Demand ID: ${newDemand.id}`)
-
+    console.log(`[SUPABASE MOCK] Inserting data`, newDemand)
     setAllDemands((prev) => [newDemand, ...prev])
     setNotifications((prev) => [`Nova demanda criada para ${demandData.location}`, ...prev])
   }
@@ -176,8 +174,53 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     setAllDemands((prev) =>
       prev.map((d) => (d.id === id ? { ...d, status, assignedTo: currentUser?.id } : d)),
     )
-    if (status === 'Captado sob demanda' || status === 'Negócio') {
+    if (status === 'Negócio') {
       addPoints(100)
+    }
+  }
+
+  const submitDemandResponse = (
+    id: string,
+    action: 'encontrei' | 'nao_encontrei',
+    payload: any,
+  ) => {
+    const demand = allDemands.find((d) => d.id === id)
+    if (!demand || !currentUser) return { success: false, message: 'Demanda não encontrada' }
+
+    const hoursSinceCreation = (Date.now() - new Date(demand.createdAt).getTime()) / 3600000
+    const isLate = hoursSinceCreation > 48
+
+    if (action === 'encontrei') {
+      let points = 50
+      const hasSimilarClients = Math.random() > 0.4
+      if (hasSimilarClients) points += 25
+      if (isLate) points -= 20
+
+      addPoints(points)
+      setAllDemands((prev) =>
+        prev.map((d) =>
+          d.id === id ? { ...d, status: 'Captado sob demanda', assignedTo: currentUser.id } : d,
+        ),
+      )
+
+      const link = `eticimoveis.com.br/imovel/${payload.code}`
+      console.log(
+        `[WEBHOOK N8N] Imóvel ${payload.code} registrado. Notificando stakeholders. Link: ${link}`,
+      )
+      setNotifications((prev) => [`Imóvel registrado para ${demand.clientName}!`, ...prev])
+
+      return { success: true, message: `Imóvel registrado! Link gerado. (+${points} pts)` }
+    } else {
+      const newStatus = payload.continueSearch ? 'Em Captação' : 'Sem demanda'
+      setAllDemands((prev) =>
+        prev.map((d) =>
+          d.id === id ? { ...d, status: newStatus, assignedTo: currentUser.id } : d,
+        ),
+      )
+      console.log(
+        `[WEBHOOK N8N] Captação falhou. Motivo: ${payload.reason}. Continuar: ${payload.continueSearch}`,
+      )
+      return { success: true, message: 'Resposta registrada com sucesso' }
     }
   }
 
@@ -193,7 +236,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     if (!currentUser) return false
     if (currentUser.role === 'gestor' || currentUser.role === 'admin') return true
     if (currentUser.role === 'captador')
-      return d.assignedTo === currentUser.id || d.createdBy === currentUser.id
+      return (
+        d.assignedTo === currentUser.id || d.createdBy === currentUser.id || d.status === 'Pendente'
+      )
     if (currentUser.role === 'sdr') return d.type === 'Aluguel'
     if (currentUser.role === 'corretor') return d.type === 'Venda'
     return false
@@ -209,6 +254,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     requestPasswordReset,
     addDemand,
     updateDemandStatus,
+    submitDemandResponse,
     addPoints,
     sessionExpiresAt,
   }
