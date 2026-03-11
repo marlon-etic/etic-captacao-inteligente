@@ -244,7 +244,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         const { user, expiresAt } = JSON.parse(stored)
         if (Date.now() < expiresAt) return user
       }
-    } catch {}
+    } catch {
+      // ignore
+    }
     return null
   })
 
@@ -255,7 +257,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         const { expiresAt } = JSON.parse(stored)
         if (Date.now() < expiresAt) return expiresAt
       }
-    } catch {}
+    } catch {
+      // ignore
+    }
     return null
   })
 
