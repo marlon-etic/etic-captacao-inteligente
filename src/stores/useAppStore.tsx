@@ -223,7 +223,6 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     }, 100)
   }, [enqueueWebhook, addLog])
 
-  // System status checks (every 20s)
   useEffect(() => {
     const t = setTimeout(triggerCron, 2000)
     const i = setInterval(triggerCron, 20000)
@@ -233,7 +232,6 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     }
   }, [triggerCron])
 
-  // Background Webhook Processing Engine (Cron Job)
   const processWebhookCron = useCallback(async () => {
     if (isProcessingRef.current) return
     isProcessingRef.current = true
@@ -255,10 +253,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       while (!success && attempts < 3) {
         attempts++
         try {
-          // Mock network latency for webhook delivery
           await new Promise((r) => setTimeout(r, 400))
 
-          const isMockFailure = Math.random() < 0.25 // 25% failure chance to test exponential backoff
+          const isMockFailure = Math.random() < 0.25
           if (isMockFailure) {
             throw new Error('HTTP 502 Bad Gateway - Connection refused')
           }
@@ -287,7 +284,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           )
 
           if (attempts < 3) {
-            const delay = [1000, 2000, 4000][attempts - 1] // Exponential backoff intervals
+            const delay = [1000, 2000, 4000][attempts - 1]
             addLog(`[Webhook] Aguardando ${delay}ms para tentar novamente...`)
             await new Promise((r) => setTimeout(r, delay))
           } else {
@@ -306,9 +303,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   }, [addLog, updateQueueItem])
 
   useEffect(() => {
-    // Requirements: "Cron Job configured to run every 5 minutes"
     const intervalId = setInterval(processWebhookCron, 300000)
-    // Run an initial check shortly after load so we can see the mock in action
     const initialTimeout = setTimeout(processWebhookCron, 3000)
 
     return () => {
@@ -350,10 +345,22 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const getSimilarDemands = (id: string) => {
     const d = allDemands.find((x) => x.id === id)
     if (!d) return []
-    return allDemands.filter(
-      (x) =>
-        x.id !== d.id && x.location.toLowerCase() === d.location.toLowerCase() && x.type === d.type,
-    )
+
+    const dLocs = d.location
+      .toLowerCase()
+      .split(',')
+      .map((s) => s.trim())
+
+    return allDemands.filter((x) => {
+      if (x.id === d.id) return false
+      if (x.type !== d.type) return false
+
+      const xLocs = x.location
+        .toLowerCase()
+        .split(',')
+        .map((s) => s.trim())
+      return xLocs.some((l) => dLocs.includes(l))
+    })
   }
 
   return (

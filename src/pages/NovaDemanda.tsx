@@ -1,7 +1,7 @@
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
-import { MapPin, DollarSign, User, Tag, Mail, AlignLeft, CalendarClock } from 'lucide-react'
+import { DollarSign, User, Tag, Mail, AlignLeft, CalendarClock } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -25,6 +25,7 @@ import {
 } from '@/components/ui/form'
 import { useToast } from '@/hooks/use-toast'
 import useAppStore from '@/stores/useAppStore'
+import { LocationSelector } from '@/components/LocationSelector'
 
 const formSchema = z
   .object({
@@ -33,7 +34,7 @@ const formSchema = z
       .min(3, 'Nome deve ter no mínimo 3 caracteres')
       .max(100, 'Nome no máximo de 100 caracteres'),
     clientEmail: z.string().email('Insira um e-mail válido'),
-    location: z.string().min(1, 'Selecione um bairro'),
+    location: z.array(z.string()).min(1, 'Selecione pelo menos um bairro'),
     minBudget: z.coerce
       .number({ invalid_type_error: 'Informe um valor' })
       .positive('Deve ser maior que zero'),
@@ -62,7 +63,7 @@ export default function NovaDemanda() {
     defaultValues: {
       clientName: '',
       clientEmail: '',
-      location: '',
+      location: [],
       minBudget: '' as unknown as number,
       maxBudget: '' as unknown as number,
       description: '',
@@ -77,7 +78,7 @@ export default function NovaDemanda() {
     addDemand({
       clientName: values.clientName,
       clientEmail: values.clientEmail,
-      location: values.location,
+      location: values.location.join(', '),
       minBudget: values.minBudget,
       maxBudget: values.maxBudget,
       description: values.description,
@@ -95,7 +96,7 @@ export default function NovaDemanda() {
     form.reset({
       clientName: '',
       clientEmail: '',
-      location: '',
+      location: [],
       minBudget: '' as unknown as number,
       maxBudget: '' as unknown as number,
       description: '',
@@ -103,16 +104,6 @@ export default function NovaDemanda() {
       type: 'Venda',
     })
   }
-
-  const bairrosSP = [
-    'Pinheiros',
-    'Jardins',
-    'Vila Olímpia',
-    'Moema',
-    'Centro',
-    'Itaim Bibi',
-    'Vila Mariana',
-  ]
 
   const prazos = ['Imediato', 'Até 3 meses', '3 a 6 meses', 'Mais de 6 meses']
 
@@ -171,28 +162,51 @@ export default function NovaDemanda() {
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 gap-6">
                 <FormField
                   control={form.control}
                   name="location"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Bairro de Interesse</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value || undefined}>
-                        <FormControl>
-                          <SelectTrigger className="pl-9 relative">
-                            <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground z-10" />
-                            <SelectValue placeholder="Selecione o bairro" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {bairrosSP.map((b) => (
-                            <SelectItem key={b} value={b}>
-                              {b}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <FormLabel>Bairros de Interesse</FormLabel>
+                      <FormControl>
+                        <LocationSelector value={field.value} onChange={field.onChange} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormField
+                  control={form.control}
+                  name="type"
+                  render={({ field }) => (
+                    <FormItem className="space-y-3">
+                      <FormLabel>Tipo de Negócio</FormLabel>
+                      <FormControl>
+                        <RadioGroup
+                          onValueChange={field.onChange}
+                          value={field.value}
+                          className="flex flex-wrap gap-6 pt-2"
+                        >
+                          <FormItem className="flex items-center space-x-3 space-y-0 bg-muted/50 px-4 py-3 rounded-lg border cursor-pointer hover:bg-muted transition-colors">
+                            <FormControl>
+                              <RadioGroupItem value="Venda" />
+                            </FormControl>
+                            <FormLabel className="font-medium cursor-pointer">Venda</FormLabel>
+                          </FormItem>
+                          <FormItem className="flex items-center space-x-3 space-y-0 bg-muted/50 px-4 py-3 rounded-lg border cursor-pointer hover:bg-muted transition-colors">
+                            <FormControl>
+                              <RadioGroupItem value="Aluguel" />
+                            </FormControl>
+                            <FormLabel className="font-medium cursor-pointer">
+                              Locação (Aluguel)
+                            </FormLabel>
+                          </FormItem>
+                        </RadioGroup>
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -206,8 +220,8 @@ export default function NovaDemanda() {
                       <FormLabel>Prazo de Aquisição</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value || undefined}>
                         <FormControl>
-                          <SelectTrigger className="pl-9 relative">
-                            <CalendarClock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground z-10" />
+                          <SelectTrigger className="pl-9 relative mt-2 h-[50px] bg-muted/50">
+                            <CalendarClock className="absolute left-3 top-[17px] h-4 w-4 text-muted-foreground z-10" />
                             <SelectValue placeholder="Selecione o prazo" />
                           </SelectTrigger>
                         </FormControl>
@@ -270,39 +284,6 @@ export default function NovaDemanda() {
                   )}
                 />
               </div>
-
-              <FormField
-                control={form.control}
-                name="type"
-                render={({ field }) => (
-                  <FormItem className="space-y-3">
-                    <FormLabel>Tipo de Negócio</FormLabel>
-                    <FormControl>
-                      <RadioGroup
-                        onValueChange={field.onChange}
-                        value={field.value}
-                        className="flex flex-wrap gap-6 pt-2"
-                      >
-                        <FormItem className="flex items-center space-x-3 space-y-0 bg-muted/50 px-4 py-3 rounded-lg border cursor-pointer hover:bg-muted transition-colors">
-                          <FormControl>
-                            <RadioGroupItem value="Venda" />
-                          </FormControl>
-                          <FormLabel className="font-medium cursor-pointer">Venda</FormLabel>
-                        </FormItem>
-                        <FormItem className="flex items-center space-x-3 space-y-0 bg-muted/50 px-4 py-3 rounded-lg border cursor-pointer hover:bg-muted transition-colors">
-                          <FormControl>
-                            <RadioGroupItem value="Aluguel" />
-                          </FormControl>
-                          <FormLabel className="font-medium cursor-pointer">
-                            Locação (Aluguel)
-                          </FormLabel>
-                        </FormItem>
-                      </RadioGroup>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
 
               <FormField
                 control={form.control}
