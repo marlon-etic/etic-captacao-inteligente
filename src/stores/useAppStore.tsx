@@ -9,7 +9,12 @@ interface AppState {
   login: (email: string, password?: string) => void
   logout: () => void
   requestPasswordReset: (email: string) => void
-  addDemand: (demand: Omit<Demand, 'id' | 'createdAt' | 'status' | 'createdBy'>) => void
+  addDemand: (
+    demand: Omit<
+      Demand,
+      'id' | 'createdAt' | 'status' | 'createdBy' | 'urgency' | 'similarProfilesCount'
+    > & { urgency?: 'Alta' | 'Média' | 'Baixa'; similarProfilesCount?: number },
+  ) => void
   updateDemandStatus: (id: string, status: DemandStatus) => void
   submitDemandResponse: (
     id: string,
@@ -39,10 +44,12 @@ const mockDemands: Demand[] = [
     maxBudget: 1000000,
     description: 'Apartamento com 3 quartos, suíte e varanda.',
     timeframe: 'Até 3 meses',
+    urgency: 'Média',
+    similarProfilesCount: 12,
     type: 'Venda',
     status: 'Pendente',
     createdBy: '2',
-    createdAt: new Date(Date.now() - 50 * 60 * 60 * 1000).toISOString(), // > 48h ago
+    createdAt: new Date(Date.now() - 50 * 60 * 60 * 1000).toISOString(),
   },
   {
     id: 'd2',
@@ -54,6 +61,8 @@ const mockDemands: Demand[] = [
     maxBudget: 20000,
     description: 'Laje corporativa de 200m2 para escritório.',
     timeframe: 'Imediato',
+    urgency: 'Alta',
+    similarProfilesCount: 5,
     type: 'Aluguel',
     status: 'Em Captação',
     createdBy: '4',
@@ -70,10 +79,12 @@ const mockDemands: Demand[] = [
     maxBudget: 1500000,
     description: 'Sobrado em rua tranquila, 2 vagas.',
     timeframe: '3 a 6 meses',
+    urgency: 'Baixa',
+    similarProfilesCount: 2,
     type: 'Venda',
     status: 'Pendente',
     createdBy: '2',
-    createdAt: new Date().toISOString(),
+    createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
   },
   {
     id: 'd4',
@@ -85,11 +96,13 @@ const mockDemands: Demand[] = [
     maxBudget: 5000,
     description: 'Studio mobiliado próximo ao metrô.',
     timeframe: 'Imediato',
+    urgency: 'Alta',
+    similarProfilesCount: 8,
     type: 'Aluguel',
-    status: 'Visita',
+    status: 'Pendente',
     createdBy: '4',
     assignedTo: '1',
-    createdAt: new Date().toISOString(),
+    createdAt: new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString(),
   },
 ]
 
@@ -154,11 +167,18 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     console.log(`[EMAIL] Reset link sent to ${email}. Valid for 1 hour.`)
   }
 
-  const addDemand = (demandData: Omit<Demand, 'id' | 'createdAt' | 'status' | 'createdBy'>) => {
+  const addDemand = (
+    demandData: Omit<
+      Demand,
+      'id' | 'createdAt' | 'status' | 'createdBy' | 'urgency' | 'similarProfilesCount'
+    > & { urgency?: 'Alta' | 'Média' | 'Baixa'; similarProfilesCount?: number },
+  ) => {
     if (!currentUser) return
     const newDemand: Demand = {
       ...demandData,
       budget: demandData.budget ?? demandData.maxBudget,
+      urgency: demandData.urgency || 'Média',
+      similarProfilesCount: demandData.similarProfilesCount ?? Math.floor(Math.random() * 10),
       id: Math.random().toString(36).substr(2, 9),
       createdAt: new Date().toISOString(),
       status: 'Pendente',
@@ -186,13 +206,16 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   ) => {
     const demand = allDemands.find((d) => d.id === id)
     if (!demand || !currentUser) return { success: false, message: 'Demanda não encontrada' }
+    if (demand.status !== 'Pendente' && demand.status !== 'Em Captação') {
+      return { success: false, message: 'Esta demanda já foi respondida' }
+    }
 
     const hoursSinceCreation = (Date.now() - new Date(demand.createdAt).getTime()) / 3600000
     const isLate = hoursSinceCreation > 48
 
     if (action === 'encontrei') {
       let points = 50
-      const hasSimilarClients = Math.random() > 0.4
+      const hasSimilarClients = demand.similarProfilesCount > 0
       if (hasSimilarClients) points += 25
       if (isLate) points -= 20
 

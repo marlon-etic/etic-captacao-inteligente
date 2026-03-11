@@ -13,6 +13,7 @@ export type DemandStatus =
   | 'Pendente'
   | 'Em Captação'
   | 'Captado sob demanda'
+  | 'Captado independente'
   | 'Sem demanda'
   | 'Aguardando'
   | 'Visita'
@@ -29,6 +30,8 @@ export interface Demand {
   maxBudget: number
   description: string
   timeframe: string
+  urgency: 'Alta' | 'Média' | 'Baixa'
+  similarProfilesCount: number
   type: 'Venda' | 'Aluguel'
   status: DemandStatus
   createdBy: string // user id
