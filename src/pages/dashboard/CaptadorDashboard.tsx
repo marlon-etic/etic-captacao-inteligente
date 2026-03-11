@@ -63,7 +63,9 @@ export function CaptadorDashboard() {
   useEffect(() => {
     try {
       localStorage.setItem('captador_quick_filter', quickFilter)
-    } catch {}
+    } catch {
+      // ignore
+    }
   }, [quickFilter])
 
   const [filters, setFilters] = useState({

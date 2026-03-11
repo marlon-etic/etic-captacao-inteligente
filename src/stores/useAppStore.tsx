@@ -250,7 +250,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         const { user, expiresAt } = JSON.parse(stored)
         if (Date.now() < expiresAt) return user
       }
-    } catch {}
+    } catch {
+      // ignore
+    }
     return null
   })
 
@@ -261,7 +263,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         const { expiresAt } = JSON.parse(stored)
         if (Date.now() < expiresAt) return expiresAt
       }
-    } catch {}
+    } catch {
+      // ignore
+    }
     return null
   })
 
@@ -309,7 +313,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         const bc = new BroadcastChannel('etic-ws-sync')
         bc.postMessage(payload)
         bc.close()
-      } catch {}
+      } catch {
+        // ignore
+      }
     },
     [],
   )
@@ -358,7 +364,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           ])
         }
       }
-    } catch {}
+    } catch {
+      // ignore
+    }
   }, [])
 
   useEffect(() => {
@@ -371,7 +379,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     try {
       bc = new BroadcastChannel('etic-ws-sync')
       bc.onmessage = (e) => handleSync(JSON.stringify(e.data))
-    } catch {}
+    } catch {
+      // ignore
+    }
 
     const interval = setInterval(() => {
       const raw = localStorage.getItem('etic_state_sync')
