@@ -7,6 +7,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE TYPE user_role AS ENUM ('captador', 'sdr', 'corretor', 'gestor', 'admin');
 CREATE TYPE demand_status AS ENUM ('aberta', 'atendida', 'impossível', 'sem_resposta_24h');
 CREATE TYPE demand_urgency AS ENUM ('até 5 dias', 'até 15 dias');
+CREATE TYPE property_action_type AS ENUM ('captacao', 'visita_agendada', 'visita_realizada', 'proposta', 'negocio', 'perdido');
 
 -- ==========================================
 -- TABLES
@@ -86,6 +87,11 @@ CREATE TABLE imoveis_captados (
     valor DECIMAL(12,2) NOT NULL,
     link_anuncio TEXT,
     observacoes TEXT,
+    visita_agendada TIMESTAMP WITH TIME ZONE,
+    visita_realizada TIMESTAMP WITH TIME ZONE,
+    proposta_feita TIMESTAMP WITH TIME ZONE,
+    valor_proposta DECIMAL(12,2),
+    status_proposta VARCHAR(50),
     data_criacao TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "Valor deve ser positivo" CHECK (valor > 0),
@@ -94,6 +100,19 @@ CREATE TABLE imoveis_captados (
         (demanda_locacao_id IS NULL AND demanda_venda_id IS NOT NULL) OR
         (demanda_locacao_id IS NULL AND demanda_venda_id IS NULL)
     )
+);
+
+-- Table: historico_acoes_imovel
+CREATE TABLE historico_acoes_imovel (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    imovel_id UUID NOT NULL REFERENCES imoveis_captados(id) ON DELETE CASCADE,
+    tipo_acao property_action_type NOT NULL,
+    data_acao TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    responsavel_id UUID REFERENCES captadores(id) ON DELETE SET NULL,
+    responsavel_tipo VARCHAR(50) NOT NULL,
+    descricao TEXT NOT NULL,
+    observacoes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Table: ranking_gamificacao
@@ -205,6 +224,7 @@ CREATE INDEX idx_demandas_vendas_data_criacao ON demandas_vendas(data_criacao);
 
 -- Imóveis Captados & Gamification
 CREATE INDEX idx_imoveis_captados_captador_id ON imoveis_captados(captador_id);
+CREATE INDEX idx_historico_imovel_id ON historico_acoes_imovel(imovel_id);
 CREATE INDEX idx_ranking_captador_id ON ranking_gamificacao(captador_id);
 CREATE INDEX idx_badges_captador_id ON badges_obtidos(captador_id);
 
@@ -218,6 +238,7 @@ ALTER TABLE auth_audit_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE demandas_locacao ENABLE ROW LEVEL SECURITY;
 ALTER TABLE demandas_vendas ENABLE ROW LEVEL SECURITY;
 ALTER TABLE imoveis_captados ENABLE ROW LEVEL SECURITY;
+ALTER TABLE historico_acoes_imovel ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ranking_gamificacao ENABLE ROW LEVEL SECURITY;
 ALTER TABLE badges_obtidos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE webhook_queue ENABLE ROW LEVEL SECURITY;
@@ -264,6 +285,10 @@ CREATE POLICY "Anyone can view imoveis_captados" ON imoveis_captados FOR SELECT 
 CREATE POLICY "Captadores can insert own imoveis_captados" ON imoveis_captados FOR INSERT WITH CHECK (captador_id = auth.uid());
 CREATE POLICY "Captadores can update own imoveis_captados" ON imoveis_captados FOR UPDATE USING (captador_id = auth.uid());
 CREATE POLICY "Captadores can delete own imoveis_captados" ON imoveis_captados FOR DELETE USING (captador_id = auth.uid());
+
+-- Policies: Historico Imóvel
+CREATE POLICY "Anyone can view historico_acoes_imovel" ON historico_acoes_imovel FOR SELECT USING (true);
+CREATE POLICY "Users can insert historico" ON historico_acoes_imovel FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
 
 -- Policies: Gamification & Badges
 CREATE POLICY "Anyone can view ranking" ON ranking_gamificacao FOR SELECT USING (true);

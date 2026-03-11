@@ -47,6 +47,25 @@ export type DemandStatus =
   | 'Impossível'
   | 'Perdida'
 
+export type PropertyActionType =
+  | 'captacao'
+  | 'visita_agendada'
+  | 'visita_realizada'
+  | 'proposta'
+  | 'negocio'
+  | 'perdido'
+
+export interface PropertyAction {
+  id: string
+  type: PropertyActionType
+  timestamp: string
+  userId: string
+  userName: string
+  userRole: Role
+  description: string
+  observations?: string
+}
+
 export interface CapturedProperty {
   code: string
   value: number
@@ -58,13 +77,16 @@ export interface CapturedProperty {
   visitaDate?: string
   visitaTime?: string
   visitaObs?: string
+  visita_realizada?: string
   propostaDate?: string
   propostaValue?: number
   propostaObs?: string
+  propostaStatus?: 'em análise' | 'aceita' | 'recusada'
   fechamentoDate?: string
   fechamentoValue?: number
   fechamentoType?: 'Venda' | 'Aluguel'
   fechamentoObs?: string
+  history?: PropertyAction[]
 }
 
 export interface Demand {

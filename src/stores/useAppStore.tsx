@@ -8,7 +8,16 @@ import React, {
   useRef,
   useMemo,
 } from 'react'
-import { User, Demand, DemandStatus, BadgeType, UserStats, WebhookEvent } from '@/types'
+import {
+  User,
+  Demand,
+  DemandStatus,
+  BadgeType,
+  UserStats,
+  WebhookEvent,
+  PropertyAction,
+  PropertyActionType,
+} from '@/types'
 import { toast } from '@/hooks/use-toast'
 
 interface AppState {
@@ -92,6 +101,23 @@ const mockUsers: User[] = [
   },
 ]
 
+const createHistoryItem = (
+  type: PropertyActionType,
+  desc: string,
+  hoursAgo: number,
+  userId: string = '1',
+  userName: string = 'Ana Silva',
+  userRole: User['role'] = 'captador',
+): PropertyAction => ({
+  id: Math.random().toString(36).substr(2, 9),
+  type,
+  description: desc,
+  timestamp: new Date(Date.now() - hoursAgo * 3600000).toISOString(),
+  userId,
+  userName,
+  userRole,
+})
+
 const createDem = (
   id: string,
   name: string,
@@ -131,6 +157,7 @@ const initialDemands: Demand[] = [
       obs: 'Apartamento recém reformado',
       photoUrl: 'https://img.usecurling.com/p/400/300?q=apartment&seed=d2',
       capturedAt: new Date(Date.now() - 48 * 3600000).toISOString(),
+      history: [createHistoryItem('captacao', 'Imóvel captado e vinculado à demanda', 48)],
     },
   },
   {
@@ -145,7 +172,15 @@ const initialDemands: Demand[] = [
       visitaDate: new Date().toISOString().split('T')[0],
       visitaTime: '14:30',
       photoUrl: 'https://img.usecurling.com/p/400/300?q=house&seed=d3',
-      capturedAt: new Date(Date.now() - 24 * 3600000).toISOString(),
+      capturedAt: new Date(Date.now() - 48 * 3600000).toISOString(),
+      history: [
+        createHistoryItem(
+          'visita_agendada',
+          `Visita agendada para ${new Date().toLocaleDateString('pt-BR')} às 14:30`,
+          24,
+        ),
+        createHistoryItem('captacao', 'Imóvel captado e vinculado à demanda', 48),
+      ],
     },
   },
   createDem('d4', 'Fernanda Lima', 'Centro', 73, 'Até 90 dias ou +'),
@@ -162,7 +197,25 @@ const initialDemands: Demand[] = [
       visitaDate: new Date().toISOString().split('T')[0],
       visitaTime: '10:00',
       photoUrl: 'https://img.usecurling.com/p/400/300?q=apartment&seed=d5',
-      capturedAt: new Date().toISOString(),
+      capturedAt: new Date(Date.now() - 5 * 3600000).toISOString(),
+      history: [
+        createHistoryItem(
+          'visita_agendada',
+          `Visita agendada para ${new Date().toLocaleDateString('pt-BR')} às 10:00`,
+          2,
+          '3',
+          'Roberto Corretor',
+          'corretor',
+        ),
+        createHistoryItem(
+          'captacao',
+          'Imóvel captado e vinculado à demanda',
+          5,
+          '3',
+          'Roberto Corretor',
+          'corretor',
+        ),
+      ],
     },
   },
 ]
@@ -454,6 +507,24 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       )
   }
 
+  const createAction = (
+    type: PropertyActionType,
+    desc: string,
+    obs?: string,
+  ): PropertyAction | null => {
+    if (!currentUser) return null
+    return {
+      id: Math.random().toString(36).substr(2, 9),
+      type,
+      timestamp: new Date().toISOString(),
+      userId: currentUser.id,
+      userName: currentUser.name,
+      userRole: currentUser.role,
+      description: desc,
+      observations: obs,
+    }
+  }
+
   const scheduleVisitByCode = useCallback(
     (code: string, payload: any) => {
       const demand = allDemands.find((d) => d.capturedProperty?.code === code)
@@ -480,6 +551,13 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         return
       }
 
+      const formattedDate = new Date(payload.date + 'T00:00:00').toLocaleDateString('pt-BR')
+      const action = createAction(
+        'visita_agendada',
+        `Visita agendada para ${formattedDate} às ${payload.time}`,
+        payload.obs,
+      )
+
       const updated = {
         ...demand,
         status: 'Visita' as DemandStatus,
@@ -488,6 +566,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           visitaDate: payload.date,
           visitaTime: payload.time,
           visitaObs: payload.obs,
+          history: action
+            ? [action, ...(demand.capturedProperty?.history || [])]
+            : demand.capturedProperty?.history,
         },
       }
 
@@ -528,6 +609,12 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         return
       }
 
+      const formattedVal = new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL',
+      }).format(payload.value)
+      const action = createAction('proposta', `Proposta de ${formattedVal} registrada`, payload.obs)
+
       const updated = {
         ...demand,
         status: 'Proposta' as DemandStatus,
@@ -536,6 +623,10 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           propostaDate: payload.date,
           propostaValue: payload.value,
           propostaObs: payload.obs,
+          propostaStatus: 'em análise' as const,
+          history: action
+            ? [action, ...(demand.capturedProperty?.history || [])]
+            : demand.capturedProperty?.history,
         },
       }
 
@@ -576,7 +667,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         return
       }
 
-      let earnedPoints = 100 // Base points
+      let earnedPoints = 100
       const budgetTarget = demand.maxBudget || demand.budget || 0
       let aboveBudgetInfo = ''
       if (budgetTarget > 0 && payload.value > budgetTarget) {
@@ -587,6 +678,16 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         earnedPoints += 25
       }
 
+      const formattedVal = new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL',
+      }).format(payload.value)
+      const action = createAction(
+        'negocio',
+        `Negócio Fechado (${payload.type}) no valor de ${formattedVal}`,
+        payload.obs,
+      )
+
       const updated = {
         ...demand,
         status: 'Negócio' as DemandStatus,
@@ -596,6 +697,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           fechamentoValue: payload.value,
           fechamentoType: payload.type,
           fechamentoObs: payload.obs,
+          history: action
+            ? [action, ...(demand.capturedProperty?.history || [])]
+            : demand.capturedProperty?.history,
         },
       }
 
@@ -706,12 +810,27 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         return
       }
 
+      const action = createAction('perdido', `Demanda marcada como perdida: ${reason}`, obs)
+
       setAllDemands((prev) => {
-        const next = prev.map((d) =>
-          d.id === id
-            ? { ...d, status: 'Perdida' as DemandStatus, lostReason: reason, lostObs: obs }
-            : d,
-        )
+        const next = prev.map((d) => {
+          if (d.id === id) {
+            const updatedDemand = {
+              ...d,
+              status: 'Perdida' as DemandStatus,
+              lostReason: reason,
+              lostObs: obs,
+            }
+            if (updatedDemand.capturedProperty && action) {
+              updatedDemand.capturedProperty = {
+                ...updatedDemand.capturedProperty,
+                history: [action, ...(updatedDemand.capturedProperty.history || [])],
+              }
+            }
+            return updatedDemand
+          }
+          return d
+        })
         broadcastState(next, users, 'Demanda perdida')
         return next
       })
@@ -810,12 +929,14 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
           if (action === 'encontrei' && demand) {
             const isPriority = demand.isPrioritized
+            const code = payload?.code || `IMV-${Math.floor(Math.random() * 1000)}`
+            const hAction = createAction('captacao', `Imóvel captado e associado à demanda`)
 
             const updatedDemand = {
               ...demand,
               status: 'Captado sob demanda' as DemandStatus,
               capturedProperty: {
-                code: payload?.code || `IMV-${Math.floor(Math.random() * 1000)}`,
+                code,
                 value: payload?.value || demand.budget || demand.maxBudget,
                 neighborhood:
                   payload?.neighborhood || demand.location.split(',')[0] || 'Desconhecido',
@@ -823,6 +944,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
                 obs: payload?.obs,
                 photoUrl: `https://img.usecurling.com/p/400/300?q=house&seed=${demand.id}`,
                 capturedAt: new Date().toISOString(),
+                history: hAction ? [hAction] : [],
               },
             }
 

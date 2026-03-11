@@ -1,4 +1,4 @@
-import { MapPin, Calendar, CheckCircle2, Bed, Car, Bath, UserCircle } from 'lucide-react'
+import { MapPin, Calendar, CheckCircle2, Bed, Car, Bath, UserCircle, Clock } from 'lucide-react'
 import { Demand } from '@/types'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -21,6 +21,7 @@ const statusLabels = {
     label: '🟢 Negócio Fechado',
     color: 'bg-emerald-100 text-emerald-800 border-emerald-300',
   },
+  Perdida: { label: '❌ Perdida', color: 'bg-red-100 text-red-800 border-red-300' },
 }
 
 export function CapturedPropertyCard({
@@ -28,7 +29,7 @@ export function CapturedPropertyCard({
   onAction,
 }: {
   demand: Demand
-  onAction: (t: 'visita' | 'proposta' | 'negocio', d: Demand) => void
+  onAction: (t: 'visita' | 'proposta' | 'negocio' | 'history', d: Demand) => void
 }) {
   const { users } = useAppStore()
   const prop = demand.capturedProperty!
@@ -38,6 +39,7 @@ export function CapturedPropertyCard({
   const isClosed = demand.status === 'Negócio'
   const isVisita = demand.status === 'Visita'
   const isProposta = demand.status === 'Proposta'
+  const isLost = demand.status === 'Perdida'
 
   const capturer = users.find((u) => u.id === demand.assignedTo)
 
@@ -46,6 +48,7 @@ export function CapturedPropertyCard({
       className={cn(
         'overflow-hidden flex flex-col h-full border-2 transition-all hover:shadow-md relative',
         isClosed ? 'bg-emerald-50/40 border-emerald-400' : 'border-muted',
+        isLost && 'opacity-80 grayscale-[30%]',
       )}
     >
       <div className="relative h-48 w-full bg-muted">
@@ -145,6 +148,11 @@ export function CapturedPropertyCard({
                 prop.propostaValue || 0,
               )}
             </p>
+            {prop.propostaStatus && (
+              <Badge variant="outline" className="bg-white/50 text-[10px] mt-1">
+                Status: {prop.propostaStatus}
+              </Badge>
+            )}
           </div>
         )}
 
@@ -170,38 +178,50 @@ export function CapturedPropertyCard({
       </CardContent>
 
       <div className="p-4 pt-0 mt-auto flex flex-col gap-2">
+        {!isLost && (
+          <>
+            <Button
+              size="sm"
+              variant={isVisita ? 'default' : 'outline'}
+              className={cn(
+                'w-full justify-start text-xs font-semibold',
+                isVisita && 'bg-blue-600 hover:bg-blue-700 text-white',
+              )}
+              onClick={() => onAction('visita', demand)}
+            >
+              👁️ VISITA AGENDADA
+            </Button>
+            <Button
+              size="sm"
+              variant={isProposta ? 'default' : 'outline'}
+              className={cn(
+                'w-full justify-start text-xs font-semibold',
+                isProposta && 'bg-purple-600 hover:bg-purple-700 text-white',
+              )}
+              onClick={() => onAction('proposta', demand)}
+            >
+              📄 PROPOSTA
+            </Button>
+            <Button
+              size="sm"
+              variant={isClosed ? 'default' : 'outline'}
+              className={cn(
+                'w-full justify-start text-xs font-semibold',
+                isClosed && 'bg-emerald-600 hover:bg-emerald-700 text-white',
+              )}
+              onClick={() => onAction('negocio', demand)}
+            >
+              {isClosed ? '🎉 NEGÓCIO FECHADO' : '💰 NEGÓCIO FECHADO'}
+            </Button>
+          </>
+        )}
         <Button
           size="sm"
-          variant={isVisita ? 'default' : 'outline'}
-          className={cn(
-            'w-full justify-start text-xs font-semibold',
-            isVisita && 'bg-blue-600 hover:bg-blue-700 text-white',
-          )}
-          onClick={() => onAction('visita', demand)}
+          variant="secondary"
+          className="w-full justify-start text-xs font-semibold mt-1 bg-muted/80 hover:bg-muted"
+          onClick={() => onAction('history', demand)}
         >
-          👁️ VISITA AGENDADA
-        </Button>
-        <Button
-          size="sm"
-          variant={isProposta ? 'default' : 'outline'}
-          className={cn(
-            'w-full justify-start text-xs font-semibold',
-            isProposta && 'bg-purple-600 hover:bg-purple-700 text-white',
-          )}
-          onClick={() => onAction('proposta', demand)}
-        >
-          📄 PROPOSTA
-        </Button>
-        <Button
-          size="sm"
-          variant={isClosed ? 'default' : 'outline'}
-          className={cn(
-            'w-full justify-start text-xs font-semibold',
-            isClosed && 'bg-emerald-600 hover:bg-emerald-700 text-white',
-          )}
-          onClick={() => onAction('negocio', demand)}
-        >
-          {isClosed ? '🎉 NEGÓCIO FECHADO' : '💰 NEGÓCIO FECHADO'}
+          <Clock className="w-4 h-4 mr-2 text-muted-foreground" /> VER HISTÓRICO
         </Button>
       </div>
     </Card>

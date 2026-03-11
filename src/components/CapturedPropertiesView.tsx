@@ -8,8 +8,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog'
 import { CapturedPropertyCard } from './CapturedPropertyCard'
 import { CapturedPropertyModals } from './CapturedPropertyModals'
+import { PropertyTimeline } from './PropertyTimeline'
 import { Demand, User } from '@/types'
 
 export function CapturedPropertiesView() {
@@ -26,14 +34,21 @@ export function CapturedPropertiesView() {
   const [dateFilter, setDateFilter] = useState('all')
 
   const [actionDemand, setActionDemand] = useState<Demand | null>(null)
-  const [actionType, setActionType] = useState<'visita' | 'proposta' | 'negocio' | null>(null)
+  const [actionType, setActionType] = useState<
+    'visita' | 'proposta' | 'negocio' | 'history' | null
+  >(null)
 
   const capturedDemands = useMemo(() => {
     return demands.filter(
       (d) =>
-        ['Captado sob demanda', 'Captado independente', 'Visita', 'Proposta', 'Negócio'].includes(
-          d.status,
-        ) &&
+        [
+          'Captado sob demanda',
+          'Captado independente',
+          'Visita',
+          'Proposta',
+          'Negócio',
+          'Perdida',
+        ].includes(d.status) &&
         d.createdBy === currentUser?.id &&
         d.capturedProperty,
     )
@@ -76,13 +91,14 @@ export function CapturedPropertiesView() {
       return matchStatus && matchCapturer && matchDate
     })
 
-    // Sort Logic: Priority to Captado, then by most recent capture date
+    // Sort Logic: Priority to active states, then most recent capture
     const statusWeight: Record<string, number> = {
-      'Captado sob demanda': 1,
-      'Captado independente': 1,
-      Visita: 2,
-      Proposta: 3,
+      Visita: 1,
+      Proposta: 2,
+      'Captado sob demanda': 3,
+      'Captado independente': 3,
       Negócio: 4,
+      Perdida: 5,
     }
 
     return result.sort((a, b) => {
@@ -99,7 +115,7 @@ export function CapturedPropertiesView() {
     })
   }, [capturedDemands, statusFilter, capturerFilter, dateFilter])
 
-  const handleAction = (type: 'visita' | 'proposta' | 'negocio', demand: Demand) => {
+  const handleAction = (type: 'visita' | 'proposta' | 'negocio' | 'history', demand: Demand) => {
     setActionType(type)
     setActionDemand(demand)
   }
@@ -117,6 +133,7 @@ export function CapturedPropertiesView() {
             <SelectItem value="Visita">🔵 Visita Agendada</SelectItem>
             <SelectItem value="Proposta">🟣 Proposta</SelectItem>
             <SelectItem value="Negócio">🟢 Negócio Fechado</SelectItem>
+            <SelectItem value="Perdida">❌ Perdida</SelectItem>
           </SelectContent>
         </Select>
 
@@ -162,9 +179,34 @@ export function CapturedPropertiesView() {
         </div>
       )}
 
+      {actionType === 'history' && actionDemand && (
+        <Dialog
+          open
+          onOpenChange={(v) => {
+            if (!v) {
+              setActionType(null)
+              setActionDemand(null)
+            }
+          }}
+        >
+          <DialogContent className="sm:max-w-[500px] max-h-[85vh] overflow-hidden flex flex-col">
+            <DialogHeader className="pb-2">
+              <DialogTitle>Histórico de Ações do Imóvel</DialogTitle>
+              <DialogDescription>
+                Cód: <strong>{actionDemand.capturedProperty?.code}</strong> • Cliente:{' '}
+                {actionDemand.clientName}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="overflow-y-auto flex-1 -mx-6 px-6 pb-2">
+              <PropertyTimeline history={actionDemand.capturedProperty?.history || []} />
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
       <CapturedPropertyModals
         demand={actionDemand}
-        actionType={actionType}
+        actionType={actionType === 'history' ? null : actionType}
         onClose={() => {
           setActionType(null)
           setActionDemand(null)
