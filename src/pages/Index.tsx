@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Mail, Lock, LogIn, Building2, KeyRound, ArrowLeft } from 'lucide-react'
+import { Mail, Lock, LogIn, Building2, KeyRound, ArrowLeft, Loader2 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -12,29 +12,48 @@ export default function Index() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isResetting, setIsResetting] = useState(false)
-  const { login, requestPasswordReset } = useAppStore()
+  const [isLoading, setIsLoading] = useState(false)
+  const { currentUser, login, requestPasswordReset } = useAppStore()
   const navigate = useNavigate()
   const { toast } = useToast()
 
-  const handleLogin = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (currentUser) {
+      navigate('/app', { replace: true })
+    }
+  }, [currentUser, navigate])
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!email || !password) {
-      toast({ title: 'Erro', description: 'Preencha todos os campos.', variant: 'destructive' })
+      toast({
+        title: 'Atenção',
+        description: 'Preencha todos os campos.',
+        variant: 'destructive',
+      })
       return
     }
 
+    setIsLoading(true)
     try {
-      login(email, password)
-      navigate('/app')
+      await new Promise((r) => setTimeout(r, 600)) // Visual feedback delay
+      await login(email, password)
+      navigate('/app', { replace: true })
     } catch (err: any) {
-      toast({ title: 'Erro de Autenticação', description: err.message, variant: 'destructive' })
+      toast({
+        title: 'Erro de Autenticação',
+        description: err.message,
+        className: 'bg-[#E59235] text-white border-0 [&>button]:text-white',
+      })
+    } finally {
+      setIsLoading(false)
     }
   }
 
   const handleReset = (e: React.FormEvent) => {
     e.preventDefault()
     if (!email) {
-      toast({ title: 'Erro', description: 'Preencha seu e-mail.', variant: 'destructive' })
+      toast({ title: 'Atenção', description: 'Preencha seu e-mail.', variant: 'destructive' })
       return
     }
     try {
@@ -50,10 +69,26 @@ export default function Index() {
     }
   }
 
-  const quickLogin = (mockEmail: string) => {
+  const quickLogin = async (mockEmail: string) => {
     setEmail(mockEmail)
     setPassword('Password1')
+    setIsLoading(true)
+    try {
+      await new Promise((r) => setTimeout(r, 600))
+      await login(mockEmail, 'Password1')
+      navigate('/app', { replace: true })
+    } catch (err: any) {
+      toast({
+        title: 'Erro de Autenticação',
+        description: err.message,
+        className: 'bg-[#E59235] text-white border-0 [&>button]:text-white',
+      })
+    } finally {
+      setIsLoading(false)
+    }
   }
+
+  if (currentUser) return null // Prevents flashing the login screen while redirecting
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
@@ -80,6 +115,7 @@ export default function Index() {
                       className="pl-9"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
+                      disabled={isLoading}
                     />
                   </div>
                 </div>
@@ -90,6 +126,7 @@ export default function Index() {
                       type="button"
                       onClick={() => setIsResetting(true)}
                       className="text-xs text-primary hover:underline font-medium"
+                      disabled={isLoading}
                     >
                       Esqueceu a senha?
                     </button>
@@ -103,11 +140,21 @@ export default function Index() {
                       className="pl-9"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
+                      disabled={isLoading}
                     />
                   </div>
                 </div>
-                <Button type="submit" className="w-full py-6 text-base font-semibold">
-                  <LogIn className="w-5 h-5 mr-2" /> Entrar
+                <Button
+                  type="submit"
+                  className="w-full py-6 text-base font-semibold"
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  ) : (
+                    <LogIn className="w-5 h-5 mr-2" />
+                  )}
+                  {isLoading ? 'Entrando...' : 'Entrar'}
                 </Button>
               </form>
 
@@ -121,6 +168,7 @@ export default function Index() {
                     size="sm"
                     onClick={() => quickLogin('captador@etic.com')}
                     className="text-xs"
+                    disabled={isLoading}
                   >
                     Captador
                   </Button>
@@ -129,6 +177,7 @@ export default function Index() {
                     size="sm"
                     onClick={() => quickLogin('sdr@etic.com')}
                     className="text-xs"
+                    disabled={isLoading}
                   >
                     SDR
                   </Button>
@@ -137,6 +186,7 @@ export default function Index() {
                     size="sm"
                     onClick={() => quickLogin('corretor@etic.com')}
                     className="text-xs"
+                    disabled={isLoading}
                   >
                     Corretor
                   </Button>
@@ -145,6 +195,7 @@ export default function Index() {
                     size="sm"
                     onClick={() => quickLogin('gestor@etic.com')}
                     className="text-xs"
+                    disabled={isLoading}
                   >
                     Gestor / Admin
                   </Button>

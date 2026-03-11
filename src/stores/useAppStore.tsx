@@ -27,7 +27,7 @@ interface AppState {
   demands: Demand[]
   webhookQueue: WebhookEvent[]
   auditLogs: string[]
-  login: (email: string, password?: string) => void
+  login: (email: string, password?: string) => Promise<void>
   logout: () => void
   requestPasswordReset: (email: string) => void
   addDemand: (demand: Partial<Demand>) => void
@@ -914,7 +914,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         webhookQueue,
         auditLogs,
         triggerCron,
-        login: (email, password) => {
+        login: async (email, password) => {
           const user = users.find((u) => u.email === email)
           if (!user || (password && password !== '123456' && password !== 'Password1')) {
             throw new Error(
