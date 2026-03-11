@@ -71,12 +71,18 @@ export interface Demand {
 
 export interface WebhookEvent {
   id: string
-  tipo_notificacao: string
-  destinatario_whatsapp: string
-  mensagem: string
-  status: 'pendente' | 'enviado' | 'falha'
+  event_type: string
+  entity_id?: string
+  payload: {
+    event_type: string
+    entity_id?: string
+    data: any
+    timestamp: string
+  }
+  status: 'pendente' | 'processando' | 'enviado' | 'falha'
   tentativas: number
   erro_mensagem?: string
+  target_url: string
   data_criacao: string
   data_envio?: string
 }

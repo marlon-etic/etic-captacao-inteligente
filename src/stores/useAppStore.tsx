@@ -5,6 +5,7 @@ import React, {
   ReactNode,
   useEffect,
   useCallback,
+  useRef,
 } from 'react'
 import { User, Demand, DemandStatus, BadgeType, UserStats, WebhookEvent } from '@/types'
 import { toast } from '@/hooks/use-toast'
@@ -24,7 +25,8 @@ interface AppState {
   addPoints: (amount: number, userId?: string) => void
   getSimilarDemands: (id: string) => Demand[]
   triggerCron: () => void
-  enqueueWebhook: (tipo_notificacao: string, destinatario_whatsapp: string, data: any) => void
+  enqueueWebhook: (event_type: string, entity_id: string | undefined, data: any) => void
+  processWebhookCron: () => Promise<void>
 }
 
 const defaultStats: UserStats = {
@@ -104,79 +106,56 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const [webhookQueue, setWebhookQueue] = useState<WebhookEvent[]>([])
   const [auditLogs, setAuditLogs] = useState<string[]>([])
 
+  const webhookQueueRef = useRef(webhookQueue)
+  const isProcessingRef = useRef(false)
+
+  useEffect(() => {
+    webhookQueueRef.current = webhookQueue
+  }, [webhookQueue])
+
   const addLog = useCallback(
     (msg: string) =>
       setAuditLogs((prev) => [`[${new Date().toLocaleTimeString()}] ${msg}`, ...prev]),
     [],
   )
 
+  const updateQueueItem = useCallback((id: string, updates: Partial<WebhookEvent>) => {
+    setWebhookQueue((prev) => prev.map((item) => (item.id === id ? { ...item, ...updates } : item)))
+  }, [])
+
   const enqueueWebhook = useCallback(
-    (tipo_notificacao: string, destinatario_whatsapp: string, data: any) => {
-      const baseUrl = 'https://etic.com/app'
-      let mensagem = ''
-      switch (tipo_notificacao) {
-        case 'NOVA_DEMANDA':
-          mensagem = `🚨 *Nova Demanda!*\n👤 Cliente: ${data.clientName}\n📍 Local: ${data.location}\n💰 Orçamento: R$ ${data.budget || data.maxBudget}\n👉 Link: ${baseUrl}/demandas/${data.id}`
-          break
-        case 'LEMBRETE_24H':
-          mensagem = `⏰ *Lembrete 24h!*\nA demanda de ${data.clientName} em ${data.location} precisa de atenção.\n👉 Link: ${baseUrl}/demandas/${data.id}`
-          break
-        case 'IMOVEL_CAPTADO':
-          mensagem = `✅ *Imóvel Captado!*\nNovo imóvel na região de ${data.location} para ${data.clientName}.\n👉 Link: ${baseUrl}/demandas/${data.id}`
-          break
-        case 'CONFIRMACAO_GESTOR':
-          mensagem = `👨‍💼 *Aprovação Necessária!*\nO imóvel captado requer sua análise.\n👉 Link: ${baseUrl}/demandas/${data.id}`
-          break
-        case 'FALHA_SISTEMA':
-          mensagem = `⚠️ *Aviso do Sistema:*\nTivemos uma falha ao processar: ${data.action}.\nPor favor, tente novamente.`
-          break
-        case 'DESAFIO_SEMANAL':
-          mensagem = `🏆 *Desafio da Semana!*\nCapture 3 imóveis nos próximos 5 dias e ganhe bônus!\n👉 Link: ${baseUrl}/ranking`
-          break
-        case 'VISITA_AGENDADA':
-          mensagem = `📅 *Visita Agendada!*\nO cliente ${data.clientName} vai visitar o imóvel em ${data.location} amanhã.\n👉 Link: ${baseUrl}/demandas/${data.id}`
-          break
-        default:
-          mensagem = data.message || 'Notificação do Sistema'
-      }
+    (event_type: string, entity_id: string | undefined, data: any) => {
+      const target_url =
+        import.meta.env.VITE_N8N_WEBHOOK_URL || 'https://mock-n8n.example.com/webhook-test'
 
-      const id = Math.random().toString(36).substring(2, 9)
-      const data_criacao = new Date().toISOString()
-
-      const isValidPhone = /^\+?[0-9]{10,15}$/.test(destinatario_whatsapp.replace(/[\s\-()]/g, ''))
-      const isValidMessage = mensagem.trim().length > 0
-
-      if (!isValidPhone || !isValidMessage) {
-        setWebhookQueue((prev) => [
-          ...prev,
-          {
-            id,
-            tipo_notificacao,
-            destinatario_whatsapp,
-            mensagem,
-            status: 'falha',
-            tentativas: 3,
-            erro_mensagem: !isValidPhone ? 'Número de WhatsApp inválido' : 'Mensagem vazia',
-            data_criacao,
-          },
-        ])
+      if (!target_url.startsWith('http')) {
+        addLog(`[Erro] Webhook URL inválida para evento ${event_type}`)
         return
       }
 
-      setWebhookQueue((prev) => [
-        ...prev,
-        {
-          id,
-          tipo_notificacao,
-          destinatario_whatsapp,
-          mensagem,
-          status: 'pendente',
-          tentativas: 0,
-          data_criacao,
-        },
-      ])
+      const id = Math.random().toString(36).substring(2, 9)
+      const payload = {
+        event_type,
+        entity_id,
+        data,
+        timestamp: new Date().toISOString(),
+      }
+
+      const newEvent: WebhookEvent = {
+        id,
+        event_type,
+        entity_id,
+        payload,
+        status: 'pendente',
+        tentativas: 0,
+        target_url,
+        data_criacao: new Date().toISOString(),
+      }
+
+      setWebhookQueue((prev) => [...prev, newEvent])
+      addLog(`[Webhook] Evento '${event_type}' enfileirado para envio a n8n.`)
     },
-    [],
+    [addLog],
   )
 
   const triggerCron = useCallback(() => {
@@ -213,15 +192,15 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     setTimeout(() => {
       actions.forEach(({ type, demand }) => {
         if (type === '72h') {
-          enqueueWebhook('FALHA_SISTEMA', '+5511999999999', {
+          enqueueWebhook('falha_sistema', demand.id, {
             action: `avaliação da demanda de ${demand.clientName} em ${demand.location} (sem resposta há 72h)`,
           })
           addLog(`[Cron] Demanda de ${demand.clientName} atualizada para Impossível (>72h).`)
         } else if (type === '48h') {
-          enqueueWebhook('LEMBRETE_24H', '+5511999999999', {
+          enqueueWebhook('lembrete_prazo', demand.id, {
+            tipo: '48h',
             clientName: demand.clientName,
             location: demand.location,
-            id: demand.id,
           })
           if (demand.assignedTo) {
             setUsers((u) =>
@@ -233,10 +212,10 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           }
           addLog(`[Cron] Demanda de ${demand.clientName} entrou em Repescagem (>48h).`)
         } else if (type === '24h') {
-          enqueueWebhook('LEMBRETE_24H', '+5511999999999', {
+          enqueueWebhook('lembrete_prazo', demand.id, {
+            tipo: '24h',
             clientName: demand.clientName,
             location: demand.location,
-            id: demand.id,
           })
           addLog(`[Cron] Lembrete 24h enfileirado para demanda de ${demand.clientName}.`)
         }
@@ -244,6 +223,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     }, 100)
   }, [enqueueWebhook, addLog])
 
+  // System status checks (every 20s)
   useEffect(() => {
     const t = setTimeout(triggerCron, 2000)
     const i = setInterval(triggerCron, 20000)
@@ -253,53 +233,89 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     }
   }, [triggerCron])
 
-  useEffect(() => {
-    const processQueue = () => {
-      setWebhookQueue((prev) => {
-        const toProcessIndex = prev.findIndex(
-          (q) =>
-            q.status === 'pendente' ||
-            (q.status === 'falha' && q.tentativas > 0 && q.tentativas < 3),
-        )
-        if (toProcessIndex === -1) return prev
+  // Background Webhook Processing Engine (Cron Job)
+  const processWebhookCron = useCallback(async () => {
+    if (isProcessingRef.current) return
+    isProcessingRef.current = true
 
-        const next = [...prev]
-        const item = next[toProcessIndex]
+    const pendingItems = webhookQueueRef.current.filter(
+      (q) => q.status === 'pendente' || (q.status === 'falha' && q.tentativas < 3),
+    )
 
-        const isFailure = Math.random() < 0.2
-
-        if (isFailure) {
-          const newTentativas = item.tentativas + 1
-          next[toProcessIndex] = {
-            ...item,
-            status: 'falha',
-            tentativas: newTentativas,
-            erro_mensagem: 'Erro de conexão com provedor (simulado)',
-          }
-          if (newTentativas >= 3) {
-            addLog(`[Erro] Falha definitiva na notificação para ${item.destinatario_whatsapp}.`)
-          }
-        } else {
-          next[toProcessIndex] = {
-            ...item,
-            status: 'enviado',
-            tentativas: item.tentativas + 1,
-            data_envio: new Date().toISOString(),
-          }
-          toast({
-            title: 'WhatsApp Enviado',
-            description: `Notificação enviada para ${item.destinatario_whatsapp}`,
-            className: 'bg-emerald-600 text-white',
-          })
-          addLog(`[Sucesso] Notificação enviada para ${item.destinatario_whatsapp}.`)
-        }
-        return next
-      })
+    if (pendingItems.length > 0) {
+      addLog(`[Cron n8n] Iniciando processamento de ${pendingItems.length} webhooks pendentes...`)
     }
 
-    const intervalId = setInterval(processQueue, 1000)
-    return () => clearInterval(intervalId)
-  }, [addLog])
+    for (const item of pendingItems) {
+      let success = false
+      let attempts = item.tentativas
+
+      updateQueueItem(item.id, { status: 'processando' })
+
+      while (!success && attempts < 3) {
+        attempts++
+        try {
+          // Mock network latency for webhook delivery
+          await new Promise((r) => setTimeout(r, 400))
+
+          const isMockFailure = Math.random() < 0.25 // 25% failure chance to test exponential backoff
+          if (isMockFailure) {
+            throw new Error('HTTP 502 Bad Gateway - Connection refused')
+          }
+
+          success = true
+          updateQueueItem(item.id, {
+            status: 'enviado',
+            tentativas: attempts,
+            data_envio: new Date().toISOString(),
+            erro_mensagem: undefined,
+          })
+          addLog(`[Webhook] Sucesso: '${item.event_type}' entregue ao n8n.`)
+          toast({
+            title: 'Sincronização n8n',
+            description: `Evento ${item.event_type} entregue com sucesso.`,
+            className: 'bg-emerald-600 text-white',
+          })
+        } catch (err: any) {
+          updateQueueItem(item.id, {
+            status: 'falha',
+            tentativas: attempts,
+            erro_mensagem: err.message,
+          })
+          addLog(
+            `[Webhook] Falha: '${item.event_type}' (Tentativa ${attempts}/3). Erro: ${err.message}`,
+          )
+
+          if (attempts < 3) {
+            const delay = [1000, 2000, 4000][attempts - 1] // Exponential backoff intervals
+            addLog(`[Webhook] Aguardando ${delay}ms para tentar novamente...`)
+            await new Promise((r) => setTimeout(r, delay))
+          } else {
+            addLog(`[Webhook] Esgotadas as 3 tentativas para o evento '${item.event_type}'.`)
+            toast({
+              title: 'Falha na Integração n8n',
+              description: `O evento ${item.event_type} falhou definitivamente.`,
+              variant: 'destructive',
+            })
+          }
+        }
+      }
+    }
+
+    isProcessingRef.current = false
+  }, [addLog, updateQueueItem])
+
+  useEffect(() => {
+    // Requirements: "Cron Job configured to run every 5 minutes"
+    const intervalId = setInterval(processWebhookCron, 300000)
+    // Run an initial check shortly after load so we can see the mock in action
+    const initialTimeout = setTimeout(processWebhookCron, 3000)
+
+    return () => {
+      clearInterval(intervalId)
+      clearTimeout(initialTimeout)
+    }
+  }, [processWebhookCron])
 
   const addPoints = (amount: number, userId?: string) => {
     const id = userId || currentUser?.id
@@ -358,16 +374,16 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
             createdAt: new Date().toISOString(),
           } as Demand
           setAllDemands((p) => [newDemand, ...p])
-          enqueueWebhook('NOVA_DEMANDA', '+5511999999999', newDemand)
+          enqueueWebhook('nova_demanda', newDemand.id, newDemand)
         },
         updateDemandStatus: (i, s) => {
           setAllDemands((p) => {
             const next = p.map((d) => (d.id === i ? { ...d, status: s } : d))
             const updated = next.find((x) => x.id === i)
             if (updated && s === 'Em Captação') {
-              enqueueWebhook('CONFIRMACAO_GESTOR', '+5511999999999', updated)
+              enqueueWebhook('confirmacao_gestor', updated.id, updated)
             } else if (updated && s === 'Visita') {
-              enqueueWebhook('VISITA_AGENDADA', '+5511999999999', updated)
+              enqueueWebhook('visita_agendada', updated.id, updated)
             }
             return next
           })
@@ -375,7 +391,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         submitDemandResponse: (id, action, payload) => {
           const demand = allDemands.find((d) => d.id === id)
           if (action === 'encontrei' && demand) {
-            enqueueWebhook('IMOVEL_CAPTADO', '+5511999999999', {
+            enqueueWebhook('imovel_captado', demand.id, {
               ...demand,
               location: payload?.endereco || demand.location,
             })
@@ -383,7 +399,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           return { success: true, message: '' }
         },
         submitIndependentCapture: (payload) => {
-          enqueueWebhook('IMOVEL_CAPTADO', '+5511999999999', {
+          enqueueWebhook('imovel_captado', 'independente', {
             location: payload?.endereco || 'Desconhecida',
             clientName: 'Geral',
             id: 'independente',
@@ -392,6 +408,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         addPoints,
         getSimilarDemands,
         enqueueWebhook,
+        processWebhookCron,
       }}
     >
       {children}
