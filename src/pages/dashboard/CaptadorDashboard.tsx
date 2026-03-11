@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import {
   PackageSearch,
   Clock,
@@ -29,6 +29,14 @@ import { Pagination, PaginationContent, PaginationItem } from '@/components/ui/p
 import useAppStore from '@/stores/useAppStore'
 import { useToast } from '@/hooks/use-toast'
 import { Demand } from '@/types'
+import { cn } from '@/lib/utils'
+
+const QUICK_FILTERS = [
+  { id: 'all', label: 'Todos', icon: '📊' },
+  { id: 'awaiting', label: 'Aguardando', icon: '⏳' },
+  { id: 'visits', label: 'Visitas', icon: '👁️' },
+  { id: 'deals', label: 'Negócios', icon: '💰' },
+]
 
 export function CaptadorDashboard() {
   const { demands, currentUser, submitDemandResponse } = useAppStore()
@@ -41,6 +49,22 @@ export function CaptadorDashboard() {
   }>({ isOpen: false, demand: null, type: null })
   const [indepModalOpen, setIndepModalOpen] = useState(false)
 
+  const [quickFilter, setQuickFilter] = useState(() => {
+    try {
+      return localStorage.getItem('captador_quick_filter') || 'all'
+    } catch {
+      return 'all'
+    }
+  })
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('captador_quick_filter', quickFilter)
+    } catch {
+      // ignore
+    }
+  }, [quickFilter])
+
   const [filters, setFilters] = useState({
     type: 'all',
     status: 'all',
@@ -49,6 +73,29 @@ export function CaptadorDashboard() {
   })
   const [page, setPage] = useState(1)
   const ITEMS_PER_PAGE = 20
+
+  const handleQuickFilterClick = (id: string) => {
+    try {
+      setQuickFilter(id)
+      setPage(1)
+    } catch (err) {
+      toast({
+        title: 'Erro',
+        description: 'Erro ao aplicar filtro. Tente novamente',
+        variant: 'destructive',
+      })
+    }
+  }
+
+  const quickCounts = useMemo(() => {
+    const counts = { all: demands.length, awaiting: 0, visits: 0, deals: 0 }
+    demands.forEach((d) => {
+      if (d.status === 'Pendente') counts.awaiting++
+      if (d.status === 'Visita') counts.visits++
+      if (d.status === 'Negócio') counts.deals++
+    })
+    return counts
+  }, [demands])
 
   const stats = useMemo(() => {
     const c = { capDem: 0, capInd: 0, search: 0, visit: 0, deal: 0, await: 0 }
@@ -64,7 +111,13 @@ export function CaptadorDashboard() {
   }, [demands])
 
   const sortedDemands = useMemo(() => {
-    return demands
+    let filtered = demands
+
+    if (quickFilter === 'awaiting') filtered = filtered.filter((d) => d.status === 'Pendente')
+    else if (quickFilter === 'visits') filtered = filtered.filter((d) => d.status === 'Visita')
+    else if (quickFilter === 'deals') filtered = filtered.filter((d) => d.status === 'Negócio')
+
+    return filtered
       .filter((d) => filters.type === 'all' || d.type === filters.type)
       .filter((d) => filters.status === 'all' || d.status === filters.status)
       .filter((d) => filters.timeframe === 'all' || d.timeframe === filters.timeframe)
@@ -87,7 +140,7 @@ export function CaptadorDashboard() {
           return (b.similarProfilesCount || 0) - (a.similarProfilesCount || 0)
         return 0
       })
-  }, [demands, filters])
+  }, [demands, filters, quickFilter])
 
   const paginated = sortedDemands.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE)
   const totalPages = Math.ceil(sortedDemands.length / ITEMS_PER_PAGE)
@@ -117,7 +170,7 @@ export function CaptadorDashboard() {
   if (!currentUser) return null
 
   return (
-    <div className="space-y-6 pb-10">
+    <div className="space-y-6 pb-10 relative">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight mb-1">Painel de Captação</h1>
@@ -153,11 +206,46 @@ export function CaptadorDashboard() {
         ))}
       </div>
 
+      <div className="sticky top-0 z-30 pt-2 pb-2 bg-background/95 backdrop-blur -mx-4 px-4 sm:mx-0 sm:px-0">
+        <div className="flex gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] pb-2">
+          {QUICK_FILTERS.map((opt) => {
+            const isActive = quickFilter === opt.id
+            const count = quickCounts[opt.id as keyof typeof quickCounts]
+            return (
+              <button
+                key={opt.id}
+                onClick={() => handleQuickFilterClick(opt.id)}
+                className={cn(
+                  'flex flex-shrink-0 items-center gap-2 px-4 py-2 rounded-full whitespace-nowrap transition-all duration-200 text-sm border',
+                  isActive
+                    ? 'bg-primary text-primary-foreground font-bold border-primary shadow-sm'
+                    : 'bg-muted/50 text-muted-foreground hover:bg-muted font-medium border-border',
+                )}
+              >
+                <span>{opt.icon}</span>
+                <span>{opt.label}</span>
+                <span
+                  className={cn(
+                    'px-2 py-0.5 rounded-full text-xs font-bold ml-1',
+                    isActive ? 'bg-primary-foreground/20' : 'bg-muted-foreground/20',
+                  )}
+                >
+                  {count}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row gap-3 items-center justify-between bg-muted/50 p-3 rounded-lg border border-border/50">
           <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
             <Filter className="w-4 h-4 text-muted-foreground hidden sm:block" />
-            <Select value={filters.type} onValueChange={(v) => setFilters({ ...filters, type: v })}>
+            <Select
+              value={filters.type}
+              onValueChange={(v) => setFilters({ ...filters, type: v, page: 1 } as any)}
+            >
               <SelectTrigger className="w-[120px] h-8 text-xs bg-background">
                 <SelectValue placeholder="Tipo" />
               </SelectTrigger>
@@ -169,7 +257,7 @@ export function CaptadorDashboard() {
             </Select>
             <Select
               value={filters.status}
-              onValueChange={(v) => setFilters({ ...filters, status: v })}
+              onValueChange={(v) => setFilters({ ...filters, status: v, page: 1 } as any)}
             >
               <SelectTrigger className="w-[140px] h-8 text-xs bg-background">
                 <SelectValue placeholder="Status" />
@@ -183,7 +271,7 @@ export function CaptadorDashboard() {
             </Select>
             <Select
               value={filters.timeframe}
-              onValueChange={(v) => setFilters({ ...filters, timeframe: v })}
+              onValueChange={(v) => setFilters({ ...filters, timeframe: v, page: 1 } as any)}
             >
               <SelectTrigger className="w-[140px] h-8 text-xs bg-background">
                 <SelectValue placeholder="Prazo / Urgência" />
@@ -200,7 +288,10 @@ export function CaptadorDashboard() {
           </div>
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <SortDesc className="w-4 h-4 text-muted-foreground hidden sm:block" />
-            <Select value={filters.sort} onValueChange={(v) => setFilters({ ...filters, sort: v })}>
+            <Select
+              value={filters.sort}
+              onValueChange={(v) => setFilters({ ...filters, sort: v, page: 1 } as any)}
+            >
               <SelectTrigger className="w-[160px] h-8 text-xs bg-background">
                 <SelectValue placeholder="Ordenar por" />
               </SelectTrigger>
@@ -218,16 +309,18 @@ export function CaptadorDashboard() {
             <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
               <PackageSearch className="w-8 h-8 text-muted-foreground/50" />
             </div>
-            <h3 className="text-lg font-semibold mb-1">Nenhuma demanda encontrada</h3>
+            <h3 className="text-lg font-semibold mb-1">Nenhum imóvel nesta categoria</h3>
             <p className="text-muted-foreground">Nenhuma demanda no momento. Volte mais tarde!</p>
             {(filters.type !== 'all' ||
               filters.status !== 'all' ||
-              filters.timeframe !== 'all') && (
+              filters.timeframe !== 'all' ||
+              quickFilter !== 'all') && (
               <Button
                 variant="link"
-                onClick={() =>
+                onClick={() => {
                   setFilters({ type: 'all', status: 'all', timeframe: 'all', sort: 'urgency' })
-                }
+                  handleQuickFilterClick('all')
+                }}
                 className="mt-2"
               >
                 Limpar filtros
