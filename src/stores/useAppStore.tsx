@@ -119,6 +119,19 @@ const mockUsers: User[] = [
     badges: [],
     stats: { ...defaultStats },
   },
+  {
+    id: '5',
+    name: 'Admin Sistema',
+    email: 'admin@etic.com',
+    role: 'admin',
+    status: 'ativo',
+    points: 0,
+    dailyPoints: 0,
+    weeklyPoints: 0,
+    monthlyPoints: 0,
+    badges: [],
+    stats: { ...defaultStats },
+  },
 ]
 
 const createHistoryItem = (
@@ -248,7 +261,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       const stored = localStorage.getItem('etic_session')
       if (stored) {
         const { user, expiresAt } = JSON.parse(stored)
-        if (Date.now() < expiresAt) return user
+        if (Date.now() < expiresAt && user) return user
       }
     } catch {
       // ignore
@@ -269,7 +282,27 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     return null
   })
 
-  const [users, setUsers] = useState<User[]>(mockUsers)
+  const [users, setUsers] = useState<User[]>(() => {
+    try {
+      const raw = localStorage.getItem('etic_state_sync')
+      if (raw) {
+        const parsed = JSON.parse(raw)
+        if (parsed.users && Array.isArray(parsed.users)) {
+          const merged = [...parsed.users]
+          mockUsers.forEach((mu) => {
+            if (!merged.find((u) => u.email === mu.email)) {
+              merged.push(mu)
+            }
+          })
+          return merged
+        }
+      }
+    } catch {
+      // ignore
+    }
+    return mockUsers
+  })
+
   const [allDemands, setAllDemands] = useState<Demand[]>(initialDemands)
   const [looseProperties, setLooseProperties] = useState<CapturedProperty[]>(initialLooseProperties)
   const [webhookQueue, setWebhookQueue] = useState<WebhookEvent[]>([])
@@ -326,12 +359,24 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       const parsed = JSON.parse(payloadRaw)
 
       setAllDemands((prev) => {
-        if (JSON.stringify(prev) !== JSON.stringify(parsed.demands)) return parsed.demands
+        if (parsed.demands && JSON.stringify(prev) !== JSON.stringify(parsed.demands))
+          return parsed.demands
         return prev
       })
 
       setUsers((prev) => {
-        if (JSON.stringify(prev) !== JSON.stringify(parsed.users)) return parsed.users
+        if (!parsed.users || !Array.isArray(parsed.users)) return prev
+        const merged = [...parsed.users]
+        let added = false
+        mockUsers.forEach((mu) => {
+          if (!merged.find((u) => u.email === mu.email)) {
+            merged.push(mu)
+            added = true
+          }
+        })
+        if (added || JSON.stringify(prev) !== JSON.stringify(merged)) {
+          return merged
+        }
         return prev
       })
 
@@ -347,7 +392,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
       setCurrentUser((prev) => {
         if (!prev) return prev
-        const updatedCurrent = parsed.users.find((u: User) => u.id === prev.id)
+        const updatedCurrent = parsed.users?.find((u: User) => u.id === prev.id)
         if (updatedCurrent && JSON.stringify(prev) !== JSON.stringify(updatedCurrent)) {
           return updatedCurrent
         }
@@ -947,13 +992,30 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         auditLogs,
         triggerCron,
         login: async (email, password) => {
-          const user = users.find((u) => u.email === email)
-          if (!user || (password && password !== '123456' && password !== 'Password1')) {
+          const cleanEmail = email.toLowerCase().trim()
+          const cleanPass = password?.trim()
+
+          let user = users.find((u) => u.email.toLowerCase() === cleanEmail)
+
+          if (!user) {
+            user = mockUsers.find((u) => u.email.toLowerCase() === cleanEmail)
+          }
+
+          if (!user || (cleanPass && cleanPass !== '123456' && cleanPass !== 'Password1')) {
             throw new Error(
               'Erro ao acessar o perfil. Verifique suas credenciais e tente novamente',
             )
           }
+
           const expiresAt = Date.now() + 86400000 // 24h
+
+          setUsers((prev) => {
+            if (!prev.find((u) => u.id === user!.id)) {
+              return [...prev, user!]
+            }
+            return prev
+          })
+
           setCurrentUser(user)
           setSessionExpiresAt(expiresAt)
           localStorage.setItem('etic_session', JSON.stringify({ user, expiresAt }))
