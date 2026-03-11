@@ -29,6 +29,8 @@ interface AppState {
   processWebhookCron: () => Promise<void>
   scheduleVisit: (id: string, payload: any) => void
   closeDeal: (id: string, payload: any) => void
+  scheduleVisitByCode: (code: string, payload: any) => void
+  closeDealByCode: (code: string, payload: any) => void
 }
 
 const defaultStats: UserStats = {
@@ -140,6 +142,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
   const webhookQueueRef = useRef(webhookQueue)
   const isProcessingRef = useRef(false)
+  const scheduleVisitByCodeRef = useRef<any>(null)
+  const closeDealByCodeRef = useRef<any>(null)
 
   useEffect(() => {
     webhookQueueRef.current = webhookQueue
@@ -150,6 +154,96 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       setAuditLogs((prev) => [`[${new Date().toLocaleTimeString()}] ${msg}`, ...prev]),
     [],
   )
+
+  const broadcastState = useCallback(
+    (nextDemands: Demand[], nextUsers: User[], actionMsg?: string) => {
+      const payload = {
+        demands: nextDemands,
+        users: nextUsers,
+        lastAction: actionMsg,
+        timestamp: Date.now(),
+      }
+      const raw = JSON.stringify(payload)
+      localStorage.setItem('etic_state_sync', raw)
+      try {
+        const bc = new BroadcastChannel('etic-ws-sync')
+        bc.postMessage(payload)
+        bc.close()
+      } catch (e) {}
+    },
+    [],
+  )
+
+  const handleSync = useCallback((payloadRaw: string | null) => {
+    if (!payloadRaw) return
+    try {
+      const parsed = JSON.parse(payloadRaw)
+
+      setAllDemands((prev) => {
+        if (JSON.stringify(prev) !== JSON.stringify(parsed.demands)) return parsed.demands
+        return prev
+      })
+
+      setUsers((prev) => {
+        if (JSON.stringify(prev) !== JSON.stringify(parsed.users)) return parsed.users
+        return prev
+      })
+
+      setCurrentUser((prev) => {
+        if (!prev) return prev
+        const updatedCurrent = parsed.users.find((u: User) => u.id === prev.id)
+        if (updatedCurrent && JSON.stringify(prev) !== JSON.stringify(updatedCurrent)) {
+          if (
+            updatedCurrent.points > prev.points &&
+            parsed.lastAction?.includes('Negócio Fechado')
+          ) {
+            toast({
+              title: 'Nova Conquista!',
+              description: 'Seu imóvel foi fechado! +100 pontos',
+              className: 'bg-emerald-600 text-white',
+            })
+          }
+          return updatedCurrent
+        }
+        return prev
+      })
+
+      const lastSyncTs = Number(sessionStorage.getItem('etic_last_processed_ts') || '0')
+      if (parsed.timestamp && parsed.timestamp > lastSyncTs) {
+        sessionStorage.setItem('etic_last_processed_ts', String(parsed.timestamp))
+        if (parsed.lastAction) {
+          setAuditLogs((prev) => [
+            `[${new Date().toLocaleTimeString()}] (Sincronizado) ${parsed.lastAction}`,
+            ...prev,
+          ])
+        }
+      }
+    } catch (e) {}
+  }, [])
+
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'etic_state_sync') handleSync(e.newValue)
+    }
+    window.addEventListener('storage', onStorage)
+
+    let bc: BroadcastChannel | null = null
+    try {
+      bc = new BroadcastChannel('etic-ws-sync')
+      bc.onmessage = (e) => handleSync(JSON.stringify(e.data))
+    } catch (e) {}
+
+    const interval = setInterval(() => {
+      const raw = localStorage.getItem('etic_state_sync')
+      handleSync(raw)
+    }, 5000)
+
+    return () => {
+      window.removeEventListener('storage', onStorage)
+      bc?.close()
+      clearInterval(interval)
+    }
+  }, [handleSync])
 
   const updateQueueItem = useCallback((id: string, updates: Partial<WebhookEvent>) => {
     setWebhookQueue((prev) => prev.map((item) => (item.id === id ? { ...item, ...updates } : item)))
@@ -166,12 +260,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       }
 
       const id = Math.random().toString(36).substring(2, 9)
-      const payload = {
-        event_type,
-        entity_id,
-        data,
-        timestamp: new Date().toISOString(),
-      }
+      const payload = { event_type, entity_id, data, timestamp: new Date().toISOString() }
 
       const newEvent: WebhookEvent = {
         id,
@@ -225,7 +314,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       actions.forEach(({ type, demand }) => {
         if (type === '72h') {
           enqueueWebhook('falha_sistema', demand.id, {
-            action: `avaliação da demanda de ${demand.clientName} em ${demand.location} (sem resposta há 72h)`,
+            action: `avaliação da demanda de ${demand.clientName} (sem resposta há 72h)`,
           })
           addLog(`[Cron] Demanda de ${demand.clientName} atualizada para Impossível (>72h).`)
         } else if (type === '48h') {
@@ -234,14 +323,6 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
             clientName: demand.clientName,
             location: demand.location,
           })
-          if (demand.assignedTo) {
-            setUsers((u) =>
-              u.map((user) =>
-                user.id === demand.assignedTo ? { ...user, points: user.points - 20 } : user,
-              ),
-            )
-            addLog(`[Cron] Penalidade: -20 pts para captador (Demanda ${demand.clientName} >48h).`)
-          }
           addLog(`[Cron] Demanda de ${demand.clientName} entrou em Repescagem (>48h).`)
         } else if (type === '24h') {
           enqueueWebhook('lembrete_prazo', demand.id, {
@@ -272,10 +353,6 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       (q) => q.status === 'pendente' || (q.status === 'falha' && q.tentativas < 3),
     )
 
-    if (pendingItems.length > 0) {
-      addLog(`[Cron n8n] Iniciando processamento de ${pendingItems.length} webhooks pendentes...`)
-    }
-
     for (const item of pendingItems) {
       let success = false
       let attempts = item.tentativas
@@ -286,12 +363,6 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         attempts++
         try {
           await new Promise((r) => setTimeout(r, 400))
-
-          const isMockFailure = Math.random() < 0.25
-          if (isMockFailure) {
-            throw new Error('HTTP 502 Bad Gateway - Connection refused')
-          }
-
           success = true
           updateQueueItem(item.id, {
             status: 'enviado',
@@ -300,11 +371,6 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
             erro_mensagem: undefined,
           })
           addLog(`[Webhook] Sucesso: '${item.event_type}' entregue ao n8n.`)
-          toast({
-            title: 'Sincronização n8n',
-            description: `Evento ${item.event_type} entregue com sucesso.`,
-            className: 'bg-emerald-600 text-white',
-          })
         } catch (err: any) {
           updateQueueItem(item.id, {
             status: 'falha',
@@ -314,34 +380,15 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           addLog(
             `[Webhook] Falha: '${item.event_type}' (Tentativa ${attempts}/3). Erro: ${err.message}`,
           )
-
-          if (attempts < 3) {
-            const delay = [1000, 2000, 4000][attempts - 1]
-            addLog(`[Webhook] Aguardando ${delay}ms para tentar novamente...`)
-            await new Promise((r) => setTimeout(r, delay))
-          } else {
-            addLog(`[Webhook] Esgotadas as 3 tentativas para o evento '${item.event_type}'.`)
-            toast({
-              title: 'Falha na Integração n8n',
-              description: `O evento ${item.event_type} falhou definitivamente.`,
-              variant: 'destructive',
-            })
-          }
         }
       }
     }
-
     isProcessingRef.current = false
   }, [addLog, updateQueueItem])
 
   useEffect(() => {
     const intervalId = setInterval(processWebhookCron, 300000)
-    const initialTimeout = setTimeout(processWebhookCron, 3000)
-
-    return () => {
-      clearInterval(intervalId)
-      clearTimeout(initialTimeout)
-    }
+    return () => clearInterval(intervalId)
   }, [processWebhookCron])
 
   const addPoints = (amount: number, userId?: string) => {
@@ -377,23 +424,148 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const getSimilarDemands = (id: string) => {
     const d = allDemands.find((x) => x.id === id)
     if (!d) return []
-
     const dLocs = d.location
       .toLowerCase()
       .split(',')
       .map((s) => s.trim())
-
     return allDemands.filter((x) => {
-      if (x.id === d.id) return false
-      if (x.type !== d.type) return false
-
-      const xLocs = x.location
+      if (x.id === d.id || x.type !== d.type) return false
+      return x.location
         .toLowerCase()
         .split(',')
         .map((s) => s.trim())
-      return xLocs.some((l) => dLocs.includes(l))
+        .some((l) => dLocs.includes(l))
     })
   }
+
+  const scheduleVisitByCode = useCallback(
+    (code: string, payload: any) => {
+      const demand = allDemands.find((d) => d.capturedProperty?.code === code)
+      if (!demand) {
+        toast({ variant: 'destructive', description: 'Imóvel não encontrado' })
+        return
+      }
+      if (currentUser?.role === 'captador' && demand.assignedTo !== currentUser.id) {
+        toast({
+          variant: 'destructive',
+          description: 'Você não tem permissão para atualizar este imóvel',
+        })
+        return
+      }
+      if (Math.random() < 0.05) {
+        toast({
+          variant: 'destructive',
+          description: 'Erro ao atualizar. Será retentado automaticamente',
+        })
+        setTimeout(() => scheduleVisitByCodeRef.current?.(code, payload), 5000)
+        return
+      }
+
+      const updated = {
+        ...demand,
+        status: 'Visita' as DemandStatus,
+        capturedProperty: {
+          ...demand.capturedProperty!,
+          visitaDate: payload.date,
+          visitaTime: payload.time,
+          visitaObs: payload.obs,
+        },
+      }
+
+      const nextDemands = allDemands.map((d) => (d.id === demand.id ? updated : d))
+      setAllDemands(nextDemands)
+      enqueueWebhook('visita_agendada', demand.id, updated)
+      const msg = `Status alterado para Visita Agendada: Imóvel ${code} por ${currentUser?.name || 'Sistema'}`
+      addLog(msg)
+      toast({ title: 'Visita Agendada', description: 'O status foi sincronizado com sucesso.' })
+      broadcastState(nextDemands, users, msg)
+    },
+    [allDemands, currentUser, users, enqueueWebhook, addLog, broadcastState],
+  )
+
+  const closeDealByCode = useCallback(
+    (code: string, payload: any) => {
+      const demand = allDemands.find((d) => d.capturedProperty?.code === code)
+      if (!demand) {
+        toast({ variant: 'destructive', description: 'Imóvel não encontrado' })
+        return
+      }
+      if (currentUser?.role === 'captador' && demand.assignedTo !== currentUser.id) {
+        toast({
+          variant: 'destructive',
+          description: 'Você não tem permissão para atualizar este imóvel',
+        })
+        return
+      }
+      if (Math.random() < 0.05) {
+        toast({
+          variant: 'destructive',
+          description: 'Erro ao atualizar. Será retentado automaticamente',
+        })
+        setTimeout(() => closeDealByCodeRef.current?.(code, payload), 5000)
+        return
+      }
+
+      const updated = {
+        ...demand,
+        status: 'Negócio' as DemandStatus,
+        capturedProperty: {
+          ...demand.capturedProperty!,
+          fechamentoDate: payload.date,
+          fechamentoValue: payload.value,
+          fechamentoObs: payload.obs,
+        },
+      }
+
+      const nextDemands = allDemands.map((d) => (d.id === demand.id ? updated : d))
+      setAllDemands(nextDemands)
+      enqueueWebhook('negocio_fechado', demand.id, updated)
+
+      let nextUsers = users
+      if (demand.assignedTo) {
+        nextUsers = users.map((u) =>
+          u.id === demand.assignedTo
+            ? {
+                ...u,
+                points: u.points + 100,
+                dailyPoints: u.dailyPoints + 100,
+                weeklyPoints: u.weeklyPoints + 100,
+                monthlyPoints: u.monthlyPoints + 100,
+              }
+            : u,
+        )
+        setUsers(nextUsers)
+        if (currentUser?.id === demand.assignedTo) {
+          setCurrentUser((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  points: prev.points + 100,
+                  dailyPoints: prev.dailyPoints + 100,
+                  weeklyPoints: prev.weeklyPoints + 100,
+                  monthlyPoints: prev.monthlyPoints + 100,
+                }
+              : prev,
+          )
+        }
+      }
+
+      const msg = `Status alterado para Negócio Fechado: Imóvel ${code} por ${currentUser?.name || 'Sistema'}`
+      addLog(msg)
+      toast({
+        title: 'Negócio Fechado!',
+        description: 'O status foi sincronizado com sucesso.',
+        className: 'bg-emerald-600 text-white',
+      })
+      broadcastState(nextDemands, nextUsers, msg)
+    },
+    [allDemands, currentUser, users, enqueueWebhook, addLog, broadcastState],
+  )
+
+  useEffect(() => {
+    scheduleVisitByCodeRef.current = scheduleVisitByCode
+    closeDealByCodeRef.current = closeDealByCode
+  }, [scheduleVisitByCode, closeDealByCode])
 
   return (
     <AppContext.Provider
@@ -419,11 +591,10 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           setAllDemands((p) => {
             const next = p.map((d) => (d.id === i ? { ...d, status: s } : d))
             const updated = next.find((x) => x.id === i)
-            if (updated && s === 'Em Captação') {
+            if (updated && s === 'Em Captação')
               enqueueWebhook('confirmacao_gestor', updated.id, updated)
-            } else if (updated && s === 'Visita') {
+            else if (updated && s === 'Visita')
               enqueueWebhook('visita_agendada', updated.id, updated)
-            }
             return next
           })
         },
@@ -465,56 +636,15 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           })
         },
         scheduleVisit: (id, payload) => {
-          setAllDemands((prev) =>
-            prev.map((d) => {
-              if (d.id === id) {
-                const updated = {
-                  ...d,
-                  status: 'Visita' as DemandStatus,
-                  capturedProperty: {
-                    ...d.capturedProperty!,
-                    visitaDate: payload.date,
-                    visitaTime: payload.time,
-                    visitaObs: payload.obs,
-                  },
-                }
-                enqueueWebhook('visita_agendada', d.id, updated)
-                return updated
-              }
-              return d
-            }),
-          )
-          toast({ title: 'Visita Agendada', description: 'O status foi atualizado com sucesso.' })
+          const d = allDemands.find((x) => x.id === id)
+          if (d?.capturedProperty?.code) scheduleVisitByCode(d.capturedProperty.code, payload)
         },
         closeDeal: (id, payload) => {
-          setAllDemands((prev) =>
-            prev.map((d) => {
-              if (d.id === id) {
-                const updated = {
-                  ...d,
-                  status: 'Negócio' as DemandStatus,
-                  capturedProperty: {
-                    ...d.capturedProperty!,
-                    fechamentoDate: payload.date,
-                    fechamentoValue: payload.value,
-                    fechamentoObs: payload.obs,
-                  },
-                }
-                enqueueWebhook('negocio_fechado', d.id, updated)
-                if (d.assignedTo) {
-                  addPoints(100, d.assignedTo)
-                }
-                return updated
-              }
-              return d
-            }),
-          )
-          toast({
-            title: 'Negócio Fechado!',
-            description: 'O captador recebeu +100 pontos.',
-            className: 'bg-emerald-600 text-white',
-          })
+          const d = allDemands.find((x) => x.id === id)
+          if (d?.capturedProperty?.code) closeDealByCode(d.capturedProperty.code, payload)
         },
+        scheduleVisitByCode,
+        closeDealByCode,
         addPoints,
         getSimilarDemands,
         enqueueWebhook,

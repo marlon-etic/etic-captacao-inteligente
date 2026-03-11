@@ -14,7 +14,7 @@ import { CapturedPropertyModals } from './CapturedPropertyModals'
 import { Demand } from '@/types'
 
 export function CapturedPropertiesView() {
-  const { demands, currentUser, scheduleVisit, closeDeal } = useAppStore()
+  const { demands, currentUser, scheduleVisitByCode, closeDealByCode } = useAppStore()
   const [statusFilter, setStatusFilter] = useState('all')
   const [clientFilter, setClientFilter] = useState('all')
 
@@ -129,12 +129,16 @@ export function CapturedPropertiesView() {
           setActionDemand(null)
         }}
         onSubmitVisita={(data) => {
-          if (actionDemand) scheduleVisit(actionDemand.id, data)
+          if (actionDemand?.capturedProperty?.code) {
+            scheduleVisitByCode(actionDemand.capturedProperty.code, data)
+          }
           setActionType(null)
           setActionDemand(null)
         }}
         onSubmitNegocio={(data) => {
-          if (actionDemand) closeDeal(actionDemand.id, data)
+          if (actionDemand?.capturedProperty?.code) {
+            closeDealByCode(actionDemand.capturedProperty.code, data)
+          }
           setActionType(null)
           setActionDemand(null)
         }}
