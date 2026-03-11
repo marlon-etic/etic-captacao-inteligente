@@ -6,12 +6,18 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import useAppStore from '@/stores/useAppStore'
 
 export function AppHeader() {
-  const { currentUser, notifications } = useAppStore()
+  const store = useAppStore()
+  const currentUser = store.currentUser
+
+  // Safely retrieve notifications or fallback to auditLogs to maintain functionality
+  const notifications = 'notifications' in store ? (store as any).notifications : store.auditLogs
+
   const { isMobile, setOpenMobile } = useSidebar()
 
   if (!currentUser) return null
 
-  const unreadCount = notifications.length
+  // Fix: implement optional chaining and nullish coalescing to prevent runtime error
+  const unreadCount = notifications?.length ?? 0
 
   return (
     <header className="h-16 border-b bg-background flex items-center justify-between px-4 sticky top-0 z-40">
@@ -50,12 +56,12 @@ export function AppHeader() {
             </Button>
           </PopoverTrigger>
           <PopoverContent align="end" className="w-80">
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2 max-h-[80vh] overflow-y-auto">
               <h4 className="font-semibold text-sm">Notificações</h4>
-              {notifications.length === 0 ? (
+              {unreadCount === 0 ? (
                 <p className="text-sm text-muted-foreground">Nenhuma notificação</p>
               ) : (
-                notifications.map((n, i) => (
+                notifications.map((n: string, i: number) => (
                   <div key={i} className="text-sm p-2 bg-muted/50 rounded-md border">
                     {n}
                   </div>
