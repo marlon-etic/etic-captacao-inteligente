@@ -18,7 +18,7 @@ import {
 import { CapturedPropertyCard } from './CapturedPropertyCard'
 import { CapturedPropertyModals } from './CapturedPropertyModals'
 import { PropertyTimeline } from './PropertyTimeline'
-import { Demand, User } from '@/types'
+import { Demand, CapturedProperty, User } from '@/types'
 
 export function CapturedPropertiesView() {
   const {
@@ -34,49 +34,46 @@ export function CapturedPropertiesView() {
   const [dateFilter, setDateFilter] = useState('all')
 
   const [actionDemand, setActionDemand] = useState<Demand | null>(null)
+  const [actionProperty, setActionProperty] = useState<CapturedProperty | null>(null)
   const [actionType, setActionType] = useState<
     'visita' | 'proposta' | 'negocio' | 'history' | null
   >(null)
 
-  const capturedDemands = useMemo(() => {
-    return demands.filter(
-      (d) =>
-        [
-          'Captado sob demanda',
-          'Captado independente',
-          'Visita',
-          'Proposta',
-          'Negócio',
-          'Perdida',
-        ].includes(d.status) &&
-        d.createdBy === currentUser?.id &&
-        d.capturedProperty,
-    )
+  const allCaptured = useMemo(() => {
+    return demands.flatMap((d) => {
+      if (!d.capturedProperties || d.capturedProperties.length === 0) return []
+      if (d.createdBy !== currentUser?.id) return []
+      return d.capturedProperties.map((p) => ({ demand: d, property: p }))
+    })
   }, [demands, currentUser])
 
   const uniqueCapturers = useMemo(() => {
-    const ids = new Set(capturedDemands.map((d) => d.assignedTo).filter(Boolean))
+    const ids = new Set(allCaptured.map((item) => item.demand.assignedTo).filter(Boolean))
     return Array.from(ids)
       .map((id) => users.find((u) => u.id === id))
       .filter(Boolean) as User[]
-  }, [capturedDemands, users])
+  }, [allCaptured, users])
 
   const filteredAndSorted = useMemo(() => {
     const now = new Date()
-    let result = capturedDemands.filter((d) => {
-      // Status Filter
-      const matchStatus =
-        statusFilter === 'all' ||
-        (statusFilter === 'Captado' &&
-          ['Captado sob demanda', 'Captado independente'].includes(d.status)) ||
-        d.status === statusFilter
+    let result = allCaptured.filter(({ demand: d, property: p }) => {
+      const isClosed = !!p.fechamentoDate
+      const isProposta = !!p.propostaDate && !isClosed
+      const isVisita = !!p.visitaDate && !isProposta && !isClosed
+      const isLost = d.status === 'Perdida'
 
-      // Capturer Filter
+      let propStatus = 'Captado'
+      if (isClosed) propStatus = 'Negócio'
+      else if (isProposta) propStatus = 'Proposta'
+      else if (isVisita) propStatus = 'Visita'
+      else if (isLost) propStatus = 'Perdida'
+
+      const matchStatus = statusFilter === 'all' || propStatus === statusFilter
+
       const matchCapturer = capturerFilter === 'all' || d.assignedTo === capturerFilter
 
-      // Date Filter
       let matchDate = true
-      const capDate = new Date(d.capturedProperty?.capturedAt || d.createdAt)
+      const capDate = new Date(p.capturedAt || d.createdAt)
       if (dateFilter === 'today') {
         matchDate = capDate.toDateString() === now.toDateString()
       } else if (dateFilter === 'week') {
@@ -91,33 +88,50 @@ export function CapturedPropertiesView() {
       return matchStatus && matchCapturer && matchDate
     })
 
-    // Sort Logic: Priority to active states, then most recent capture
     const statusWeight: Record<string, number> = {
       Visita: 1,
       Proposta: 2,
-      'Captado sob demanda': 3,
-      'Captado independente': 3,
+      Captado: 3,
       Negócio: 4,
       Perdida: 5,
     }
 
     return result.sort((a, b) => {
-      const weightA = statusWeight[a.status] || 5
-      const weightB = statusWeight[b.status] || 5
+      const getStatus = (p: CapturedProperty, d: Demand) => {
+        if (p.fechamentoDate) return 'Negócio'
+        if (p.propostaDate) return 'Proposta'
+        if (p.visitaDate) return 'Visita'
+        if (d.status === 'Perdida') return 'Perdida'
+        return 'Captado'
+      }
+
+      const weightA = statusWeight[getStatus(a.property, a.demand)] || 5
+      const weightB = statusWeight[getStatus(b.property, b.demand)] || 5
 
       if (weightA !== weightB) {
         return weightA - weightB
       }
 
-      const dateA = new Date(a.capturedProperty?.capturedAt || a.createdAt).getTime()
-      const dateB = new Date(b.capturedProperty?.capturedAt || b.createdAt).getTime()
+      const dateA = new Date(a.property.capturedAt || a.demand.createdAt).getTime()
+      const dateB = new Date(b.property.capturedAt || b.demand.createdAt).getTime()
       return dateB - dateA
     })
-  }, [capturedDemands, statusFilter, capturerFilter, dateFilter])
+  }, [allCaptured, statusFilter, capturerFilter, dateFilter])
 
-  const handleAction = (type: 'visita' | 'proposta' | 'negocio' | 'history', demand: Demand) => {
+  const handleAction = (
+    type: 'visita' | 'proposta' | 'negocio' | 'history',
+    demand: Demand,
+    property: CapturedProperty,
+  ) => {
     setActionType(type)
     setActionDemand(demand)
+    setActionProperty(property)
+  }
+
+  const closeModals = () => {
+    setActionType(null)
+    setActionDemand(null)
+    setActionProperty(null)
   }
 
   return (
@@ -125,7 +139,7 @@ export function CapturedPropertiesView() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger>
-            <SelectValue placeholder="Status" />
+            <SelectValue placeholder="Status do Imóvel" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos os Status</SelectItem>
@@ -173,32 +187,28 @@ export function CapturedPropertiesView() {
         </div>
       ) : (
         <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredAndSorted.map((demand) => (
-            <CapturedPropertyCard key={demand.id} demand={demand} onAction={handleAction} />
+          {filteredAndSorted.map(({ demand, property }) => (
+            <CapturedPropertyCard
+              key={`${demand.id}-${property.code}`}
+              demand={demand}
+              property={property}
+              onAction={handleAction}
+            />
           ))}
         </div>
       )}
 
-      {actionType === 'history' && actionDemand && (
-        <Dialog
-          open
-          onOpenChange={(v) => {
-            if (!v) {
-              setActionType(null)
-              setActionDemand(null)
-            }
-          }}
-        >
+      {actionType === 'history' && actionDemand && actionProperty && (
+        <Dialog open onOpenChange={(v) => !v && closeModals()}>
           <DialogContent className="sm:max-w-[500px] max-h-[85vh] overflow-hidden flex flex-col">
             <DialogHeader className="pb-2">
               <DialogTitle>Histórico de Ações do Imóvel</DialogTitle>
               <DialogDescription>
-                Cód: <strong>{actionDemand.capturedProperty?.code}</strong> • Cliente:{' '}
-                {actionDemand.clientName}
+                Cód: <strong>{actionProperty.code}</strong> • Cliente: {actionDemand.clientName}
               </DialogDescription>
             </DialogHeader>
             <div className="overflow-y-auto flex-1 -mx-6 px-6 pb-2">
-              <PropertyTimeline history={actionDemand.capturedProperty?.history || []} />
+              <PropertyTimeline history={actionProperty.history || []} />
             </div>
           </DialogContent>
         </Dialog>
@@ -206,31 +216,20 @@ export function CapturedPropertiesView() {
 
       <CapturedPropertyModals
         demand={actionDemand}
+        property={actionProperty}
         actionType={actionType === 'history' ? null : actionType}
-        onClose={() => {
-          setActionType(null)
-          setActionDemand(null)
-        }}
+        onClose={closeModals}
         onSubmitVisita={(data) => {
-          if (actionDemand?.capturedProperty?.code) {
-            scheduleVisitByCode(actionDemand.capturedProperty.code, data)
-          }
-          setActionType(null)
-          setActionDemand(null)
+          if (actionProperty?.code) scheduleVisitByCode(actionProperty.code, data)
+          closeModals()
         }}
         onSubmitProposta={(data) => {
-          if (actionDemand?.capturedProperty?.code) {
-            submitProposalByCode(actionDemand.capturedProperty.code, data)
-          }
-          setActionType(null)
-          setActionDemand(null)
+          if (actionProperty?.code) submitProposalByCode(actionProperty.code, data)
+          closeModals()
         }}
         onSubmitNegocio={(data) => {
-          if (actionDemand?.capturedProperty?.code) {
-            closeDealByCode(actionDemand.capturedProperty.code, data)
-          }
-          setActionType(null)
-          setActionDemand(null)
+          if (actionProperty?.code) closeDealByCode(actionProperty.code, data)
+          closeModals()
         }}
       />
     </div>

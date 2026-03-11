@@ -1,5 +1,5 @@
 import { MapPin, Calendar, CheckCircle2, Bed, Car, Bath, UserCircle, Clock } from 'lucide-react'
-import { Demand } from '@/types'
+import { Demand, CapturedProperty } from '@/types'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -26,20 +26,29 @@ const statusLabels = {
 
 export function CapturedPropertyCard({
   demand,
+  property,
   onAction,
 }: {
   demand: Demand
-  onAction: (t: 'visita' | 'proposta' | 'negocio' | 'history', d: Demand) => void
+  property: CapturedProperty
+  onAction: (
+    t: 'visita' | 'proposta' | 'negocio' | 'history',
+    d: Demand,
+    p: CapturedProperty,
+  ) => void
 }) {
   const { users } = useAppStore()
-  const prop = demand.capturedProperty!
-  const st =
-    statusLabels[demand.status as keyof typeof statusLabels] || statusLabels['Captado sob demanda']
 
-  const isClosed = demand.status === 'Negócio'
-  const isVisita = demand.status === 'Visita'
-  const isProposta = demand.status === 'Proposta'
+  const isClosed = !!property.fechamentoDate
+  const isProposta = !!property.propostaDate && !isClosed
+  const isVisita = !!property.visitaDate && !isProposta && !isClosed
   const isLost = demand.status === 'Perdida'
+
+  let st = statusLabels['Captado sob demanda']
+  if (isClosed) st = statusLabels['Negócio']
+  else if (isProposta) st = statusLabels['Proposta']
+  else if (isVisita) st = statusLabels['Visita']
+  else if (isLost) st = statusLabels['Perdida']
 
   const capturer = users.find((u) => u.id === demand.assignedTo)
 
@@ -53,7 +62,9 @@ export function CapturedPropertyCard({
     >
       <div className="relative h-48 w-full bg-muted">
         <img
-          src={prop.photoUrl || `https://img.usecurling.com/p/400/300?q=house&seed=${demand.id}`}
+          src={
+            property.photoUrl || `https://img.usecurling.com/p/400/300?q=house&seed=${demand.id}`
+          }
           alt="Imóvel"
           className={cn('w-full h-full object-cover', isClosed && 'opacity-90')}
         />
@@ -70,12 +81,17 @@ export function CapturedPropertyCard({
             {st.label}
           </Badge>
         </div>
-        <div className="absolute bottom-2 left-3.5">
+        <div className="absolute bottom-2 left-3.5 flex flex-col gap-1">
+          {property.numero_imovel_para_demanda && (
+            <Badge className="bg-primary text-primary-foreground border-none shadow-sm self-start text-[10px] px-2 py-0.5">
+              {property.numero_imovel_para_demanda}º Imóvel Vinculado
+            </Badge>
+          )}
           <Badge
             variant="secondary"
-            className="bg-black/70 text-white border-none hover:bg-black/80 shadow-sm"
+            className="bg-black/70 text-white border-none hover:bg-black/80 shadow-sm self-start"
           >
-            Cód: {prop.code}
+            Cód: {property.code}
           </Badge>
         </div>
       </div>
@@ -94,12 +110,12 @@ export function CapturedPropertyCard({
               style: 'currency',
               currency: 'BRL',
               maximumFractionDigits: 0,
-            }).format(prop.value)}
+            }).format(property.value)}
           </span>
         </div>
         <p className="text-sm text-muted-foreground flex items-center gap-1">
           <MapPin className="w-3.5 h-3.5 shrink-0" />
-          <span className="truncate">{prop.neighborhood}</span>
+          <span className="truncate">{property.neighborhood}</span>
         </p>
 
         <div className="flex items-center gap-3 text-xs font-medium text-foreground/80 mt-1">
@@ -117,7 +133,8 @@ export function CapturedPropertyCard({
         <div className="mt-3 flex flex-col gap-1.5 text-xs text-muted-foreground bg-muted/30 p-2 rounded-md border border-muted">
           <p className="flex items-center gap-1.5">
             <Calendar className="w-3.5 h-3.5 shrink-0" />
-            Captação: {new Date(prop.capturedAt || demand.createdAt).toLocaleDateString('pt-BR')}
+            Captação:{' '}
+            {new Date(property.capturedAt || demand.createdAt).toLocaleDateString('pt-BR')}
           </p>
           <p className="flex items-center gap-1.5">
             <UserCircle className="w-3.5 h-3.5 shrink-0" />
@@ -125,45 +142,45 @@ export function CapturedPropertyCard({
           </p>
         </div>
 
-        {isVisita && prop.visitaDate && (
+        {isVisita && property.visitaDate && (
           <div className="mt-2 bg-blue-50 p-2.5 rounded-md border border-blue-100 text-xs text-blue-800 space-y-1">
             <p className="font-medium flex items-center gap-1.5">
               <Calendar className="w-3.5 h-3.5" /> Visita:{' '}
-              {new Date(prop.visitaDate + 'T00:00:00').toLocaleDateString('pt-BR')} às{' '}
-              {prop.visitaTime}
+              {new Date(property.visitaDate + 'T00:00:00').toLocaleDateString('pt-BR')} às{' '}
+              {property.visitaTime}
             </p>
           </div>
         )}
 
-        {isProposta && prop.propostaDate && (
+        {isProposta && property.propostaDate && (
           <div className="mt-2 bg-purple-50 p-2.5 rounded-md border border-purple-100 text-xs text-purple-900 space-y-1">
             <p className="font-bold flex items-center gap-1.5 mb-1">🟣 Proposta Registrada</p>
             <p className="font-medium flex items-center gap-1.5">
               <Calendar className="w-3.5 h-3.5" /> Em:{' '}
-              {new Date(prop.propostaDate + 'T00:00:00').toLocaleDateString('pt-BR')}
+              {new Date(property.propostaDate + 'T00:00:00').toLocaleDateString('pt-BR')}
             </p>
             <p className="font-medium">
               Valor:{' '}
               {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
-                prop.propostaValue || 0,
+                property.propostaValue || 0,
               )}
             </p>
-            {prop.propostaStatus && (
+            {property.propostaStatus && (
               <Badge variant="outline" className="bg-white/50 text-[10px] mt-1">
-                Status: {prop.propostaStatus}
+                Status: {property.propostaStatus}
               </Badge>
             )}
           </div>
         )}
 
-        {isClosed && prop.fechamentoDate && (
+        {isClosed && property.fechamentoDate && (
           <div className="mt-2 bg-emerald-100/50 p-2.5 rounded-md border border-emerald-200 text-xs text-emerald-900 space-y-1.5 flex-1">
             <p className="font-bold text-sm text-emerald-700 flex items-center gap-1.5 mb-1">
               💰 Negócio Fechado
             </p>
             <p className="font-medium flex items-center gap-1.5">
               <Calendar className="w-3.5 h-3.5 text-emerald-600" /> Em:{' '}
-              {new Date(prop.fechamentoDate + 'T00:00:00').toLocaleDateString('pt-BR')}
+              {new Date(property.fechamentoDate + 'T00:00:00').toLocaleDateString('pt-BR')}
             </p>
             <p className="font-medium">
               <span className="text-emerald-700">Valor Final:</span>{' '}
@@ -171,7 +188,7 @@ export function CapturedPropertyCard({
                 style: 'currency',
                 currency: 'BRL',
                 maximumFractionDigits: 2,
-              }).format(prop.fechamentoValue || 0)}
+              }).format(property.fechamentoValue || 0)}
             </p>
           </div>
         )}
@@ -187,7 +204,7 @@ export function CapturedPropertyCard({
                 'w-full justify-start text-xs font-semibold',
                 isVisita && 'bg-blue-600 hover:bg-blue-700 text-white',
               )}
-              onClick={() => onAction('visita', demand)}
+              onClick={() => onAction('visita', demand, property)}
             >
               👁️ VISITA AGENDADA
             </Button>
@@ -198,7 +215,7 @@ export function CapturedPropertyCard({
                 'w-full justify-start text-xs font-semibold',
                 isProposta && 'bg-purple-600 hover:bg-purple-700 text-white',
               )}
-              onClick={() => onAction('proposta', demand)}
+              onClick={() => onAction('proposta', demand, property)}
             >
               📄 PROPOSTA
             </Button>
@@ -209,7 +226,7 @@ export function CapturedPropertyCard({
                 'w-full justify-start text-xs font-semibold',
                 isClosed && 'bg-emerald-600 hover:bg-emerald-700 text-white',
               )}
-              onClick={() => onAction('negocio', demand)}
+              onClick={() => onAction('negocio', demand, property)}
             >
               {isClosed ? '🎉 NEGÓCIO FECHADO' : '💰 NEGÓCIO FECHADO'}
             </Button>
@@ -219,7 +236,7 @@ export function CapturedPropertyCard({
           size="sm"
           variant="secondary"
           className="w-full justify-start text-xs font-semibold mt-1 bg-muted/80 hover:bg-muted"
-          onClick={() => onAction('history', demand)}
+          onClick={() => onAction('history', demand, property)}
         >
           <Clock className="w-4 h-4 mr-2 text-muted-foreground" /> VER HISTÓRICO
         </Button>

@@ -23,6 +23,7 @@ export interface User {
   name: string
   email: string
   role: Role
+  status?: 'ativo' | 'inativo'
   tipo_demanda?: 'locacao' | 'vendas'
   points: number
   dailyPoints: number
@@ -87,6 +88,8 @@ export interface CapturedProperty {
   fechamentoType?: 'Venda' | 'Aluguel'
   fechamentoObs?: string
   history?: PropertyAction[]
+  numero_imovel_para_demanda?: number
+  demandas_atendidas_ids?: string[]
 }
 
 export interface Demand {
@@ -112,7 +115,7 @@ export interface Demand {
   notificada_48h?: boolean
   notificada_72h?: boolean
   isRepescagem?: boolean
-  capturedProperty?: CapturedProperty
+  capturedProperties?: CapturedProperty[]
   isPrioritized?: boolean
   interestedClientsCount?: number
   lostReason?: string

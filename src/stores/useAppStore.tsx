@@ -17,6 +17,7 @@ import {
   WebhookEvent,
   PropertyAction,
   PropertyActionType,
+  CapturedProperty,
 } from '@/types'
 import { toast } from '@/hooks/use-toast'
 
@@ -64,6 +65,7 @@ const mockUsers: User[] = [
     name: 'Ana Silva',
     email: 'captador@etic.com',
     role: 'captador',
+    status: 'ativo',
     points: 1250,
     dailyPoints: 150,
     weeklyPoints: 600,
@@ -81,6 +83,7 @@ const mockUsers: User[] = [
     name: 'Carlos Santos',
     email: 'sdr@etic.com',
     role: 'sdr',
+    status: 'ativo',
     points: 800,
     dailyPoints: 0,
     weeklyPoints: 200,
@@ -93,6 +96,7 @@ const mockUsers: User[] = [
     name: 'Roberto Corretor',
     email: 'corretor@etic.com',
     role: 'corretor',
+    status: 'ativo',
     tipo_demanda: 'vendas',
     points: 950,
     dailyPoints: 50,
@@ -106,6 +110,7 @@ const mockUsers: User[] = [
     name: 'Mariana Gestora',
     email: 'gestor@etic.com',
     role: 'gestor',
+    status: 'ativo',
     points: 0,
     dailyPoints: 0,
     weeklyPoints: 0,
@@ -163,39 +168,62 @@ const initialDemands: Demand[] = [
     ...createDem('d2', 'Maria Silva', 'Moema', 25, 'Até 15 dias'),
     status: 'Captado sob demanda',
     assignedTo: '1',
-    capturedProperty: {
-      code: 'AP-452',
-      value: 950000,
-      neighborhood: 'Moema',
-      docCompleta: true,
-      obs: 'Apartamento recém reformado',
-      photoUrl: 'https://img.usecurling.com/p/400/300?q=apartment&seed=d2',
-      capturedAt: new Date(Date.now() - 48 * 3600000).toISOString(),
-      history: [createHistoryItem('captacao', 'Imóvel captado e vinculado à demanda', 48)],
-    },
+    capturedProperties: [
+      {
+        code: 'AP-452',
+        value: 950000,
+        neighborhood: 'Moema',
+        docCompleta: true,
+        obs: 'Apartamento recém reformado',
+        photoUrl: 'https://img.usecurling.com/p/400/300?q=apartment&seed=d2_1',
+        capturedAt: new Date(Date.now() - 48 * 3600000).toISOString(),
+        history: [
+          createHistoryItem('captacao', 'Imóvel captado e vinculado à demanda (1º imóvel)', 48),
+        ],
+        numero_imovel_para_demanda: 1,
+        demandas_atendidas_ids: ['d2'],
+      },
+    ],
   },
   {
     ...createDem('d3', 'Carlos Santos', 'Pinheiros', 49, 'Até 30 dias'),
     status: 'Visita',
     assignedTo: '1',
-    capturedProperty: {
-      code: 'CS-881',
-      value: 1150000,
-      neighborhood: 'Pinheiros',
-      docCompleta: false,
-      visitaDate: new Date().toISOString().split('T')[0],
-      visitaTime: '14:30',
-      photoUrl: 'https://img.usecurling.com/p/400/300?q=house&seed=d3',
-      capturedAt: new Date(Date.now() - 48 * 3600000).toISOString(),
-      history: [
-        createHistoryItem(
-          'visita_agendada',
-          `Visita agendada para ${new Date().toLocaleDateString('pt-BR')} às 14:30`,
-          24,
-        ),
-        createHistoryItem('captacao', 'Imóvel captado e vinculado à demanda', 48),
-      ],
-    },
+    capturedProperties: [
+      {
+        code: 'CS-881',
+        value: 1150000,
+        neighborhood: 'Pinheiros',
+        docCompleta: false,
+        visitaDate: new Date().toISOString().split('T')[0],
+        visitaTime: '14:30',
+        photoUrl: 'https://img.usecurling.com/p/400/300?q=house&seed=d3_1',
+        capturedAt: new Date(Date.now() - 48 * 3600000).toISOString(),
+        history: [
+          createHistoryItem(
+            'visita_agendada',
+            `Visita agendada para ${new Date().toLocaleDateString('pt-BR')} às 14:30`,
+            24,
+          ),
+          createHistoryItem('captacao', 'Imóvel captado e vinculado à demanda (1º imóvel)', 48),
+        ],
+        numero_imovel_para_demanda: 1,
+        demandas_atendidas_ids: ['d3'],
+      },
+      {
+        code: 'CS-882',
+        value: 1200000,
+        neighborhood: 'Pinheiros',
+        docCompleta: true,
+        photoUrl: 'https://img.usecurling.com/p/400/300?q=house&seed=d3_2',
+        capturedAt: new Date(Date.now() - 24 * 3600000).toISOString(),
+        history: [
+          createHistoryItem('captacao', 'Imóvel captado e vinculado à demanda (2º imóvel)', 24),
+        ],
+        numero_imovel_para_demanda: 2,
+        demandas_atendidas_ids: ['d3'],
+      },
+    ],
   },
   createDem('d4', 'Fernanda Lima', 'Centro', 73, 'Até 90 dias ou +'),
   {
@@ -203,34 +231,38 @@ const initialDemands: Demand[] = [
     type: 'Venda',
     createdBy: '3',
     status: 'Visita',
-    capturedProperty: {
-      code: 'VD-101',
-      value: 1500000,
-      neighborhood: 'Vila Olímpia',
-      docCompleta: true,
-      visitaDate: new Date().toISOString().split('T')[0],
-      visitaTime: '10:00',
-      photoUrl: 'https://img.usecurling.com/p/400/300?q=apartment&seed=d5',
-      capturedAt: new Date(Date.now() - 5 * 3600000).toISOString(),
-      history: [
-        createHistoryItem(
-          'visita_agendada',
-          `Visita agendada para ${new Date().toLocaleDateString('pt-BR')} às 10:00`,
-          2,
-          '3',
-          'Roberto Corretor',
-          'corretor',
-        ),
-        createHistoryItem(
-          'captacao',
-          'Imóvel captado e vinculado à demanda',
-          5,
-          '3',
-          'Roberto Corretor',
-          'corretor',
-        ),
-      ],
-    },
+    capturedProperties: [
+      {
+        code: 'VD-101',
+        value: 1500000,
+        neighborhood: 'Vila Olímpia',
+        docCompleta: true,
+        visitaDate: new Date().toISOString().split('T')[0],
+        visitaTime: '10:00',
+        photoUrl: 'https://img.usecurling.com/p/400/300?q=apartment&seed=d5_1',
+        capturedAt: new Date(Date.now() - 5 * 3600000).toISOString(),
+        history: [
+          createHistoryItem(
+            'visita_agendada',
+            `Visita agendada para ${new Date().toLocaleDateString('pt-BR')} às 10:00`,
+            2,
+            '3',
+            'Roberto Corretor',
+            'corretor',
+          ),
+          createHistoryItem(
+            'captacao',
+            'Imóvel captado e vinculado à demanda (1º imóvel)',
+            5,
+            '3',
+            'Roberto Corretor',
+            'corretor',
+          ),
+        ],
+        numero_imovel_para_demanda: 1,
+        demandas_atendidas_ids: ['d5'],
+      },
+    ],
   },
 ]
 
@@ -580,7 +612,17 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
   const scheduleVisitByCode = useCallback(
     (code: string, payload: any) => {
-      const demand = allDemands.find((d) => d.capturedProperty?.code === code)
+      let demand: Demand | undefined
+      let propIndex = -1
+      for (const d of allDemands) {
+        const idx = d.capturedProperties?.findIndex((p) => p.code === code) ?? -1
+        if (idx !== -1) {
+          demand = d
+          propIndex = idx
+          break
+        }
+      }
+
       if (!demand) {
         toast({ variant: 'destructive', description: 'Imóvel não encontrado' })
         return
@@ -612,23 +654,26 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         payload.obs,
       )
 
-      const updated = {
-        ...demand,
-        status: 'Visita' as DemandStatus,
-        capturedProperty: {
-          ...demand.capturedProperty!,
-          visitaDate: payload.date,
-          visitaTime: payload.time,
-          visitaObs: payload.obs,
-          history: action
-            ? [action, ...(demand.capturedProperty?.history || [])]
-            : demand.capturedProperty?.history,
-        },
+      const updatedProps = [...(demand.capturedProperties || [])]
+      updatedProps[propIndex] = {
+        ...updatedProps[propIndex],
+        visitaDate: payload.date,
+        visitaTime: payload.time,
+        visitaObs: payload.obs,
+        history: action
+          ? [action, ...(updatedProps[propIndex].history || [])]
+          : updatedProps[propIndex].history,
       }
 
-      const nextDemands = allDemands.map((d) => (d.id === demand.id ? updated : d))
+      const updatedDemand = {
+        ...demand,
+        status: 'Visita' as DemandStatus,
+        capturedProperties: updatedProps,
+      }
+
+      const nextDemands = allDemands.map((d) => (d.id === demand!.id ? updatedDemand : d))
       setAllDemands(nextDemands)
-      enqueueWebhook('visita_agendada', demand.id, updated)
+      enqueueWebhook('visita_agendada', demand.id, updatedProps[propIndex])
       const msg = `Status alterado para Visita Agendada: Imóvel ${code} por ${currentUser?.name || 'Sistema'}`
       addLog(msg)
       toast({ title: 'Visita Agendada', description: 'O status foi sincronizado com sucesso.' })
@@ -639,7 +684,17 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
   const submitProposalByCode = useCallback(
     (code: string, payload: any) => {
-      const demand = allDemands.find((d) => d.capturedProperty?.code === code)
+      let demand: Demand | undefined
+      let propIndex = -1
+      for (const d of allDemands) {
+        const idx = d.capturedProperties?.findIndex((p) => p.code === code) ?? -1
+        if (idx !== -1) {
+          demand = d
+          propIndex = idx
+          break
+        }
+      }
+
       if (!demand) {
         toast({ variant: 'destructive', description: 'Imóvel não encontrado' })
         return
@@ -670,24 +725,27 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       }).format(payload.value)
       const action = createAction('proposta', `Proposta de ${formattedVal} registrada`, payload.obs)
 
-      const updated = {
-        ...demand,
-        status: 'Proposta' as DemandStatus,
-        capturedProperty: {
-          ...demand.capturedProperty!,
-          propostaDate: payload.date,
-          propostaValue: payload.value,
-          propostaObs: payload.obs,
-          propostaStatus: 'em análise' as const,
-          history: action
-            ? [action, ...(demand.capturedProperty?.history || [])]
-            : demand.capturedProperty?.history,
-        },
+      const updatedProps = [...(demand.capturedProperties || [])]
+      updatedProps[propIndex] = {
+        ...updatedProps[propIndex],
+        propostaDate: payload.date,
+        propostaValue: payload.value,
+        propostaObs: payload.obs,
+        propostaStatus: 'em análise' as const,
+        history: action
+          ? [action, ...(updatedProps[propIndex].history || [])]
+          : updatedProps[propIndex].history,
       }
 
-      const nextDemands = allDemands.map((d) => (d.id === demand.id ? updated : d))
+      const updatedDemand = {
+        ...demand,
+        status: 'Proposta' as DemandStatus,
+        capturedProperties: updatedProps,
+      }
+
+      const nextDemands = allDemands.map((d) => (d.id === demand!.id ? updatedDemand : d))
       setAllDemands(nextDemands)
-      enqueueWebhook('proposta_enviada', demand.id, updated)
+      enqueueWebhook('proposta_enviada', demand.id, updatedProps[propIndex])
       const msg = `Status alterado para Proposta: Imóvel ${code} por ${currentUser?.name || 'Sistema'}`
       addLog(msg)
       toast({ title: 'Proposta Registrada', description: 'O status foi atualizado com sucesso.' })
@@ -698,7 +756,17 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
   const closeDealByCode = useCallback(
     (code: string, payload: any) => {
-      const demand = allDemands.find((d) => d.capturedProperty?.code === code)
+      let demand: Demand | undefined
+      let propIndex = -1
+      for (const d of allDemands) {
+        const idx = d.capturedProperties?.findIndex((p) => p.code === code) ?? -1
+        if (idx !== -1) {
+          demand = d
+          propIndex = idx
+          break
+        }
+      }
+
       if (!demand) {
         toast({ variant: 'destructive', description: 'Imóvel não encontrado' })
         return
@@ -744,29 +812,32 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         payload.obs,
       )
 
-      const updated = {
-        ...demand,
-        status: 'Negócio' as DemandStatus,
-        capturedProperty: {
-          ...demand.capturedProperty!,
-          fechamentoDate: payload.date,
-          fechamentoValue: payload.value,
-          fechamentoType: payload.type,
-          fechamentoObs: payload.obs,
-          history: action
-            ? [action, ...(demand.capturedProperty?.history || [])]
-            : demand.capturedProperty?.history,
-        },
+      const updatedProps = [...(demand.capturedProperties || [])]
+      updatedProps[propIndex] = {
+        ...updatedProps[propIndex],
+        fechamentoDate: payload.date,
+        fechamentoValue: payload.value,
+        fechamentoType: payload.type,
+        fechamentoObs: payload.obs,
+        history: action
+          ? [action, ...(updatedProps[propIndex].history || [])]
+          : updatedProps[propIndex].history,
       }
 
-      const nextDemands = allDemands.map((d) => (d.id === demand.id ? updated : d))
+      const updatedDemand = {
+        ...demand,
+        status: 'Negócio' as DemandStatus,
+        capturedProperties: updatedProps,
+      }
+
+      const nextDemands = allDemands.map((d) => (d.id === demand!.id ? updatedDemand : d))
       setAllDemands(nextDemands)
-      enqueueWebhook('negocio_fechado', demand.id, updated)
+      enqueueWebhook('negocio_fechado', demand.id, updatedProps[propIndex])
 
       let nextUsers = users
       if (demand.assignedTo) {
         nextUsers = users.map((u) =>
-          u.id === demand.assignedTo
+          u.id === demand!.assignedTo
             ? {
                 ...u,
                 points: u.points + earnedPoints,
@@ -877,11 +948,11 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
               lostReason: reason,
               lostObs: obs,
             }
-            if (updatedDemand.capturedProperty && action) {
-              updatedDemand.capturedProperty = {
-                ...updatedDemand.capturedProperty,
-                history: [action, ...(updatedDemand.capturedProperty.history || [])],
-              }
+            if (updatedDemand.capturedProperties && action) {
+              updatedDemand.capturedProperties = updatedDemand.capturedProperties.map((p) => ({
+                ...p,
+                history: [action, ...(p.history || [])],
+              }))
             }
             return updatedDemand
           }
@@ -895,6 +966,30 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       toast({ title: 'Demanda marcada como perdida', description: 'O status foi atualizado.' })
     },
     [allDemands, currentUser, users, enqueueWebhook, addLog, broadcastState],
+  )
+
+  const getSimilarDemands = useCallback(
+    (id: string) => {
+      const listToSearch =
+        currentUser?.role === 'corretor' || currentUser?.role === 'sdr'
+          ? allDemands.filter((d) => d.createdBy === currentUser.id)
+          : allDemands
+      const d = listToSearch.find((x) => x.id === id)
+      if (!d) return []
+      const dLocs = d.location
+        .toLowerCase()
+        .split(',')
+        .map((s) => s.trim())
+      return listToSearch.filter((x) => {
+        if (x.id === d.id || x.type !== d.type) return false
+        return x.location
+          .toLowerCase()
+          .split(',')
+          .map((s) => s.trim())
+          .some((l) => dLocs.includes(l))
+      })
+    },
+    [allDemands, currentUser],
   )
 
   const visibleDemands = useMemo(() => {
@@ -959,8 +1054,6 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
             const updated = next.find((x) => x.id === i)
             if (updated && s === 'Em Captação')
               enqueueWebhook('confirmacao_gestor', updated.id, updated)
-            else if (updated && s === 'Visita')
-              enqueueWebhook('visita_agendada', updated.id, updated)
             return next
           })
         },
@@ -969,39 +1062,81 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           if (!checkDemandAccess(demand)) return { success: false, message: 'Acesso negado' }
 
           if (action === 'encontrei' && demand) {
-            const isPriority = demand.isPrioritized
+            if (
+              demand.status === 'Perdida' ||
+              demand.status === 'Impossível' ||
+              demand.status === 'Sem demanda'
+            ) {
+              return {
+                success: false,
+                message: 'Não é possível adicionar imóveis a uma demanda fechada',
+              }
+            }
+            if (currentUser?.status === 'inativo') {
+              return { success: false, message: 'Seu acesso foi desativado' }
+            }
+
+            const existingProps = demand.capturedProperties || []
+            if (existingProps.length >= 10) {
+              return { success: false, message: 'Limite de 10 imóveis por demanda atingido' }
+            }
+
             const code = payload?.code || `IMV-${Math.floor(Math.random() * 1000)}`
-            const hAction = createAction('captacao', `Imóvel captado e associado à demanda`)
+            if (existingProps.some((p) => p.code === code)) {
+              return { success: false, message: 'Este imóvel já foi registrado para esta demanda' }
+            }
+
+            const isPriority = demand.isPrioritized
+            const similarDemands = getSimilarDemands(demand.id)
+            const totalInterested = similarDemands.length + 1 + (demand.interestedClientsCount || 0)
+
+            const seq = existingProps.length + 1
+            const hAction = createAction(
+              'captacao',
+              `Imóvel captado e associado à demanda (${seq}º imóvel)`,
+            )
+
+            const newProp: CapturedProperty = {
+              code,
+              value: payload?.value || demand.budget || demand.maxBudget,
+              neighborhood:
+                payload?.neighborhood || demand.location.split(',')[0] || 'Desconhecido',
+              docCompleta: payload?.docCompleta || false,
+              obs: payload?.obs,
+              photoUrl: `https://img.usecurling.com/p/400/300?q=house&seed=${demand.id}_${seq}`,
+              capturedAt: new Date().toISOString(),
+              history: hAction ? [hAction] : [],
+              numero_imovel_para_demanda: seq,
+              demandas_atendidas_ids: [demand.id],
+            }
 
             const updatedDemand = {
               ...demand,
-              status: 'Captado sob demanda' as DemandStatus,
-              capturedProperty: {
-                code,
-                value: payload?.value || demand.budget || demand.maxBudget,
-                neighborhood:
-                  payload?.neighborhood || demand.location.split(',')[0] || 'Desconhecido',
-                docCompleta: payload?.docCompleta || false,
-                obs: payload?.obs,
-                photoUrl: `https://img.usecurling.com/p/400/300?q=house&seed=${demand.id}`,
-                capturedAt: new Date().toISOString(),
-                history: hAction ? [hAction] : [],
-              },
+              status:
+                demand.status === 'Pendente' || demand.status === 'Em Captação'
+                  ? ('Captado sob demanda' as DemandStatus)
+                  : demand.status,
+              capturedProperties: [...existingProps, newProp],
             }
 
             const nextDemands = allDemands.map((d) => (d.id === id ? updatedDemand : d))
             setAllDemands(nextDemands)
 
+            let earnedPoints = 50
+            if (isPriority || totalInterested >= 5) {
+              earnedPoints += 25
+            }
+
             let nextUsers = users
-            if (isPriority && currentUser) {
+            if (currentUser) {
               nextUsers = users.map((u) =>
                 u.id === currentUser.id
                   ? {
                       ...u,
-                      points: u.points + 25,
-                      dailyPoints: u.dailyPoints + 25,
-                      weeklyPoints: u.weeklyPoints + 25,
-                      monthlyPoints: u.monthlyPoints + 25,
+                      points: u.points + earnedPoints,
+                      dailyPoints: u.dailyPoints + earnedPoints,
+                      weeklyPoints: u.weeklyPoints + earnedPoints,
+                      monthlyPoints: u.monthlyPoints + earnedPoints,
                     }
                   : u,
               )
@@ -1013,9 +1148,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
               )
 
               toast({
-                title: 'Bônus de Prioridade! 🎉',
-                description: 'Você ganhou +25 pontos por captar uma demanda priorizada!',
-                className: 'bg-pink-600 text-white border-pink-600',
+                title: 'Imóvel Registrado! 🎉',
+                description: `Você ganhou +${earnedPoints} pontos por captar este imóvel!`,
+                className: 'bg-emerald-600 text-white border-emerald-600',
               })
             }
 
@@ -1025,9 +1160,16 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
               `Imóvel captado: ${updatedDemand.clientName}${isPriority ? ' (Priorizado)' : ''}`,
             )
 
+            let msg = `🏠 IMÓVEL CAPTADO! Captador ${currentUser?.name} encontrou um imóvel para ${demand.clientName}`
+            if (seq === 2)
+              msg = `🏠 NOVO IMÓVEL! Captador ${currentUser?.name} encontrou MAIS um imóvel para ${demand.clientName} (2º imóvel)`
+            if (seq > 2)
+              msg = `🏠 NOVO IMÓVEL! Captador ${currentUser?.name} encontrou MAIS um imóvel para ${demand.clientName} (${seq}º imóvel)`
+
             enqueueWebhook('imovel_captado', demand.id, {
-              ...updatedDemand,
-              location: payload?.endereco || demand.location,
+              mensagem: msg,
+              imovel: newProp,
+              cliente: demand.clientName,
             })
           }
           return { success: true, message: '' }
@@ -1040,14 +1182,10 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           })
         },
         scheduleVisit: (id, payload) => {
-          const d = allDemands.find((x) => x.id === id)
-          if (!checkDemandAccess(d)) return
-          if (d?.capturedProperty?.code) scheduleVisitByCode(d.capturedProperty.code, payload)
+          // Fallback if needed, typically scheduleVisitByCode is used now
         },
         closeDeal: (id, payload) => {
-          const d = allDemands.find((x) => x.id === id)
-          if (!checkDemandAccess(d)) return
-          if (d?.capturedProperty?.code) closeDealByCode(d.capturedProperty.code, payload)
+          // Fallback if needed, typically closeDealByCode is used now
         },
         scheduleVisitByCode,
         submitProposalByCode,
@@ -1055,23 +1193,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         prioritizeDemand,
         markDemandLost,
         addPoints,
-        getSimilarDemands: (id) => {
-          const listToSearch = currentUser?.role === 'corretor' ? visibleDemands : allDemands
-          const d = listToSearch.find((x) => x.id === id)
-          if (!d) return []
-          const dLocs = d.location
-            .toLowerCase()
-            .split(',')
-            .map((s) => s.trim())
-          return listToSearch.filter((x) => {
-            if (x.id === d.id || x.type !== d.type) return false
-            return x.location
-              .toLowerCase()
-              .split(',')
-              .map((s) => s.trim())
-              .some((l) => dLocs.includes(l))
-          })
-        },
+        getSimilarDemands,
         enqueueWebhook,
         processWebhookCron,
       }}

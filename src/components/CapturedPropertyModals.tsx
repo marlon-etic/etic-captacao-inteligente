@@ -22,7 +22,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
-import { Demand } from '@/types'
+import { Demand, CapturedProperty } from '@/types'
 
 const visitaSchema = z.object({
   date: z
@@ -61,6 +61,7 @@ const negocioSchema = z.object({
 
 export function CapturedPropertyModals({
   demand,
+  property,
   actionType,
   onClose,
   onSubmitVisita,
@@ -68,6 +69,7 @@ export function CapturedPropertyModals({
   onSubmitNegocio,
 }: {
   demand: Demand | null
+  property: CapturedProperty | null
   actionType: 'visita' | 'proposta' | 'negocio' | null
   onClose: () => void
   onSubmitVisita: (data: any) => void
@@ -77,7 +79,7 @@ export function CapturedPropertyModals({
   const isVisita = actionType === 'visita'
   const isProposta = actionType === 'proposta'
   const isNegocio = actionType === 'negocio'
-  const isOpen = !!demand && !!actionType
+  const isOpen = !!demand && !!property && !!actionType
 
   const formVisita = useForm({
     resolver: zodResolver(visitaSchema),
@@ -95,11 +97,11 @@ export function CapturedPropertyModals({
   })
 
   useEffect(() => {
-    if (demand) {
+    if (demand && property) {
       if (isNegocio) {
         formNegocio.reset({
           date: '',
-          value: demand.capturedProperty?.value || 0,
+          value: property.value || demand.budget || 0,
           type: demand.type,
           obs: '',
         })
@@ -107,12 +109,12 @@ export function CapturedPropertyModals({
       if (isProposta) {
         formProposta.reset({
           date: new Date().toISOString().split('T')[0],
-          value: demand.capturedProperty?.value || demand.budget || demand.maxBudget || 0,
+          value: property.value || demand.budget || demand.maxBudget || 0,
           obs: '',
         })
       }
     }
-  }, [demand, isNegocio, isProposta, formNegocio, formProposta])
+  }, [demand, property, isNegocio, isProposta, formNegocio, formProposta])
 
   return (
     <Dialog open={isOpen} onOpenChange={(v) => !v && onClose()}>
@@ -123,9 +125,9 @@ export function CapturedPropertyModals({
             {isProposta && 'Registrar Proposta'}
             {isNegocio && 'Registrar Negócio Fechado'}
           </DialogTitle>
-          {demand && (
+          {demand && property && (
             <DialogDescription>
-              Cliente: <strong>{demand.clientName}</strong> • Cód: {demand.capturedProperty?.code}
+              Cliente: <strong>{demand.clientName}</strong> • Cód: {property.code}
             </DialogDescription>
           )}
         </DialogHeader>

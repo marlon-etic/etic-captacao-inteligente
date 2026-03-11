@@ -12,6 +12,7 @@ import {
   ArrowUpCircle,
   RefreshCw,
   Trophy,
+  Plus,
 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -56,6 +57,15 @@ export function DemandCard({
     (currentUser.role === 'sdr' || currentUser.role === 'corretor') &&
     demand.createdBy === currentUser.id
   const canManage = isOwnerSDR && demand.status !== 'Perdida'
+
+  const isAssignedCaptador =
+    currentUser?.role === 'captador' && (demand.assignedTo === currentUser.id || !demand.assignedTo)
+  const canCapture =
+    (isAssignedCaptador || currentUser?.role === 'admin') &&
+    demand.status !== 'Perdida' &&
+    demand.status !== 'Impossível'
+
+  const propCount = demand.capturedProperties?.length || 0
 
   const statusColors: Record<DemandStatus, string> = {
     Pendente: 'bg-orange-100 text-orange-700 border-orange-200',
@@ -179,6 +189,7 @@ export function DemandCard({
             </div>
           </div>
           <p className="text-sm line-clamp-2 mt-1 text-foreground/80">{demand.description}</p>
+
           <div className="flex flex-wrap items-center gap-2 mt-auto pt-2">
             <div className="flex items-center gap-1.5 text-xs font-medium bg-muted px-2 py-1 rounded-md">
               <DollarSign className="w-3.5 h-3.5 text-primary" />
@@ -227,6 +238,37 @@ export function DemandCard({
               </button>
             )}
           </div>
+
+          {propCount > 0 && (
+            <div className="mt-2 bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-semibold px-3 py-2 rounded-md flex items-center justify-between shadow-sm">
+              <div className="flex items-center gap-1.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <span>
+                  {propCount} imóvel{propCount !== 1 ? 'eis' : ''} encontrado
+                  {propCount !== 1 ? 's' : ''} para {demand.clientName}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {propCount > 0 && isAssignedCaptador && (
+            <div className="mt-1 space-y-1.5">
+              <p className="text-[10px] font-bold text-muted-foreground uppercase">
+                Imóveis Vinculados:
+              </p>
+              {demand.capturedProperties?.map((p) => (
+                <div
+                  key={p.code}
+                  className="bg-muted/40 p-2 rounded border text-xs flex justify-between items-center"
+                >
+                  <span className="font-medium">{p.code}</span>
+                  <span className="text-muted-foreground truncate max-w-[120px]">
+                    {p.neighborhood}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
 
         <div className="mt-auto pt-2 flex flex-col">
@@ -253,48 +295,63 @@ export function DemandCard({
               </span>
             </div>
           </div>
-          {showActions && demand.status === 'Pendente' && (
-            <div className="px-4 pb-4 pt-2 flex gap-2 pl-5">
-              <Button
-                size="sm"
-                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
-                onClick={() => onAction?.(demand.id, 'encontrei')}
-              >
-                <CheckCircle2 className="w-4 h-4 mr-1.5" />{' '}
-                {demand.isRepescagem ? 'Assumir & Registar' : 'Encontrei'}
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                className="flex-1 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                onClick={() => onAction?.(demand.id, 'nao_encontrei')}
-              >
-                <XCircle className="w-4 h-4 mr-1.5" /> Não Encontrei
-              </Button>
-            </div>
-          )}
-          {canManage && (
-            <div className="px-4 pb-4 pt-2 flex flex-wrap gap-2 pl-5">
-              {!demand.isPrioritized && (
+
+          <div className="px-4 pb-4 pt-2 flex flex-col gap-2 pl-5">
+            {showActions && demand.status === 'Pendente' && propCount === 0 && (
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
+                  onClick={() => onAction?.(demand.id, 'encontrei')}
+                >
+                  <CheckCircle2 className="w-4 h-4 mr-1.5" />{' '}
+                  {demand.isRepescagem ? 'Assumir & Registar' : 'Encontrei'}
+                </Button>
                 <Button
                   size="sm"
                   variant="outline"
-                  className="flex-1 bg-pink-50 text-pink-700 hover:bg-pink-100 hover:text-pink-800 border-pink-200 shadow-sm"
-                  onClick={() => setShowPrioritize(true)}
+                  className="flex-1 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  onClick={() => onAction?.(demand.id, 'nao_encontrei')}
                 >
-                  🔴 PRIORIZAR
+                  <XCircle className="w-4 h-4 mr-1.5" /> Não Encontrei
                 </Button>
-              )}
+              </div>
+            )}
+
+            {canCapture && (propCount > 0 || demand.status !== 'Pendente') && (
               <Button
                 size="sm"
                 variant="outline"
-                className="flex-1 bg-gray-50 text-gray-700 hover:bg-gray-100 border-gray-200 shadow-sm"
-                onClick={() => setShowLost(true)}
+                className="w-full border-dashed border-emerald-500/50 text-emerald-700 hover:bg-emerald-50 bg-emerald-50/50 transition-colors"
+                onClick={() => onAction?.(demand.id, 'encontrei')}
               >
-                ❌ PERDIDO
+                <Plus className="w-4 h-4 mr-1.5" /> Adicionar Imóvel para Este Cliente
               </Button>
-            </div>
-          )}
+            )}
+
+            {canManage && (
+              <div className="flex flex-wrap gap-2 mt-1">
+                {!demand.isPrioritized && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="flex-1 bg-pink-50 text-pink-700 hover:bg-pink-100 hover:text-pink-800 border-pink-200 shadow-sm"
+                    onClick={() => setShowPrioritize(true)}
+                  >
+                    🔴 PRIORIZAR
+                  </Button>
+                )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="flex-1 bg-gray-50 text-gray-700 hover:bg-gray-100 border-gray-200 shadow-sm"
+                  onClick={() => setShowLost(true)}
+                >
+                  ❌ PERDIDO
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
       </Card>
 
