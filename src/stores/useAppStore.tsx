@@ -27,6 +27,8 @@ interface AppState {
   triggerCron: () => void
   enqueueWebhook: (event_type: string, entity_id: string | undefined, data: any) => void
   processWebhookCron: () => Promise<void>
+  scheduleVisit: (id: string, payload: any) => void
+  closeDeal: (id: string, payload: any) => void
 }
 
 const defaultStats: UserStats = {
@@ -95,10 +97,35 @@ const createDem = (
   createdAt: new Date(Date.now() - hrs * 3600000).toISOString(),
 })
 
-const initialDemands = [
+const initialDemands: Demand[] = [
   createDem('d1', 'João Pedro', 'Jardins', 5, 'Urgente'),
-  createDem('d2', 'Maria Silva', 'Moema', 25, 'Até 15 dias'),
-  createDem('d3', 'Carlos Santos', 'Pinheiros', 49, 'Até 30 dias'),
+  {
+    ...createDem('d2', 'Maria Silva', 'Moema', 25, 'Até 15 dias'),
+    status: 'Captado sob demanda',
+    assignedTo: '1',
+    capturedProperty: {
+      code: 'AP-452',
+      value: 950000,
+      neighborhood: 'Moema',
+      docCompleta: true,
+      obs: 'Apartamento recém reformado',
+      photoUrl: 'https://img.usecurling.com/p/400/300?q=apartment&seed=d2',
+    },
+  },
+  {
+    ...createDem('d3', 'Carlos Santos', 'Pinheiros', 49, 'Até 30 dias'),
+    status: 'Visita',
+    assignedTo: '1',
+    capturedProperty: {
+      code: 'CS-881',
+      value: 1150000,
+      neighborhood: 'Pinheiros',
+      docCompleta: false,
+      visitaDate: new Date().toISOString().split('T')[0],
+      visitaTime: '14:30',
+      photoUrl: 'https://img.usecurling.com/p/400/300?q=house&seed=d3',
+    },
+  },
   createDem('d4', 'Fernanda Lima', 'Centro', 73, 'Até 90 dias ou +'),
 ]
 
@@ -403,6 +430,26 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         submitDemandResponse: (id, action, payload) => {
           const demand = allDemands.find((d) => d.id === id)
           if (action === 'encontrei' && demand) {
+            setAllDemands((prev) =>
+              prev.map((d) => {
+                if (d.id === id) {
+                  return {
+                    ...d,
+                    status: 'Captado sob demanda',
+                    capturedProperty: {
+                      code: payload?.code || `IMV-${Math.floor(Math.random() * 1000)}`,
+                      value: payload?.value || d.budget || d.maxBudget,
+                      neighborhood:
+                        payload?.neighborhood || d.location.split(',')[0] || 'Desconhecido',
+                      docCompleta: payload?.docCompleta || false,
+                      obs: payload?.obs,
+                      photoUrl: `https://img.usecurling.com/p/400/300?q=house&seed=${d.id}`,
+                    },
+                  }
+                }
+                return d
+              }),
+            )
             enqueueWebhook('imovel_captado', demand.id, {
               ...demand,
               location: payload?.endereco || demand.location,
@@ -415,6 +462,57 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
             location: payload?.endereco || 'Desconhecida',
             clientName: 'Geral',
             id: 'independente',
+          })
+        },
+        scheduleVisit: (id, payload) => {
+          setAllDemands((prev) =>
+            prev.map((d) => {
+              if (d.id === id) {
+                const updated = {
+                  ...d,
+                  status: 'Visita' as DemandStatus,
+                  capturedProperty: {
+                    ...d.capturedProperty!,
+                    visitaDate: payload.date,
+                    visitaTime: payload.time,
+                    visitaObs: payload.obs,
+                  },
+                }
+                enqueueWebhook('visita_agendada', d.id, updated)
+                return updated
+              }
+              return d
+            }),
+          )
+          toast({ title: 'Visita Agendada', description: 'O status foi atualizado com sucesso.' })
+        },
+        closeDeal: (id, payload) => {
+          setAllDemands((prev) =>
+            prev.map((d) => {
+              if (d.id === id) {
+                const updated = {
+                  ...d,
+                  status: 'Negócio' as DemandStatus,
+                  capturedProperty: {
+                    ...d.capturedProperty!,
+                    fechamentoDate: payload.date,
+                    fechamentoValue: payload.value,
+                    fechamentoObs: payload.obs,
+                  },
+                }
+                enqueueWebhook('negocio_fechado', d.id, updated)
+                if (d.assignedTo) {
+                  addPoints(100, d.assignedTo)
+                }
+                return updated
+              }
+              return d
+            }),
+          )
+          toast({
+            title: 'Negócio Fechado!',
+            description: 'O captador recebeu +100 pontos.',
+            className: 'bg-emerald-600 text-white',
           })
         },
         addPoints,

@@ -44,6 +44,21 @@ export type DemandStatus =
   | 'Arquivado'
   | 'Impossível'
 
+export interface CapturedProperty {
+  code: string
+  value: number
+  neighborhood: string
+  docCompleta: boolean
+  obs?: string
+  photoUrl?: string
+  visitaDate?: string
+  visitaTime?: string
+  visitaObs?: string
+  fechamentoDate?: string
+  fechamentoValue?: number
+  fechamentoObs?: string
+}
+
 export interface Demand {
   id: string
   clientName: string
@@ -66,6 +81,7 @@ export interface Demand {
   notificada_48h?: boolean
   notificada_72h?: boolean
   isRepescagem?: boolean
+  capturedProperty?: CapturedProperty
 }
 
 export interface WebhookEvent {
