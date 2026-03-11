@@ -1,11 +1,34 @@
 export type Role = 'captador' | 'sdr' | 'corretor' | 'gestor' | 'admin'
 
+export type BadgeType =
+  | '🏆 Especialista'
+  | '🚀 Rastreador Rápido'
+  | '💎 Sem Demandas Abertas'
+  | '⭐ Negociador Estrela'
+  | '🔥 Semana de Ouro'
+  | '🎯 Perfeccionista'
+
+export interface UserStats {
+  imoveisCaptados: number
+  responseTimeSum: number
+  responseCount: number
+  negociosFechados: number
+  imoveisCaptadosSemana: number
+  diasSemDemandaPendente: number
+  streakRespostasRapidas: number
+}
+
 export interface User {
   id: string
   name: string
   email: string
   role: Role
   points: number
+  dailyPoints: number
+  weeklyPoints: number
+  monthlyPoints: number
+  badges: BadgeType[]
+  stats: UserStats
   avatarUrl?: string
 }
 

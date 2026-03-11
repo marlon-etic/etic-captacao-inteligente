@@ -37,6 +37,7 @@ const encontreiSchema = z.object({
     .min(1, 'Obrigatório')
     .max(20, 'Máximo 20 caracteres')
     .regex(/^[a-zA-Z0-9]+$/, 'Apenas letras e números'),
+  docCompleta: z.boolean().default(false),
   obs: z.string().optional(),
 })
 
@@ -62,7 +63,7 @@ function EncontreiForm({
 }) {
   const form = useForm({
     resolver: zodResolver(encontreiSchema),
-    defaultValues: { value: 0, neighborhood: '', code: '', obs: '' },
+    defaultValues: { value: 0, neighborhood: '', code: '', docCompleta: false, obs: '' },
   })
 
   return (
@@ -120,6 +121,23 @@ function EncontreiForm({
             )}
           />
         </div>
+        <FormField
+          control={form.control}
+          name="docCompleta"
+          render={({ field }) => (
+            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm bg-emerald-50/50 border-emerald-100">
+              <div className="space-y-0.5">
+                <FormLabel className="text-sm font-medium text-emerald-900">
+                  Documentação Completa?
+                </FormLabel>
+                <p className="text-xs text-emerald-700">+20 Pontos de bônus</p>
+              </div>
+              <FormControl>
+                <Switch checked={field.value} onCheckedChange={field.onChange} />
+              </FormControl>
+            </FormItem>
+          )}
+        />
         <FormField
           control={form.control}
           name="obs"

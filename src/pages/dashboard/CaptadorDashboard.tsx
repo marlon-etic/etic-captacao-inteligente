@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react'
+import { useMemo, useState } from 'react'
 import {
   PackageSearch,
   Clock,
@@ -6,17 +6,17 @@ import {
   Handshake,
   CheckSquare,
   Search,
-  Trophy,
-  TrendingUp,
   Filter,
   SortDesc,
   ChevronLeft,
   ChevronRight,
+  Plus,
 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { DemandCard } from '@/components/DemandCard'
 import { DemandActionModal } from '@/components/DemandActionModal'
-import { Progress } from '@/components/ui/progress'
+import { IndependentCaptureModal } from '@/components/IndependentCaptureModal'
+import { GamificationWidget } from '@/components/dashboard/GamificationWidget'
 import {
   Select,
   SelectContent,
@@ -31,20 +31,16 @@ import { useToast } from '@/hooks/use-toast'
 import { Demand } from '@/types'
 
 export function CaptadorDashboard() {
-  const { demands, currentUser, users, submitDemandResponse } = useAppStore()
+  const { demands, currentUser, submitDemandResponse } = useAppStore()
   const { toast } = useToast()
-  const [, setTick] = useState(0)
-
-  useEffect(() => {
-    const timer = setInterval(() => setTick((t) => t + 1), 60000)
-    return () => clearInterval(timer)
-  }, [])
 
   const [modal, setModal] = useState<{
     isOpen: boolean
     demand: Demand | null
     type: 'encontrei' | 'nao_encontrei' | null
   }>({ isOpen: false, demand: null, type: null })
+  const [indepModalOpen, setIndepModalOpen] = useState(false)
+
   const [filters, setFilters] = useState({
     type: 'all',
     status: 'all',
@@ -66,15 +62,6 @@ export function CaptadorDashboard() {
     })
     return c
   }, [demands])
-
-  const ranking = useMemo(() => {
-    const rank =
-      [...users].sort((a, b) => b.points - a.points).findIndex((u) => u.id === currentUser?.id) + 1
-    return rank > 0 ? rank : '-'
-  }, [users, currentUser])
-
-  const nextBadge = 2000
-  const progress = currentUser ? Math.min((currentUser.points / nextBadge) * 100, 100) : 0
 
   const sortedDemands = useMemo(() => {
     return demands
@@ -102,13 +89,13 @@ export function CaptadorDashboard() {
   const handleAction = (payload: any) => {
     if (!modal.demand || !modal.type) return
     const res = submitDemandResponse(modal.demand.id, modal.type, payload)
-    toast({
-      title: res.success ? (modal.type === 'encontrei' ? 'Sucesso!' : 'Atualizado') : 'Erro',
-      description: res.success
-        ? res.message
-        : res.message || 'Erro ao carregar dashboard. Tente novamente',
-      variant: res.success ? 'default' : 'destructive',
-    })
+    if (!res.success) {
+      toast({
+        title: 'Erro',
+        description: res.message || 'Erro ao registrar.',
+        variant: 'destructive',
+      })
+    }
     setModal({ isOpen: false, demand: null, type: null })
   }
 
@@ -121,53 +108,26 @@ export function CaptadorDashboard() {
     { t: 'Negócios', v: stats.deal, i: Handshake, c: 'text-emerald-600', b: 'bg-emerald-100' },
   ]
 
+  if (!currentUser) return null
+
   return (
     <div className="space-y-6 pb-10">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight mb-1">Painel de Captação</h1>
-        <p className="text-muted-foreground text-sm">
-          Gerencie suas demandas, acompanhe seu desempenho e feche negócios.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight mb-1">Painel de Captação</h1>
+          <p className="text-muted-foreground text-sm">
+            Gerencie demandas e acompanhe seu desempenho gamificado.
+          </p>
+        </div>
+        <Button
+          onClick={() => setIndepModalOpen(true)}
+          className="shrink-0 bg-emerald-600 hover:bg-emerald-700"
+        >
+          <Plus className="w-4 h-4 mr-2" /> Captar Sem Demanda
+        </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
-          <CardContent className="p-4 flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-primary">
-              <Trophy className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Seu Ranking</p>
-              <p className="text-2xl font-bold">#{ranking}</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
-              <TrendingUp className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Pontos Totais</p>
-              <div className="flex items-baseline gap-2">
-                <p className="text-2xl font-bold">{currentUser?.points || 0}</p>
-                <span className="text-xs text-emerald-600 font-medium">+150 hoje</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 flex flex-col justify-center h-full gap-2">
-            <div className="flex justify-between items-end">
-              <p className="text-sm font-medium text-muted-foreground">Próximo Badge</p>
-              <p className="text-xs font-bold">
-                {currentUser?.points} / {nextBadge}
-              </p>
-            </div>
-            <Progress value={progress} className="h-2" />
-          </CardContent>
-        </Card>
-      </div>
+      <GamificationWidget currentUser={currentUser} />
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         {statCards.map((s, i) => (
@@ -210,7 +170,7 @@ export function CaptadorDashboard() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos Status</SelectItem>
-                <SelectItem value="Pendente">Aguardando Resposta</SelectItem>
+                <SelectItem value="Pendente">Aguardando</SelectItem>
                 <SelectItem value="Em Captação">Em Captação</SelectItem>
                 <SelectItem value="Captado sob demanda">Captados</SelectItem>
               </SelectContent>
@@ -319,6 +279,7 @@ export function CaptadorDashboard() {
         onClose={() => setModal({ isOpen: false, demand: null, type: null })}
         onConfirm={handleAction}
       />
+      <IndependentCaptureModal isOpen={indepModalOpen} onClose={() => setIndepModalOpen(false)} />
     </div>
   )
 }
