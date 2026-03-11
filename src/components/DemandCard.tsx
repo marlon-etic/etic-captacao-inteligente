@@ -10,6 +10,7 @@ import {
   Bed,
   Car,
   ArrowUpCircle,
+  RefreshCw,
 } from 'lucide-react'
 import { Card, CardContent, CardFooter } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -51,12 +52,15 @@ export function DemandCard({
     Visita: 'bg-purple-100 text-purple-700 border-purple-200',
     Negócio: 'bg-emerald-100 text-emerald-800 border-emerald-300 font-bold',
     Arquivado: 'bg-muted text-muted-foreground',
+    Impossível: 'bg-gray-800 text-white border-gray-900 font-medium',
   }
+
   const urgencyColors = {
     Alta: 'text-red-600 bg-red-50 border-red-200',
     Média: 'text-amber-600 bg-amber-50 border-amber-200',
     Baixa: 'text-green-600 bg-green-50 border-green-200',
   }
+
   const hoursElapsed = (Date.now() - new Date(demand.createdAt).getTime()) / 3600000
   const isAwaiting = demand.status === 'Pendente'
   const isLate = isAwaiting && hoursElapsed > 24
@@ -69,17 +73,20 @@ export function DemandCard({
           isAwaiting && 'border-orange-200 shadow-sm shadow-orange-100/50',
           isLate && 'border-red-300 shadow-red-100',
           isHighPriority && 'border-purple-300 shadow-purple-100',
+          demand.isRepescagem && 'border-amber-400 shadow-amber-200 ring-1 ring-amber-400/50',
         )}
       >
-        {(isAwaiting || isHighPriority) && (
+        {(isAwaiting || isHighPriority || demand.isRepescagem) && (
           <div
             className={cn(
               'absolute top-0 left-0 w-1 h-full',
-              isLate
-                ? 'bg-red-500 animate-pulse'
-                : isHighPriority
-                  ? 'bg-purple-500'
-                  : 'bg-orange-400',
+              demand.isRepescagem
+                ? 'bg-amber-500 animate-pulse'
+                : isLate
+                  ? 'bg-red-500 animate-pulse'
+                  : isHighPriority
+                    ? 'bg-purple-500'
+                    : 'bg-orange-400',
             )}
           />
         )}
@@ -88,7 +95,7 @@ export function DemandCard({
             <div className="flex-1 min-w-0">
               <h3 className="font-semibold text-lg truncate flex items-center gap-2">
                 {demand.clientName}
-                {isLate && (
+                {isLate && !demand.isRepescagem && (
                   <span
                     title="Mais de 24h sem resposta"
                     className="flex items-center text-red-500 animate-pulse"
@@ -110,12 +117,22 @@ export function DemandCard({
                 <span className="truncate">{demand.location}</span>
               </p>
             </div>
-            <Badge
-              variant="outline"
-              className={cn('px-2 py-0.5 whitespace-nowrap shrink-0', statusColors[demand.status])}
-            >
-              {demand.status}
-            </Badge>
+            <div className="flex flex-col items-end gap-1.5 shrink-0">
+              <Badge
+                variant="outline"
+                className={cn('px-2 py-0.5 whitespace-nowrap', statusColors[demand.status])}
+              >
+                {demand.status}
+              </Badge>
+              {demand.isRepescagem && demand.status === 'Pendente' && (
+                <Badge
+                  variant="secondary"
+                  className="bg-amber-100 text-amber-800 border-amber-300 text-[10px] py-0 px-1.5 font-bold flex items-center gap-1 whitespace-nowrap"
+                >
+                  <RefreshCw className="w-3 h-3" /> Repescagem
+                </Badge>
+              )}
+            </div>
           </div>
           <p className="text-sm line-clamp-2 mt-1 text-foreground/80">{demand.description}</p>
           <div className="flex flex-wrap items-center gap-2 mt-auto pt-2">
@@ -170,7 +187,8 @@ export function DemandCard({
               className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
               onClick={() => onAction?.(demand.id, 'encontrei')}
             >
-              <CheckCircle2 className="w-4 h-4 mr-1.5" /> Encontrei
+              <CheckCircle2 className="w-4 h-4 mr-1.5" />{' '}
+              {demand.isRepescagem ? 'Assumir & Registar' : 'Encontrei'}
             </Button>
             <Button
               size="sm"
@@ -188,8 +206,13 @@ export function DemandCard({
               <Clock className="w-3 h-3" /> Criado em{' '}
               {new Date(demand.createdAt).toLocaleDateString('pt-BR')}
             </span>
-            {hoursElapsed < 24 && demand.status === 'Pendente' && (
-              <span className="text-orange-500 font-medium">
+            {hoursElapsed > 0 && demand.status === 'Pendente' && (
+              <span
+                className={cn(
+                  'font-medium',
+                  hoursElapsed > 48 ? 'text-red-600' : 'text-orange-500',
+                )}
+              >
                 {Math.floor(hoursElapsed)}h decorridas
               </span>
             )}

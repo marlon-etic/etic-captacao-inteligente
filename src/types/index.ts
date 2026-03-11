@@ -42,6 +42,7 @@ export type DemandStatus =
   | 'Visita'
   | 'Negócio'
   | 'Arquivado'
+  | 'Impossível'
 
 export interface Demand {
   id: string
@@ -61,5 +62,18 @@ export interface Demand {
   status: DemandStatus
   createdBy: string
   assignedTo?: string
+  createdAt: string
+  notificada_24h?: boolean
+  notificada_48h?: boolean
+  notificada_72h?: boolean
+  isRepescagem?: boolean
+}
+
+export interface WebhookEvent {
+  id: string
+  evento: string
+  payload: any
+  status: 'pending' | 'processed' | 'failed'
+  tentativas: number
   createdAt: string
 }

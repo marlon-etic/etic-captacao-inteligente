@@ -1,22 +1,29 @@
-import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react'
-import { User, Demand, DemandStatus, BadgeType, UserStats } from '@/types'
-import { useToast } from '@/hooks/use-toast'
+import React, {
+  createContext,
+  useContext,
+  useState,
+  ReactNode,
+  useEffect,
+  useCallback,
+} from 'react'
+import { User, Demand, DemandStatus, BadgeType, UserStats, WebhookEvent } from '@/types'
+import { toast } from '@/hooks/use-toast'
 
 interface AppState {
   currentUser: User | null
   users: User[]
   demands: Demand[]
-  notifications: string[]
+  webhookQueue: WebhookEvent[]
+  auditLogs: string[]
   login: (email: string, password?: string) => void
   logout: () => void
-  requestPasswordReset: (email: string) => void
   addDemand: (demand: Partial<Demand>) => void
   updateDemandStatus: (id: string, status: DemandStatus) => void
   submitDemandResponse: (id: string, action: 'encontrei' | 'nao_encontrei', payload: any) => any
   submitIndependentCapture: (payload: any) => void
   addPoints: (amount: number, userId?: string) => void
-  sessionExpiresAt: number | null
   getSimilarDemands: (id: string) => Demand[]
+  triggerCron: () => void
 }
 
 const defaultStats: UserStats = {
@@ -59,126 +66,179 @@ const mockUsers: User[] = [
     badges: ['🚀 Rastreador Rápido'],
     stats: { ...defaultStats, responseCount: 10, responseTimeSum: 120 },
   },
-  {
-    id: '4',
-    name: 'Marina Costa',
-    email: 'corretor@etic.com',
-    role: 'corretor',
-    points: 950,
-    dailyPoints: 50,
-    weeklyPoints: 350,
-    monthlyPoints: 950,
-    badges: ['⭐ Negociador Estrela'],
-    stats: { ...defaultStats, negociosFechados: 6 },
-  },
-  {
-    id: '3',
-    name: 'Roberto Lima',
-    email: 'gestor@etic.com',
-    role: 'gestor',
-    points: 0,
-    dailyPoints: 0,
-    weeklyPoints: 0,
-    monthlyPoints: 0,
-    badges: [],
-    stats: defaultStats,
-  },
+]
+
+const createDem = (id: string, name: string, loc: string, hrs: number): Demand => ({
+  id,
+  clientName: name,
+  location: loc,
+  budget: 850000,
+  minBudget: 800000,
+  maxBudget: 1000000,
+  bedrooms: 3,
+  parkingSpots: 2,
+  description: 'Demanda de teste',
+  timeframe: 'Imediato',
+  urgency: 'Alta',
+  type: 'Venda',
+  status: 'Pendente',
+  createdBy: '2',
+  assignedTo: '1',
+  createdAt: new Date(Date.now() - hrs * 3600000).toISOString(),
+})
+
+const initialDemands = [
+  createDem('d1', 'João Pedro', 'Jardins', 5),
+  createDem('d2', 'Maria Silva', 'Moema', 25),
+  createDem('d3', 'Carlos Santos', 'Pinheiros', 49),
+  createDem('d4', 'Fernanda Lima', 'Centro', 73),
 ]
 
 const AppContext = createContext<AppState | null>(null)
 
 export function AppStoreProvider({ children }: { children: ReactNode }) {
-  const { toast } = useToast()
   const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [users, setUsers] = useState<User[]>(mockUsers)
-  const [allDemands, setAllDemands] = useState<Demand[]>([])
-  const [notifications, setNotifications] = useState<string[]>([])
-  const [sessionExpiresAt, setSessionExpiresAt] = useState<number | null>(null)
+  const [allDemands, setAllDemands] = useState<Demand[]>(initialDemands)
+  const [webhookQueue, setWebhookQueue] = useState<WebhookEvent[]>([])
+  const [auditLogs, setAuditLogs] = useState<string[]>([])
 
-  // Initialize mock demands omitted for brevity, assume they exist or start empty
-  useEffect(() => {
-    const d: Demand = {
-      id: 'd1',
-      clientName: 'João Pedro',
-      location: 'Jardins',
-      budget: 850000,
-      minBudget: 800000,
-      maxBudget: 1000000,
-      bedrooms: 3,
-      parkingSpots: 2,
-      description: 'Apto',
-      timeframe: 'Imediato',
-      urgency: 'Alta',
-      type: 'Venda',
-      status: 'Pendente',
-      createdBy: '2',
-      createdAt: new Date(Date.now() - 5 * 3600000).toISOString(),
-    }
-    setAllDemands([d])
-  }, [])
+  const addLog = useCallback(
+    (msg: string) =>
+      setAuditLogs((prev) => [`[${new Date().toLocaleTimeString()}] ${msg}`, ...prev]),
+    [],
+  )
+  const enqueueWebhook = useCallback(
+    (evento: string, payload: any) =>
+      setWebhookQueue((prev) => [
+        ...prev,
+        {
+          id: Math.random().toString(36).substr(2, 9),
+          evento,
+          payload,
+          status: 'pending',
+          tentativas: 0,
+          createdAt: new Date().toISOString(),
+        },
+      ]),
+    [],
+  )
 
-  const checkBadges = (userId: string) => {
-    setUsers((prev) => {
-      const newUsers = [...prev]
-      const idx = newUsers.findIndex((u) => u.id === userId)
-      if (idx === -1) return prev
+  const triggerCron = useCallback(() => {
+    const now = Date.now()
+    const actions: Array<{ type: '24h' | '48h' | '72h'; demand: Demand }> = []
 
-      const user = newUsers[idx]
-      const stats = user.stats
-      const currentBadges = user.badges || []
-      const earned: BadgeType[] = []
-
-      if (!currentBadges.includes('🏆 Especialista') && stats.imoveisCaptados >= 100)
-        earned.push('🏆 Especialista')
-      if (
-        !currentBadges.includes('🚀 Rastreador Rápido') &&
-        stats.responseCount >= 5 &&
-        stats.responseTimeSum / stats.responseCount <= 18
-      )
-        earned.push('🚀 Rastreador Rápido')
-      if (!currentBadges.includes('💎 Sem Demandas Abertas') && stats.diasSemDemandaPendente >= 7)
-        earned.push('💎 Sem Demandas Abertas')
-      if (!currentBadges.includes('🔥 Semana de Ouro') && stats.imoveisCaptadosSemana >= 10)
-        earned.push('🔥 Semana de Ouro')
-      if (!currentBadges.includes('⭐ Negociador Estrela') && stats.negociosFechados >= 5)
-        earned.push('⭐ Negociador Estrela')
-      if (!currentBadges.includes('🎯 Perfeccionista') && stats.streakRespostasRapidas >= 14)
-        earned.push('🎯 Perfeccionista')
-
-      if (earned.length > 0) {
-        newUsers[idx] = { ...user, badges: [...currentBadges, ...earned] }
-        if (currentUser?.id === userId) {
-          setCurrentUser(newUsers[idx])
-          earned.forEach((b) =>
-            toast({
-              title: 'Conquista Desbloqueada! 🎉',
-              description: `Você ganhou a insígnia: ${b}`,
-              className: 'bg-gradient-to-r from-amber-400 to-orange-500 text-white border-0',
-            }),
-          )
+    setAllDemands((prev) => {
+      let changed = false
+      const next = prev.map((d) => {
+        if (d.status !== 'Pendente') return d
+        const hrs = (now - new Date(d.createdAt).getTime()) / 3600000
+        const updated = { ...d }
+        if (hrs >= 72 && !d.notificada_72h) {
+          updated.notificada_72h = true
+          updated.status = 'Impossível'
+          updated.assignedTo = undefined
+          actions.push({ type: '72h', demand: d })
+          changed = true
+        } else if (hrs >= 48 && !d.notificada_48h) {
+          updated.notificada_48h = true
+          updated.isRepescagem = true
+          actions.push({ type: '48h', demand: d })
+          changed = true
+        } else if (hrs >= 24 && !d.notificada_24h) {
+          updated.notificada_24h = true
+          actions.push({ type: '24h', demand: d })
+          changed = true
         }
-      }
-      return newUsers
+        return updated
+      })
+      return changed ? next : prev
     })
-  }
 
-  const updateUserStats = (userId: string, updates: Partial<UserStats>) => {
-    setUsers((prev) =>
-      prev.map((u) => (u.id === userId ? { ...u, stats: { ...u.stats, ...updates } } : u)),
-    )
-    if (currentUser?.id === userId) {
-      setCurrentUser((prev) => (prev ? { ...prev, stats: { ...prev.stats, ...updates } } : prev))
+    setTimeout(() => {
+      actions.forEach(({ type, demand }) => {
+        if (type === '72h') {
+          enqueueWebhook('WA_MESSAGE_MANAGER', {
+            message: `Demanda impossível: ${demand.clientName} em ${demand.location} não foi respondida`,
+          })
+          addLog(`[Cron] Demanda de ${demand.clientName} atualizada para Impossível (>72h).`)
+        } else if (type === '48h') {
+          enqueueWebhook('WA_MESSAGE_CAPTURER', {
+            message: `Última chance: Responda em 24h ou a demanda será repassada`,
+          })
+          if (demand.assignedTo) {
+            setUsers((u) =>
+              u.map((user) =>
+                user.id === demand.assignedTo ? { ...user, points: user.points - 20 } : user,
+              ),
+            )
+            addLog(`[Cron] Penalidade: -20 pts para captador (Demanda ${demand.clientName} >48h).`)
+          }
+          addLog(`[Cron] Demanda de ${demand.clientName} entrou em Repescagem (>48h).`)
+        } else if (type === '24h') {
+          enqueueWebhook('WA_MESSAGE_CAPTURER', {
+            message: `Lembrete: Responda a demanda de ${demand.clientName} em ${demand.location}`,
+          })
+          addLog(`[Cron] Lembrete 24h enfileirado para demanda de ${demand.clientName}.`)
+        }
+      })
+    }, 100)
+  }, [enqueueWebhook, addLog])
+
+  useEffect(() => {
+    const t = setTimeout(triggerCron, 2000)
+    const i = setInterval(triggerCron, 20000)
+    return () => {
+      clearTimeout(t)
+      clearInterval(i)
     }
-    checkBadges(userId)
-  }
+  }, [triggerCron])
+
+  useEffect(() => {
+    const pending = webhookQueue.find((q) => q.status === 'pending')
+    if (!pending) return
+    const timer = setTimeout(() => {
+      const isFailure = Math.random() < 0.2
+      if (isFailure && pending.tentativas < 2) {
+        toast({
+          title: 'Aviso',
+          description: 'Notificação falhou, será retentada',
+          variant: 'destructive',
+        })
+        setWebhookQueue((prev) =>
+          prev.map((q) => (q.id === pending.id ? { ...q, tentativas: q.tentativas + 1 } : q)),
+        )
+      } else if (isFailure) {
+        toast({
+          title: 'Erro',
+          description: 'Erro ao atualizar status após tentativas',
+          variant: 'destructive',
+        })
+        setWebhookQueue((prev) =>
+          prev.map((q) => (q.id === pending.id ? { ...q, status: 'failed' } : q)),
+        )
+        addLog(`[Erro] Falha definitiva na notificação para ${pending.evento}.`)
+      } else {
+        toast({
+          title: 'WhatsApp Enviado',
+          description: pending.payload.message,
+          className: 'bg-emerald-600 text-white',
+        })
+        setWebhookQueue((prev) =>
+          prev.map((q) => (q.id === pending.id ? { ...q, status: 'processed' } : q)),
+        )
+        addLog(`[Sucesso] ${pending.payload.message}`)
+      }
+    }, 2500)
+    return () => clearTimeout(timer)
+  }, [webhookQueue, addLog])
 
   const addPoints = (amount: number, userId?: string) => {
-    const targetId = userId || currentUser?.id
-    if (!targetId) return
-
-    setUsers((prev) =>
-      prev.map((u) =>
-        u.id === targetId
+    const id = userId || currentUser?.id
+    if (!id) return
+    setUsers((p) =>
+      p.map((u) =>
+        u.id === id
           ? {
               ...u,
               points: u.points + amount,
@@ -189,164 +249,28 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           : u,
       ),
     )
-    if (currentUser?.id === targetId) {
-      setCurrentUser((prev) =>
-        prev
+    if (currentUser?.id === id)
+      setCurrentUser((p) =>
+        p
           ? {
-              ...prev,
-              points: prev.points + amount,
-              dailyPoints: prev.dailyPoints + amount,
-              weeklyPoints: prev.weeklyPoints + amount,
-              monthlyPoints: prev.monthlyPoints + amount,
+              ...p,
+              points: p.points + amount,
+              dailyPoints: p.dailyPoints + amount,
+              weeklyPoints: p.weeklyPoints + amount,
+              monthlyPoints: p.monthlyPoints + amount,
             }
-          : prev,
+          : p,
       )
-    }
   }
 
   const getSimilarDemands = (id: string) => {
-    const demand = allDemands.find((d) => d.id === id)
-    if (!demand) return []
+    const d = allDemands.find((x) => x.id === id)
+    if (!d) return []
     return allDemands.filter(
-      (d) =>
-        d.id !== demand.id &&
-        d.location.toLowerCase() === demand.location.toLowerCase() &&
-        d.type === demand.type,
+      (x) =>
+        x.id !== d.id && x.location.toLowerCase() === d.location.toLowerCase() && x.type === d.type,
     )
   }
-
-  const submitIndependentCapture = (payload: any) => {
-    if (!currentUser) return
-    let points = 35
-    const breakdown = ['+35 (Capt. Independente)']
-
-    if (payload.docCompleta) {
-      points += 20
-      breakdown.push('+20 (Doc Completa)')
-    }
-
-    addPoints(points)
-    updateUserStats(currentUser.id, {
-      imoveisCaptados: currentUser.stats.imoveisCaptados + 1,
-      imoveisCaptadosSemana: currentUser.stats.imoveisCaptadosSemana + 1,
-    })
-
-    toast({
-      title: 'Captação Registrada! 🌟',
-      description: `+${points} pts: ${breakdown.join(', ')}`,
-      className: 'bg-emerald-600 text-white',
-    })
-  }
-
-  const submitDemandResponse = (
-    id: string,
-    action: 'encontrei' | 'nao_encontrei',
-    payload: any,
-  ) => {
-    if (!currentUser) return { success: false, message: 'Não logado' }
-    const demand = allDemands.find((d) => d.id === id)
-    if (!demand) return { success: false, message: 'Demanda não encontrada' }
-
-    const hoursElapsed = (Date.now() - new Date(demand.createdAt).getTime()) / 3600000
-    let points = 0
-    const breakdown = []
-
-    if (action === 'encontrei') {
-      points += 50
-      breakdown.push('+50 (Sob Demanda)')
-
-      if (hoursElapsed <= 12) {
-        points += 15
-        breakdown.push('+15 (Rapidez <12h)')
-        const newStreak = currentUser.stats.streakRespostasRapidas + 1
-        updateUserStats(currentUser.id, { streakRespostasRapidas: newStreak })
-        if (newStreak > 1) {
-          points += 10
-          breakdown.push('+10 (Streak <24h)')
-        }
-      }
-
-      if (hoursElapsed > 48) {
-        points -= 20
-        breakdown.push('-20 (Atraso >48h)')
-      }
-
-      if (getSimilarDemands(id).length + 1 >= 5) {
-        points += 25
-        breakdown.push('+25 (Alta Demanda 5+)')
-      }
-
-      if (payload.docCompleta) {
-        points += 20
-        breakdown.push('+20 (Doc Completa)')
-      }
-
-      addPoints(points)
-      updateUserStats(currentUser.id, {
-        imoveisCaptados: currentUser.stats.imoveisCaptados + 1,
-        imoveisCaptadosSemana: currentUser.stats.imoveisCaptadosSemana + 1,
-        responseCount: currentUser.stats.responseCount + 1,
-        responseTimeSum: currentUser.stats.responseTimeSum + hoursElapsed,
-      })
-
-      setAllDemands((prev) =>
-        prev.map((d) =>
-          d.id === id ? { ...d, status: 'Captado sob demanda', assignedTo: currentUser.id } : d,
-        ),
-      )
-
-      toast({
-        title: 'Imóvel Registrado! 🎉',
-        description: `Ganhou ${points} pts: ${breakdown.join(', ')}`,
-        className: 'bg-emerald-600 text-white',
-      })
-      return { success: true, message: 'Imóvel Registrado!' }
-    } else {
-      if (hoursElapsed > 48) {
-        addPoints(-20)
-        toast({
-          title: 'Penalidade Aplicada',
-          description: '-20 pts por resposta após 48h.',
-          variant: 'destructive',
-        })
-      }
-      setAllDemands((prev) =>
-        prev.map((d) =>
-          d.id === id
-            ? { ...d, status: payload.continueSearch ? 'Em Captação' : 'Sem demanda' }
-            : d,
-        ),
-      )
-      return { success: true, message: 'Resposta registrada' }
-    }
-  }
-
-  const updateDemandStatus = (id: string, status: DemandStatus) => {
-    const demand = allDemands.find((d) => d.id === id)
-    if (!demand) return
-
-    if (status === 'Negócio' && demand.assignedTo) {
-      addPoints(100, demand.assignedTo)
-      const u = users.find((u) => u.id === demand.assignedTo)
-      if (u) updateUserStats(u.id, { negociosFechados: u.stats.negociosFechados + 1 })
-      toast({ title: 'Negócio Fechado! 💰', description: '+100 pts atribuídos.' })
-    } else if (status === 'Visita' && demand.assignedTo) {
-      addPoints(15, demand.assignedTo)
-      toast({ title: 'Visita Agendada! 📍', description: '+15 pts atribuídos.' })
-    }
-    setAllDemands((prev) => prev.map((d) => (d.id === id ? { ...d, status } : d)))
-  }
-
-  const login = (email: string) => {
-    const user = users.find((u) => u.email === email)
-    if (!user) throw new Error('Email não cadastrado')
-    setCurrentUser(user)
-    setSessionExpiresAt(Date.now() + 24 * 3600000)
-  }
-
-  const logout = () => setCurrentUser(null)
-  const requestPasswordReset = () => {}
-  const addDemand = (d: any) => setAllDemands((p) => [{ ...d, id: Math.random() + '' }, ...p])
 
   return (
     <AppContext.Provider
@@ -354,16 +278,17 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         currentUser,
         users,
         demands: allDemands,
-        notifications,
-        login,
-        logout,
-        requestPasswordReset,
-        addDemand,
-        updateDemandStatus,
-        submitDemandResponse,
-        submitIndependentCapture,
+        webhookQueue,
+        auditLogs,
+        triggerCron,
+        login: (e) => setCurrentUser(users.find((u) => u.email === e) || null),
+        logout: () => setCurrentUser(null),
+        addDemand: (d) => setAllDemands((p) => [{ ...d, id: Math.random() + '' } as Demand, ...p]),
+        updateDemandStatus: (i, s) =>
+          setAllDemands((p) => p.map((d) => (d.id === i ? { ...d, status: s } : d))),
+        submitDemandResponse: () => ({ success: true, message: '' }),
+        submitIndependentCapture: () => {},
         addPoints,
-        sessionExpiresAt,
         getSimilarDemands,
       }}
     >
