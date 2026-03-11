@@ -122,12 +122,16 @@ CREATE TABLE badges_obtidos (
 -- Table: webhook_queue
 CREATE TABLE webhook_queue (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    evento VARCHAR(100) NOT NULL,
-    payload JSONB NOT NULL,
-    status VARCHAR(50) NOT NULL DEFAULT 'pending',
+    tipo_notificacao VARCHAR(100) NOT NULL,
+    destinatario_whatsapp VARCHAR(20) NOT NULL,
+    mensagem TEXT NOT NULL,
+    status VARCHAR(50) NOT NULL DEFAULT 'pendente',
     tentativas INTEGER NOT NULL DEFAULT 0,
+    erro_mensagem TEXT,
     data_criacao TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    data_envio TIMESTAMP WITH TIME ZONE,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "Tentativas devem ser positivas ou zero" CHECK (tentativas >= 0)
 );
 
 -- ==========================================

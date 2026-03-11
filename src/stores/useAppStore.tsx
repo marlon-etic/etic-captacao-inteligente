@@ -24,6 +24,7 @@ interface AppState {
   addPoints: (amount: number, userId?: string) => void
   getSimilarDemands: (id: string) => Demand[]
   triggerCron: () => void
+  enqueueWebhook: (tipo_notificacao: string, destinatario_whatsapp: string, data: any) => void
 }
 
 const defaultStats: UserStats = {
@@ -108,19 +109,73 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       setAuditLogs((prev) => [`[${new Date().toLocaleTimeString()}] ${msg}`, ...prev]),
     [],
   )
+
   const enqueueWebhook = useCallback(
-    (evento: string, payload: any) =>
+    (tipo_notificacao: string, destinatario_whatsapp: string, data: any) => {
+      const baseUrl = 'https://etic.com/app'
+      let mensagem = ''
+      switch (tipo_notificacao) {
+        case 'NOVA_DEMANDA':
+          mensagem = `🚨 *Nova Demanda!*\n👤 Cliente: ${data.clientName}\n📍 Local: ${data.location}\n💰 Orçamento: R$ ${data.budget || data.maxBudget}\n👉 Link: ${baseUrl}/demandas/${data.id}`
+          break
+        case 'LEMBRETE_24H':
+          mensagem = `⏰ *Lembrete 24h!*\nA demanda de ${data.clientName} em ${data.location} precisa de atenção.\n👉 Link: ${baseUrl}/demandas/${data.id}`
+          break
+        case 'IMOVEL_CAPTADO':
+          mensagem = `✅ *Imóvel Captado!*\nNovo imóvel na região de ${data.location} para ${data.clientName}.\n👉 Link: ${baseUrl}/demandas/${data.id}`
+          break
+        case 'CONFIRMACAO_GESTOR':
+          mensagem = `👨‍💼 *Aprovação Necessária!*\nO imóvel captado requer sua análise.\n👉 Link: ${baseUrl}/demandas/${data.id}`
+          break
+        case 'FALHA_SISTEMA':
+          mensagem = `⚠️ *Aviso do Sistema:*\nTivemos uma falha ao processar: ${data.action}.\nPor favor, tente novamente.`
+          break
+        case 'DESAFIO_SEMANAL':
+          mensagem = `🏆 *Desafio da Semana!*\nCapture 3 imóveis nos próximos 5 dias e ganhe bônus!\n👉 Link: ${baseUrl}/ranking`
+          break
+        case 'VISITA_AGENDADA':
+          mensagem = `📅 *Visita Agendada!*\nO cliente ${data.clientName} vai visitar o imóvel em ${data.location} amanhã.\n👉 Link: ${baseUrl}/demandas/${data.id}`
+          break
+        default:
+          mensagem = data.message || 'Notificação do Sistema'
+      }
+
+      const id = Math.random().toString(36).substring(2, 9)
+      const data_criacao = new Date().toISOString()
+
+      const isValidPhone = /^\+?[0-9]{10,15}$/.test(destinatario_whatsapp.replace(/[\s\-()]/g, ''))
+      const isValidMessage = mensagem.trim().length > 0
+
+      if (!isValidPhone || !isValidMessage) {
+        setWebhookQueue((prev) => [
+          ...prev,
+          {
+            id,
+            tipo_notificacao,
+            destinatario_whatsapp,
+            mensagem,
+            status: 'falha',
+            tentativas: 3,
+            erro_mensagem: !isValidPhone ? 'Número de WhatsApp inválido' : 'Mensagem vazia',
+            data_criacao,
+          },
+        ])
+        return
+      }
+
       setWebhookQueue((prev) => [
         ...prev,
         {
-          id: Math.random().toString(36).substr(2, 9),
-          evento,
-          payload,
-          status: 'pending',
+          id,
+          tipo_notificacao,
+          destinatario_whatsapp,
+          mensagem,
+          status: 'pendente',
           tentativas: 0,
-          createdAt: new Date().toISOString(),
+          data_criacao,
         },
-      ]),
+      ])
+    },
     [],
   )
 
@@ -158,13 +213,15 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     setTimeout(() => {
       actions.forEach(({ type, demand }) => {
         if (type === '72h') {
-          enqueueWebhook('WA_MESSAGE_MANAGER', {
-            message: `Demanda impossível: ${demand.clientName} em ${demand.location} não foi respondida`,
+          enqueueWebhook('FALHA_SISTEMA', '+5511999999999', {
+            action: `avaliação da demanda de ${demand.clientName} em ${demand.location} (sem resposta há 72h)`,
           })
           addLog(`[Cron] Demanda de ${demand.clientName} atualizada para Impossível (>72h).`)
         } else if (type === '48h') {
-          enqueueWebhook('WA_MESSAGE_CAPTURER', {
-            message: `Última chance: Responda em 24h ou a demanda será repassada`,
+          enqueueWebhook('LEMBRETE_24H', '+5511999999999', {
+            clientName: demand.clientName,
+            location: demand.location,
+            id: demand.id,
           })
           if (demand.assignedTo) {
             setUsers((u) =>
@@ -176,8 +233,10 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           }
           addLog(`[Cron] Demanda de ${demand.clientName} entrou em Repescagem (>48h).`)
         } else if (type === '24h') {
-          enqueueWebhook('WA_MESSAGE_CAPTURER', {
-            message: `Lembrete: Responda a demanda de ${demand.clientName} em ${demand.location}`,
+          enqueueWebhook('LEMBRETE_24H', '+5511999999999', {
+            clientName: demand.clientName,
+            location: demand.location,
+            id: demand.id,
           })
           addLog(`[Cron] Lembrete 24h enfileirado para demanda de ${demand.clientName}.`)
         }
@@ -195,43 +254,52 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   }, [triggerCron])
 
   useEffect(() => {
-    const pending = webhookQueue.find((q) => q.status === 'pending')
-    if (!pending) return
-    const timer = setTimeout(() => {
-      const isFailure = Math.random() < 0.2
-      if (isFailure && pending.tentativas < 2) {
-        toast({
-          title: 'Aviso',
-          description: 'Notificação falhou, será retentada',
-          variant: 'destructive',
-        })
-        setWebhookQueue((prev) =>
-          prev.map((q) => (q.id === pending.id ? { ...q, tentativas: q.tentativas + 1 } : q)),
+    const processQueue = () => {
+      setWebhookQueue((prev) => {
+        const toProcessIndex = prev.findIndex(
+          (q) =>
+            q.status === 'pendente' ||
+            (q.status === 'falha' && q.tentativas > 0 && q.tentativas < 3),
         )
-      } else if (isFailure) {
-        toast({
-          title: 'Erro',
-          description: 'Erro ao atualizar status após tentativas',
-          variant: 'destructive',
-        })
-        setWebhookQueue((prev) =>
-          prev.map((q) => (q.id === pending.id ? { ...q, status: 'failed' } : q)),
-        )
-        addLog(`[Erro] Falha definitiva na notificação para ${pending.evento}.`)
-      } else {
-        toast({
-          title: 'WhatsApp Enviado',
-          description: pending.payload.message,
-          className: 'bg-emerald-600 text-white',
-        })
-        setWebhookQueue((prev) =>
-          prev.map((q) => (q.id === pending.id ? { ...q, status: 'processed' } : q)),
-        )
-        addLog(`[Sucesso] ${pending.payload.message}`)
-      }
-    }, 2500)
-    return () => clearTimeout(timer)
-  }, [webhookQueue, addLog])
+        if (toProcessIndex === -1) return prev
+
+        const next = [...prev]
+        const item = next[toProcessIndex]
+
+        const isFailure = Math.random() < 0.2
+
+        if (isFailure) {
+          const newTentativas = item.tentativas + 1
+          next[toProcessIndex] = {
+            ...item,
+            status: 'falha',
+            tentativas: newTentativas,
+            erro_mensagem: 'Erro de conexão com provedor (simulado)',
+          }
+          if (newTentativas >= 3) {
+            addLog(`[Erro] Falha definitiva na notificação para ${item.destinatario_whatsapp}.`)
+          }
+        } else {
+          next[toProcessIndex] = {
+            ...item,
+            status: 'enviado',
+            tentativas: item.tentativas + 1,
+            data_envio: new Date().toISOString(),
+          }
+          toast({
+            title: 'WhatsApp Enviado',
+            description: `Notificação enviada para ${item.destinatario_whatsapp}`,
+            className: 'bg-emerald-600 text-white',
+          })
+          addLog(`[Sucesso] Notificação enviada para ${item.destinatario_whatsapp}.`)
+        }
+        return next
+      })
+    }
+
+    const intervalId = setInterval(processQueue, 1000)
+    return () => clearInterval(intervalId)
+  }, [addLog])
 
   const addPoints = (amount: number, userId?: string) => {
     const id = userId || currentUser?.id
@@ -283,13 +351,47 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         triggerCron,
         login: (e) => setCurrentUser(users.find((u) => u.email === e) || null),
         logout: () => setCurrentUser(null),
-        addDemand: (d) => setAllDemands((p) => [{ ...d, id: Math.random() + '' } as Demand, ...p]),
-        updateDemandStatus: (i, s) =>
-          setAllDemands((p) => p.map((d) => (d.id === i ? { ...d, status: s } : d))),
-        submitDemandResponse: () => ({ success: true, message: '' }),
-        submitIndependentCapture: () => {},
+        addDemand: (d) => {
+          const newDemand = {
+            ...d,
+            id: Math.random().toString(36).substr(2, 9),
+            createdAt: new Date().toISOString(),
+          } as Demand
+          setAllDemands((p) => [newDemand, ...p])
+          enqueueWebhook('NOVA_DEMANDA', '+5511999999999', newDemand)
+        },
+        updateDemandStatus: (i, s) => {
+          setAllDemands((p) => {
+            const next = p.map((d) => (d.id === i ? { ...d, status: s } : d))
+            const updated = next.find((x) => x.id === i)
+            if (updated && s === 'Em Captação') {
+              enqueueWebhook('CONFIRMACAO_GESTOR', '+5511999999999', updated)
+            } else if (updated && s === 'Visita') {
+              enqueueWebhook('VISITA_AGENDADA', '+5511999999999', updated)
+            }
+            return next
+          })
+        },
+        submitDemandResponse: (id, action, payload) => {
+          const demand = allDemands.find((d) => d.id === id)
+          if (action === 'encontrei' && demand) {
+            enqueueWebhook('IMOVEL_CAPTADO', '+5511999999999', {
+              ...demand,
+              location: payload?.endereco || demand.location,
+            })
+          }
+          return { success: true, message: '' }
+        },
+        submitIndependentCapture: (payload) => {
+          enqueueWebhook('IMOVEL_CAPTADO', '+5511999999999', {
+            location: payload?.endereco || 'Desconhecida',
+            clientName: 'Geral',
+            id: 'independente',
+          })
+        },
         addPoints,
         getSimilarDemands,
+        enqueueWebhook,
       }}
     >
       {children}
