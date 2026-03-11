@@ -55,15 +55,18 @@ export function DemandCard({
     Impossível: 'bg-gray-800 text-white border-gray-900 font-medium',
   }
 
-  const urgencyColors = {
-    Alta: 'text-red-600 bg-red-50 border-red-200',
-    Média: 'text-amber-600 bg-amber-50 border-amber-200',
-    Baixa: 'text-green-600 bg-green-50 border-green-200',
+  const timeframeColors: Record<string, string> = {
+    Urgente: 'text-red-700 bg-red-100 border-red-200 ring-red-500/20',
+    'Até 15 dias': 'text-orange-700 bg-orange-100 border-orange-200 ring-orange-500/20',
+    'Até 30 dias': 'text-yellow-700 bg-yellow-100 border-yellow-200 ring-yellow-500/20',
+    'Até 60 dias': 'text-emerald-700 bg-emerald-100 border-emerald-200 ring-emerald-500/20',
+    'Até 90 dias ou +': 'text-blue-700 bg-blue-100 border-blue-200 ring-blue-500/20',
   }
 
   const hoursElapsed = (Date.now() - new Date(demand.createdAt).getTime()) / 3600000
   const isAwaiting = demand.status === 'Pendente'
   const isLate = isAwaiting && hoursElapsed > 24
+  const isUrgente = demand.timeframe === 'Urgente' || demand.timeframe === 'Até 15 dias'
 
   return (
     <>
@@ -76,7 +79,7 @@ export function DemandCard({
           demand.isRepescagem && 'border-amber-400 shadow-amber-200 ring-1 ring-amber-400/50',
         )}
       >
-        {(isAwaiting || isHighPriority || demand.isRepescagem) && (
+        {(isAwaiting || isHighPriority || demand.isRepescagem || isUrgente) && (
           <div
             className={cn(
               'absolute top-0 left-0 w-1 h-full',
@@ -84,9 +87,13 @@ export function DemandCard({
                 ? 'bg-amber-500 animate-pulse'
                 : isLate
                   ? 'bg-red-500 animate-pulse'
-                  : isHighPriority
-                    ? 'bg-purple-500'
-                    : 'bg-orange-400',
+                  : demand.timeframe === 'Urgente'
+                    ? 'bg-red-500'
+                    : demand.timeframe === 'Até 15 dias'
+                      ? 'bg-orange-500'
+                      : isHighPriority
+                        ? 'bg-purple-500'
+                        : 'bg-orange-400',
             )}
           />
         )}
@@ -164,9 +171,13 @@ export function DemandCard({
             </div>
             <Badge
               variant="outline"
-              className={cn('text-[10px] px-1.5 py-0 h-5', urgencyColors[demand.urgency])}
+              className={cn(
+                'text-[10px] px-2 py-0.5 h-6 font-semibold flex items-center gap-1 ring-1 ring-inset',
+                timeframeColors[demand.timeframe] || 'text-muted-foreground bg-muted border-muted',
+              )}
             >
-              {demand.urgency}
+              <Clock className="w-3 h-3" />
+              {demand.timeframe}
             </Badge>
             {totalInterested > 1 && (
               <button

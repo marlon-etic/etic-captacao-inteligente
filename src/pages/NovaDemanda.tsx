@@ -1,19 +1,12 @@
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
-import { DollarSign, User, Tag, Mail, AlignLeft, CalendarClock } from 'lucide-react'
+import { DollarSign, User, Tag, Mail, AlignLeft } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Textarea } from '@/components/ui/textarea'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import {
   Form,
   FormControl,
@@ -26,6 +19,7 @@ import {
 import { useToast } from '@/hooks/use-toast'
 import useAppStore from '@/stores/useAppStore'
 import { LocationSelector } from '@/components/LocationSelector'
+import { UrgencySelector } from '@/components/UrgencySelector'
 
 const formSchema = z
   .object({
@@ -45,7 +39,7 @@ const formSchema = z
       .string()
       .min(10, 'Descrição deve ter no mínimo 10 caracteres')
       .max(500, 'Descrição no máximo 500 caracteres'),
-    timeframe: z.string().min(1, 'Selecione um prazo'),
+    timeframe: z.string().min(1, 'Selecione um prazo de aquisição'),
     type: z.enum(['Venda', 'Aluguel']),
   })
   .refine((data) => data.minBudget < data.maxBudget, {
@@ -105,10 +99,8 @@ export default function NovaDemanda() {
     })
   }
 
-  const prazos = ['Imediato', 'Até 3 meses', '3 a 6 meses', 'Mais de 6 meses']
-
   return (
-    <div className="max-w-3xl mx-auto pb-8 px-4 sm:px-0">
+    <div className="max-w-4xl mx-auto pb-8 px-4 sm:px-0">
       <Card className="border-0 shadow-lg bg-card/50 backdrop-blur-sm">
         <CardHeader className="bg-primary/5 border-b rounded-t-xl">
           <CardTitle className="text-2xl font-bold text-primary flex items-center gap-2">
@@ -178,7 +170,7 @@ export default function NovaDemanda() {
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 gap-6">
                 <FormField
                   control={form.control}
                   name="type"
@@ -189,7 +181,7 @@ export default function NovaDemanda() {
                         <RadioGroup
                           onValueChange={field.onChange}
                           value={field.value}
-                          className="flex flex-wrap gap-6 pt-2"
+                          className="flex flex-wrap gap-4 pt-1"
                         >
                           <FormItem className="flex items-center space-x-3 space-y-0 bg-muted/50 px-4 py-3 rounded-lg border cursor-pointer hover:bg-muted transition-colors">
                             <FormControl>
@@ -211,28 +203,18 @@ export default function NovaDemanda() {
                     </FormItem>
                   )}
                 />
+              </div>
 
+              <div className="grid grid-cols-1 gap-6">
                 <FormField
                   control={form.control}
                   name="timeframe"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Prazo de Aquisição</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value || undefined}>
-                        <FormControl>
-                          <SelectTrigger className="pl-9 relative mt-2 h-[50px] bg-muted/50">
-                            <CalendarClock className="absolute left-3 top-[17px] h-4 w-4 text-muted-foreground z-10" />
-                            <SelectValue placeholder="Selecione o prazo" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {prazos.map((p) => (
-                            <SelectItem key={p} value={p}>
-                              {p}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                    <FormItem className="space-y-3">
+                      <FormLabel>Prazo de Aquisição (Prioridade)</FormLabel>
+                      <FormControl>
+                        <UrgencySelector value={field.value} onChange={field.onChange} />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}

@@ -56,7 +56,6 @@ export interface Demand {
   parkingSpots: number
   description: string
   timeframe: string
-  urgency: 'Alta' | 'Média' | 'Baixa'
   similarProfilesCount?: number
   type: 'Venda' | 'Aluguel'
   status: DemandStatus

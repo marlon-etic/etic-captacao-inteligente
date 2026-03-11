@@ -71,7 +71,13 @@ const mockUsers: User[] = [
   },
 ]
 
-const createDem = (id: string, name: string, loc: string, hrs: number): Demand => ({
+const createDem = (
+  id: string,
+  name: string,
+  loc: string,
+  hrs: number,
+  timeframe: string = 'Até 30 dias',
+): Demand => ({
   id,
   clientName: name,
   location: loc,
@@ -81,8 +87,7 @@ const createDem = (id: string, name: string, loc: string, hrs: number): Demand =
   bedrooms: 3,
   parkingSpots: 2,
   description: 'Demanda de teste',
-  timeframe: 'Imediato',
-  urgency: 'Alta',
+  timeframe,
   type: 'Venda',
   status: 'Pendente',
   createdBy: '2',
@@ -91,10 +96,10 @@ const createDem = (id: string, name: string, loc: string, hrs: number): Demand =
 })
 
 const initialDemands = [
-  createDem('d1', 'João Pedro', 'Jardins', 5),
-  createDem('d2', 'Maria Silva', 'Moema', 25),
-  createDem('d3', 'Carlos Santos', 'Pinheiros', 49),
-  createDem('d4', 'Fernanda Lima', 'Centro', 73),
+  createDem('d1', 'João Pedro', 'Jardins', 5, 'Urgente'),
+  createDem('d2', 'Maria Silva', 'Moema', 25, 'Até 15 dias'),
+  createDem('d3', 'Carlos Santos', 'Pinheiros', 49, 'Até 30 dias'),
+  createDem('d4', 'Fernanda Lima', 'Centro', 73, 'Até 90 dias ou +'),
 ]
 
 const AppContext = createContext<AppState | null>(null)

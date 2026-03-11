@@ -44,7 +44,7 @@ export function CaptadorDashboard() {
   const [filters, setFilters] = useState({
     type: 'all',
     status: 'all',
-    urgency: 'all',
+    timeframe: 'all',
     sort: 'urgency',
   })
   const [page, setPage] = useState(1)
@@ -67,13 +67,19 @@ export function CaptadorDashboard() {
     return demands
       .filter((d) => filters.type === 'all' || d.type === filters.type)
       .filter((d) => filters.status === 'all' || d.status === filters.status)
-      .filter((d) => filters.urgency === 'all' || d.urgency === filters.urgency)
+      .filter((d) => filters.timeframe === 'all' || d.timeframe === filters.timeframe)
       .sort((a, b) => {
         if (a.status === 'Pendente' && b.status !== 'Pendente') return -1
         if (a.status !== 'Pendente' && b.status === 'Pendente') return 1
         if (filters.sort === 'urgency') {
-          const u: any = { Alta: 3, Média: 2, Baixa: 1 }
-          return (u[b.urgency] || 0) - (u[a.urgency] || 0)
+          const u: any = {
+            Urgente: 5,
+            'Até 15 dias': 4,
+            'Até 30 dias': 3,
+            'Até 60 dias': 2,
+            'Até 90 dias ou +': 1,
+          }
+          return (u[b.timeframe] || 0) - (u[a.timeframe] || 0)
         }
         if (filters.sort === 'time')
           return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
@@ -176,17 +182,19 @@ export function CaptadorDashboard() {
               </SelectContent>
             </Select>
             <Select
-              value={filters.urgency}
-              onValueChange={(v) => setFilters({ ...filters, urgency: v })}
+              value={filters.timeframe}
+              onValueChange={(v) => setFilters({ ...filters, timeframe: v })}
             >
-              <SelectTrigger className="w-[120px] h-8 text-xs bg-background">
-                <SelectValue placeholder="Urgência" />
+              <SelectTrigger className="w-[140px] h-8 text-xs bg-background">
+                <SelectValue placeholder="Prazo / Urgência" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Qqr Urgência</SelectItem>
-                <SelectItem value="Alta">Alta</SelectItem>
-                <SelectItem value="Média">Média</SelectItem>
-                <SelectItem value="Baixa">Baixa</SelectItem>
+                <SelectItem value="all">Qualquer Prazo</SelectItem>
+                <SelectItem value="Urgente">Urgente</SelectItem>
+                <SelectItem value="Até 15 dias">Até 15 dias</SelectItem>
+                <SelectItem value="Até 30 dias">Até 30 dias</SelectItem>
+                <SelectItem value="Até 60 dias">Até 60 dias</SelectItem>
+                <SelectItem value="Até 90 dias ou +">Até 90 dias ou +</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -212,11 +220,13 @@ export function CaptadorDashboard() {
             </div>
             <h3 className="text-lg font-semibold mb-1">Nenhuma demanda encontrada</h3>
             <p className="text-muted-foreground">Nenhuma demanda no momento. Volte mais tarde!</p>
-            {(filters.type !== 'all' || filters.status !== 'all' || filters.urgency !== 'all') && (
+            {(filters.type !== 'all' ||
+              filters.status !== 'all' ||
+              filters.timeframe !== 'all') && (
               <Button
                 variant="link"
                 onClick={() =>
-                  setFilters({ type: 'all', status: 'all', urgency: 'all', sort: 'urgency' })
+                  setFilters({ type: 'all', status: 'all', timeframe: 'all', sort: 'urgency' })
                 }
                 className="mt-2"
               >
