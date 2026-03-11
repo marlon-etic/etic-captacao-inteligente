@@ -1,4 +1,4 @@
-export type Role = 'captador' | 'sdr' | 'corretor' | 'gestor'
+export type Role = 'captador' | 'sdr' | 'corretor' | 'gestor' | 'admin'
 
 export interface User {
   id: string

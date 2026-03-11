@@ -6,11 +6,13 @@ interface AppState {
   users: User[]
   demands: Demand[]
   notifications: string[]
-  login: (email: string) => void
+  login: (email: string, password?: string) => void
   logout: () => void
+  requestPasswordReset: (email: string) => void
   addDemand: (demand: Omit<Demand, 'id' | 'createdAt' | 'status' | 'createdBy'>) => void
   updateDemandStatus: (id: string, status: DemandStatus) => void
   addPoints: (amount: number) => void
+  sessionExpiresAt: number | null
 }
 
 const mockUsers: User[] = [
@@ -18,6 +20,7 @@ const mockUsers: User[] = [
   { id: '2', name: 'Carlos Santos', email: 'sdr@etic.com', role: 'sdr', points: 800 },
   { id: '3', name: 'Roberto Lima', email: 'gestor@etic.com', role: 'gestor', points: 0 },
   { id: '4', name: 'Marina Costa', email: 'corretor@etic.com', role: 'corretor', points: 950 },
+  { id: '5', name: 'Admin Master', email: 'admin@etic.com', role: 'admin', points: 0 },
 ]
 
 const mockDemands: Demand[] = [
@@ -70,15 +73,67 @@ const AppContext = createContext<AppState | null>(null)
 export function AppStoreProvider({ children }: { children: ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [users, setUsers] = useState<User[]>(mockUsers)
-  const [demands, setDemands] = useState<Demand[]>(mockDemands)
+  const [allDemands, setAllDemands] = useState<Demand[]>(mockDemands)
   const [notifications, setNotifications] = useState<string[]>(['Bem-vindo ao Étic Captação!'])
+  const [sessionExpiresAt, setSessionExpiresAt] = useState<number | null>(null)
+  const [loginAttempts, setLoginAttempts] = useState<
+    Record<string, { count: number; firstAttempt: number }>
+  >({})
 
-  const login = (email: string) => {
-    const user = users.find((u) => u.email === email)
-    if (user) setCurrentUser(user)
+  // Auditing mock logger
+  const logAudit = (userId: string, event: 'login' | 'logout') => {
+    console.log(`[AUDIT] User ${userId} ${event} at ${new Date().toISOString()}`)
   }
 
-  const logout = () => setCurrentUser(null)
+  const login = (email: string, password?: string) => {
+    const now = Date.now()
+    const attempt = loginAttempts[email] || { count: 0, firstAttempt: now }
+
+    // Rate Limiting: max 5 attempts per minute
+    if (attempt.count >= 5 && now - attempt.firstAttempt < 60000) {
+      throw new Error('Muitas tentativas. Tente novamente em 1 minuto')
+    }
+
+    // Reset attempts if 1 minute has passed
+    if (now - attempt.firstAttempt >= 60000) {
+      attempt.count = 0
+      attempt.firstAttempt = now
+    }
+
+    const user = users.find((u) => u.email === email)
+    if (!user) {
+      attempt.count += 1
+      setLoginAttempts({ ...loginAttempts, [email]: attempt })
+      throw new Error('Email não cadastrado')
+    }
+
+    // Passwords would be verified against bcrypt hashes in the backend
+    if (password && password !== 'Password1') {
+      attempt.count += 1
+      setLoginAttempts({ ...loginAttempts, [email]: attempt })
+      throw new Error('Senha incorreta')
+    }
+
+    setLoginAttempts({ ...loginAttempts, [email]: { count: 0, firstAttempt: now } })
+
+    // JWT Session validity (24 hours)
+    setSessionExpiresAt(now + 24 * 60 * 60 * 1000)
+    setCurrentUser(user)
+    logAudit(user.id, 'login')
+  }
+
+  const logout = () => {
+    if (currentUser) logAudit(currentUser.id, 'logout')
+    setCurrentUser(null)
+    setSessionExpiresAt(null)
+  }
+
+  const requestPasswordReset = (email: string) => {
+    const user = users.find((u) => u.email === email)
+    if (!user) throw new Error('Email não cadastrado')
+
+    console.log(`[EMAIL] Reset link sent to ${email}. Valid for 1 hour.`)
+  }
 
   const addDemand = (demandData: Omit<Demand, 'id' | 'createdAt' | 'status' | 'createdBy'>) => {
     if (!currentUser) return
@@ -89,12 +144,12 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       status: 'Pendente',
       createdBy: currentUser.id,
     }
-    setDemands((prev) => [newDemand, ...prev])
+    setAllDemands((prev) => [newDemand, ...prev])
     setNotifications((prev) => [`Nova demanda criada para ${demandData.location}`, ...prev])
   }
 
   const updateDemandStatus = (id: string, status: DemandStatus) => {
-    setDemands((prev) =>
+    setAllDemands((prev) =>
       prev.map((d) => (d.id === id ? { ...d, status, assignedTo: currentUser?.id } : d)),
     )
     if (status === 'Captado sob demanda' || status === 'Negócio') {
@@ -110,6 +165,17 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     )
   }
 
+  // Row Level Security (RLS) Filtering
+  const demands = allDemands.filter((d) => {
+    if (!currentUser) return false
+    if (currentUser.role === 'gestor' || currentUser.role === 'admin') return true
+    if (currentUser.role === 'captador')
+      return d.assignedTo === currentUser.id || d.createdBy === currentUser.id
+    if (currentUser.role === 'sdr') return d.type === 'Aluguel'
+    if (currentUser.role === 'corretor') return d.type === 'Venda'
+    return false
+  })
+
   const value = {
     currentUser,
     users,
@@ -117,9 +183,11 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     notifications,
     login,
     logout,
+    requestPasswordReset,
     addDemand,
     updateDemandStatus,
     addPoints,
+    sessionExpiresAt,
   }
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>
 }

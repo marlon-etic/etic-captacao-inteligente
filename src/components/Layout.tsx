@@ -1,13 +1,27 @@
+import { useEffect } from 'react'
 import { Outlet, Navigate, useLocation } from 'react-router-dom'
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar'
 import { AppSidebar } from '@/components/AppSidebar'
 import { AppHeader } from '@/components/AppHeader'
 import { BottomNav } from '@/components/BottomNav'
+import { useToast } from '@/hooks/use-toast'
 import useAppStore from '@/stores/useAppStore'
 
 export default function Layout() {
-  const { currentUser } = useAppStore()
+  const { currentUser, sessionExpiresAt, logout } = useAppStore()
   const location = useLocation()
+  const { toast } = useToast()
+
+  useEffect(() => {
+    if (currentUser && sessionExpiresAt && Date.now() > sessionExpiresAt) {
+      toast({
+        title: 'Sessão expirada',
+        description: 'Sessão expirada. Faça login novamente.',
+        variant: 'destructive',
+      })
+      logout()
+    }
+  }, [currentUser, sessionExpiresAt, logout, toast])
 
   if (!currentUser && location.pathname !== '/') {
     return <Navigate to="/" replace />

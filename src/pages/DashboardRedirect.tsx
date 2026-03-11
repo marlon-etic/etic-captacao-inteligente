@@ -16,6 +16,7 @@ export default function DashboardRedirect() {
     case 'corretor':
       return <SDRDashboard />
     case 'gestor':
+    case 'admin':
       return <GestorDashboard />
     default:
       return <div>Papel não reconhecido</div>

@@ -25,6 +25,15 @@ CREATE TABLE captadores (
     CONSTRAINT "Este e-mail já foi registrado" UNIQUE (email)
 );
 
+-- Table: auth_audit_logs
+CREATE TABLE auth_audit_logs (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES captadores(id) ON DELETE SET NULL,
+    event VARCHAR(50) NOT NULL,
+    ip_address VARCHAR(45),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Table: demandas_locacao
 CREATE TABLE demandas_locacao (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -175,6 +184,9 @@ FOR EACH ROW EXECUTE FUNCTION add_gamification_points();
 -- INDEXING & PERFORMANCE
 -- ==========================================
 
+-- Auth Logs
+CREATE INDEX idx_auth_audit_logs_user_id ON auth_audit_logs(user_id);
+
 -- Demandas Locação
 CREATE INDEX idx_demandas_locacao_captador_id ON demandas_locacao(captador_id);
 CREATE INDEX idx_demandas_locacao_localizacao ON demandas_locacao(localizacao);
@@ -198,6 +210,7 @@ CREATE INDEX idx_badges_captador_id ON badges_obtidos(captador_id);
 
 -- Enable RLS on all tables
 ALTER TABLE captadores ENABLE ROW LEVEL SECURITY;
+ALTER TABLE auth_audit_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE demandas_locacao ENABLE ROW LEVEL SECURITY;
 ALTER TABLE demandas_vendas ENABLE ROW LEVEL SECURITY;
 ALTER TABLE imoveis_captados ENABLE ROW LEVEL SECURITY;
@@ -209,8 +222,16 @@ ALTER TABLE webhook_queue ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can view all captadores" ON captadores FOR SELECT USING (true);
 CREATE POLICY "Users can update own captador profile" ON captadores FOR UPDATE USING (auth.uid() = id);
 
+-- Policies: Auth Audit Logs
+CREATE POLICY "Gestores and Admins can view audit logs" ON auth_audit_logs FOR SELECT USING (
+    EXISTS (SELECT 1 FROM captadores WHERE id = auth.uid() AND role IN ('gestor', 'admin'))
+);
+
 -- Policies: Demandas Locação
-CREATE POLICY "Anyone can view demandas locacao" ON demandas_locacao FOR SELECT USING (true);
+CREATE POLICY "View demandas locacao" ON demandas_locacao FOR SELECT USING (
+    EXISTS (SELECT 1 FROM captadores WHERE id = auth.uid() AND role IN ('sdr', 'gestor', 'admin')) OR
+    captador_id = auth.uid()
+);
 CREATE POLICY "Captadores can insert demandas locacao" ON demandas_locacao FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
 CREATE POLICY "Captadores can update assigned demandas locacao" ON demandas_locacao FOR UPDATE USING (
     captador_id = auth.uid() OR 
@@ -218,7 +239,10 @@ CREATE POLICY "Captadores can update assigned demandas locacao" ON demandas_loca
 );
 
 -- Policies: Demandas Vendas
-CREATE POLICY "Anyone can view demandas vendas" ON demandas_vendas FOR SELECT USING (true);
+CREATE POLICY "View demandas vendas" ON demandas_vendas FOR SELECT USING (
+    EXISTS (SELECT 1 FROM captadores WHERE id = auth.uid() AND role IN ('corretor', 'gestor', 'admin')) OR
+    captador_id = auth.uid()
+);
 CREATE POLICY "Captadores can insert demandas vendas" ON demandas_vendas FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
 CREATE POLICY "Captadores can update assigned demandas vendas" ON demandas_vendas FOR UPDATE USING (
     captador_id = auth.uid() OR 
