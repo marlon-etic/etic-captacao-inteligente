@@ -4,6 +4,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { useTimeElapsed } from '@/hooks/useTimeElapsed'
 
 const statusLabels = {
   'Captado sob demanda': {
@@ -32,20 +33,39 @@ export function CapturedPropertyCard({
   const st =
     statusLabels[demand.status as keyof typeof statusLabels] || statusLabels['Captado sob demanda']
 
+  const { text, urgencyLevel, createdDate } = useTimeElapsed(demand.createdAt)
+
   return (
-    <Card className="overflow-hidden flex flex-col h-full border-border/50 hover:shadow-md transition-all">
-      <div className="relative h-48 w-full bg-muted">
+    <Card
+      className={cn(
+        'overflow-hidden flex flex-col h-full border-2 transition-all hover:shadow-md relative',
+        urgencyLevel === 'green' && 'border-emerald-200',
+        urgencyLevel === 'yellow' && 'border-yellow-300',
+        urgencyLevel === 'orange' && 'border-orange-300',
+        urgencyLevel === 'red' && 'border-red-400',
+      )}
+    >
+      <div
+        className={cn(
+          'absolute top-0 left-0 w-1.5 h-full z-10',
+          urgencyLevel === 'green' && 'bg-emerald-500',
+          urgencyLevel === 'yellow' && 'bg-yellow-400',
+          urgencyLevel === 'orange' && 'bg-orange-500',
+          urgencyLevel === 'red' && 'bg-red-500',
+        )}
+      />
+      <div className="relative h-48 w-full bg-muted pl-1.5">
         <img
           src={prop.photoUrl || `https://img.usecurling.com/p/400/300?q=house&seed=${demand.id}`}
           alt="Imóvel"
           className="w-full h-full object-cover"
         />
         <div className="absolute top-2 right-2">
-          <Badge variant="outline" className={cn('font-medium shadow-sm', st.color)}>
+          <Badge variant="outline" className={cn('font-medium shadow-sm bg-white/90', st.color)}>
             {st.label}
           </Badge>
         </div>
-        <div className="absolute bottom-2 left-2">
+        <div className="absolute bottom-2 left-3.5">
           <Badge
             variant="secondary"
             className="bg-black/70 text-white border-none hover:bg-black/80 shadow-sm"
@@ -54,7 +74,7 @@ export function CapturedPropertyCard({
           </Badge>
         </div>
       </div>
-      <CardContent className="p-4 flex-grow flex flex-col gap-2">
+      <CardContent className="p-4 pl-5 flex-grow flex flex-col gap-2">
         <div className="flex justify-between items-start gap-2">
           <h4 className="font-semibold text-lg line-clamp-1 flex-1" title={prop.neighborhood}>
             {prop.neighborhood}
@@ -74,9 +94,24 @@ export function CapturedPropertyCard({
           <MapPin className="w-3.5 h-3.5 shrink-0" />{' '}
           <span className="truncate">{demand.location}</span>
         </p>
-        <p className="text-xs text-muted-foreground">
-          Captado em: {new Date(demand.createdAt).toLocaleDateString('pt-BR')}
-        </p>
+
+        <div className="mt-2 p-2.5 rounded-md bg-muted/30 border border-muted/50 flex flex-col gap-0.5">
+          <span className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
+            ⏰ Criado em {createdDate.toLocaleDateString('pt-BR')}
+          </span>
+          <span
+            className={cn(
+              'flex items-center gap-1.5 text-sm font-bold',
+              urgencyLevel === 'green' && 'text-emerald-600',
+              urgencyLevel === 'yellow' && 'text-yellow-600',
+              urgencyLevel === 'orange' && 'text-orange-600',
+              urgencyLevel === 'red' && 'text-red-600',
+            )}
+          >
+            {text}
+            {urgencyLevel === 'red' && <span title="Atenção Crítica">⚠️</span>}
+          </span>
+        </div>
 
         {demand.status === 'Visita' && prop.visitaDate && (
           <div className="mt-2 bg-orange-50 p-2.5 rounded-md border border-orange-100 text-xs text-orange-800 space-y-1">
@@ -106,7 +141,7 @@ export function CapturedPropertyCard({
           </div>
         )}
       </CardContent>
-      <div className="p-4 pt-0 mt-auto flex flex-col gap-2">
+      <div className="p-4 pl-5 pt-0 mt-auto flex flex-col gap-2">
         <Button
           size="sm"
           variant={demand.status === 'Visita' ? 'secondary' : 'outline'}

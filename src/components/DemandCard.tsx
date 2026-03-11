@@ -12,7 +12,7 @@ import {
   ArrowUpCircle,
   RefreshCw,
 } from 'lucide-react'
-import { Card, CardContent, CardFooter } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -25,6 +25,7 @@ import {
 import { Demand, DemandStatus } from '@/types'
 import { cn } from '@/lib/utils'
 import useAppStore from '@/stores/useAppStore'
+import { useTimeElapsed } from '@/hooks/useTimeElapsed'
 
 export function DemandCard({
   demand,
@@ -41,6 +42,7 @@ export function DemandCard({
   const isHighPriority = totalInterested >= 5
 
   const [showSimilar, setShowSimilar] = useState(false)
+  const { text, hoursElapsed, urgencyLevel, createdDate } = useTimeElapsed(demand.createdAt)
 
   const statusColors: Record<DemandStatus, string> = {
     Pendente: 'bg-orange-100 text-orange-700 border-orange-200',
@@ -63,48 +65,44 @@ export function DemandCard({
     'Até 90 dias ou +': 'text-blue-700 bg-blue-100 border-blue-200 ring-blue-500/20',
   }
 
-  const hoursElapsed = (Date.now() - new Date(demand.createdAt).getTime()) / 3600000
   const isAwaiting = demand.status === 'Pendente'
   const isLate = isAwaiting && hoursElapsed > 24
-  const isUrgente = demand.timeframe === 'Urgente' || demand.timeframe === 'Até 15 dias'
 
   return (
     <>
       <Card
         className={cn(
-          'w-full transition-all hover:shadow-md border-border/50 flex flex-col h-full relative overflow-hidden',
-          isAwaiting && 'border-orange-200 shadow-sm shadow-orange-100/50',
-          isLate && 'border-red-300 shadow-red-100',
-          isHighPriority && 'border-purple-300 shadow-purple-100',
+          'w-full transition-all hover:shadow-md flex flex-col h-full relative overflow-hidden border-2',
+          urgencyLevel === 'green' && 'border-emerald-200 shadow-sm shadow-emerald-100/50',
+          urgencyLevel === 'yellow' && 'border-yellow-300 shadow-sm shadow-yellow-100/50',
+          urgencyLevel === 'orange' && 'border-orange-300 shadow-sm shadow-orange-100/50',
+          urgencyLevel === 'red' && 'border-red-400 shadow-sm shadow-red-200/50',
+          isHighPriority && 'ring-2 ring-purple-300 ring-offset-1',
           demand.isRepescagem && 'border-amber-400 shadow-amber-200 ring-1 ring-amber-400/50',
         )}
       >
-        {(isAwaiting || isHighPriority || demand.isRepescagem || isUrgente) && (
-          <div
-            className={cn(
-              'absolute top-0 left-0 w-1 h-full',
-              demand.isRepescagem
-                ? 'bg-amber-500 animate-pulse'
-                : isLate
-                  ? 'bg-red-500 animate-pulse'
-                  : demand.timeframe === 'Urgente'
-                    ? 'bg-red-500'
-                    : demand.timeframe === 'Até 15 dias'
-                      ? 'bg-orange-500'
-                      : isHighPriority
-                        ? 'bg-purple-500'
-                        : 'bg-orange-400',
-            )}
-          />
-        )}
-        <CardContent className="p-4 flex flex-col gap-3 flex-grow">
+        <div
+          className={cn(
+            'absolute top-0 left-0 w-1.5 h-full',
+            demand.isRepescagem
+              ? 'bg-amber-500 animate-pulse'
+              : urgencyLevel === 'green'
+                ? 'bg-emerald-500'
+                : urgencyLevel === 'yellow'
+                  ? 'bg-yellow-400'
+                  : urgencyLevel === 'orange'
+                    ? 'bg-orange-500'
+                    : 'bg-red-500',
+          )}
+        />
+        <CardContent className="p-4 flex flex-col gap-3 flex-grow pl-5">
           <div className="flex justify-between items-start gap-2">
             <div className="flex-1 min-w-0">
               <h3 className="font-semibold text-lg truncate flex items-center gap-2">
                 {demand.clientName}
                 {isLate && !demand.isRepescagem && (
                   <span
-                    title="Mais de 24h sem resposta"
+                    title="Atrasado (>24h)"
                     className="flex items-center text-red-500 animate-pulse"
                   >
                     <Clock className="w-4 h-4" />
@@ -191,44 +189,52 @@ export function DemandCard({
             )}
           </div>
         </CardContent>
-        {showActions && demand.status === 'Pendente' && (
-          <CardFooter className="p-4 pt-0 flex gap-2 mt-auto">
-            <Button
-              size="sm"
-              className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
-              onClick={() => onAction?.(demand.id, 'encontrei')}
-            >
-              <CheckCircle2 className="w-4 h-4 mr-1.5" />{' '}
-              {demand.isRepescagem ? 'Assumir & Registar' : 'Encontrei'}
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="flex-1 text-destructive hover:bg-destructive/10 hover:text-destructive"
-              onClick={() => onAction?.(demand.id, 'nao_encontrei')}
-            >
-              <XCircle className="w-4 h-4 mr-1.5" /> Não Encontrei
-            </Button>
-          </CardFooter>
-        )}
-        {(!showActions || demand.status !== 'Pendente') && (
-          <CardFooter className="p-4 pt-0 text-xs text-muted-foreground flex justify-between mt-auto">
-            <span className="flex items-center gap-1">
-              <Clock className="w-3 h-3" /> Criado em{' '}
-              {new Date(demand.createdAt).toLocaleDateString('pt-BR')}
-            </span>
-            {hoursElapsed > 0 && demand.status === 'Pendente' && (
+
+        <div className="mt-auto pt-2 flex flex-col">
+          <div className="px-4 py-3 border-t bg-muted/10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pl-5">
+            <div className="flex flex-col gap-0.5">
+              <span className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
+                ⏰ Criado em {createdDate.toLocaleDateString('pt-BR')}
+              </span>
               <span
                 className={cn(
-                  'font-medium',
-                  hoursElapsed > 48 ? 'text-red-600' : 'text-orange-500',
+                  'flex items-center gap-1.5 text-sm font-bold',
+                  urgencyLevel === 'green' && 'text-emerald-600',
+                  urgencyLevel === 'yellow' && 'text-yellow-600',
+                  urgencyLevel === 'orange' && 'text-orange-600',
+                  urgencyLevel === 'red' && 'text-red-600',
                 )}
               >
-                {Math.floor(hoursElapsed)}h decorridas
+                {text}
+                {urgencyLevel === 'red' && (
+                  <span title="Atenção Crítica" className="text-base leading-none">
+                    ⚠️
+                  </span>
+                )}
               </span>
-            )}
-          </CardFooter>
-        )}
+            </div>
+          </div>
+          {showActions && demand.status === 'Pendente' && (
+            <div className="px-4 pb-4 pt-2 flex gap-2 pl-5">
+              <Button
+                size="sm"
+                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
+                onClick={() => onAction?.(demand.id, 'encontrei')}
+              >
+                <CheckCircle2 className="w-4 h-4 mr-1.5" />{' '}
+                {demand.isRepescagem ? 'Assumir & Registar' : 'Encontrei'}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="flex-1 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                onClick={() => onAction?.(demand.id, 'nao_encontrei')}
+              >
+                <XCircle className="w-4 h-4 mr-1.5" /> Não Encontrei
+              </Button>
+            </div>
+          )}
+        </div>
       </Card>
 
       <Dialog open={showSimilar} onOpenChange={setShowSimilar}>
