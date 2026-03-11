@@ -169,7 +169,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         const bc = new BroadcastChannel('etic-ws-sync')
         bc.postMessage(payload)
         bc.close()
-      } catch (e) {}
+      } catch (e) {
+        // ignore
+      }
     },
     [],
   )
@@ -218,7 +220,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           ])
         }
       }
-    } catch (e) {}
+    } catch (e) {
+      // ignore
+    }
   }, [])
 
   useEffect(() => {
@@ -231,7 +235,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     try {
       bc = new BroadcastChannel('etic-ws-sync')
       bc.onmessage = (e) => handleSync(JSON.stringify(e.data))
-    } catch (e) {}
+    } catch (e) {
+      // ignore
+    }
 
     const interval = setInterval(() => {
       const raw = localStorage.getItem('etic_state_sync')
