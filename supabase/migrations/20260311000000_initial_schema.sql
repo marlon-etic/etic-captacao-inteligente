@@ -232,8 +232,11 @@ CREATE POLICY "Gestores and Admins can view audit logs" ON auth_audit_logs FOR S
 );
 
 -- Policies: Demandas Locação
-CREATE POLICY "View demandas locacao" ON demandas_locacao FOR SELECT USING (
-    EXISTS (SELECT 1 FROM captadores WHERE id = auth.uid() AND role IN ('sdr', 'gestor', 'admin')) OR
+CREATE POLICY "Gestores and Admins full read demandas locacao" ON demandas_locacao FOR SELECT USING (
+    EXISTS (SELECT 1 FROM captadores WHERE id = auth.uid() AND role IN ('gestor', 'admin'))
+);
+CREATE POLICY "SDR and Owners read demandas locacao" ON demandas_locacao FOR SELECT USING (
+    EXISTS (SELECT 1 FROM captadores WHERE id = auth.uid() AND role = 'sdr') OR
     captador_id = auth.uid()
 );
 CREATE POLICY "Captadores can insert demandas locacao" ON demandas_locacao FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
@@ -243,8 +246,11 @@ CREATE POLICY "Captadores can update assigned demandas locacao" ON demandas_loca
 );
 
 -- Policies: Demandas Vendas
-CREATE POLICY "View demandas vendas" ON demandas_vendas FOR SELECT USING (
-    EXISTS (SELECT 1 FROM captadores WHERE id = auth.uid() AND role IN ('corretor', 'gestor', 'admin')) OR
+CREATE POLICY "Gestores and Admins full read demandas vendas" ON demandas_vendas FOR SELECT USING (
+    EXISTS (SELECT 1 FROM captadores WHERE id = auth.uid() AND role IN ('gestor', 'admin'))
+);
+CREATE POLICY "Corretores and Owners read demandas vendas" ON demandas_vendas FOR SELECT USING (
+    EXISTS (SELECT 1 FROM captadores WHERE id = auth.uid() AND role = 'corretor') OR
     captador_id = auth.uid()
 );
 CREATE POLICY "Captadores can insert demandas vendas" ON demandas_vendas FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Download, FileText, Loader2, AlertCircle } from 'lucide-react'
+import { Download, FileText, Loader2, AlertCircle, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -26,91 +26,98 @@ export function GestorDashboard() {
   const [status, setStatus] = useState('all')
 
   const enhancedDemands = useMemo(() => {
-    const list = [...demands]
-    const hasLost = list.some((d) => d.status === 'Perdida')
+    if (demands.some((d) => d.status === 'Perdida') || demands.length === 0) return demands
     const now = new Date().toISOString()
-
-    if (!hasLost && list.length > 0) {
-      list.push(
-        {
-          ...list[0],
-          id: 'mock1',
-          status: 'Perdida',
-          lostReason: 'Cliente desistiu',
-          createdAt: now,
-          assignedTo: '1',
-        },
-        {
-          ...list[0],
-          id: 'mock2',
-          status: 'Perdida',
-          lostReason: 'Já comprou',
-          createdAt: now,
-          assignedTo: '2',
-        },
-        {
-          ...list[0],
-          id: 'mock3',
-          status: 'Perdida',
-          lostReason: 'Achou caro',
-          createdAt: now,
-          assignedTo: '1',
-        },
-        { ...list[0], id: 'mock4', status: 'Negócio', createdAt: now, assignedTo: '2' },
-        { ...list[0], id: 'mock5', status: 'Captado sob demanda', createdAt: now, assignedTo: '1' },
-      )
-    }
-    return list
+    const past = new Date(Date.now() - 72 * 3600000).toISOString()
+    const base = demands[0]
+    return [
+      ...demands,
+      {
+        ...base,
+        id: 'm1',
+        status: 'Perdida',
+        lostReason: 'Cliente desistiu',
+        createdAt: now,
+        assignedTo: '1',
+      },
+      {
+        ...base,
+        id: 'm2',
+        status: 'Perdida',
+        lostReason: 'Já comprou',
+        createdAt: now,
+        assignedTo: '2',
+      },
+      {
+        ...base,
+        id: 'm3',
+        status: 'Perdida',
+        lostReason: 'Achou caro',
+        createdAt: now,
+        assignedTo: '1',
+      },
+      { ...base, id: 'm4', status: 'Negócio', createdAt: now, assignedTo: '2' },
+      { ...base, id: 'm5', status: 'Captado sob demanda', createdAt: now, assignedTo: '1' },
+      { ...base, id: 'm6', status: 'Pendente', createdAt: past, assignedTo: '1' },
+    ]
   }, [demands])
 
   const { filteredDemands, prevDemands } = useMemo(() => {
-    let current = enhancedDemands
-    let prev = enhancedDemands
     const now = new Date()
+    let curr: Date[] = [new Date(0), new Date(8640000000000000)]
+    let prev: Date[] = [new Date(0), new Date(0)]
 
     if (period === 'week') {
-      const start = new Date(now)
-      start.setDate(now.getDate() - now.getDay())
-      current = current.filter((d) => new Date(d.createdAt) >= start)
-      const prevStart = new Date(start)
-      prevStart.setDate(start.getDate() - 7)
-      prev = prev.filter((d) => new Date(d.createdAt) >= prevStart && new Date(d.createdAt) < start)
+      const s = new Date(now)
+      s.setDate(now.getDate() - now.getDay())
+      const p = new Date(s)
+      p.setDate(s.getDate() - 7)
+      curr = [s, now]
+      prev = [p, s]
     } else if (period === 'month') {
-      current = current.filter(
-        (d) =>
-          new Date(d.createdAt).getMonth() === now.getMonth() &&
-          new Date(d.createdAt).getFullYear() === now.getFullYear(),
-      )
-      const prevM = now.getMonth() === 0 ? 11 : now.getMonth() - 1
-      const prevY = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear()
-      prev = prev.filter(
-        (d) =>
-          new Date(d.createdAt).getMonth() === prevM &&
-          new Date(d.createdAt).getFullYear() === prevY,
-      )
+      const s = new Date(now.getFullYear(), now.getMonth(), 1)
+      const p = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+      curr = [s, now]
+      prev = [p, s]
     } else if (period === 'year') {
-      current = current.filter((d) => new Date(d.createdAt).getFullYear() === now.getFullYear())
-      prev = prev.filter((d) => new Date(d.createdAt).getFullYear() === now.getFullYear() - 1)
+      const s = new Date(now.getFullYear(), 0, 1)
+      const p = new Date(now.getFullYear() - 1, 0, 1)
+      curr = [s, now]
+      prev = [p, s]
     }
 
-    const applyFilters = (list: Demand[]) =>
-      list.filter((d) => {
-        const userMatch =
-          selectedUser === 'all' || d.assignedTo === selectedUser || d.createdBy === selectedUser
-        let statusMatch = true
-        if (status !== 'all') {
-          if (status === 'em_andamento')
-            statusMatch = ['Pendente', 'Em Captação', 'Aguardando'].includes(d.status)
-          else if (status === 'captado')
-            statusMatch = ['Captado sob demanda', 'Captado independente'].includes(d.status)
-          else if (status === 'perdido') statusMatch = ['Perdida', 'Impossível'].includes(d.status)
-          else statusMatch = d.status === status
+    const filterFn = (d: Demand, r: Date[]) => {
+      const dt = new Date(d.createdAt)
+      if (dt < r[0] || dt >= r[1]) return false
+      if (selectedUser !== 'all' && d.assignedTo !== selectedUser && d.createdBy !== selectedUser)
+        return false
+      if (status !== 'all') {
+        const sm: Record<string, string[]> = {
+          em_andamento: ['Pendente', 'Em Captação', 'Aguardando'],
+          captado: ['Captado sob demanda', 'Captado independente'],
+          perdido: ['Perdida', 'Impossível'],
         }
-        return userMatch && statusMatch
-      })
+        if (sm[status] ? !sm[status].includes(d.status) : d.status !== status) return false
+      }
+      return true
+    }
 
-    return { filteredDemands: applyFilters(current), prevDemands: applyFilters(prev) }
+    return {
+      filteredDemands: enhancedDemands.filter((d) => filterFn(d, curr)),
+      prevDemands: enhancedDemands.filter((d) => filterFn(d, prev)),
+    }
   }, [enhancedDemands, period, selectedUser, status])
+
+  const bottlenecks = useMemo(
+    () =>
+      filteredDemands.filter(
+        (d) =>
+          ['Pendente', 'Aguardando'].includes(d.status) ||
+          (d.status === 'Em Captação' &&
+            new Date(d.createdAt) < new Date(Date.now() - 48 * 3600000)),
+      ).length,
+    [filteredDemands],
+  )
 
   useEffect(() => {
     setIsLoading(true)
@@ -119,20 +126,14 @@ export function GestorDashboard() {
     return () => clearTimeout(timer)
   }, [period, selectedUser, status])
 
-  const handleExport = (format: string) => {
-    toast({
-      title: 'Exportação Iniciada',
-      description: `Gerando relatório de performance em ${format}...`,
-    })
-  }
-
   if (currentUser?.role !== 'gestor' && currentUser?.role !== 'admin') {
     return (
       <div className="flex h-full items-center justify-center p-6">
         <Alert variant="destructive" className="max-w-md">
-          <AlertTitle>Acesso Negado</AlertTitle>
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Você não tem permissão</AlertTitle>
           <AlertDescription>
-            Você não tem permissão para visualizar o dashboard gerencial.
+            Este painel é restrito para Gestores e Administradores.
           </AlertDescription>
         </Alert>
       </div>
@@ -141,7 +142,7 @@ export function GestorDashboard() {
 
   return (
     <div className="space-y-6 animate-fade-in pb-8">
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-4">
+      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-end gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight mb-2">Visão Gerencial</h1>
           <p className="text-muted-foreground text-sm max-w-xl">
@@ -149,7 +150,7 @@ export function GestorDashboard() {
             real.
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+        <div className="flex flex-wrap items-center gap-3 w-full xl:w-auto">
           <Select value={period} onValueChange={setPeriod}>
             <SelectTrigger className="w-[130px] bg-background">
               <SelectValue placeholder="Período" />
@@ -159,10 +160,8 @@ export function GestorDashboard() {
               <SelectItem value="month">Este Mês</SelectItem>
               <SelectItem value="year">Este Ano</SelectItem>
               <SelectItem value="all">Todo Período</SelectItem>
-              <SelectItem value="custom">Personalizado</SelectItem>
             </SelectContent>
           </Select>
-
           <Select value={selectedUser} onValueChange={setSelectedUser}>
             <SelectTrigger className="w-[140px] bg-background">
               <SelectValue placeholder="Membro" />
@@ -176,7 +175,6 @@ export function GestorDashboard() {
               ))}
             </SelectContent>
           </Select>
-
           <Select value={status} onValueChange={setStatus}>
             <SelectTrigger className="w-[140px] bg-background">
               <SelectValue placeholder="Status" />
@@ -190,12 +188,16 @@ export function GestorDashboard() {
               <SelectItem value="perdido">Perdidos</SelectItem>
             </SelectContent>
           </Select>
-
-          <div className="flex gap-2 ml-auto lg:ml-0">
+          <div className="flex gap-2 ml-auto xl:ml-0">
             <Button
               variant="outline"
               size="sm"
-              onClick={() => handleExport('PDF')}
+              onClick={() =>
+                toast({
+                  title: 'Exportação',
+                  description: `Gerando PDF com ${filteredDemands.length} registros...`,
+                })
+              }
               className="gap-2"
             >
               <FileText className="h-4 w-4" /> <span className="hidden sm:inline">PDF</span>
@@ -203,7 +205,12 @@ export function GestorDashboard() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => handleExport('Excel')}
+              onClick={() =>
+                toast({
+                  title: 'Exportação',
+                  description: `Gerando Excel com ${filteredDemands.length} registros...`,
+                })
+              }
               className="gap-2"
             >
               <Download className="h-4 w-4" /> <span className="hidden sm:inline">Excel</span>
@@ -215,8 +222,8 @@ export function GestorDashboard() {
       {error ? (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Erro</AlertTitle>
-          <AlertDescription>Erro ao carregar dashboard. Tente novamente.</AlertDescription>
+          <AlertTitle>Erro ao carregar dashboard</AlertTitle>
+          <AlertDescription>Ocorreu um erro ao buscar os dados. Tente novamente.</AlertDescription>
         </Alert>
       ) : isLoading ? (
         <div className="min-h-[500px] flex flex-col items-center justify-center space-y-4 text-muted-foreground">
@@ -225,10 +232,20 @@ export function GestorDashboard() {
         </div>
       ) : filteredDemands.length === 0 ? (
         <div className="min-h-[400px] flex flex-col items-center justify-center border border-dashed rounded-lg bg-muted/10">
-          <p className="text-muted-foreground text-lg">Nenhum dado disponível para este período</p>
+          <p className="text-muted-foreground text-lg">Nenhum dado disponível</p>
         </div>
       ) : (
-        <div className="animate-fade-in-up">
+        <div className="animate-fade-in-up space-y-6">
+          {bottlenecks > 0 && (
+            <Alert className="bg-amber-500/15 text-amber-600 dark:text-amber-500 border-amber-500/30">
+              <AlertTriangle className="h-4 w-4 !text-amber-600 dark:!text-amber-500" />
+              <AlertTitle className="font-semibold">Atenção a Gargalos Operacionais</AlertTitle>
+              <AlertDescription>
+                Existem <strong>{bottlenecks}</strong> demandas pendentes, aguardando ou em captação
+                há mais de 48h. Verifique a equipe.
+              </AlertDescription>
+            </Alert>
+          )}
           <MetricsGrid current={filteredDemands} previous={prevDemands} period={period} />
           <GestorCharts demands={filteredDemands} />
           <RankingTable users={users} demands={filteredDemands} />

@@ -11,6 +11,7 @@ import NovaDemanda from '@/pages/NovaDemanda'
 import Ranking from '@/pages/Ranking'
 import Perfil from '@/pages/Perfil'
 import NotFound from '@/pages/NotFound'
+import { GestorDashboard } from '@/pages/dashboard/GestorDashboard'
 
 const App = () => (
   <AppStoreProvider>
@@ -26,6 +27,7 @@ const App = () => (
             <Route path="nova-demanda" element={<NovaDemanda />} />
             <Route path="ranking" element={<Ranking />} />
             <Route path="perfil" element={<Perfil />} />
+            <Route path="gestor-dashboard" element={<GestorDashboard />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>
