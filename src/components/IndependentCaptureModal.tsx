@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
@@ -22,21 +21,37 @@ import { Button } from '@/components/ui/button'
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import useAppStore from '@/stores/useAppStore'
+import { BAIRROS_ETIC } from '@/lib/bairros'
 
-const indepSchema = z.object({
-  neighborhood: z.string().min(1, 'Selecione um bairro'),
-  code: z.string().min(1, 'Obrigatório').max(20, 'Máximo 20 caracteres'),
-  value: z.coerce.number().positive('O valor deve ser positivo'),
-  docCompleta: z.boolean().default(false),
-})
-
-const NEIGHBORHOODS = ['Jardins', 'Pinheiros', 'Moema', 'Vila Olímpia', 'Itaim Bibi', 'Centro']
+const indepSchema = z
+  .object({
+    neighborhood: z.string().min(1, 'Selecione um bairro'),
+    neighborhoodOther: z.string().max(50, 'Máximo 50 caracteres').optional(),
+    code: z.string().min(1, 'Obrigatório').max(20, 'Máximo 20 caracteres'),
+    value: z.coerce.number().positive('O valor deve ser positivo'),
+    docCompleta: z.boolean().default(false),
+  })
+  .refine(
+    (data) => {
+      if (data.neighborhood === 'OUTROS') {
+        return data.neighborhoodOther && data.neighborhoodOther.trim().length > 0
+      }
+      return true
+    },
+    {
+      message: 'Digite o bairro',
+      path: ['neighborhoodOther'],
+    },
+  )
 
 export function IndependentCaptureModal({
   isOpen,
@@ -49,18 +64,35 @@ export function IndependentCaptureModal({
 
   const form = useForm({
     resolver: zodResolver(indepSchema),
-    defaultValues: { neighborhood: '', code: '', value: 0, docCompleta: false },
+    mode: 'onChange',
+    defaultValues: {
+      neighborhood: '',
+      neighborhoodOther: '',
+      code: '',
+      value: 0,
+      docCompleta: false,
+    },
   })
 
+  const selectedNeighborhood = form.watch('neighborhood')
+
   const onSubmit = (data: any) => {
-    submitIndependentCapture(data)
+    const finalNeighborhood =
+      data.neighborhood === 'OUTROS' ? data.neighborhoodOther.trim() : data.neighborhood
+    const bairro_tipo = data.neighborhood === 'OUTROS' ? 'outro' : 'listado'
+
+    submitIndependentCapture({
+      ...data,
+      neighborhood: finalNeighborhood,
+      bairro_tipo,
+    })
     form.reset()
     onClose()
   }
 
   return (
     <Dialog open={isOpen} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[450px]">
         <DialogHeader>
           <DialogTitle>Captação Independente</DialogTitle>
           <DialogDescription>
@@ -69,7 +101,7 @@ export function IndependentCaptureModal({
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 mt-2">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="neighborhood"
@@ -79,15 +111,22 @@ export function IndependentCaptureModal({
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Selecione" />
+                          <SelectValue placeholder="Selecione o bairro" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {NEIGHBORHOODS.map((n) => (
-                          <SelectItem key={n} value={n}>
-                            {n}
-                          </SelectItem>
-                        ))}
+                        <SelectGroup>
+                          <SelectLabel>Bairros da Étic</SelectLabel>
+                          {BAIRROS_ETIC.map((n) => (
+                            <SelectItem key={n} value={n}>
+                              {n}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                        <SelectSeparator />
+                        <SelectItem value="OUTROS" className="font-medium text-primary">
+                          🔹 OUTROS (especifique abaixo)
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -107,6 +146,24 @@ export function IndependentCaptureModal({
                   </FormItem>
                 )}
               />
+              {selectedNeighborhood === 'OUTROS' && (
+                <FormField
+                  control={form.control}
+                  name="neighborhoodOther"
+                  render={({ field }) => (
+                    <FormItem className="sm:col-span-2">
+                      <FormControl>
+                        <Input
+                          placeholder="Digite o bairro onde o imóvel foi localizado"
+                          {...field}
+                          value={field.value || ''}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
             </div>
             <FormField
               control={form.control}

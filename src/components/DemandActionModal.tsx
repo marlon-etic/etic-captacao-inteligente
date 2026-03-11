@@ -21,32 +21,49 @@ import { Button } from '@/components/ui/button'
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { Demand } from '@/types'
+import { BAIRROS_ETIC } from '@/lib/bairros'
 
-const encontreiSchema = z.object({
-  value: z.coerce.number().positive('O valor deve ser um número positivo'),
-  neighborhood: z.string().min(1, 'Selecione um bairro'),
-  code: z
-    .string()
-    .min(1, 'Obrigatório')
-    .max(20, 'Máximo 20 caracteres')
-    .regex(/^[a-zA-Z0-9]+$/, 'Apenas letras e números'),
-  docCompleta: z.boolean().default(false),
-  obs: z.string().optional(),
-})
+const encontreiSchema = z
+  .object({
+    value: z.coerce.number().positive('O valor deve ser um número positivo'),
+    neighborhood: z.string().min(1, 'Selecione um bairro'),
+    neighborhoodOther: z.string().max(50, 'Máximo 50 caracteres').optional(),
+    code: z
+      .string()
+      .min(1, 'Obrigatório')
+      .max(20, 'Máximo 20 caracteres')
+      .regex(/^[a-zA-Z0-9]+$/, 'Apenas letras e números'),
+    docCompleta: z.boolean().default(false),
+    obs: z.string().optional(),
+  })
+  .refine(
+    (data) => {
+      if (data.neighborhood === 'OUTROS') {
+        return data.neighborhoodOther && data.neighborhoodOther.trim().length > 0
+      }
+      return true
+    },
+    {
+      message: 'Digite o bairro',
+      path: ['neighborhoodOther'],
+    },
+  )
 
 const naoEncontreiSchema = z.object({
   reason: z.string().min(1, 'Selecione um motivo'),
   continueSearch: z.boolean().default(true),
 })
 
-const NEIGHBORHOODS = ['Jardins', 'Pinheiros', 'Moema', 'Vila Olímpia', 'Itaim Bibi', 'Centro']
 const REASONS = [
   'Valor incompatível',
   'Não há imóveis no perfil',
@@ -63,12 +80,34 @@ function EncontreiForm({
 }) {
   const form = useForm({
     resolver: zodResolver(encontreiSchema),
-    defaultValues: { value: 0, neighborhood: '', code: '', docCompleta: false, obs: '' },
+    mode: 'onChange',
+    defaultValues: {
+      value: 0,
+      neighborhood: '',
+      neighborhoodOther: '',
+      code: '',
+      docCompleta: false,
+      obs: '',
+    },
   })
+
+  const selectedNeighborhood = form.watch('neighborhood')
+
+  const handleFormSubmit = (data: any) => {
+    const finalNeighborhood =
+      data.neighborhood === 'OUTROS' ? data.neighborhoodOther.trim() : data.neighborhood
+    const bairro_tipo = data.neighborhood === 'OUTROS' ? 'outro' : 'listado'
+
+    onSubmit({
+      ...data,
+      neighborhood: finalNeighborhood,
+      bairro_tipo,
+    })
+  }
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4">
         <FormField
           control={form.control}
           name="value"
@@ -82,7 +121,7 @@ function EncontreiForm({
             </FormItem>
           )}
         />
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <FormField
             control={form.control}
             name="neighborhood"
@@ -92,15 +131,22 @@ function EncontreiForm({
                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder="Selecione" />
+                      <SelectValue placeholder="Selecione o bairro" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {NEIGHBORHOODS.map((n) => (
-                      <SelectItem key={n} value={n}>
-                        {n}
-                      </SelectItem>
-                    ))}
+                    <SelectGroup>
+                      <SelectLabel>Bairros da Étic</SelectLabel>
+                      {BAIRROS_ETIC.map((n) => (
+                        <SelectItem key={n} value={n}>
+                          {n}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                    <SelectSeparator />
+                    <SelectItem value="OUTROS" className="font-medium text-primary">
+                      🔹 OUTROS (especifique abaixo)
+                    </SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />
@@ -120,6 +166,24 @@ function EncontreiForm({
               </FormItem>
             )}
           />
+          {selectedNeighborhood === 'OUTROS' && (
+            <FormField
+              control={form.control}
+              name="neighborhoodOther"
+              render={({ field }) => (
+                <FormItem className="sm:col-span-2">
+                  <FormControl>
+                    <Input
+                      placeholder="Digite o bairro onde o imóvel foi localizado"
+                      {...field}
+                      value={field.value || ''}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
         </div>
         <FormField
           control={form.control}
@@ -250,7 +314,7 @@ export function DemandActionModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[450px]">
         <DialogHeader>
           <DialogTitle>
             {actionType === 'encontrei' ? 'Registrar Captação' : 'Não Encontrei Imóvel'}

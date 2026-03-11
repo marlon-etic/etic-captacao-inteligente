@@ -173,6 +173,7 @@ const initialDemands: Demand[] = [
         code: 'AP-452',
         value: 950000,
         neighborhood: 'Moema',
+        bairro_tipo: 'listado',
         docCompleta: true,
         obs: 'Apartamento recém reformado',
         photoUrl: 'https://img.usecurling.com/p/400/300?q=apartment&seed=d2_1',
@@ -194,6 +195,7 @@ const initialDemands: Demand[] = [
         code: 'CS-881',
         value: 1150000,
         neighborhood: 'Pinheiros',
+        bairro_tipo: 'listado',
         docCompleta: false,
         visitaDate: new Date().toISOString().split('T')[0],
         visitaTime: '14:30',
@@ -213,7 +215,8 @@ const initialDemands: Demand[] = [
       {
         code: 'CS-882',
         value: 1200000,
-        neighborhood: 'Pinheiros',
+        neighborhood: 'Vila Madalena',
+        bairro_tipo: 'outro',
         docCompleta: true,
         photoUrl: 'https://img.usecurling.com/p/400/300?q=house&seed=d3_2',
         capturedAt: new Date(Date.now() - 24 * 3600000).toISOString(),
@@ -236,6 +239,7 @@ const initialDemands: Demand[] = [
         code: 'VD-101',
         value: 1500000,
         neighborhood: 'Vila Olímpia',
+        bairro_tipo: 'listado',
         docCompleta: true,
         visitaDate: new Date().toISOString().split('T')[0],
         visitaTime: '10:00',
@@ -1101,6 +1105,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
               value: payload?.value || demand.budget || demand.maxBudget,
               neighborhood:
                 payload?.neighborhood || demand.location.split(',')[0] || 'Desconhecido',
+              bairro_tipo: payload?.bairro_tipo || 'listado',
               docCompleta: payload?.docCompleta || false,
               obs: payload?.obs,
               photoUrl: `https://img.usecurling.com/p/400/300?q=house&seed=${demand.id}_${seq}`,
@@ -1168,7 +1173,11 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
             enqueueWebhook('imovel_captado', demand.id, {
               mensagem: msg,
-              imovel: newProp,
+              imovel: {
+                ...newProp,
+                bairro_imovel: newProp.neighborhood,
+                bairro_tipo: newProp.bairro_tipo,
+              },
               cliente: demand.clientName,
             })
           }
@@ -1177,6 +1186,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         submitIndependentCapture: (payload) => {
           enqueueWebhook('imovel_captado', 'independente', {
             location: payload?.endereco || 'Desconhecida',
+            bairro_imovel: payload?.neighborhood,
+            bairro_tipo: payload?.bairro_tipo,
             clientName: 'Geral',
             id: 'independente',
           })

@@ -115,7 +115,10 @@ export function CapturedPropertyCard({
         </div>
         <p className="text-sm text-muted-foreground flex items-center gap-1">
           <MapPin className="w-3.5 h-3.5 shrink-0" />
-          <span className="truncate">{property.neighborhood}</span>
+          <span className="truncate">
+            {property.bairro_tipo === 'outro' && <span className="mr-1">🔹</span>}
+            {property.neighborhood}
+          </span>
         </p>
 
         <div className="flex items-center gap-3 text-xs font-medium text-foreground/80 mt-1">

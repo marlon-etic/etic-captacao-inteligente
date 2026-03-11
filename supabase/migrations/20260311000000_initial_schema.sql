@@ -84,6 +84,8 @@ CREATE TABLE imoveis_captados (
     demanda_locacao_id UUID REFERENCES demandas_locacao(id) ON DELETE SET NULL,
     demanda_venda_id UUID REFERENCES demandas_vendas(id) ON DELETE SET NULL,
     endereco TEXT NOT NULL,
+    bairro_imovel TEXT,
+    bairro_tipo TEXT CHECK (bairro_tipo IN ('listado', 'outro')),
     valor DECIMAL(12,2) NOT NULL,
     link_anuncio TEXT,
     observacoes TEXT,

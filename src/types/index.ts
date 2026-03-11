@@ -71,6 +71,7 @@ export interface CapturedProperty {
   code: string
   value: number
   neighborhood: string
+  bairro_tipo?: 'listado' | 'outro'
   docCompleta: boolean
   obs?: string
   photoUrl?: string
