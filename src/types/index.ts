@@ -23,6 +23,7 @@ export interface User {
   name: string
   email: string
   role: Role
+  tipo_demanda?: 'locacao' | 'vendas'
   points: number
   dailyPoints: number
   weeklyPoints: number

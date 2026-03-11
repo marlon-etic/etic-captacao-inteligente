@@ -11,13 +11,20 @@ import {
 import { ArrowUpDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { User, Demand } from '@/types'
+import useAppStore from '@/stores/useAppStore'
 
 export function RankingTable({ users, demands }: { users: User[]; demands: Demand[] }) {
+  const { currentUser } = useAppStore()
   const [sortCol, setSortCol] = useState<'name' | 'total'>('total')
   const [sortDesc, setSortDesc] = useState(true)
 
   const tableData = useMemo(() => {
-    const data = users.map((user) => {
+    let filteredUsers = users
+    if (currentUser?.role === 'corretor') {
+      filteredUsers = users.filter((u) => u.id === currentUser.id)
+    }
+
+    const data = filteredUsers.map((user) => {
       const userDemands = demands.filter((d) => d.assignedTo === user.id || d.createdBy === user.id)
       const total = userDemands.length
       const captados = userDemands.filter((d) =>
@@ -45,7 +52,7 @@ export function RankingTable({ users, demands }: { users: User[]; demands: Deman
       else if (sortCol === 'name') diff = a.name.localeCompare(b.name)
       return sortDesc ? -diff : diff
     })
-  }, [users, demands, sortCol, sortDesc])
+  }, [users, demands, sortCol, sortDesc, currentUser])
 
   const toggleSort = (col: 'name' | 'total') => {
     if (sortCol === col) setSortDesc(!sortDesc)

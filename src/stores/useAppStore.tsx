@@ -6,6 +6,7 @@ import React, {
   useEffect,
   useCallback,
   useRef,
+  useMemo,
 } from 'react'
 import { User, Demand, DemandStatus, BadgeType, UserStats, WebhookEvent } from '@/types'
 import { toast } from '@/hooks/use-toast'
@@ -75,6 +76,19 @@ const mockUsers: User[] = [
     badges: ['🚀 Rastreador Rápido'],
     stats: { ...defaultStats, responseCount: 10, responseTimeSum: 120 },
   },
+  {
+    id: '3',
+    name: 'Roberto Corretor',
+    email: 'corretor@etic.com',
+    role: 'corretor',
+    tipo_demanda: 'vendas',
+    points: 950,
+    dailyPoints: 50,
+    weeklyPoints: 300,
+    monthlyPoints: 950,
+    badges: ['⭐ Negociador Estrela'],
+    stats: { ...defaultStats, negociosFechados: 5 },
+  },
 ]
 
 const createDem = (
@@ -131,6 +145,21 @@ const initialDemands: Demand[] = [
     },
   },
   createDem('d4', 'Fernanda Lima', 'Centro', 73, 'Até 90 dias ou +'),
+  {
+    ...createDem('d5', 'Lucas Vendas', 'Vila Olímpia', 10, 'Até 15 dias'),
+    type: 'Venda',
+    createdBy: '3',
+    status: 'Visita',
+    capturedProperty: {
+      code: 'VD-101',
+      value: 1500000,
+      neighborhood: 'Vila Olímpia',
+      docCompleta: true,
+      visitaDate: new Date().toISOString().split('T')[0],
+      visitaTime: '10:00',
+      photoUrl: 'https://img.usecurling.com/p/400/300?q=apartment&seed=d5',
+    },
+  },
 ]
 
 const AppContext = createContext<AppState | null>(null)
@@ -419,28 +448,22 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       )
   }
 
-  const getSimilarDemands = (id: string) => {
-    const d = allDemands.find((x) => x.id === id)
-    if (!d) return []
-    const dLocs = d.location
-      .toLowerCase()
-      .split(',')
-      .map((s) => s.trim())
-    return allDemands.filter((x) => {
-      if (x.id === d.id || x.type !== d.type) return false
-      return x.location
-        .toLowerCase()
-        .split(',')
-        .map((s) => s.trim())
-        .some((l) => dLocs.includes(l))
-    })
-  }
-
   const scheduleVisitByCode = useCallback(
     (code: string, payload: any) => {
       const demand = allDemands.find((d) => d.capturedProperty?.code === code)
       if (!demand) {
         toast({ variant: 'destructive', description: 'Imóvel não encontrado' })
+        return
+      }
+      if (
+        currentUser?.role === 'corretor' &&
+        (demand.type !== 'Venda' || demand.createdBy !== currentUser.id)
+      ) {
+        toast({
+          variant: 'destructive',
+          title: 'Acesso negado',
+          description: 'Você não tem permissão para atualizar este imóvel',
+        })
         return
       }
       if (currentUser?.role === 'captador' && demand.assignedTo !== currentUser.id) {
@@ -478,6 +501,17 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       const demand = allDemands.find((d) => d.capturedProperty?.code === code)
       if (!demand) {
         toast({ variant: 'destructive', description: 'Imóvel não encontrado' })
+        return
+      }
+      if (
+        currentUser?.role === 'corretor' &&
+        (demand.type !== 'Venda' || demand.createdBy !== currentUser.id)
+      ) {
+        toast({
+          variant: 'destructive',
+          title: 'Acesso negado',
+          description: 'Você não tem permissão para atualizar este imóvel',
+        })
         return
       }
       if (currentUser?.role === 'captador' && demand.assignedTo !== currentUser.id) {
@@ -578,6 +612,19 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
   const prioritizeDemand = useCallback(
     (id: string, count: number) => {
+      const demand = allDemands.find((d) => d.id === id)
+      if (
+        currentUser?.role === 'corretor' &&
+        (demand?.type !== 'Venda' || demand?.createdBy !== currentUser.id)
+      ) {
+        toast({
+          variant: 'destructive',
+          title: 'Acesso negado',
+          description: 'Você não tem permissão para priorizar esta demanda.',
+        })
+        return
+      }
+
       setAllDemands((prev) => {
         const next = prev.map((d) =>
           d.id === id ? { ...d, isPrioritized: true, interestedClientsCount: count } : d,
@@ -593,11 +640,24 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         className: 'bg-pink-600 text-white border-pink-600',
       })
     },
-    [users, enqueueWebhook, addLog, broadcastState],
+    [allDemands, currentUser, users, enqueueWebhook, addLog, broadcastState],
   )
 
   const markDemandLost = useCallback(
     (id: string, reason: string, obs?: string) => {
+      const demand = allDemands.find((d) => d.id === id)
+      if (
+        currentUser?.role === 'corretor' &&
+        (demand?.type !== 'Venda' || demand?.createdBy !== currentUser.id)
+      ) {
+        toast({
+          variant: 'destructive',
+          title: 'Acesso negado',
+          description: 'Você não tem permissão para acessar este recurso.',
+        })
+        return
+      }
+
       setAllDemands((prev) => {
         const next = prev.map((d) =>
           d.id === id
@@ -611,21 +671,70 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       addLog(`Demanda perdida (ID: ${id}) motivo: ${reason}`)
       toast({ title: 'Demanda marcada como perdida', description: 'O status foi atualizado.' })
     },
-    [users, enqueueWebhook, addLog, broadcastState],
+    [allDemands, currentUser, users, enqueueWebhook, addLog, broadcastState],
   )
+
+  const visibleDemands = useMemo(() => {
+    if (currentUser?.role === 'corretor') {
+      return allDemands.filter((d) => d.type === 'Venda' && d.createdBy === currentUser.id)
+    }
+    return allDemands
+  }, [allDemands, currentUser])
+
+  const checkCorretorAccess = (demand: Demand | undefined) => {
+    if (currentUser?.role === 'corretor') {
+      if (!demand || demand.type !== 'Venda' || demand.createdBy !== currentUser.id) {
+        toast({
+          variant: 'destructive',
+          title: 'Acesso negado',
+          description: 'Você não tem permissão para acessar este recurso.',
+        })
+        return false
+      }
+    }
+    return true
+  }
 
   return (
     <AppContext.Provider
       value={{
         currentUser,
         users,
-        demands: allDemands,
+        demands: visibleDemands,
         webhookQueue,
         auditLogs,
         triggerCron,
-        login: (e) => setCurrentUser(users.find((u) => u.email === e) || null),
+        login: (email, password) => {
+          const user = users.find((u) => u.email === email)
+          if (!user) {
+            toast({
+              variant: 'destructive',
+              title: 'Erro de Autenticação',
+              description: 'Email não cadastrado',
+            })
+            return
+          }
+          if (password && password !== '123456') {
+            toast({
+              variant: 'destructive',
+              title: 'Erro de Autenticação',
+              description: 'Senha incorreta',
+            })
+            return
+          }
+          setCurrentUser(user)
+          toast({ title: 'Bem-vindo(a)!', description: `Sessão iniciada como ${user.name}` })
+        },
         logout: () => setCurrentUser(null),
         addDemand: (d) => {
+          if (currentUser?.role === 'corretor' && d.type !== 'Venda') {
+            toast({
+              variant: 'destructive',
+              title: 'Acesso negado',
+              description: 'Corretores só podem criar demandas de Venda.',
+            })
+            return
+          }
           const newDemand = {
             ...d,
             id: Math.random().toString(36).substr(2, 9),
@@ -635,6 +744,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           enqueueWebhook('nova_demanda', newDemand.id, newDemand)
         },
         updateDemandStatus: (i, s) => {
+          if (!checkCorretorAccess(allDemands.find((d) => d.id === i))) return
+
           setAllDemands((p) => {
             const next = p.map((d) => (d.id === i ? { ...d, status: s } : d))
             const updated = next.find((x) => x.id === i)
@@ -647,6 +758,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         },
         submitDemandResponse: (id, action, payload) => {
           const demand = allDemands.find((d) => d.id === id)
+          if (!checkCorretorAccess(demand)) return { success: false, message: 'Acesso negado' }
 
           if (action === 'encontrei' && demand) {
             const isPriority = demand.isPrioritized
@@ -717,10 +829,12 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         },
         scheduleVisit: (id, payload) => {
           const d = allDemands.find((x) => x.id === id)
+          if (!checkCorretorAccess(d)) return
           if (d?.capturedProperty?.code) scheduleVisitByCode(d.capturedProperty.code, payload)
         },
         closeDeal: (id, payload) => {
           const d = allDemands.find((x) => x.id === id)
+          if (!checkCorretorAccess(d)) return
           if (d?.capturedProperty?.code) closeDealByCode(d.capturedProperty.code, payload)
         },
         scheduleVisitByCode,
@@ -728,7 +842,23 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         prioritizeDemand,
         markDemandLost,
         addPoints,
-        getSimilarDemands,
+        getSimilarDemands: (id) => {
+          const listToSearch = currentUser?.role === 'corretor' ? visibleDemands : allDemands
+          const d = listToSearch.find((x) => x.id === id)
+          if (!d) return []
+          const dLocs = d.location
+            .toLowerCase()
+            .split(',')
+            .map((s) => s.trim())
+          return listToSearch.filter((x) => {
+            if (x.id === d.id || x.type !== d.type) return false
+            return x.location
+              .toLowerCase()
+              .split(',')
+              .map((s) => s.trim())
+              .some((l) => dLocs.includes(l))
+          })
+        },
         enqueueWebhook,
         processWebhookCron,
       }}
