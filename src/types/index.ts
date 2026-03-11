@@ -28,13 +28,15 @@ export interface Demand {
   budget?: number
   minBudget: number
   maxBudget: number
+  bedrooms: number
+  parkingSpots: number
   description: string
   timeframe: string
   urgency: 'Alta' | 'Média' | 'Baixa'
-  similarProfilesCount: number
+  similarProfilesCount?: number
   type: 'Venda' | 'Aluguel'
   status: DemandStatus
-  createdBy: string // user id
-  assignedTo?: string // user id
+  createdBy: string
+  assignedTo?: string
   createdAt: string
 }

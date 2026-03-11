@@ -6,17 +6,26 @@ import { DemandCard } from '@/components/DemandCard'
 import useAppStore from '@/stores/useAppStore'
 
 export default function Demandas() {
-  const { demands } = useAppStore()
+  const { demands, getSimilarDemands } = useAppStore()
   const [search, setSearch] = useState('')
 
-  const filtered = demands.filter(
-    (d) =>
-      d.clientName.toLowerCase().includes(search.toLowerCase()) ||
-      d.location.toLowerCase().includes(search.toLowerCase()),
-  )
+  const filtered = demands
+    .filter(
+      (d) =>
+        d.clientName.toLowerCase().includes(search.toLowerCase()) ||
+        d.location.toLowerCase().includes(search.toLowerCase()),
+    )
+    .sort((a, b) => {
+      const aTotal = getSimilarDemands(a.id).length + 1
+      const bTotal = getSimilarDemands(b.id).length + 1
+      if (aTotal >= 5 && bTotal < 5) return -1
+      if (bTotal >= 5 && aTotal < 5) return 1
+      if (aTotal !== bTotal) return bTotal - aTotal
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    })
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in-up">
       <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Todas as Demandas</h1>

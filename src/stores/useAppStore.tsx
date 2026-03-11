@@ -12,8 +12,20 @@ interface AppState {
   addDemand: (
     demand: Omit<
       Demand,
-      'id' | 'createdAt' | 'status' | 'createdBy' | 'urgency' | 'similarProfilesCount'
-    > & { urgency?: 'Alta' | 'Média' | 'Baixa'; similarProfilesCount?: number },
+      | 'id'
+      | 'createdAt'
+      | 'status'
+      | 'createdBy'
+      | 'urgency'
+      | 'similarProfilesCount'
+      | 'bedrooms'
+      | 'parkingSpots'
+    > & {
+      urgency?: 'Alta' | 'Média' | 'Baixa'
+      similarProfilesCount?: number
+      bedrooms?: number
+      parkingSpots?: number
+    },
   ) => void
   updateDemandStatus: (id: string, status: DemandStatus) => void
   submitDemandResponse: (
@@ -23,6 +35,7 @@ interface AppState {
   ) => { success: boolean; message: string }
   addPoints: (amount: number) => void
   sessionExpiresAt: number | null
+  getSimilarDemands: (id: string) => Demand[]
 }
 
 const mockUsers: User[] = [
@@ -42,14 +55,87 @@ const mockDemands: Demand[] = [
     budget: 850000,
     minBudget: 800000,
     maxBudget: 1000000,
+    bedrooms: 3,
+    parkingSpots: 2,
     description: 'Apartamento com 3 quartos, suíte e varanda.',
     timeframe: 'Até 3 meses',
     urgency: 'Média',
-    similarProfilesCount: 12,
     type: 'Venda',
     status: 'Pendente',
     createdBy: '2',
     createdAt: new Date(Date.now() - 50 * 60 * 60 * 1000).toISOString(),
+  },
+  {
+    id: 'd1-sim1',
+    clientName: 'Maria Silva',
+    clientEmail: 'maria@example.com',
+    location: 'Jardins',
+    budget: 860000,
+    minBudget: 800000,
+    maxBudget: 1000000,
+    bedrooms: 3,
+    parkingSpots: 2,
+    description: 'Busco apto espaçoso nos Jardins.',
+    timeframe: 'Até 6 meses',
+    urgency: 'Baixa',
+    type: 'Venda',
+    status: 'Pendente',
+    createdBy: '2',
+    createdAt: new Date(Date.now() - 40 * 60 * 60 * 1000).toISOString(),
+  },
+  {
+    id: 'd1-sim2',
+    clientName: 'Pedro Costa',
+    clientEmail: 'pedro@example.com',
+    location: 'Jardins',
+    budget: 840000,
+    minBudget: 800000,
+    maxBudget: 900000,
+    bedrooms: 3,
+    parkingSpots: 2,
+    description: 'Apto 3 dorms.',
+    timeframe: 'Imediato',
+    urgency: 'Alta',
+    type: 'Venda',
+    status: 'Em Captação',
+    createdBy: '3',
+    createdAt: new Date(Date.now() - 30 * 60 * 60 * 1000).toISOString(),
+  },
+  {
+    id: 'd1-sim3',
+    clientName: 'Ana Paula',
+    clientEmail: 'ana@example.com',
+    location: 'Jardins',
+    budget: 880000,
+    minBudget: 850000,
+    maxBudget: 950000,
+    bedrooms: 3,
+    parkingSpots: 2,
+    description: 'Tem que ter varanda.',
+    timeframe: 'Até 3 meses',
+    urgency: 'Média',
+    type: 'Venda',
+    status: 'Pendente',
+    createdBy: '1',
+    createdAt: new Date(Date.now() - 20 * 60 * 60 * 1000).toISOString(),
+  },
+  {
+    id: 'd1-sim4',
+    clientName: 'Carlos Eduardo',
+    clientEmail: 'carlos@example.com',
+    location: 'Jardins',
+    budget: 820000,
+    minBudget: 800000,
+    maxBudget: 850000,
+    bedrooms: 3,
+    parkingSpots: 2,
+    description: 'Financiamento aprovado.',
+    timeframe: 'Imediato',
+    urgency: 'Alta',
+    type: 'Venda',
+    status: 'Pendente',
+    createdBy: '4',
+    createdAt: new Date(Date.now() - 10 * 60 * 60 * 1000).toISOString(),
   },
   {
     id: 'd2',
@@ -59,10 +145,11 @@ const mockDemands: Demand[] = [
     budget: 15000,
     minBudget: 10000,
     maxBudget: 20000,
+    bedrooms: 0,
+    parkingSpots: 5,
     description: 'Laje corporativa de 200m2 para escritório.',
     timeframe: 'Imediato',
     urgency: 'Alta',
-    similarProfilesCount: 5,
     type: 'Aluguel',
     status: 'Em Captação',
     createdBy: '4',
@@ -77,10 +164,11 @@ const mockDemands: Demand[] = [
     budget: 1200000,
     minBudget: 1000000,
     maxBudget: 1500000,
+    bedrooms: 2,
+    parkingSpots: 2,
     description: 'Sobrado em rua tranquila, 2 vagas.',
     timeframe: '3 a 6 meses',
     urgency: 'Baixa',
-    similarProfilesCount: 2,
     type: 'Venda',
     status: 'Pendente',
     createdBy: '2',
@@ -94,10 +182,11 @@ const mockDemands: Demand[] = [
     budget: 4500,
     minBudget: 3000,
     maxBudget: 5000,
+    bedrooms: 1,
+    parkingSpots: 1,
     description: 'Studio mobiliado próximo ao metrô.',
     timeframe: 'Imediato',
     urgency: 'Alta',
-    similarProfilesCount: 8,
     type: 'Aluguel',
     status: 'Pendente',
     createdBy: '4',
@@ -170,15 +259,28 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const addDemand = (
     demandData: Omit<
       Demand,
-      'id' | 'createdAt' | 'status' | 'createdBy' | 'urgency' | 'similarProfilesCount'
-    > & { urgency?: 'Alta' | 'Média' | 'Baixa'; similarProfilesCount?: number },
+      | 'id'
+      | 'createdAt'
+      | 'status'
+      | 'createdBy'
+      | 'urgency'
+      | 'similarProfilesCount'
+      | 'bedrooms'
+      | 'parkingSpots'
+    > & {
+      urgency?: 'Alta' | 'Média' | 'Baixa'
+      similarProfilesCount?: number
+      bedrooms?: number
+      parkingSpots?: number
+    },
   ) => {
     if (!currentUser) return
     const newDemand: Demand = {
       ...demandData,
       budget: demandData.budget ?? demandData.maxBudget,
       urgency: demandData.urgency || 'Média',
-      similarProfilesCount: demandData.similarProfilesCount ?? Math.floor(Math.random() * 10),
+      bedrooms: demandData.bedrooms || 0,
+      parkingSpots: demandData.parkingSpots || 0,
       id: Math.random().toString(36).substr(2, 9),
       createdAt: new Date().toISOString(),
       status: 'Pendente',
@@ -199,6 +301,24 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const getSimilarDemands = (id: string) => {
+    const demand = allDemands.find((d) => d.id === id)
+    if (!demand) return []
+    const baseBudget = demand.budget || demand.maxBudget
+    const minB = baseBudget * 0.9
+    const maxB = baseBudget * 1.1
+    return allDemands.filter(
+      (d) =>
+        d.id !== demand.id &&
+        d.location.toLowerCase() === demand.location.toLowerCase() &&
+        d.type === demand.type &&
+        d.bedrooms === demand.bedrooms &&
+        d.parkingSpots === demand.parkingSpots &&
+        (d.budget || d.maxBudget) >= minB &&
+        (d.budget || d.maxBudget) <= maxB,
+    )
+  }
+
   const submitDemandResponse = (
     id: string,
     action: 'encontrei' | 'nao_encontrei',
@@ -215,8 +335,11 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
     if (action === 'encontrei') {
       let points = 50
-      const hasSimilarClients = demand.similarProfilesCount > 0
-      if (hasSimilarClients) points += 25
+
+      const similarDemands = getSimilarDemands(id)
+      const totalInterested = similarDemands.length + 1
+      if (totalInterested >= 5) points += 25
+
       if (isLate) points -= 20
 
       addPoints(points)
@@ -280,6 +403,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     submitDemandResponse,
     addPoints,
     sessionExpiresAt,
+    getSimilarDemands,
   }
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>
 }
