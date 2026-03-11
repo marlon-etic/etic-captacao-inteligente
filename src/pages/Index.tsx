@@ -23,19 +23,9 @@ export default function Index() {
       return
     }
 
-    if (password.length < 8 || !/[A-Z]/.test(password) || !/\d/.test(password)) {
-      toast({
-        title: 'Erro de Validação',
-        description: 'A senha deve ter no mínimo 8 caracteres, 1 letra maiúscula e 1 número.',
-        variant: 'destructive',
-      })
-      return
-    }
-
     try {
       login(email, password)
       navigate('/app')
-      toast({ title: 'Sucesso', description: 'Login realizado com sucesso!' })
     } catch (err: any) {
       toast({ title: 'Erro de Autenticação', description: err.message, variant: 'destructive' })
     }
@@ -125,7 +115,7 @@ export default function Index() {
                 <p className="text-xs text-center text-muted-foreground mb-4">
                   Ambiente de Teste (Atalhos)
                 </p>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <Button
                     variant="outline"
                     size="sm"

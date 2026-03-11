@@ -22,12 +22,14 @@ import { toast } from '@/hooks/use-toast'
 
 interface AppState {
   currentUser: User | null
+  sessionExpiresAt: number | null
   users: User[]
   demands: Demand[]
   webhookQueue: WebhookEvent[]
   auditLogs: string[]
   login: (email: string, password?: string) => void
   logout: () => void
+  requestPasswordReset: (email: string) => void
   addDemand: (demand: Partial<Demand>) => void
   updateDemandStatus: (id: string, status: DemandStatus) => void
   submitDemandResponse: (id: string, action: 'encontrei' | 'nao_encontrei', payload: any) => any
@@ -98,6 +100,18 @@ const mockUsers: User[] = [
     monthlyPoints: 950,
     badges: ['⭐ Negociador Estrela'],
     stats: { ...defaultStats, negociosFechados: 5 },
+  },
+  {
+    id: '4',
+    name: 'Mariana Gestora',
+    email: 'gestor@etic.com',
+    role: 'gestor',
+    points: 0,
+    dailyPoints: 0,
+    weeklyPoints: 0,
+    monthlyPoints: 0,
+    badges: [],
+    stats: { ...defaultStats },
   },
 ]
 
@@ -223,7 +237,28 @@ const initialDemands: Demand[] = [
 const AppContext = createContext<AppState | null>(null)
 
 export function AppStoreProvider({ children }: { children: ReactNode }) {
-  const [currentUser, setCurrentUser] = useState<User | null>(null)
+  const [currentUser, setCurrentUser] = useState<User | null>(() => {
+    try {
+      const stored = localStorage.getItem('etic_session')
+      if (stored) {
+        const { user, expiresAt } = JSON.parse(stored)
+        if (Date.now() < expiresAt) return user
+      }
+    } catch {}
+    return null
+  })
+
+  const [sessionExpiresAt, setSessionExpiresAt] = useState<number | null>(() => {
+    try {
+      const stored = localStorage.getItem('etic_session')
+      if (stored) {
+        const { expiresAt } = JSON.parse(stored)
+        if (Date.now() < expiresAt) return expiresAt
+      }
+    } catch {}
+    return null
+  })
+
   const [users, setUsers] = useState<User[]>(mockUsers)
   const [allDemands, setAllDemands] = useState<Demand[]>(initialDemands)
   const [webhookQueue, setWebhookQueue] = useState<WebhookEvent[]>([])
@@ -525,6 +560,20 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const checkDemandAccess = (demand: Demand | undefined) => {
+    if (currentUser?.role === 'corretor' || currentUser?.role === 'sdr') {
+      if (!demand || demand.createdBy !== currentUser.id) {
+        toast({
+          variant: 'destructive',
+          title: 'Acesso negado',
+          description: 'Você não tem permissão para acessar este recurso.',
+        })
+        return false
+      }
+    }
+    return true
+  }
+
   const scheduleVisitByCode = useCallback(
     (code: string, payload: any) => {
       const demand = allDemands.find((d) => d.capturedProperty?.code === code)
@@ -533,20 +582,21 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         return
       }
       if (
-        currentUser?.role === 'corretor' &&
-        (demand.type !== 'Venda' || demand.createdBy !== currentUser.id)
+        (currentUser?.role === 'corretor' || currentUser?.role === 'sdr') &&
+        demand.createdBy !== currentUser.id
       ) {
         toast({
           variant: 'destructive',
           title: 'Acesso negado',
-          description: 'Você não tem permissão para atualizar este imóvel',
+          description: 'Você não tem permissão para acessar este recurso.',
         })
         return
       }
       if (currentUser?.role === 'captador' && demand.assignedTo !== currentUser.id) {
         toast({
           variant: 'destructive',
-          description: 'Você não tem permissão para atualizar este imóvel',
+          title: 'Acesso negado',
+          description: 'Você não tem permissão para acessar este recurso.',
         })
         return
       }
@@ -591,20 +641,21 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         return
       }
       if (
-        currentUser?.role === 'corretor' &&
-        (demand.type !== 'Venda' || demand.createdBy !== currentUser.id)
+        (currentUser?.role === 'corretor' || currentUser?.role === 'sdr') &&
+        demand.createdBy !== currentUser.id
       ) {
         toast({
           variant: 'destructive',
           title: 'Acesso negado',
-          description: 'Você não tem permissão para atualizar este imóvel',
+          description: 'Você não tem permissão para acessar este recurso.',
         })
         return
       }
       if (currentUser?.role === 'captador' && demand.assignedTo !== currentUser.id) {
         toast({
           variant: 'destructive',
-          description: 'Você não tem permissão para atualizar este imóvel',
+          title: 'Acesso negado',
+          description: 'Você não tem permissão para acessar este recurso.',
         })
         return
       }
@@ -649,20 +700,21 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         return
       }
       if (
-        currentUser?.role === 'corretor' &&
-        (demand.type !== 'Venda' || demand.createdBy !== currentUser.id)
+        (currentUser?.role === 'corretor' || currentUser?.role === 'sdr') &&
+        demand.createdBy !== currentUser.id
       ) {
         toast({
           variant: 'destructive',
           title: 'Acesso negado',
-          description: 'Você não tem permissão para atualizar este imóvel',
+          description: 'Você não tem permissão para acessar este recurso.',
         })
         return
       }
       if (currentUser?.role === 'captador' && demand.assignedTo !== currentUser.id) {
         toast({
           variant: 'destructive',
-          description: 'Você não tem permissão para atualizar este imóvel',
+          title: 'Acesso negado',
+          description: 'Você não tem permissão para acessar este recurso.',
         })
         return
       }
@@ -766,13 +818,13 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     (id: string, count: number) => {
       const demand = allDemands.find((d) => d.id === id)
       if (
-        currentUser?.role === 'corretor' &&
-        (demand?.type !== 'Venda' || demand?.createdBy !== currentUser.id)
+        (currentUser?.role === 'corretor' || currentUser?.role === 'sdr') &&
+        demand?.createdBy !== currentUser.id
       ) {
         toast({
           variant: 'destructive',
           title: 'Acesso negado',
-          description: 'Você não tem permissão para priorizar esta demanda.',
+          description: 'Você não tem permissão para acessar este recurso.',
         })
         return
       }
@@ -799,8 +851,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     (id: string, reason: string, obs?: string) => {
       const demand = allDemands.find((d) => d.id === id)
       if (
-        currentUser?.role === 'corretor' &&
-        (demand?.type !== 'Venda' || demand?.createdBy !== currentUser.id)
+        (currentUser?.role === 'corretor' || currentUser?.role === 'sdr') &&
+        demand?.createdBy !== currentUser.id
       ) {
         toast({
           variant: 'destructive',
@@ -842,30 +894,17 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   )
 
   const visibleDemands = useMemo(() => {
-    if (currentUser?.role === 'corretor') {
-      return allDemands.filter((d) => d.type === 'Venda' && d.createdBy === currentUser.id)
+    if (currentUser?.role === 'corretor' || currentUser?.role === 'sdr') {
+      return allDemands.filter((d) => d.createdBy === currentUser.id)
     }
     return allDemands
   }, [allDemands, currentUser])
-
-  const checkCorretorAccess = (demand: Demand | undefined) => {
-    if (currentUser?.role === 'corretor') {
-      if (!demand || demand.type !== 'Venda' || demand.createdBy !== currentUser.id) {
-        toast({
-          variant: 'destructive',
-          title: 'Acesso negado',
-          description: 'Você não tem permissão para acessar este recurso.',
-        })
-        return false
-      }
-    }
-    return true
-  }
 
   return (
     <AppContext.Provider
       value={{
         currentUser,
+        sessionExpiresAt,
         users,
         demands: visibleDemands,
         webhookQueue,
@@ -873,26 +912,24 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         triggerCron,
         login: (email, password) => {
           const user = users.find((u) => u.email === email)
-          if (!user) {
-            toast({
-              variant: 'destructive',
-              title: 'Erro de Autenticação',
-              description: 'Email não cadastrado',
-            })
-            return
+          if (!user || (password && password !== '123456' && password !== 'Password1')) {
+            throw new Error(
+              'Erro ao acessar o perfil. Verifique suas credenciais e tente novamente',
+            )
           }
-          if (password && password !== '123456') {
-            toast({
-              variant: 'destructive',
-              title: 'Erro de Autenticação',
-              description: 'Senha incorreta',
-            })
-            return
-          }
+          const expiresAt = Date.now() + 86400000 // 24h
           setCurrentUser(user)
-          toast({ title: 'Bem-vindo(a)!', description: `Sessão iniciada como ${user.name}` })
+          setSessionExpiresAt(expiresAt)
+          localStorage.setItem('etic_session', JSON.stringify({ user, expiresAt }))
         },
-        logout: () => setCurrentUser(null),
+        logout: () => {
+          setCurrentUser(null)
+          setSessionExpiresAt(null)
+          localStorage.removeItem('etic_session')
+        },
+        requestPasswordReset: (email) => {
+          // just a mock
+        },
         addDemand: (d) => {
           if (currentUser?.role === 'corretor' && d.type !== 'Venda') {
             toast({
@@ -911,7 +948,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           enqueueWebhook('nova_demanda', newDemand.id, newDemand)
         },
         updateDemandStatus: (i, s) => {
-          if (!checkCorretorAccess(allDemands.find((d) => d.id === i))) return
+          if (!checkDemandAccess(allDemands.find((d) => d.id === i))) return
 
           setAllDemands((p) => {
             const next = p.map((d) => (d.id === i ? { ...d, status: s } : d))
@@ -925,7 +962,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         },
         submitDemandResponse: (id, action, payload) => {
           const demand = allDemands.find((d) => d.id === id)
-          if (!checkCorretorAccess(demand)) return { success: false, message: 'Acesso negado' }
+          if (!checkDemandAccess(demand)) return { success: false, message: 'Acesso negado' }
 
           if (action === 'encontrei' && demand) {
             const isPriority = demand.isPrioritized
@@ -1000,12 +1037,12 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         },
         scheduleVisit: (id, payload) => {
           const d = allDemands.find((x) => x.id === id)
-          if (!checkCorretorAccess(d)) return
+          if (!checkDemandAccess(d)) return
           if (d?.capturedProperty?.code) scheduleVisitByCode(d.capturedProperty.code, payload)
         },
         closeDeal: (id, payload) => {
           const d = allDemands.find((x) => x.id === id)
-          if (!checkCorretorAccess(d)) return
+          if (!checkDemandAccess(d)) return
           if (d?.capturedProperty?.code) closeDealByCode(d.capturedProperty.code, payload)
         },
         scheduleVisitByCode,

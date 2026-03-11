@@ -128,13 +128,11 @@ export function GestorDashboard() {
 
   if (currentUser?.role !== 'gestor' && currentUser?.role !== 'admin') {
     return (
-      <div className="flex h-full items-center justify-center p-6">
+      <div className="flex h-[calc(100vh-200px)] items-center justify-center p-6">
         <Alert variant="destructive" className="max-w-md">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Você não tem permissão</AlertTitle>
-          <AlertDescription>
-            Este painel é restrito para Gestores e Administradores.
-          </AlertDescription>
+          <AlertTitle>Acesso negado</AlertTitle>
+          <AlertDescription>Você não tem permissão para acessar este recurso.</AlertDescription>
         </Alert>
       </div>
     )
