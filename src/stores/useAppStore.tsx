@@ -31,6 +31,8 @@ interface AppState {
   closeDeal: (id: string, payload: any) => void
   scheduleVisitByCode: (code: string, payload: any) => void
   closeDealByCode: (code: string, payload: any) => void
+  prioritizeDemand: (id: string, count: number) => void
+  markDemandLost: (id: string, reason: string, obs?: string) => void
 }
 
 const defaultStats: UserStats = {
@@ -573,6 +575,52 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     closeDealByCodeRef.current = closeDealByCode
   }, [scheduleVisitByCode, closeDealByCode])
 
+  const prioritizeDemand = useCallback(
+    (id: string, count: number) => {
+      if (Math.random() < 0.05) {
+        toast({ variant: 'destructive', description: 'Erro ao atualizar demanda. Tente novamente' })
+        return
+      }
+      setAllDemands((prev) => {
+        const next = prev.map((d) =>
+          d.id === id ? { ...d, isPrioritized: true, interestedClientsCount: count } : d,
+        )
+        broadcastState(next, users, 'Demanda priorizada')
+        return next
+      })
+      enqueueWebhook('demanda_priorizada', id, { count })
+      addLog(`Demanda priorizada (ID: ${id}) com ${count} interessados`)
+      toast({
+        title: 'Demanda priorizada!',
+        description: 'Os captadores foram notificados',
+        className: 'bg-pink-600 text-white border-pink-600',
+      })
+    },
+    [users, enqueueWebhook, addLog, broadcastState],
+  )
+
+  const markDemandLost = useCallback(
+    (id: string, reason: string, obs?: string) => {
+      if (Math.random() < 0.05) {
+        toast({ variant: 'destructive', description: 'Erro ao atualizar demanda. Tente novamente' })
+        return
+      }
+      setAllDemands((prev) => {
+        const next = prev.map((d) =>
+          d.id === id
+            ? { ...d, status: 'Perdida' as DemandStatus, lostReason: reason, lostObs: obs }
+            : d,
+        )
+        broadcastState(next, users, 'Demanda perdida')
+        return next
+      })
+      enqueueWebhook('demanda_perdida', id, { reason, obs })
+      addLog(`Demanda perdida (ID: ${id}) motivo: ${reason}`)
+      toast({ title: 'Demanda marcada como perdida', description: 'O status foi atualizado.' })
+    },
+    [users, enqueueWebhook, addLog, broadcastState],
+  )
+
   return (
     <AppContext.Provider
       value={{
@@ -651,6 +699,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         },
         scheduleVisitByCode,
         closeDealByCode,
+        prioritizeDemand,
+        markDemandLost,
         addPoints,
         getSimilarDemands,
         enqueueWebhook,

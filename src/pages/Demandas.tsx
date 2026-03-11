@@ -14,10 +14,13 @@ export default function Demandas() {
   const filtered = demands
     .filter(
       (d) =>
-        d.clientName.toLowerCase().includes(search.toLowerCase()) ||
-        d.location.toLowerCase().includes(search.toLowerCase()),
+        d.status !== 'Perdida' &&
+        (d.clientName.toLowerCase().includes(search.toLowerCase()) ||
+          d.location.toLowerCase().includes(search.toLowerCase())),
     )
     .sort((a, b) => {
+      if (a.isPrioritized && !b.isPrioritized) return -1
+      if (!a.isPrioritized && b.isPrioritized) return 1
       if (a.isRepescagem && !b.isRepescagem) return -1
       if (!a.isRepescagem && b.isRepescagem) return 1
       const aTotal = getSimilarDemands(a.id).length + 1
@@ -65,14 +68,16 @@ export default function Demandas() {
                         className="text-xs p-3 rounded border bg-muted/50 flex justify-between items-center"
                       >
                         <div className="flex-1 pr-4">
-                          <p className="font-bold">{q.evento}</p>
-                          <p className="text-muted-foreground line-clamp-2">{q.payload.message}</p>
+                          <p className="font-bold">{q.event_type}</p>
+                          <p className="text-muted-foreground line-clamp-2">
+                            {JSON.stringify(q.payload.data)}
+                          </p>
                         </div>
                         <Badge
                           variant={
-                            q.status === 'processed'
+                            q.status === 'enviado'
                               ? 'default'
-                              : q.status === 'failed'
+                              : q.status === 'falha'
                                 ? 'destructive'
                                 : 'secondary'
                           }

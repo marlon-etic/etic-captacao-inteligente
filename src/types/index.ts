@@ -43,6 +43,7 @@ export type DemandStatus =
   | 'Negócio'
   | 'Arquivado'
   | 'Impossível'
+  | 'Perdida'
 
 export interface CapturedProperty {
   code: string
@@ -82,6 +83,10 @@ export interface Demand {
   notificada_72h?: boolean
   isRepescagem?: boolean
   capturedProperty?: CapturedProperty
+  isPrioritized?: boolean
+  interestedClientsCount?: number
+  lostReason?: string
+  lostObs?: string
 }
 
 export interface WebhookEvent {

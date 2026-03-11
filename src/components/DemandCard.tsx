@@ -26,6 +26,8 @@ import { Demand, DemandStatus } from '@/types'
 import { cn } from '@/lib/utils'
 import useAppStore from '@/stores/useAppStore'
 import { useTimeElapsed } from '@/hooks/useTimeElapsed'
+import { PrioritizeModal } from '@/components/PrioritizeModal'
+import { LostModal } from '@/components/LostModal'
 
 export function DemandCard({
   demand,
@@ -36,13 +38,22 @@ export function DemandCard({
   showActions?: boolean
   onAction?: (id: string, a: 'encontrei' | 'nao_encontrei') => void
 }) {
-  const { getSimilarDemands } = useAppStore()
+  const { currentUser, prioritizeDemand, markDemandLost, getSimilarDemands } = useAppStore()
   const similarDemands = getSimilarDemands(demand.id)
-  const totalInterested = similarDemands.length + 1
-  const isHighPriority = totalInterested >= 5
+  const totalInterested = similarDemands.length + 1 + (demand.interestedClientsCount || 0)
+  const isHighPriority = totalInterested >= 5 || demand.isPrioritized
 
   const [showSimilar, setShowSimilar] = useState(false)
+  const [showPrioritize, setShowPrioritize] = useState(false)
+  const [showLost, setShowLost] = useState(false)
+
   const { text, hoursElapsed, urgencyLevel, createdDate } = useTimeElapsed(demand.createdAt)
+
+  const isOwnerSDR =
+    currentUser &&
+    (currentUser.role === 'sdr' || currentUser.role === 'corretor') &&
+    demand.createdBy === currentUser.id
+  const canManage = isOwnerSDR && demand.status !== 'Perdida'
 
   const statusColors: Record<DemandStatus, string> = {
     Pendente: 'bg-orange-100 text-orange-700 border-orange-200',
@@ -55,6 +66,7 @@ export function DemandCard({
     Negócio: 'bg-emerald-100 text-emerald-800 border-emerald-300 font-bold',
     Arquivado: 'bg-muted text-muted-foreground',
     Impossível: 'bg-gray-800 text-white border-gray-900 font-medium',
+    Perdida: 'bg-gray-200 text-gray-800 border-gray-400 font-medium',
   }
 
   const timeframeColors: Record<string, string> = {
@@ -79,20 +91,26 @@ export function DemandCard({
           urgencyLevel === 'red' && 'border-red-400 shadow-sm shadow-red-200/50',
           isHighPriority && 'ring-2 ring-purple-300 ring-offset-1',
           demand.isRepescagem && 'border-amber-400 shadow-amber-200 ring-1 ring-amber-400/50',
+          demand.isPrioritized && 'bg-pink-50/50 border-pink-300 shadow-pink-200',
+          demand.status === 'Perdida' && 'bg-gray-50 border-gray-200 opacity-80',
         )}
       >
         <div
           className={cn(
             'absolute top-0 left-0 w-1.5 h-full',
-            demand.isRepescagem
-              ? 'bg-amber-500 animate-pulse'
-              : urgencyLevel === 'green'
-                ? 'bg-emerald-500'
-                : urgencyLevel === 'yellow'
-                  ? 'bg-yellow-400'
-                  : urgencyLevel === 'orange'
-                    ? 'bg-orange-500'
-                    : 'bg-red-500',
+            demand.status === 'Perdida'
+              ? 'bg-gray-400'
+              : demand.isPrioritized
+                ? 'bg-pink-500'
+                : demand.isRepescagem
+                  ? 'bg-amber-500 animate-pulse'
+                  : urgencyLevel === 'green'
+                    ? 'bg-emerald-500'
+                    : urgencyLevel === 'yellow'
+                      ? 'bg-yellow-400'
+                      : urgencyLevel === 'orange'
+                        ? 'bg-orange-500'
+                        : 'bg-red-500',
           )}
         />
         <CardContent className="p-4 flex flex-col gap-3 flex-grow pl-5">
@@ -129,6 +147,22 @@ export function DemandCard({
               >
                 {demand.status}
               </Badge>
+              {demand.isPrioritized && (
+                <Badge
+                  variant="secondary"
+                  className="bg-pink-100 text-pink-800 border-pink-300 text-[10px] py-0 px-1.5 font-bold flex items-center gap-1 whitespace-nowrap"
+                >
+                  🔴 PRIORIZADA
+                </Badge>
+              )}
+              {demand.status === 'Perdida' && (
+                <Badge
+                  variant="secondary"
+                  className="bg-gray-200 text-gray-800 border-gray-400 text-[10px] py-0 px-1.5 font-bold flex items-center gap-1 whitespace-nowrap"
+                >
+                  ❌ PERDIDA
+                </Badge>
+              )}
               {demand.isRepescagem && demand.status === 'Pendente' && (
                 <Badge
                   variant="secondary"
@@ -234,6 +268,28 @@ export function DemandCard({
               </Button>
             </div>
           )}
+          {canManage && (
+            <div className="px-4 pb-4 pt-2 flex flex-wrap gap-2 pl-5">
+              {!demand.isPrioritized && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="flex-1 bg-pink-50 text-pink-700 hover:bg-pink-100 hover:text-pink-800 border-pink-200 shadow-sm"
+                  onClick={() => setShowPrioritize(true)}
+                >
+                  🔴 PRIORIZAR
+                </Button>
+              )}
+              <Button
+                size="sm"
+                variant="outline"
+                className="flex-1 bg-gray-50 text-gray-700 hover:bg-gray-100 border-gray-200 shadow-sm"
+                onClick={() => setShowLost(true)}
+              >
+                ❌ PERDIDO
+              </Button>
+            </div>
+          )}
         </div>
       </Card>
 
@@ -283,6 +339,18 @@ export function DemandCard({
           </div>
         </DialogContent>
       </Dialog>
+
+      <PrioritizeModal
+        open={showPrioritize}
+        onOpenChange={setShowPrioritize}
+        onConfirm={(count) => prioritizeDemand(demand.id, count)}
+      />
+
+      <LostModal
+        open={showLost}
+        onOpenChange={setShowLost}
+        onConfirm={(reason, obs) => markDemandLost(demand.id, reason, obs)}
+      />
     </>
   )
 }
