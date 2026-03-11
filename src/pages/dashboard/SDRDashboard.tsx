@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { DemandCard } from '@/components/DemandCard'
 import { CapturedPropertiesView } from '@/components/CapturedPropertiesView'
+import { LoosePropertiesView } from '@/components/LoosePropertiesView'
 import useAppStore from '@/stores/useAppStore'
 
 export function SDRDashboard() {
@@ -37,9 +38,10 @@ export function SDRDashboard() {
       </div>
 
       <Tabs defaultValue="demandas" className="w-full">
-        <TabsList className="grid w-full sm:w-[500px] grid-cols-3 mb-6">
+        <TabsList className="grid w-full sm:w-[600px] grid-cols-4 mb-6">
           <TabsTrigger value="demandas">DEMANDAS</TabsTrigger>
           <TabsTrigger value="captados">CAPTADOS</TabsTrigger>
+          <TabsTrigger value="disponiveis">DISPONÍVEIS</TabsTrigger>
           <TabsTrigger value="historico">HISTÓRICO</TabsTrigger>
         </TabsList>
 
@@ -96,6 +98,10 @@ export function SDRDashboard() {
 
         <TabsContent value="captados" className="mt-0">
           <CapturedPropertiesView />
+        </TabsContent>
+
+        <TabsContent value="disponiveis" className="mt-0">
+          <LoosePropertiesView />
         </TabsContent>
 
         <TabsContent value="historico" className="mt-0">

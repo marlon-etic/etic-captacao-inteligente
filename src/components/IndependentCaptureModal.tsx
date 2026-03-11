@@ -29,17 +29,33 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import useAppStore from '@/stores/useAppStore'
 import { BAIRROS_ETIC } from '@/lib/bairros'
+import { useToast } from '@/hooks/use-toast'
 
 const indepSchema = z
   .object({
+    tipoVinculacao: z.enum(['vinculado', 'solto'], { required_error: 'Selecione uma opção' }),
+    demandId: z.string().optional(),
     neighborhood: z.string().min(1, 'Selecione um bairro'),
     neighborhoodOther: z.string().max(50, 'Máximo 50 caracteres').optional(),
     code: z.string().min(1, 'Obrigatório').max(20, 'Máximo 20 caracteres'),
     value: z.coerce.number().positive('O valor deve ser positivo'),
     docCompleta: z.boolean().default(false),
   })
+  .refine(
+    (data) => {
+      if (data.tipoVinculacao === 'vinculado') {
+        return !!data.demandId
+      }
+      return true
+    },
+    {
+      message: 'Selecione uma demanda',
+      path: ['demandId'],
+    },
+  )
   .refine(
     (data) => {
       if (data.neighborhood === 'OUTROS') {
@@ -60,12 +76,21 @@ export function IndependentCaptureModal({
   isOpen: boolean
   onClose: () => void
 }) {
-  const { submitIndependentCapture } = useAppStore()
+  const { submitIndependentCapture, submitDemandResponse, demands, currentUser } = useAppStore()
+  const { toast } = useToast()
+
+  const openDemands = demands.filter(
+    (d) =>
+      (d.status === 'Pendente' || d.status === 'Em Captação') &&
+      (currentUser?.role === 'captador' ? d.assignedTo === currentUser.id : true),
+  )
 
   const form = useForm({
     resolver: zodResolver(indepSchema),
     mode: 'onChange',
     defaultValues: {
+      tipoVinculacao: undefined as any,
+      demandId: '',
       neighborhood: '',
       neighborhoodOther: '',
       code: '',
@@ -75,32 +100,114 @@ export function IndependentCaptureModal({
   })
 
   const selectedNeighborhood = form.watch('neighborhood')
+  const tipoVinculacao = form.watch('tipoVinculacao')
 
   const onSubmit = (data: any) => {
     const finalNeighborhood =
       data.neighborhood === 'OUTROS' ? data.neighborhoodOther.trim() : data.neighborhood
     const bairro_tipo = data.neighborhood === 'OUTROS' ? 'outro' : 'listado'
 
-    submitIndependentCapture({
-      ...data,
-      neighborhood: finalNeighborhood,
-      bairro_tipo,
-    })
+    if (data.tipoVinculacao === 'vinculado') {
+      const res = submitDemandResponse(data.demandId, 'encontrei', {
+        ...data,
+        neighborhood: finalNeighborhood,
+        bairro_tipo,
+      })
+      if (!res.success) {
+        toast({ title: 'Erro', description: res.message, variant: 'destructive' })
+        return
+      }
+    } else {
+      submitIndependentCapture({
+        ...data,
+        neighborhood: finalNeighborhood,
+        bairro_tipo,
+      })
+    }
     form.reset()
     onClose()
   }
 
   return (
     <Dialog open={isOpen} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="sm:max-w-[450px]">
+      <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Captação Independente</DialogTitle>
+          <DialogTitle>Nova Captação</DialogTitle>
           <DialogDescription>
-            Registre um imóvel captado proativamente (sem demanda vinculada). Rende +35 pts base.
+            Registre um novo imóvel. Escolha se ele atende a um cliente específico ou se está solto
+            para a base.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 mt-2">
+            <FormField
+              control={form.control}
+              name="tipoVinculacao"
+              render={({ field }) => (
+                <FormItem className="space-y-3">
+                  <FormLabel>Este imóvel é para:</FormLabel>
+                  <FormControl>
+                    <RadioGroup
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                      className="flex flex-col space-y-2"
+                    >
+                      <FormItem className="flex items-center space-x-3 space-y-0 p-3 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer data-[state=checked]:bg-indigo-50 data-[state=checked]:border-indigo-200">
+                        <FormControl>
+                          <RadioGroupItem value="vinculado" />
+                        </FormControl>
+                        <FormLabel className="font-medium cursor-pointer w-full flex items-center gap-2">
+                          🔗 Uma demanda específica
+                        </FormLabel>
+                      </FormItem>
+                      <FormItem className="flex items-center space-x-3 space-y-0 p-3 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer data-[state=checked]:bg-blue-50 data-[state=checked]:border-blue-200">
+                        <FormControl>
+                          <RadioGroupItem value="solto" />
+                        </FormControl>
+                        <FormLabel className="font-medium cursor-pointer w-full flex items-center gap-2">
+                          🔓 Qualquer cliente (Disponível para todos)
+                        </FormLabel>
+                      </FormItem>
+                    </RadioGroup>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {tipoVinculacao === 'vinculado' && (
+              <FormField
+                control={form.control}
+                name="demandId"
+                render={({ field }) => (
+                  <FormItem className="animate-in fade-in slide-in-from-top-2">
+                    <FormLabel>Demanda Associada</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione a demanda" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {openDemands.length === 0 ? (
+                          <SelectItem value="none" disabled>
+                            Nenhuma demanda ativa
+                          </SelectItem>
+                        ) : (
+                          openDemands.map((d) => (
+                            <SelectItem key={d.id} value={d.id}>
+                              {d.clientName} - {d.location}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -193,7 +300,7 @@ export function IndependentCaptureModal({
                 </FormItem>
               )}
             />
-            <div className="flex justify-end gap-2 pt-2">
+            <div className="flex justify-end gap-2 pt-4 border-t">
               <Button type="button" variant="outline" onClick={onClose}>
                 Cancelar
               </Button>

@@ -91,6 +91,9 @@ export interface CapturedProperty {
   history?: PropertyAction[]
   numero_imovel_para_demanda?: number
   demandas_atendidas_ids?: string[]
+  tipo_vinculacao?: 'vinculado' | 'solto'
+  captador_id?: string
+  captador_name?: string
 }
 
 export interface Demand {

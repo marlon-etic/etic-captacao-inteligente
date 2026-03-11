@@ -12,7 +12,6 @@ import {
   User,
   Demand,
   DemandStatus,
-  BadgeType,
   UserStats,
   WebhookEvent,
   PropertyAction,
@@ -26,6 +25,7 @@ interface AppState {
   sessionExpiresAt: number | null
   users: User[]
   demands: Demand[]
+  looseProperties: CapturedProperty[]
   webhookQueue: WebhookEvent[]
   auditLogs: string[]
   login: (email: string, password?: string) => Promise<void>
@@ -35,6 +35,7 @@ interface AppState {
   updateDemandStatus: (id: string, status: DemandStatus) => void
   submitDemandResponse: (id: string, action: 'encontrei' | 'nao_encontrei', payload: any) => any
   submitIndependentCapture: (payload: any) => void
+  claimLooseProperty: (code: string, demandId: string) => { success: boolean; message: string }
   addPoints: (amount: number, userId?: string) => void
   getSimilarDemands: (id: string) => Demand[]
   triggerCron: () => void
@@ -183,6 +184,9 @@ const initialDemands: Demand[] = [
         ],
         numero_imovel_para_demanda: 1,
         demandas_atendidas_ids: ['d2'],
+        tipo_vinculacao: 'vinculado',
+        captador_id: '1',
+        captador_name: 'Ana Silva',
       },
     ],
   },
@@ -211,62 +215,28 @@ const initialDemands: Demand[] = [
         ],
         numero_imovel_para_demanda: 1,
         demandas_atendidas_ids: ['d3'],
-      },
-      {
-        code: 'CS-882',
-        value: 1200000,
-        neighborhood: 'Vila Madalena',
-        bairro_tipo: 'outro',
-        docCompleta: true,
-        photoUrl: 'https://img.usecurling.com/p/400/300?q=house&seed=d3_2',
-        capturedAt: new Date(Date.now() - 24 * 3600000).toISOString(),
-        history: [
-          createHistoryItem('captacao', 'Imóvel captado e vinculado à demanda (2º imóvel)', 24),
-        ],
-        numero_imovel_para_demanda: 2,
-        demandas_atendidas_ids: ['d3'],
+        tipo_vinculacao: 'vinculado',
+        captador_id: '1',
+        captador_name: 'Ana Silva',
       },
     ],
   },
   createDem('d4', 'Fernanda Lima', 'Centro', 73, 'Até 90 dias ou +'),
+]
+
+const initialLooseProperties: CapturedProperty[] = [
   {
-    ...createDem('d5', 'Lucas Vendas', 'Vila Olímpia', 10, 'Até 15 dias'),
-    type: 'Venda',
-    createdBy: '3',
-    status: 'Visita',
-    capturedProperties: [
-      {
-        code: 'VD-101',
-        value: 1500000,
-        neighborhood: 'Vila Olímpia',
-        bairro_tipo: 'listado',
-        docCompleta: true,
-        visitaDate: new Date().toISOString().split('T')[0],
-        visitaTime: '10:00',
-        photoUrl: 'https://img.usecurling.com/p/400/300?q=apartment&seed=d5_1',
-        capturedAt: new Date(Date.now() - 5 * 3600000).toISOString(),
-        history: [
-          createHistoryItem(
-            'visita_agendada',
-            `Visita agendada para ${new Date().toLocaleDateString('pt-BR')} às 10:00`,
-            2,
-            '3',
-            'Roberto Corretor',
-            'corretor',
-          ),
-          createHistoryItem(
-            'captacao',
-            'Imóvel captado e vinculado à demanda (1º imóvel)',
-            5,
-            '3',
-            'Roberto Corretor',
-            'corretor',
-          ),
-        ],
-        numero_imovel_para_demanda: 1,
-        demandas_atendidas_ids: ['d5'],
-      },
-    ],
+    code: 'LP-101',
+    value: 900000,
+    neighborhood: 'Pinheiros',
+    bairro_tipo: 'listado',
+    docCompleta: true,
+    photoUrl: 'https://img.usecurling.com/p/400/300?q=house&seed=lp1',
+    capturedAt: new Date(Date.now() - 24 * 3600000).toISOString(),
+    tipo_vinculacao: 'solto',
+    captador_id: '1',
+    captador_name: 'Ana Silva',
+    history: [createHistoryItem('captacao', 'Imóvel captado como disponível para todos', 24)],
   },
 ]
 
@@ -280,9 +250,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         const { user, expiresAt } = JSON.parse(stored)
         if (Date.now() < expiresAt) return user
       }
-    } catch {
-      // ignore
-    }
+    } catch {}
     return null
   })
 
@@ -293,26 +261,27 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         const { expiresAt } = JSON.parse(stored)
         if (Date.now() < expiresAt) return expiresAt
       }
-    } catch {
-      // ignore
-    }
+    } catch {}
     return null
   })
 
   const [users, setUsers] = useState<User[]>(mockUsers)
   const [allDemands, setAllDemands] = useState<Demand[]>(initialDemands)
+  const [looseProperties, setLooseProperties] = useState<CapturedProperty[]>(initialLooseProperties)
   const [webhookQueue, setWebhookQueue] = useState<WebhookEvent[]>([])
   const [auditLogs, setAuditLogs] = useState<string[]>([])
 
   const webhookQueueRef = useRef(webhookQueue)
+  const loosePropertiesRef = useRef(looseProperties)
   const isProcessingRef = useRef(false)
-  const scheduleVisitByCodeRef = useRef<any>(null)
-  const submitProposalByCodeRef = useRef<any>(null)
-  const closeDealByCodeRef = useRef<any>(null)
 
   useEffect(() => {
     webhookQueueRef.current = webhookQueue
   }, [webhookQueue])
+
+  useEffect(() => {
+    loosePropertiesRef.current = looseProperties
+  }, [looseProperties])
 
   const addLog = useCallback(
     (msg: string) =>
@@ -321,10 +290,16 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   )
 
   const broadcastState = useCallback(
-    (nextDemands: Demand[], nextUsers: User[], actionMsg?: string) => {
+    (
+      nextDemands: Demand[],
+      nextUsers: User[],
+      actionMsg?: string,
+      nextLoose?: CapturedProperty[],
+    ) => {
       const payload = {
         demands: nextDemands,
         users: nextUsers,
+        looseProperties: nextLoose || loosePropertiesRef.current,
         lastAction: actionMsg,
         timestamp: Date.now(),
       }
@@ -334,9 +309,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         const bc = new BroadcastChannel('etic-ws-sync')
         bc.postMessage(payload)
         bc.close()
-      } catch (e) {
-        // ignore
-      }
+      } catch {}
     },
     [],
   )
@@ -353,6 +326,16 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
       setUsers((prev) => {
         if (JSON.stringify(prev) !== JSON.stringify(parsed.users)) return parsed.users
+        return prev
+      })
+
+      setLooseProperties((prev) => {
+        if (
+          parsed.looseProperties &&
+          JSON.stringify(prev) !== JSON.stringify(parsed.looseProperties)
+        ) {
+          return parsed.looseProperties
+        }
         return prev
       })
 
@@ -375,9 +358,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           ])
         }
       }
-    } catch (e) {
-      // ignore
-    }
+    } catch {}
   }, [])
 
   useEffect(() => {
@@ -390,9 +371,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     try {
       bc = new BroadcastChannel('etic-ws-sync')
       bc.onmessage = (e) => handleSync(JSON.stringify(e.data))
-    } catch (e) {
-      // ignore
-    }
+    } catch {}
 
     const interval = setInterval(() => {
       const raw = localStorage.getItem('etic_state_sync')
@@ -582,23 +561,22 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       )
   }
 
-  const createAction = (
-    type: PropertyActionType,
-    desc: string,
-    obs?: string,
-  ): PropertyAction | null => {
-    if (!currentUser) return null
-    return {
-      id: Math.random().toString(36).substr(2, 9),
-      type,
-      timestamp: new Date().toISOString(),
-      userId: currentUser.id,
-      userName: currentUser.name,
-      userRole: currentUser.role,
-      description: desc,
-      observations: obs,
-    }
-  }
+  const createAction = useCallback(
+    (type: PropertyActionType, desc: string, obs?: string): PropertyAction | null => {
+      if (!currentUser) return null
+      return {
+        id: Math.random().toString(36).substr(2, 9),
+        type,
+        timestamp: new Date().toISOString(),
+        userId: currentUser.id,
+        userName: currentUser.name,
+        userRole: currentUser.role,
+        description: desc,
+        observations: obs,
+      }
+    },
+    [currentUser],
+  )
 
   const checkDemandAccess = (demand: Demand | undefined) => {
     if (currentUser?.role === 'corretor' || currentUser?.role === 'sdr') {
@@ -631,17 +609,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         toast({ variant: 'destructive', description: 'Imóvel não encontrado' })
         return
       }
-      if (
-        (currentUser?.role === 'corretor' || currentUser?.role === 'sdr') &&
-        demand.createdBy !== currentUser.id
-      ) {
-        toast({
-          variant: 'destructive',
-          title: 'Acesso negado',
-          description: 'Você não tem permissão para acessar este recurso.',
-        })
-        return
-      }
+      if (!checkDemandAccess(demand)) return
       if (currentUser?.role === 'captador' && demand.assignedTo !== currentUser.id) {
         toast({
           variant: 'destructive',
@@ -683,7 +651,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       toast({ title: 'Visita Agendada', description: 'O status foi sincronizado com sucesso.' })
       broadcastState(nextDemands, users, msg)
     },
-    [allDemands, currentUser, users, enqueueWebhook, addLog, broadcastState],
+    [allDemands, currentUser, users, enqueueWebhook, addLog, broadcastState, createAction],
   )
 
   const submitProposalByCode = useCallback(
@@ -703,17 +671,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         toast({ variant: 'destructive', description: 'Imóvel não encontrado' })
         return
       }
-      if (
-        (currentUser?.role === 'corretor' || currentUser?.role === 'sdr') &&
-        demand.createdBy !== currentUser.id
-      ) {
-        toast({
-          variant: 'destructive',
-          title: 'Acesso negado',
-          description: 'Você não tem permissão para acessar este recurso.',
-        })
-        return
-      }
+      if (!checkDemandAccess(demand)) return
       if (currentUser?.role === 'captador' && demand.assignedTo !== currentUser.id) {
         toast({
           variant: 'destructive',
@@ -755,7 +713,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       toast({ title: 'Proposta Registrada', description: 'O status foi atualizado com sucesso.' })
       broadcastState(nextDemands, users, msg)
     },
-    [allDemands, currentUser, users, enqueueWebhook, addLog, broadcastState],
+    [allDemands, currentUser, users, enqueueWebhook, addLog, broadcastState, createAction],
   )
 
   const closeDealByCode = useCallback(
@@ -775,17 +733,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         toast({ variant: 'destructive', description: 'Imóvel não encontrado' })
         return
       }
-      if (
-        (currentUser?.role === 'corretor' || currentUser?.role === 'sdr') &&
-        demand.createdBy !== currentUser.id
-      ) {
-        toast({
-          variant: 'destructive',
-          title: 'Acesso negado',
-          description: 'Você não tem permissão para acessar este recurso.',
-        })
-        return
-      }
+      if (!checkDemandAccess(demand)) return
       if (currentUser?.role === 'captador' && demand.assignedTo !== currentUser.id) {
         toast({
           variant: 'destructive',
@@ -884,29 +832,13 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       })
       broadcastState(nextDemands, nextUsers, msg)
     },
-    [allDemands, currentUser, users, enqueueWebhook, addLog, broadcastState],
+    [allDemands, currentUser, users, enqueueWebhook, addLog, broadcastState, createAction],
   )
-
-  useEffect(() => {
-    scheduleVisitByCodeRef.current = scheduleVisitByCode
-    submitProposalByCodeRef.current = submitProposalByCode
-    closeDealByCodeRef.current = closeDealByCode
-  }, [scheduleVisitByCode, submitProposalByCode, closeDealByCode])
 
   const prioritizeDemand = useCallback(
     (id: string, count: number) => {
       const demand = allDemands.find((d) => d.id === id)
-      if (
-        (currentUser?.role === 'corretor' || currentUser?.role === 'sdr') &&
-        demand?.createdBy !== currentUser.id
-      ) {
-        toast({
-          variant: 'destructive',
-          title: 'Acesso negado',
-          description: 'Você não tem permissão para acessar este recurso.',
-        })
-        return
-      }
+      if (!checkDemandAccess(demand)) return
 
       setAllDemands((prev) => {
         const next = prev.map((d) =>
@@ -929,17 +861,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const markDemandLost = useCallback(
     (id: string, reason: string, obs?: string) => {
       const demand = allDemands.find((d) => d.id === id)
-      if (
-        (currentUser?.role === 'corretor' || currentUser?.role === 'sdr') &&
-        demand?.createdBy !== currentUser.id
-      ) {
-        toast({
-          variant: 'destructive',
-          title: 'Acesso negado',
-          description: 'Você não tem permissão para acessar este recurso.',
-        })
-        return
-      }
+      if (!checkDemandAccess(demand)) return
 
       const action = createAction('perdido', `Demanda marcada como perdida: ${reason}`, obs)
 
@@ -969,7 +891,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       addLog(`Demanda perdida (ID: ${id}) motivo: ${reason}`)
       toast({ title: 'Demanda marcada como perdida', description: 'O status foi atualizado.' })
     },
-    [allDemands, currentUser, users, enqueueWebhook, addLog, broadcastState],
+    [allDemands, currentUser, users, enqueueWebhook, addLog, broadcastState, createAction],
   )
 
   const getSimilarDemands = useCallback(
@@ -1010,6 +932,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         sessionExpiresAt,
         users,
         demands: visibleDemands,
+        looseProperties,
         webhookQueue,
         auditLogs,
         triggerCron,
@@ -1047,7 +970,11 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
             id: Math.random().toString(36).substr(2, 9),
             createdAt: new Date().toISOString(),
           } as Demand
-          setAllDemands((p) => [newDemand, ...p])
+          setAllDemands((p) => {
+            const next = [newDemand, ...p]
+            broadcastState(next, users, 'Nova demanda')
+            return next
+          })
           enqueueWebhook('nova_demanda', newDemand.id, newDemand)
         },
         updateDemandStatus: (i, s) => {
@@ -1058,6 +985,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
             const updated = next.find((x) => x.id === i)
             if (updated && s === 'Em Captação')
               enqueueWebhook('confirmacao_gestor', updated.id, updated)
+            broadcastState(next, users, 'Status de demanda atualizado')
             return next
           })
         },
@@ -1113,6 +1041,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
               history: hAction ? [hAction] : [],
               numero_imovel_para_demanda: seq,
               demandas_atendidas_ids: [demand.id],
+              tipo_vinculacao: 'vinculado',
+              captador_id: currentUser?.id,
+              captador_name: currentUser?.name,
             }
 
             const updatedDemand = {
@@ -1165,11 +1096,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
               `Imóvel captado: ${updatedDemand.clientName}${isPriority ? ' (Priorizado)' : ''}`,
             )
 
-            let msg = `🏠 IMÓVEL CAPTADO! Captador ${currentUser?.name} encontrou um imóvel para ${demand.clientName}`
-            if (seq === 2)
-              msg = `🏠 NOVO IMÓVEL! Captador ${currentUser?.name} encontrou MAIS um imóvel para ${demand.clientName} (2º imóvel)`
-            if (seq > 2)
-              msg = `🏠 NOVO IMÓVEL! Captador ${currentUser?.name} encontrou MAIS um imóvel para ${demand.clientName} (${seq}º imóvel)`
+            let msg = `🏠 IMÓVEL CAPTADO! Para ${demand.clientName} por ${currentUser?.name}`
+            if (seq > 1)
+              msg = `🏠 NOVO IMÓVEL! MAIS um imóvel para ${demand.clientName} (${seq}º imóvel)`
 
             enqueueWebhook('imovel_captado', demand.id, {
               mensagem: msg,
@@ -1184,20 +1113,125 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           return { success: true, message: '' }
         },
         submitIndependentCapture: (payload) => {
-          enqueueWebhook('imovel_captado', 'independente', {
-            location: payload?.endereco || 'Desconhecida',
-            bairro_imovel: payload?.neighborhood,
-            bairro_tipo: payload?.bairro_tipo,
-            clientName: 'Geral',
-            id: 'independente',
+          const code = payload?.code || `IMV-${Math.floor(Math.random() * 1000)}`
+          const hAction = createAction('captacao', 'Imóvel captado como disponível para todos')
+
+          const newProp: CapturedProperty = {
+            code,
+            value: payload.value,
+            neighborhood: payload.neighborhood,
+            bairro_tipo: payload.bairro_tipo,
+            docCompleta: payload.docCompleta,
+            obs: payload.obs,
+            photoUrl: `https://img.usecurling.com/p/400/300?q=house&seed=${code}`,
+            capturedAt: new Date().toISOString(),
+            history: hAction ? [hAction] : [],
+            tipo_vinculacao: 'solto',
+            captador_id: currentUser?.id,
+            captador_name: currentUser?.name,
+          }
+
+          setLooseProperties((prev) => {
+            const nextLoose = [newProp, ...prev]
+
+            let nextUsers = users
+            if (currentUser) {
+              nextUsers = users.map((u) =>
+                u.id === currentUser.id
+                  ? {
+                      ...u,
+                      points: u.points + 35,
+                      dailyPoints: u.dailyPoints + 35,
+                      weeklyPoints: u.weeklyPoints + 35,
+                      monthlyPoints: u.monthlyPoints + 35,
+                    }
+                  : u,
+              )
+              setUsers(nextUsers)
+              setCurrentUser((prevU) =>
+                prevU && prevU.id === currentUser.id
+                  ? nextUsers.find((u) => u.id === prevU.id) || prevU
+                  : prevU,
+              )
+            }
+
+            toast({
+              title: 'Imóvel Disponível Registrado! 🔓',
+              description: `Você ganhou +35 pontos. O imóvel está disponível para todos.`,
+              className: 'bg-emerald-600 text-white border-emerald-600',
+            })
+
+            broadcastState(allDemands, nextUsers, 'Imóvel solto captado', nextLoose)
+            return nextLoose
+          })
+
+          enqueueWebhook('imovel_captado_solto', 'independente', {
+            mensagem: `🏠 NOVO IMÓVEL! Disponível para todos`,
+            imovel: newProp,
           })
         },
-        scheduleVisit: (id, payload) => {
-          // Fallback if needed, typically scheduleVisitByCode is used now
+        claimLooseProperty: (code, demandId) => {
+          let success = false
+          let message = ''
+
+          setAllDemands((prevDemands) => {
+            const demandIndex = prevDemands.findIndex((d) => d.id === demandId)
+            if (demandIndex === -1) {
+              message = 'Demanda não encontrada'
+              return prevDemands
+            }
+
+            const propIndex = loosePropertiesRef.current.findIndex((p) => p.code === code)
+            if (propIndex === -1) {
+              message = 'Imóvel não encontrado ou já reivindicado'
+              return prevDemands
+            }
+
+            const prop = loosePropertiesRef.current[propIndex]
+            const demand = prevDemands[demandIndex]
+
+            const action = createAction(
+              'captacao',
+              `Imóvel reivindicado e vinculado à demanda de ${demand.clientName}`,
+            )
+
+            const newProp: CapturedProperty = {
+              ...prop,
+              tipo_vinculacao: 'vinculado',
+              demandas_atendidas_ids: [...(prop.demandas_atendidas_ids || []), demandId],
+              numero_imovel_para_demanda: (demand.capturedProperties?.length || 0) + 1,
+              history: action ? [action, ...(prop.history || [])] : prop.history,
+            }
+
+            const updatedDemand = {
+              ...demand,
+              status:
+                demand.status === 'Pendente' || demand.status === 'Em Captação'
+                  ? ('Captado sob demanda' as DemandStatus)
+                  : demand.status,
+              capturedProperties: [...(demand.capturedProperties || []), newProp],
+            }
+
+            success = true
+
+            const nextLoose = loosePropertiesRef.current.filter((p) => p.code !== code)
+            setLooseProperties(nextLoose)
+
+            enqueueWebhook('imovel_reivindicado', demandId, {
+              mensagem: `Seu imóvel foi vinculado a ${demand.clientName}`,
+              captadorId: prop.captador_id,
+            })
+
+            const nextDemands = prevDemands.map((d) => (d.id === demandId ? updatedDemand : d))
+
+            broadcastState(nextDemands, users, 'Imóvel reivindicado', nextLoose)
+            return nextDemands
+          })
+
+          return { success, message }
         },
-        closeDeal: (id, payload) => {
-          // Fallback if needed, typically closeDealByCode is used now
-        },
+        scheduleVisit: (id, payload) => {},
+        closeDeal: (id, payload) => {},
         scheduleVisitByCode,
         submitProposalByCode,
         closeDealByCode,

@@ -3,8 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
 import { FunnelChart, Funnel, LabelList, PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
 import { Demand } from '@/types'
+import useAppStore from '@/stores/useAppStore'
 
 export function GestorCharts({ demands }: { demands: Demand[] }) {
+  const { looseProperties } = useAppStore()
+
   const funnelData = useMemo(() => {
     const total = demands.length
     const captados = demands.filter((d) =>
@@ -40,23 +43,20 @@ export function GestorCharts({ demands }: { demands: Demand[] }) {
     ]
   }, [demands])
 
-  const pieData = useMemo(() => {
-    const lost = demands.filter((d) => d.status === 'Perdida' || d.status === 'Impossível')
-    const reasons = lost.reduce(
-      (acc, d) => {
-        const r = d.lostReason || (d.status === 'Impossível' ? 'Sem resposta' : 'Outros')
-        acc[r] = (acc[r] || 0) + 1
-        return acc
-      },
-      {} as Record<string, number>,
-    )
+  const linkedVsLooseData = useMemo(() => {
+    let vinculados = 0
+    demands.forEach((d) => {
+      if (d.capturedProperties) {
+        vinculados += d.capturedProperties.length
+      }
+    })
+    const soltos = looseProperties.length
 
-    return Object.entries(reasons).map(([name, value], i) => ({
-      name,
-      value,
-      fill: `var(--color-${name.replace(/\s+/g, '')})`,
-    }))
-  }, [demands])
+    return [
+      { name: 'Vinculados', value: vinculados, fill: 'var(--color-Vinculados)' },
+      { name: 'Soltos', value: soltos, fill: 'var(--color-Soltos)' },
+    ]
+  }, [demands, looseProperties])
 
   const funnelConfig = {
     Demandas: { label: 'Demandas', color: 'hsl(var(--primary))' },
@@ -65,16 +65,10 @@ export function GestorCharts({ demands }: { demands: Demand[] }) {
     Negócios: { label: 'Negócios Fechados', color: 'hsl(var(--chart-4))' },
   }
 
-  const pieConfig = useMemo(() => {
-    const config: any = {}
-    pieData.forEach((d, i) => {
-      config[d.name.replace(/\s+/g, '')] = {
-        label: d.name,
-        color: `hsl(var(--chart-${(i % 5) + 1}))`,
-      }
-    })
-    return config
-  }, [pieData])
+  const linkedVsLooseConfig = {
+    Vinculados: { label: 'Vinculados', color: 'hsl(var(--chart-1))' },
+    Soltos: { label: 'Soltos', color: 'hsl(var(--chart-2))' },
+  }
 
   return (
     <div className="grid gap-6 md:grid-cols-2 mb-6">
@@ -99,16 +93,16 @@ export function GestorCharts({ demands }: { demands: Demand[] }) {
 
       <Card>
         <CardHeader>
-          <CardTitle>Análise de Perdas</CardTitle>
+          <CardTitle>Distribuição de Captações</CardTitle>
         </CardHeader>
         <CardContent className="h-[300px]">
-          {pieData.length > 0 ? (
-            <ChartContainer config={pieConfig}>
+          {linkedVsLooseData.reduce((a, b) => a + b.value, 0) > 0 ? (
+            <ChartContainer config={linkedVsLooseConfig}>
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <ChartTooltip content={<ChartTooltipContent />} />
                   <Pie
-                    data={pieData}
+                    data={linkedVsLooseData}
                     dataKey="value"
                     nameKey="name"
                     cx="50%"
@@ -116,7 +110,7 @@ export function GestorCharts({ demands }: { demands: Demand[] }) {
                     outerRadius={100}
                     label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
                   >
-                    {pieData.map((entry, index) => (
+                    {linkedVsLooseData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.fill} />
                     ))}
                   </Pie>
@@ -125,7 +119,7 @@ export function GestorCharts({ demands }: { demands: Demand[] }) {
             </ChartContainer>
           ) : (
             <div className="h-full flex items-center justify-center text-muted-foreground">
-              Nenhuma perda registrada no período
+              Nenhuma captação registrada no período
             </div>
           )}
         </CardContent>

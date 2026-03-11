@@ -50,7 +50,8 @@ export function CapturedPropertyCard({
   else if (isVisita) st = statusLabels['Visita']
   else if (isLost) st = statusLabels['Perdida']
 
-  const capturer = users.find((u) => u.id === demand.assignedTo)
+  const capturerName =
+    property.captador_name || users.find((u) => u.id === property.captador_id)?.name || 'N/A'
 
   return (
     <Card
@@ -63,7 +64,8 @@ export function CapturedPropertyCard({
       <div className="relative h-48 w-full bg-muted">
         <img
           src={
-            property.photoUrl || `https://img.usecurling.com/p/400/300?q=house&seed=${demand.id}`
+            property.photoUrl ||
+            `https://img.usecurling.com/p/400/300?q=house&seed=${property.code}`
           }
           alt="Imóvel"
           className={cn('w-full h-full object-cover', isClosed && 'opacity-90')}
@@ -76,9 +78,15 @@ export function CapturedPropertyCard({
             </div>
           </div>
         )}
-        <div className="absolute top-2 right-2">
+        <div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
           <Badge variant="outline" className={cn('font-medium shadow-sm bg-white/90', st.color)}>
             {st.label}
+          </Badge>
+          <Badge
+            variant="outline"
+            className="font-medium shadow-sm bg-indigo-50 text-indigo-800 border-indigo-200"
+          >
+            🔗 Vinculado a {demand.clientName.split(' ')[0]}
           </Badge>
         </div>
         <div className="absolute bottom-2 left-3.5 flex flex-col gap-1">
@@ -133,7 +141,7 @@ export function CapturedPropertyCard({
           </span>
         </div>
 
-        <div className="mt-3 flex flex-col gap-1.5 text-xs text-muted-foreground bg-muted/30 p-2 rounded-md border border-muted">
+        <div className="mt-3 flex flex-col gap-1.5 text-xs text-muted-foreground bg-indigo-50/50 p-2 rounded-md border border-indigo-100">
           <p className="flex items-center gap-1.5">
             <Calendar className="w-3.5 h-3.5 shrink-0" />
             Captação:{' '}
@@ -141,7 +149,7 @@ export function CapturedPropertyCard({
           </p>
           <p className="flex items-center gap-1.5">
             <UserCircle className="w-3.5 h-3.5 shrink-0" />
-            Captador: <span className="font-medium text-foreground">{capturer?.name || 'N/A'}</span>
+            Captador: <span className="font-medium text-foreground">{capturerName}</span>
           </p>
         </div>
 

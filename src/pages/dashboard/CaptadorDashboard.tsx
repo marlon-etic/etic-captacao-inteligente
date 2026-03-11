@@ -11,6 +11,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Plus,
+  Link as LinkIcon,
+  Unlock,
 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { DemandCard } from '@/components/DemandCard'
@@ -30,6 +32,7 @@ import useAppStore from '@/stores/useAppStore'
 import { useToast } from '@/hooks/use-toast'
 import { Demand } from '@/types'
 import { cn } from '@/lib/utils'
+import { Badge } from '@/components/ui/badge'
 
 const QUICK_FILTERS = [
   { id: 'all', label: 'Todos', icon: '📊' },
@@ -39,7 +42,7 @@ const QUICK_FILTERS = [
 ]
 
 export function CaptadorDashboard() {
-  const { demands, currentUser, submitDemandResponse } = useAppStore()
+  const { demands, currentUser, submitDemandResponse, looseProperties } = useAppStore()
   const { toast } = useToast()
 
   const [modal, setModal] = useState<{
@@ -60,9 +63,7 @@ export function CaptadorDashboard() {
   useEffect(() => {
     try {
       localStorage.setItem('captador_quick_filter', quickFilter)
-    } catch {
-      // ignore
-    }
+    } catch {}
   }, [quickFilter])
 
   const [filters, setFilters] = useState({
@@ -99,6 +100,7 @@ export function CaptadorDashboard() {
 
   const stats = useMemo(() => {
     const c = { capDem: 0, capInd: 0, search: 0, visit: 0, deal: 0, await: 0 }
+    let vinculadosCount = 0
     demands.forEach((d) => {
       if (d.status === 'Captado sob demanda') c.capDem++
       if (d.status === 'Captado independente') c.capInd++
@@ -106,9 +108,17 @@ export function CaptadorDashboard() {
       if (d.status === 'Visita') c.visit++
       if (d.status === 'Negócio') c.deal++
       if (d.status === 'Pendente') c.await++
+      if (d.capturedProperties) {
+        vinculadosCount += d.capturedProperties.filter(
+          (p) => p.captador_id === currentUser?.id,
+        ).length
+      }
     })
-    return c
-  }, [demands])
+
+    const soltosCount = looseProperties.filter((p) => p.captador_id === currentUser?.id).length
+
+    return { ...c, vinculadosCount, soltosCount }
+  }, [demands, looseProperties, currentUser])
 
   const sortedDemands = useMemo(() => {
     let filtered = demands
@@ -172,7 +182,6 @@ export function CaptadorDashboard() {
     { t: 'Aguardando', v: stats.await, i: Clock, c: 'text-orange-500', b: 'bg-orange-100' },
     { t: 'Em Captação', v: stats.search, i: Search, c: 'text-blue-500', b: 'bg-blue-100' },
     { t: 'Captado (Dem)', v: stats.capDem, i: CheckSquare, c: 'text-green-600', b: 'bg-green-100' },
-    { t: 'Captado (Ind)', v: stats.capInd, i: PackageSearch, c: 'text-teal-600', b: 'bg-teal-100' },
     { t: 'Visitas', v: stats.visit, i: Map, c: 'text-purple-600', b: 'bg-purple-100' },
     { t: 'Negócios', v: stats.deal, i: Handshake, c: 'text-emerald-600', b: 'bg-emerald-100' },
   ]
@@ -188,17 +197,30 @@ export function CaptadorDashboard() {
             Gerencie demandas e acompanhe seu desempenho gamificado.
           </p>
         </div>
-        <Button
-          onClick={() => setIndepModalOpen(true)}
-          className="shrink-0 bg-emerald-600 hover:bg-emerald-700"
-        >
-          <Plus className="w-4 h-4 mr-2" /> Captar Sem Demanda
-        </Button>
+        <div className="flex items-center gap-3">
+          <div className="hidden md:flex gap-2 mr-2">
+            <Badge
+              variant="outline"
+              className="bg-indigo-50 text-indigo-800 border-indigo-200 py-1"
+            >
+              <LinkIcon className="w-3 h-3 mr-1" /> {stats.vinculadosCount} vinculados
+            </Badge>
+            <Badge variant="outline" className="bg-blue-50 text-blue-800 border-blue-200 py-1">
+              <Unlock className="w-3 h-3 mr-1" /> {stats.soltosCount} soltos
+            </Badge>
+          </div>
+          <Button
+            onClick={() => setIndepModalOpen(true)}
+            className="shrink-0 bg-emerald-600 hover:bg-emerald-700"
+          >
+            <Plus className="w-4 h-4 mr-2" /> Nova Captação
+          </Button>
+        </div>
       </div>
 
       <GamificationWidget currentUser={currentUser} />
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
         {statCards.map((s, i) => (
           <Card key={i} className="border-0 shadow-sm">
             <CardContent className="p-4 flex flex-col items-center justify-center text-center gap-2">
