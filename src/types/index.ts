@@ -57,6 +57,7 @@ export interface CapturedProperty {
   visitaObs?: string
   fechamentoDate?: string
   fechamentoValue?: number
+  fechamentoType?: 'Venda' | 'Aluguel'
   fechamentoObs?: string
 }
 

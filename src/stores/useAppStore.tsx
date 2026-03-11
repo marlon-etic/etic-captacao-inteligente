@@ -197,16 +197,6 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         if (!prev) return prev
         const updatedCurrent = parsed.users.find((u: User) => u.id === prev.id)
         if (updatedCurrent && JSON.stringify(prev) !== JSON.stringify(updatedCurrent)) {
-          if (
-            updatedCurrent.points > prev.points &&
-            parsed.lastAction?.includes('Negócio Fechado')
-          ) {
-            toast({
-              title: 'Nova Conquista!',
-              description: 'Seu imóvel foi fechado! +100 pontos',
-              className: 'bg-emerald-600 text-white',
-            })
-          }
           return updatedCurrent
         }
         return prev
@@ -460,14 +450,6 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         })
         return
       }
-      if (Math.random() < 0.05) {
-        toast({
-          variant: 'destructive',
-          description: 'Erro ao atualizar. Será retentado automaticamente',
-        })
-        setTimeout(() => scheduleVisitByCodeRef.current?.(code, payload), 5000)
-        return
-      }
 
       const updated = {
         ...demand,
@@ -505,13 +487,23 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         })
         return
       }
-      if (Math.random() < 0.05) {
+      if (demand.status !== 'Visita') {
         toast({
           variant: 'destructive',
-          description: 'Erro ao atualizar. Será retentado automaticamente',
+          description: "Imóvel deve estar em status 'Visita Agendada' para ser fechado.",
         })
-        setTimeout(() => closeDealByCodeRef.current?.(code, payload), 5000)
         return
+      }
+
+      let earnedPoints = 100 // Base points
+      const budgetTarget = demand.maxBudget || demand.budget || 0
+      let aboveBudgetInfo = ''
+      if (budgetTarget > 0 && payload.value > budgetTarget) {
+        earnedPoints += 50
+        aboveBudgetInfo = ' (+50 valor acima do orçamento)'
+      }
+      if (demand.isPrioritized) {
+        earnedPoints += 25
       }
 
       const updated = {
@@ -521,6 +513,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           ...demand.capturedProperty!,
           fechamentoDate: payload.date,
           fechamentoValue: payload.value,
+          fechamentoType: payload.type,
           fechamentoObs: payload.obs,
         },
       }
@@ -535,10 +528,14 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           u.id === demand.assignedTo
             ? {
                 ...u,
-                points: u.points + 100,
-                dailyPoints: u.dailyPoints + 100,
-                weeklyPoints: u.weeklyPoints + 100,
-                monthlyPoints: u.monthlyPoints + 100,
+                points: u.points + earnedPoints,
+                dailyPoints: u.dailyPoints + earnedPoints,
+                weeklyPoints: u.weeklyPoints + earnedPoints,
+                monthlyPoints: u.monthlyPoints + earnedPoints,
+                stats: {
+                  ...u.stats,
+                  negociosFechados: u.stats.negociosFechados + 1,
+                },
               }
             : u,
         )
@@ -548,22 +545,26 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
             prev
               ? {
                   ...prev,
-                  points: prev.points + 100,
-                  dailyPoints: prev.dailyPoints + 100,
-                  weeklyPoints: prev.weeklyPoints + 100,
-                  monthlyPoints: prev.monthlyPoints + 100,
+                  points: prev.points + earnedPoints,
+                  dailyPoints: prev.dailyPoints + earnedPoints,
+                  weeklyPoints: prev.weeklyPoints + earnedPoints,
+                  monthlyPoints: prev.monthlyPoints + earnedPoints,
+                  stats: {
+                    ...prev.stats,
+                    negociosFechados: prev.stats.negociosFechados + 1,
+                  },
                 }
               : prev,
           )
         }
       }
 
-      const msg = `Status alterado para Negócio Fechado: Imóvel ${code} por ${currentUser?.name || 'Sistema'}`
+      const msg = `Status alterado para Negócio Fechado: Imóvel ${code} por ${currentUser?.name || 'Sistema'}. Pontos gerados: ${earnedPoints}`
       addLog(msg)
       toast({
-        title: 'Negócio Fechado!',
-        description: 'O status foi sincronizado com sucesso.',
-        className: 'bg-emerald-600 text-white',
+        title: 'Negócio Fechado! 🎉',
+        description: `O status foi atualizado. +${earnedPoints} pontos ganhos!${aboveBudgetInfo}`,
+        className: 'bg-emerald-600 text-white border-emerald-600',
       })
       broadcastState(nextDemands, nextUsers, msg)
     },
@@ -577,10 +578,6 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
   const prioritizeDemand = useCallback(
     (id: string, count: number) => {
-      if (Math.random() < 0.05) {
-        toast({ variant: 'destructive', description: 'Erro ao atualizar demanda. Tente novamente' })
-        return
-      }
       setAllDemands((prev) => {
         const next = prev.map((d) =>
           d.id === id ? { ...d, isPrioritized: true, interestedClientsCount: count } : d,
@@ -601,10 +598,6 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
   const markDemandLost = useCallback(
     (id: string, reason: string, obs?: string) => {
-      if (Math.random() < 0.05) {
-        toast({ variant: 'destructive', description: 'Erro ao atualizar demanda. Tente novamente' })
-        return
-      }
       setAllDemands((prev) => {
         const next = prev.map((d) =>
           d.id === id

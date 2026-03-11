@@ -21,6 +21,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Demand } from '@/types'
 
 const visitaSchema = z.object({
@@ -47,7 +48,8 @@ const negocioSchema = z.object({
       today.setHours(23, 59, 59, 999)
       return d <= today
     }, 'Data não pode ser no futuro'),
-  value: z.coerce.number().positive('Deve ser positivo'),
+  value: z.coerce.number().positive('Valor deve ser um número positivo'),
+  type: z.enum(['Venda', 'Aluguel'], { required_error: 'Selecione o tipo (Venda ou Aluguel)' }),
   obs: z.string().optional(),
 })
 
@@ -75,12 +77,17 @@ export function CapturedPropertyModals({
 
   const formNegocio = useForm({
     resolver: zodResolver(negocioSchema),
-    defaultValues: { date: '', value: 0, obs: '' },
+    defaultValues: { date: '', value: 0, type: undefined as any, obs: '' },
   })
 
   useEffect(() => {
     if (demand && isNegocio) {
-      formNegocio.reset({ date: '', value: demand.capturedProperty?.value || 0, obs: '' })
+      formNegocio.reset({
+        date: '',
+        value: demand.capturedProperty?.value || 0,
+        type: demand.type,
+        obs: '',
+      })
     }
   }, [demand, isNegocio, formNegocio])
 
@@ -183,9 +190,39 @@ export function CapturedPropertyModals({
                   name="value"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Valor Negociado (R$)</FormLabel>
+                      <FormLabel>Valor do Negócio (R$)</FormLabel>
                       <FormControl>
                         <Input type="number" step="0.01" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={formNegocio.control}
+                  name="type"
+                  render={({ field }) => (
+                    <FormItem className="space-y-3">
+                      <FormLabel>Tipo do Negócio</FormLabel>
+                      <FormControl>
+                        <RadioGroup
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                          className="flex space-x-4"
+                        >
+                          <FormItem className="flex items-center space-x-2 space-y-0">
+                            <FormControl>
+                              <RadioGroupItem value="Venda" />
+                            </FormControl>
+                            <FormLabel className="font-normal cursor-pointer">Venda</FormLabel>
+                          </FormItem>
+                          <FormItem className="flex items-center space-x-2 space-y-0">
+                            <FormControl>
+                              <RadioGroupItem value="Aluguel" />
+                            </FormControl>
+                            <FormLabel className="font-normal cursor-pointer">Aluguel</FormLabel>
+                          </FormItem>
+                        </RadioGroup>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
