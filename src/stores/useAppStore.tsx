@@ -27,8 +27,13 @@ const mockDemands: Demand[] = [
   {
     id: 'd1',
     clientName: 'João Pedro',
+    clientEmail: 'joao@example.com',
     location: 'Jardins',
     budget: 850000,
+    minBudget: 800000,
+    maxBudget: 1000000,
+    description: 'Apartamento com 3 quartos, suíte e varanda.',
+    timeframe: 'Até 3 meses',
     type: 'Venda',
     status: 'Pendente',
     createdBy: '2',
@@ -37,8 +42,13 @@ const mockDemands: Demand[] = [
   {
     id: 'd2',
     clientName: 'Empresa XYZ',
+    clientEmail: 'contato@xyz.com',
     location: 'Vila Olímpia',
     budget: 15000,
+    minBudget: 10000,
+    maxBudget: 20000,
+    description: 'Laje corporativa de 200m2 para escritório.',
+    timeframe: 'Imediato',
     type: 'Aluguel',
     status: 'Em Captação',
     createdBy: '4',
@@ -48,8 +58,13 @@ const mockDemands: Demand[] = [
   {
     id: 'd3',
     clientName: 'Fernanda M.',
+    clientEmail: 'fernanda@example.com',
     location: 'Pinheiros',
     budget: 1200000,
+    minBudget: 1000000,
+    maxBudget: 1500000,
+    description: 'Sobrado em rua tranquila, 2 vagas.',
+    timeframe: '3 a 6 meses',
     type: 'Venda',
     status: 'Pendente',
     createdBy: '2',
@@ -58,8 +73,13 @@ const mockDemands: Demand[] = [
   {
     id: 'd4',
     clientName: 'Lucas R.',
+    clientEmail: 'lucas@example.com',
     location: 'Moema',
     budget: 4500,
+    minBudget: 3000,
+    maxBudget: 5000,
+    description: 'Studio mobiliado próximo ao metrô.',
+    timeframe: 'Imediato',
     type: 'Aluguel',
     status: 'Visita',
     createdBy: '4',
@@ -80,7 +100,6 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     Record<string, { count: number; firstAttempt: number }>
   >({})
 
-  // Auditing mock logger
   const logAudit = (userId: string, event: 'login' | 'logout') => {
     console.log(`[AUDIT] User ${userId} ${event} at ${new Date().toISOString()}`)
   }
@@ -89,12 +108,10 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     const now = Date.now()
     const attempt = loginAttempts[email] || { count: 0, firstAttempt: now }
 
-    // Rate Limiting: max 5 attempts per minute
     if (attempt.count >= 5 && now - attempt.firstAttempt < 60000) {
       throw new Error('Muitas tentativas. Tente novamente em 1 minuto')
     }
 
-    // Reset attempts if 1 minute has passed
     if (now - attempt.firstAttempt >= 60000) {
       attempt.count = 0
       attempt.firstAttempt = now
@@ -107,7 +124,6 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       throw new Error('Email não cadastrado')
     }
 
-    // Passwords would be verified against bcrypt hashes in the backend
     if (password && password !== 'Password1') {
       attempt.count += 1
       setLoginAttempts({ ...loginAttempts, [email]: attempt })
@@ -116,7 +132,6 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
     setLoginAttempts({ ...loginAttempts, [email]: { count: 0, firstAttempt: now } })
 
-    // JWT Session validity (24 hours)
     setSessionExpiresAt(now + 24 * 60 * 60 * 1000)
     setCurrentUser(user)
     logAudit(user.id, 'login')
@@ -139,11 +154,20 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     if (!currentUser) return
     const newDemand: Demand = {
       ...demandData,
+      budget: demandData.budget ?? demandData.maxBudget,
       id: Math.random().toString(36).substr(2, 9),
       createdAt: new Date().toISOString(),
       status: 'Pendente',
       createdBy: currentUser.id,
     }
+
+    // Simulate Supabase insertion based on type
+    const tableName = newDemand.type === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
+    console.log(`[SUPABASE MOCK] Inserting data into table: ${tableName}`, newDemand)
+
+    // Simulate Webhook queue insertion
+    console.log(`[WEBHOOK MOCK] Generating record in webhook_queue for Demand ID: ${newDemand.id}`)
+
     setAllDemands((prev) => [newDemand, ...prev])
     setNotifications((prev) => [`Nova demanda criada para ${demandData.location}`, ...prev])
   }
@@ -165,7 +189,6 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     )
   }
 
-  // Row Level Security (RLS) Filtering
   const demands = allDemands.filter((d) => {
     if (!currentUser) return false
     if (currentUser.role === 'gestor' || currentUser.role === 'admin') return true

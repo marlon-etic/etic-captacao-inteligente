@@ -22,8 +22,13 @@ export type DemandStatus =
 export interface Demand {
   id: string
   clientName: string
+  clientEmail?: string
   location: string
-  budget: number
+  budget?: number
+  minBudget: number
+  maxBudget: number
+  description: string
+  timeframe: string
   type: 'Venda' | 'Aluguel'
   status: DemandStatus
   createdBy: string // user id
