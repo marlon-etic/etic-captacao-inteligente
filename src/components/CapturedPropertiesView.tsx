@@ -8,115 +8,156 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Badge } from '@/components/ui/badge'
 import { CapturedPropertyCard } from './CapturedPropertyCard'
 import { CapturedPropertyModals } from './CapturedPropertyModals'
-import { Demand } from '@/types'
+import { Demand, User } from '@/types'
 
 export function CapturedPropertiesView() {
-  const { demands, currentUser, scheduleVisitByCode, closeDealByCode } = useAppStore()
+  const {
+    demands,
+    users,
+    currentUser,
+    scheduleVisitByCode,
+    submitProposalByCode,
+    closeDealByCode,
+  } = useAppStore()
   const [statusFilter, setStatusFilter] = useState('all')
-  const [clientFilter, setClientFilter] = useState('all')
+  const [capturerFilter, setCapturerFilter] = useState('all')
+  const [dateFilter, setDateFilter] = useState('all')
 
   const [actionDemand, setActionDemand] = useState<Demand | null>(null)
-  const [actionType, setActionType] = useState<'visita' | 'negocio' | null>(null)
+  const [actionType, setActionType] = useState<'visita' | 'proposta' | 'negocio' | null>(null)
 
   const capturedDemands = useMemo(() => {
     return demands.filter(
       (d) =>
-        ['Captado sob demanda', 'Captado independente', 'Visita', 'Negócio'].includes(d.status) &&
+        ['Captado sob demanda', 'Captado independente', 'Visita', 'Proposta', 'Negócio'].includes(
+          d.status,
+        ) &&
         d.createdBy === currentUser?.id &&
         d.capturedProperty,
     )
   }, [demands, currentUser])
 
-  const uniqueClients = useMemo(
-    () => Array.from(new Set(capturedDemands.map((d) => d.clientName))).sort(),
-    [capturedDemands],
-  )
+  const uniqueCapturers = useMemo(() => {
+    const ids = new Set(capturedDemands.map((d) => d.assignedTo).filter(Boolean))
+    return Array.from(ids)
+      .map((id) => users.find((u) => u.id === id))
+      .filter(Boolean) as User[]
+  }, [capturedDemands, users])
 
-  const filtered = useMemo(() => {
-    return capturedDemands.filter((d) => {
+  const filteredAndSorted = useMemo(() => {
+    const now = new Date()
+    let result = capturedDemands.filter((d) => {
+      // Status Filter
       const matchStatus =
         statusFilter === 'all' ||
         (statusFilter === 'Captado' &&
           ['Captado sob demanda', 'Captado independente'].includes(d.status)) ||
-        (statusFilter === 'Visita' && d.status === 'Visita') ||
-        (statusFilter === 'Negocio' && d.status === 'Negócio')
+        d.status === statusFilter
 
-      const matchClient = clientFilter === 'all' || d.clientName === clientFilter
-      return matchStatus && matchClient
+      // Capturer Filter
+      const matchCapturer = capturerFilter === 'all' || d.assignedTo === capturerFilter
+
+      // Date Filter
+      let matchDate = true
+      const capDate = new Date(d.capturedProperty?.capturedAt || d.createdAt)
+      if (dateFilter === 'today') {
+        matchDate = capDate.toDateString() === now.toDateString()
+      } else if (dateFilter === 'week') {
+        const diffTime = Math.abs(now.getTime() - capDate.getTime())
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+        matchDate = diffDays <= 7
+      } else if (dateFilter === 'month') {
+        matchDate =
+          capDate.getMonth() === now.getMonth() && capDate.getFullYear() === now.getFullYear()
+      }
+
+      return matchStatus && matchCapturer && matchDate
     })
-  }, [capturedDemands, statusFilter, clientFilter])
 
-  const grouped = useMemo(() => {
-    const map = new Map<string, Demand[]>()
-    filtered.forEach((d) => {
-      const list = map.get(d.clientName) || []
-      list.push(d)
-      map.set(d.clientName, list)
+    // Sort Logic: Priority to Captado, then by most recent capture date
+    const statusWeight: Record<string, number> = {
+      'Captado sob demanda': 1,
+      'Captado independente': 1,
+      Visita: 2,
+      Proposta: 3,
+      Negócio: 4,
+    }
+
+    return result.sort((a, b) => {
+      const weightA = statusWeight[a.status] || 5
+      const weightB = statusWeight[b.status] || 5
+
+      if (weightA !== weightB) {
+        return weightA - weightB
+      }
+
+      const dateA = new Date(a.capturedProperty?.capturedAt || a.createdAt).getTime()
+      const dateB = new Date(b.capturedProperty?.capturedAt || b.createdAt).getTime()
+      return dateB - dateA
     })
-    return Array.from(map.entries())
-  }, [filtered])
+  }, [capturedDemands, statusFilter, capturerFilter, dateFilter])
 
-  const handleAction = (type: 'visita' | 'negocio', demand: Demand) => {
+  const handleAction = (type: 'visita' | 'proposta' | 'negocio', demand: Demand) => {
     setActionType(type)
     setActionDemand(demand)
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-full sm:w-[220px]">
-            <SelectValue placeholder="Filtrar por Status" />
+          <SelectTrigger>
+            <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos os Status</SelectItem>
             <SelectItem value="Captado">🟡 Captado</SelectItem>
-            <SelectItem value="Visita">🟠 Visita Agendada</SelectItem>
-            <SelectItem value="Negocio">🟢 Negócio Fechado</SelectItem>
+            <SelectItem value="Visita">🔵 Visita Agendada</SelectItem>
+            <SelectItem value="Proposta">🟣 Proposta</SelectItem>
+            <SelectItem value="Negócio">🟢 Negócio Fechado</SelectItem>
           </SelectContent>
         </Select>
 
-        <Select value={clientFilter} onValueChange={setClientFilter}>
-          <SelectTrigger className="w-full sm:w-[220px]">
-            <SelectValue placeholder="Filtrar por Cliente" />
+        <Select value={capturerFilter} onValueChange={setCapturerFilter}>
+          <SelectTrigger>
+            <SelectValue placeholder="Captador" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Todos os Clientes</SelectItem>
-            {uniqueClients.map((c) => (
-              <SelectItem key={c} value={c}>
-                {c}
+            <SelectItem value="all">Todos os Captadores</SelectItem>
+            {uniqueCapturers.map((c) => (
+              <SelectItem key={c.id} value={c.id}>
+                {c.name}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
+
+        <Select value={dateFilter} onValueChange={setDateFilter}>
+          <SelectTrigger>
+            <SelectValue placeholder="Data de Captação" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Qualquer Data</SelectItem>
+            <SelectItem value="today">Hoje</SelectItem>
+            <SelectItem value="week">Esta Semana</SelectItem>
+            <SelectItem value="month">Este Mês</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
-      {grouped.length === 0 ? (
+      {filteredAndSorted.length === 0 ? (
         <div className="text-center p-12 bg-background border rounded-xl border-dashed">
           <Search className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
           <p className="text-muted-foreground font-medium">
-            Nenhum imóvel captado encontrado para os filtros atuais.
+            Nenhum imóvel captado para suas demandas.
           </p>
         </div>
       ) : (
-        <div className="space-y-8">
-          {grouped.map(([clientName, clientDemands]) => (
-            <div key={clientName} className="space-y-4">
-              <h3 className="text-lg font-semibold border-b pb-2 flex items-center gap-2">
-                <span>Cliente: {clientName}</span>
-                <Badge variant="secondary" className="rounded-full bg-primary/10 text-primary">
-                  {clientDemands.length}
-                </Badge>
-              </h3>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {clientDemands.map((demand) => (
-                  <CapturedPropertyCard key={demand.id} demand={demand} onAction={handleAction} />
-                ))}
-              </div>
-            </div>
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+          {filteredAndSorted.map((demand) => (
+            <CapturedPropertyCard key={demand.id} demand={demand} onAction={handleAction} />
           ))}
         </div>
       )}
@@ -131,6 +172,13 @@ export function CapturedPropertiesView() {
         onSubmitVisita={(data) => {
           if (actionDemand?.capturedProperty?.code) {
             scheduleVisitByCode(actionDemand.capturedProperty.code, data)
+          }
+          setActionType(null)
+          setActionDemand(null)
+        }}
+        onSubmitProposta={(data) => {
+          if (actionDemand?.capturedProperty?.code) {
+            submitProposalByCode(actionDemand.capturedProperty.code, data)
           }
           setActionType(null)
           setActionDemand(null)

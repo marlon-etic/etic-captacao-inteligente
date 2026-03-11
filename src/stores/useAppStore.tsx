@@ -31,6 +31,7 @@ interface AppState {
   scheduleVisit: (id: string, payload: any) => void
   closeDeal: (id: string, payload: any) => void
   scheduleVisitByCode: (code: string, payload: any) => void
+  submitProposalByCode: (code: string, payload: any) => void
   closeDealByCode: (code: string, payload: any) => void
   prioritizeDemand: (id: string, count: number) => void
   markDemandLost: (id: string, reason: string, obs?: string) => void
@@ -105,6 +106,7 @@ const createDem = (
   minBudget: 800000,
   maxBudget: 1000000,
   bedrooms: 3,
+  bathrooms: 2,
   parkingSpots: 2,
   description: 'Demanda de teste',
   timeframe,
@@ -128,6 +130,7 @@ const initialDemands: Demand[] = [
       docCompleta: true,
       obs: 'Apartamento recém reformado',
       photoUrl: 'https://img.usecurling.com/p/400/300?q=apartment&seed=d2',
+      capturedAt: new Date(Date.now() - 48 * 3600000).toISOString(),
     },
   },
   {
@@ -142,6 +145,7 @@ const initialDemands: Demand[] = [
       visitaDate: new Date().toISOString().split('T')[0],
       visitaTime: '14:30',
       photoUrl: 'https://img.usecurling.com/p/400/300?q=house&seed=d3',
+      capturedAt: new Date(Date.now() - 24 * 3600000).toISOString(),
     },
   },
   createDem('d4', 'Fernanda Lima', 'Centro', 73, 'Até 90 dias ou +'),
@@ -158,6 +162,7 @@ const initialDemands: Demand[] = [
       visitaDate: new Date().toISOString().split('T')[0],
       visitaTime: '10:00',
       photoUrl: 'https://img.usecurling.com/p/400/300?q=apartment&seed=d5',
+      capturedAt: new Date().toISOString(),
     },
   },
 ]
@@ -174,6 +179,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const webhookQueueRef = useRef(webhookQueue)
   const isProcessingRef = useRef(false)
   const scheduleVisitByCodeRef = useRef<any>(null)
+  const submitProposalByCodeRef = useRef<any>(null)
   const closeDealByCodeRef = useRef<any>(null)
 
   useEffect(() => {
@@ -496,7 +502,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     [allDemands, currentUser, users, enqueueWebhook, addLog, broadcastState],
   )
 
-  const closeDealByCode = useCallback(
+  const submitProposalByCode = useCallback(
     (code: string, payload: any) => {
       const demand = allDemands.find((d) => d.capturedProperty?.code === code)
       if (!demand) {
@@ -521,10 +527,51 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         })
         return
       }
-      if (demand.status !== 'Visita') {
+
+      const updated = {
+        ...demand,
+        status: 'Proposta' as DemandStatus,
+        capturedProperty: {
+          ...demand.capturedProperty!,
+          propostaDate: payload.date,
+          propostaValue: payload.value,
+          propostaObs: payload.obs,
+        },
+      }
+
+      const nextDemands = allDemands.map((d) => (d.id === demand.id ? updated : d))
+      setAllDemands(nextDemands)
+      enqueueWebhook('proposta_enviada', demand.id, updated)
+      const msg = `Status alterado para Proposta: Imóvel ${code} por ${currentUser?.name || 'Sistema'}`
+      addLog(msg)
+      toast({ title: 'Proposta Registrada', description: 'O status foi atualizado com sucesso.' })
+      broadcastState(nextDemands, users, msg)
+    },
+    [allDemands, currentUser, users, enqueueWebhook, addLog, broadcastState],
+  )
+
+  const closeDealByCode = useCallback(
+    (code: string, payload: any) => {
+      const demand = allDemands.find((d) => d.capturedProperty?.code === code)
+      if (!demand) {
+        toast({ variant: 'destructive', description: 'Imóvel não encontrado' })
+        return
+      }
+      if (
+        currentUser?.role === 'corretor' &&
+        (demand.type !== 'Venda' || demand.createdBy !== currentUser.id)
+      ) {
         toast({
           variant: 'destructive',
-          description: "Imóvel deve estar em status 'Visita Agendada' para ser fechado.",
+          title: 'Acesso negado',
+          description: 'Você não tem permissão para atualizar este imóvel',
+        })
+        return
+      }
+      if (currentUser?.role === 'captador' && demand.assignedTo !== currentUser.id) {
+        toast({
+          variant: 'destructive',
+          description: 'Você não tem permissão para atualizar este imóvel',
         })
         return
       }
@@ -607,8 +654,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     scheduleVisitByCodeRef.current = scheduleVisitByCode
+    submitProposalByCodeRef.current = submitProposalByCode
     closeDealByCodeRef.current = closeDealByCode
-  }, [scheduleVisitByCode, closeDealByCode])
+  }, [scheduleVisitByCode, submitProposalByCode, closeDealByCode])
 
   const prioritizeDemand = useCallback(
     (id: string, count: number) => {
@@ -774,6 +822,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
                 docCompleta: payload?.docCompleta || false,
                 obs: payload?.obs,
                 photoUrl: `https://img.usecurling.com/p/400/300?q=house&seed=${demand.id}`,
+                capturedAt: new Date().toISOString(),
               },
             }
 
@@ -838,6 +887,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           if (d?.capturedProperty?.code) closeDealByCode(d.capturedProperty.code, payload)
         },
         scheduleVisitByCode,
+        submitProposalByCode,
         closeDealByCode,
         prioritizeDemand,
         markDemandLost,

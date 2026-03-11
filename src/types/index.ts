@@ -41,6 +41,7 @@ export type DemandStatus =
   | 'Sem demanda'
   | 'Aguardando'
   | 'Visita'
+  | 'Proposta'
   | 'Negócio'
   | 'Arquivado'
   | 'Impossível'
@@ -53,9 +54,13 @@ export interface CapturedProperty {
   docCompleta: boolean
   obs?: string
   photoUrl?: string
+  capturedAt?: string
   visitaDate?: string
   visitaTime?: string
   visitaObs?: string
+  propostaDate?: string
+  propostaValue?: number
+  propostaObs?: string
   fechamentoDate?: string
   fechamentoValue?: number
   fechamentoType?: 'Venda' | 'Aluguel'
@@ -71,6 +76,7 @@ export interface Demand {
   minBudget: number
   maxBudget: number
   bedrooms: number
+  bathrooms?: number
   parkingSpots: number
   description: string
   timeframe: string

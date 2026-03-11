@@ -19,6 +19,10 @@ export function CorretorDashboard() {
     (d) => d.status === 'Captado sob demanda' || d.status === 'Negócio',
   ).length
 
+  const historyDemands = myDemands.filter((d) =>
+    ['Negócio', 'Perdida', 'Impossível', 'Arquivado'].includes(d.status),
+  )
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
@@ -36,9 +40,10 @@ export function CorretorDashboard() {
       </div>
 
       <Tabs defaultValue="demandas" className="w-full">
-        <TabsList className="grid w-full sm:w-[400px] grid-cols-2 mb-6">
-          <TabsTrigger value="demandas">Minhas Vendas</TabsTrigger>
-          <TabsTrigger value="captados">Imóveis Vinculados</TabsTrigger>
+        <TabsList className="grid w-full sm:w-[500px] grid-cols-3 mb-6">
+          <TabsTrigger value="demandas">DEMANDAS</TabsTrigger>
+          <TabsTrigger value="captados">CAPTADOS</TabsTrigger>
+          <TabsTrigger value="historico">HISTÓRICO</TabsTrigger>
         </TabsList>
 
         <TabsContent value="demandas" className="space-y-6 mt-0">
@@ -68,7 +73,7 @@ export function CorretorDashboard() {
           </div>
 
           <div>
-            <h2 className="text-lg font-semibold mb-4">Demandas Recentes</h2>
+            <h2 className="text-lg font-semibold mb-4">Demandas Ativas</h2>
             {myDemands.length === 0 ? (
               <div className="text-center p-12 bg-background border rounded-xl border-dashed">
                 <Building2 className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
@@ -79,9 +84,14 @@ export function CorretorDashboard() {
               </div>
             ) : (
               <div className="grid gap-4 sm:grid-cols-2">
-                {myDemands.slice(0, 4).map((demand) => (
-                  <DemandCard key={demand.id} demand={demand} />
-                ))}
+                {myDemands
+                  .filter(
+                    (d) => !['Negócio', 'Perdida', 'Impossível', 'Arquivado'].includes(d.status),
+                  )
+                  .slice(0, 4)
+                  .map((demand) => (
+                    <DemandCard key={demand.id} demand={demand} />
+                  ))}
               </div>
             )}
           </div>
@@ -89,6 +99,21 @@ export function CorretorDashboard() {
 
         <TabsContent value="captados" className="mt-0">
           <CapturedPropertiesView />
+        </TabsContent>
+
+        <TabsContent value="historico" className="mt-0">
+          <h2 className="text-lg font-semibold mb-4">Histórico de Demandas</h2>
+          {historyDemands.length === 0 ? (
+            <div className="text-center p-12 bg-background border rounded-xl border-dashed">
+              <p className="text-muted-foreground font-medium">Nenhum histórico encontrado.</p>
+            </div>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2">
+              {historyDemands.map((demand) => (
+                <DemandCard key={demand.id} demand={demand} />
+              ))}
+            </div>
+          )}
         </TabsContent>
       </Tabs>
     </div>

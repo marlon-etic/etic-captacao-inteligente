@@ -65,6 +65,7 @@ export function DemandCard({
     'Sem demanda': 'bg-red-100 text-red-700 border-red-200',
     Aguardando: 'bg-gray-100 text-gray-700 border-gray-200',
     Visita: 'bg-purple-100 text-purple-700 border-purple-200',
+    Proposta: 'bg-indigo-100 text-indigo-700 border-indigo-200 font-medium',
     Negócio: 'bg-emerald-100 text-emerald-800 border-emerald-300 font-bold',
     Arquivado: 'bg-muted text-muted-foreground',
     Impossível: 'bg-gray-800 text-white border-gray-900 font-medium',

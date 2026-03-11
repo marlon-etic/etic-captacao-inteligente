@@ -38,6 +38,12 @@ const visitaSchema = z.object({
   obs: z.string().optional(),
 })
 
+const propostaSchema = z.object({
+  date: z.string().min(1, 'Obrigatório'),
+  value: z.coerce.number().positive('Valor deve ser um número positivo'),
+  obs: z.string().optional(),
+})
+
 const negocioSchema = z.object({
   date: z
     .string()
@@ -58,15 +64,18 @@ export function CapturedPropertyModals({
   actionType,
   onClose,
   onSubmitVisita,
+  onSubmitProposta,
   onSubmitNegocio,
 }: {
   demand: Demand | null
-  actionType: 'visita' | 'negocio' | null
+  actionType: 'visita' | 'proposta' | 'negocio' | null
   onClose: () => void
   onSubmitVisita: (data: any) => void
+  onSubmitProposta: (data: any) => void
   onSubmitNegocio: (data: any) => void
 }) {
   const isVisita = actionType === 'visita'
+  const isProposta = actionType === 'proposta'
   const isNegocio = actionType === 'negocio'
   const isOpen = !!demand && !!actionType
 
@@ -75,27 +84,45 @@ export function CapturedPropertyModals({
     defaultValues: { date: '', time: '', obs: '' },
   })
 
+  const formProposta = useForm({
+    resolver: zodResolver(propostaSchema),
+    defaultValues: { date: '', value: 0, obs: '' },
+  })
+
   const formNegocio = useForm({
     resolver: zodResolver(negocioSchema),
     defaultValues: { date: '', value: 0, type: undefined as any, obs: '' },
   })
 
   useEffect(() => {
-    if (demand && isNegocio) {
-      formNegocio.reset({
-        date: '',
-        value: demand.capturedProperty?.value || 0,
-        type: demand.type,
-        obs: '',
-      })
+    if (demand) {
+      if (isNegocio) {
+        formNegocio.reset({
+          date: '',
+          value: demand.capturedProperty?.value || 0,
+          type: demand.type,
+          obs: '',
+        })
+      }
+      if (isProposta) {
+        formProposta.reset({
+          date: new Date().toISOString().split('T')[0],
+          value: demand.capturedProperty?.value || demand.budget || demand.maxBudget || 0,
+          obs: '',
+        })
+      }
     }
-  }, [demand, isNegocio, formNegocio])
+  }, [demand, isNegocio, isProposta, formNegocio, formProposta])
 
   return (
     <Dialog open={isOpen} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>{isVisita ? 'Agendar Visita' : 'Registrar Negócio Fechado'}</DialogTitle>
+          <DialogTitle>
+            {isVisita && 'Agendar Visita'}
+            {isProposta && 'Registrar Proposta'}
+            {isNegocio && 'Registrar Negócio Fechado'}
+          </DialogTitle>
           {demand && (
             <DialogDescription>
               Cliente: <strong>{demand.clientName}</strong> • Cód: {demand.capturedProperty?.code}
@@ -158,6 +185,66 @@ export function CapturedPropertyModals({
                     Cancelar
                   </Button>
                   <Button type="submit">Agendar Visita</Button>
+                </DialogFooter>
+              </form>
+            </Form>
+          )}
+
+          {isProposta && (
+            <Form {...formProposta}>
+              <form
+                onSubmit={formProposta.handleSubmit((d) => {
+                  onSubmitProposta(d)
+                  formProposta.reset()
+                })}
+                className="space-y-4"
+              >
+                <FormField
+                  control={formProposta.control}
+                  name="date"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Data da Proposta</FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={formProposta.control}
+                  name="value"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Valor Proposto (R$)</FormLabel>
+                      <FormControl>
+                        <Input type="number" step="0.01" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={formProposta.control}
+                  name="obs"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Detalhes da Proposta</FormLabel>
+                      <FormControl>
+                        <Textarea {...field} placeholder="Descreva as condições da proposta..." />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={onClose}>
+                    Cancelar
+                  </Button>
+                  <Button type="submit" className="bg-purple-600 hover:bg-purple-700 text-white">
+                    Registrar Proposta
+                  </Button>
                 </DialogFooter>
               </form>
             </Form>
