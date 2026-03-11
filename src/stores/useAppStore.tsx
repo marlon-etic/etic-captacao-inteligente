@@ -654,29 +654,62 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         },
         submitDemandResponse: (id, action, payload) => {
           const demand = allDemands.find((d) => d.id === id)
+
           if (action === 'encontrei' && demand) {
-            setAllDemands((prev) =>
-              prev.map((d) => {
-                if (d.id === id) {
-                  return {
-                    ...d,
-                    status: 'Captado sob demanda',
-                    capturedProperty: {
-                      code: payload?.code || `IMV-${Math.floor(Math.random() * 1000)}`,
-                      value: payload?.value || d.budget || d.maxBudget,
-                      neighborhood:
-                        payload?.neighborhood || d.location.split(',')[0] || 'Desconhecido',
-                      docCompleta: payload?.docCompleta || false,
-                      obs: payload?.obs,
-                      photoUrl: `https://img.usecurling.com/p/400/300?q=house&seed=${d.id}`,
-                    },
-                  }
-                }
-                return d
-              }),
-            )
-            enqueueWebhook('imovel_captado', demand.id, {
+            const isPriority = demand.isPrioritized
+
+            const updatedDemand = {
               ...demand,
+              status: 'Captado sob demanda' as DemandStatus,
+              capturedProperty: {
+                code: payload?.code || `IMV-${Math.floor(Math.random() * 1000)}`,
+                value: payload?.value || demand.budget || demand.maxBudget,
+                neighborhood:
+                  payload?.neighborhood || demand.location.split(',')[0] || 'Desconhecido',
+                docCompleta: payload?.docCompleta || false,
+                obs: payload?.obs,
+                photoUrl: `https://img.usecurling.com/p/400/300?q=house&seed=${demand.id}`,
+              },
+            }
+
+            const nextDemands = allDemands.map((d) => (d.id === id ? updatedDemand : d))
+            setAllDemands(nextDemands)
+
+            let nextUsers = users
+            if (isPriority && currentUser) {
+              nextUsers = users.map((u) =>
+                u.id === currentUser.id
+                  ? {
+                      ...u,
+                      points: u.points + 25,
+                      dailyPoints: u.dailyPoints + 25,
+                      weeklyPoints: u.weeklyPoints + 25,
+                      monthlyPoints: u.monthlyPoints + 25,
+                    }
+                  : u,
+              )
+              setUsers(nextUsers)
+              setCurrentUser((prev) =>
+                prev && prev.id === currentUser.id
+                  ? nextUsers.find((u) => u.id === prev.id) || prev
+                  : prev,
+              )
+
+              toast({
+                title: 'Bônus de Prioridade! 🎉',
+                description: 'Você ganhou +25 pontos por captar uma demanda priorizada!',
+                className: 'bg-pink-600 text-white border-pink-600',
+              })
+            }
+
+            broadcastState(
+              nextDemands,
+              nextUsers,
+              `Imóvel captado: ${updatedDemand.clientName}${isPriority ? ' (Priorizado)' : ''}`,
+            )
+
+            enqueueWebhook('imovel_captado', demand.id, {
+              ...updatedDemand,
               location: payload?.endereco || demand.location,
             })
           }

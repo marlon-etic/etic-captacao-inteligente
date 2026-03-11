@@ -11,6 +11,7 @@ import {
   Car,
   ArrowUpCircle,
   RefreshCw,
+  Trophy,
 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -46,6 +47,7 @@ export function DemandCard({
   const [showSimilar, setShowSimilar] = useState(false)
   const [showPrioritize, setShowPrioritize] = useState(false)
   const [showLost, setShowLost] = useState(false)
+  const [showPriorityModal, setShowPriorityModal] = useState(false)
 
   const { text, hoursElapsed, urgencyLevel, createdDate } = useTimeElapsed(demand.createdAt)
 
@@ -91,7 +93,8 @@ export function DemandCard({
           urgencyLevel === 'red' && 'border-red-400 shadow-sm shadow-red-200/50',
           isHighPriority && 'ring-2 ring-purple-300 ring-offset-1',
           demand.isRepescagem && 'border-amber-400 shadow-amber-200 ring-1 ring-amber-400/50',
-          demand.isPrioritized && 'bg-pink-50/50 border-pink-300 shadow-pink-200',
+          demand.isPrioritized &&
+            'bg-pink-50 border-pink-400 shadow-sm shadow-pink-200 ring-1 ring-pink-400/50',
           demand.status === 'Perdida' && 'bg-gray-50 border-gray-200 opacity-80',
         )}
       >
@@ -126,7 +129,7 @@ export function DemandCard({
                     <Clock className="w-4 h-4" />
                   </span>
                 )}
-                {isHighPriority && (
+                {isHighPriority && !demand.isPrioritized && (
                   <span
                     title="Alta Prioridade (>5 interessados)"
                     className="flex items-center text-purple-600"
@@ -150,9 +153,10 @@ export function DemandCard({
               {demand.isPrioritized && (
                 <Badge
                   variant="secondary"
-                  className="bg-pink-100 text-pink-800 border-pink-300 text-[10px] py-0 px-1.5 font-bold flex items-center gap-1 whitespace-nowrap"
+                  className="bg-pink-100 text-pink-800 hover:bg-pink-200 border-pink-300 text-[10px] py-0.5 px-2 font-bold flex items-center gap-1.5 whitespace-nowrap cursor-pointer transition-colors shadow-sm"
+                  onClick={() => setShowPriorityModal(true)}
                 >
-                  🔴 PRIORIZADA
+                  <span>🔴</span> PRIORIZADA - {demand.interestedClientsCount || 1} interessados
                 </Badge>
               )}
               {demand.status === 'Perdida' && (
@@ -211,7 +215,7 @@ export function DemandCard({
               <Clock className="w-3 h-3" />
               {demand.timeframe}
             </Badge>
-            {totalInterested > 1 && (
+            {totalInterested > 1 && !demand.isPrioritized && (
               <button
                 onClick={() => setShowSimilar(true)}
                 className="flex items-center gap-1 text-xs font-medium text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 px-2 py-1 rounded-md ml-auto transition-colors cursor-pointer"
@@ -336,6 +340,35 @@ export function DemandCard({
                 </div>
               </div>
             ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showPriorityModal} onOpenChange={setShowPriorityModal}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">🔴 Demanda Priorizada</DialogTitle>
+            <DialogDescription>
+              Esta demanda possui alta probabilidade de conversão imediata.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div className="flex items-center gap-3 p-3 bg-pink-50 border border-pink-100 rounded-lg">
+              <Users className="w-5 h-5 text-pink-600" />
+              <p className="font-medium text-pink-900">
+                <strong className="text-lg">{demand.interestedClientsCount || 1}</strong> clientes
+                estão interessados neste perfil
+              </p>
+            </div>
+            <div className="flex items-center gap-3 p-3 bg-amber-50 border border-amber-100 rounded-lg">
+              <Trophy className="w-5 h-5 text-amber-600" />
+              <p className="font-medium text-amber-900">
+                <strong>+25 pontos adicionais</strong> se captar este imóvel
+              </p>
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <Button onClick={() => setShowPriorityModal(false)}>Entendi</Button>
           </div>
         </DialogContent>
       </Dialog>

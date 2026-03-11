@@ -122,8 +122,18 @@ export function CaptadorDashboard() {
       .filter((d) => filters.status === 'all' || d.status === filters.status)
       .filter((d) => filters.timeframe === 'all' || d.timeframe === filters.timeframe)
       .sort((a, b) => {
+        if (a.isPrioritized && !b.isPrioritized) return -1
+        if (!a.isPrioritized && b.isPrioritized) return 1
+
+        if (a.isPrioritized && b.isPrioritized) {
+          const aCount = a.interestedClientsCount || 1
+          const bCount = b.interestedClientsCount || 1
+          if (aCount !== bCount) return bCount - aCount
+        }
+
         if (a.status === 'Pendente' && b.status !== 'Pendente') return -1
         if (a.status !== 'Pendente' && b.status === 'Pendente') return 1
+
         if (filters.sort === 'urgency') {
           const u: any = {
             Urgente: 5,
