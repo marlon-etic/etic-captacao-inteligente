@@ -1,10 +1,21 @@
-import { MapPin, Calendar, CheckCircle2, Bed, Car, Bath, UserCircle, Clock } from 'lucide-react'
+import {
+  MapPin,
+  Calendar,
+  CheckCircle2,
+  Bed,
+  Car,
+  Bath,
+  UserCircle,
+  Clock,
+  MessageCircle,
+} from 'lucide-react'
 import { Demand, CapturedProperty } from '@/types'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import useAppStore from '@/stores/useAppStore'
+import { toast } from '@/hooks/use-toast'
 
 const statusLabels = {
   'Captado sob demanda': {
@@ -37,7 +48,7 @@ export function CapturedPropertyCard({
     p: CapturedProperty,
   ) => void
 }) {
-  const { users } = useAppStore()
+  const { users, currentUser, logContactAttempt } = useAppStore()
 
   const isClosed = !!property.fechamentoDate
   const isProposta = !!property.propostaDate && !isClosed
@@ -50,8 +61,30 @@ export function CapturedPropertyCard({
   else if (isVisita) st = statusLabels['Visita']
   else if (isLost) st = statusLabels['Perdida']
 
-  const capturerName =
-    property.captador_name || users.find((u) => u.id === property.captador_id)?.name || 'N/A'
+  const capturer = users.find((u) => u.id === property.captador_id)
+  const capturerName = capturer?.name || property.captador_name || 'N/A'
+
+  const isSdrOrBroker = currentUser?.role === 'sdr' || currentUser?.role === 'corretor'
+  const isCapturerActive = capturer?.status === 'ativo'
+
+  let phoneStr = capturer?.phone || ''
+  let cleanPhone = phoneStr.replace(/\D/g, '')
+  let isValidPhone = cleanPhone.length >= 10
+  if (isValidPhone && cleanPhone.length <= 11) {
+    cleanPhone = '55' + cleanPhone
+  }
+
+  const lastContact = property.history
+    ?.filter((h) => h.type === 'contato_captador')
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0]
+
+  const formatTimeAgo = (isoString: string) => {
+    const diffMs = Date.now() - new Date(isoString).getTime()
+    const diffHrs = Math.floor(diffMs / 3600000)
+    if (diffHrs < 1) return 'menos de 1h'
+    if (diffHrs < 24) return `${diffHrs}h`
+    return `${Math.floor(diffHrs / 24)}d`
+  }
 
   return (
     <Card
@@ -148,8 +181,8 @@ export function CapturedPropertyCard({
             {new Date(property.capturedAt || demand.createdAt).toLocaleDateString('pt-BR')}
           </p>
           <p className="flex items-center gap-1.5">
-            <UserCircle className="w-3.5 h-3.5 shrink-0" />
-            Captador: <span className="font-medium text-foreground">{capturerName}</span>
+            <UserCircle className="w-3.5 h-3.5 shrink-0" />👤 Captado por:{' '}
+            <span className="font-medium text-foreground">{capturerName}</span>
           </p>
         </div>
 
@@ -205,7 +238,59 @@ export function CapturedPropertyCard({
         )}
       </CardContent>
 
-      <div className="p-4 pt-0 mt-auto flex flex-col gap-2">
+      {isSdrOrBroker && (
+        <div className="px-4 pb-2 flex flex-col gap-2">
+          {!isCapturerActive ? (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled
+              className="w-full text-xs font-semibold bg-muted/50 h-8"
+            >
+              Captador não está disponível
+            </Button>
+          ) : isValidPhone ? (
+            <Button
+              size="sm"
+              className="w-full text-xs font-bold bg-[#25D366] hover:bg-[#128C7E] text-white shadow-sm h-8"
+              onClick={() => {
+                if (logContactAttempt) logContactAttempt(demand.id, property.code, 'whatsapp')
+                const msg = `Olá ${capturer?.name || capturerName}, tenho dúvidas sobre o imóvel ${property.code}. Você pode me ajudar?`
+                window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank')
+              }}
+            >
+              💬 CONTATAR CAPTADOR
+            </Button>
+          ) : (
+            <div className="flex flex-col gap-1 w-full">
+              <span className="text-[10px] text-center text-muted-foreground leading-none">
+                Número de WhatsApp não disponível
+              </span>
+              <Button
+                size="sm"
+                variant="outline"
+                className="w-full text-xs font-semibold h-8"
+                onClick={() => {
+                  if (logContactAttempt) logContactAttempt(demand.id, property.code, 'interno')
+                  toast({
+                    title: 'Mensagem Enviada',
+                    description: `Sua mensagem interna para ${capturer?.name || capturerName} foi enviada com sucesso.`,
+                  })
+                }}
+              >
+                ✉️ Enviar mensagem interna
+              </Button>
+            </div>
+          )}
+          {lastContact && (
+            <p className="text-[10px] text-center text-muted-foreground leading-none">
+              Último contato: há {formatTimeAgo(lastContact.timestamp)}
+            </p>
+          )}
+        </div>
+      )}
+
+      <div className="p-4 pt-0 mt-auto flex flex-col gap-2 border-t pt-3">
         {!isLost && (
           <>
             <Button

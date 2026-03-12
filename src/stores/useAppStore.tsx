@@ -48,6 +48,7 @@ interface AppState {
   closeDealByCode: (code: string, payload: any) => void
   prioritizeDemand: (id: string, count: number) => void
   markDemandLost: (id: string, reason: string, obs?: string) => void
+  logContactAttempt: (demandId: string, code: string, method: 'whatsapp' | 'interno') => void
 }
 
 const defaultStats: UserStats = {
@@ -67,6 +68,7 @@ const mockUsers: User[] = [
     email: 'captador@etic.com',
     role: 'captador',
     status: 'ativo',
+    phone: '5511999999999',
     points: 1250,
     dailyPoints: 150,
     weeklyPoints: 600,
@@ -85,6 +87,7 @@ const mockUsers: User[] = [
     email: 'sdr@etic.com',
     role: 'sdr',
     status: 'ativo',
+    phone: '5511988888888',
     points: 800,
     dailyPoints: 0,
     weeklyPoints: 200,
@@ -98,6 +101,7 @@ const mockUsers: User[] = [
     email: 'corretor@etic.com',
     role: 'corretor',
     status: 'ativo',
+    phone: '5511977777777',
     tipo_demanda: 'vendas',
     points: 950,
     dailyPoints: 50,
@@ -949,6 +953,46 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     [allDemands, currentUser, users, enqueueWebhook, addLog, broadcastState, createAction],
   )
 
+  const logContactAttempt = useCallback(
+    (demandId: string, code: string, method: 'whatsapp' | 'interno') => {
+      if (currentUser?.role !== 'sdr' && currentUser?.role !== 'corretor') {
+        toast({
+          title: 'Acesso Negado',
+          description: 'Você não tem permissão para contatar este captador.',
+          variant: 'destructive',
+        })
+        return
+      }
+
+      let demand = allDemands.find((d) => d.id === demandId)
+      if (!demand) return
+
+      const propIndex = demand.capturedProperties?.findIndex((p) => p.code === code) ?? -1
+      if (propIndex === -1) return
+
+      const prop = demand.capturedProperties![propIndex]
+      const action = createAction(
+        'contato_captador',
+        `Contato com captador (${prop.captador_name}) via ${method === 'whatsapp' ? 'WhatsApp' : 'Mensagem Interna'}`,
+      )
+
+      if (!action) return
+
+      const nextProps = [...demand.capturedProperties!]
+      nextProps[propIndex] = {
+        ...prop,
+        history: [action, ...(prop.history || [])],
+      }
+
+      const updatedDemand = { ...demand, capturedProperties: nextProps }
+      const nextDemands = allDemands.map((d) => (d.id === demandId ? updatedDemand : d))
+
+      setAllDemands(nextDemands)
+      broadcastState(nextDemands, users, 'Contato com captador registrado')
+    },
+    [allDemands, currentUser, users, createAction, broadcastState],
+  )
+
   const getSimilarDemands = useCallback(
     (id: string) => {
       const listToSearch =
@@ -1309,6 +1353,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         closeDealByCode,
         prioritizeDemand,
         markDemandLost,
+        logContactAttempt,
         addPoints,
         getSimilarDemands,
         enqueueWebhook,

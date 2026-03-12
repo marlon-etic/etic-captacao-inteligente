@@ -25,6 +25,7 @@ export interface User {
   role: Role
   status?: 'ativo' | 'inativo'
   tipo_demanda?: 'locacao' | 'vendas'
+  phone?: string
   points: number
   dailyPoints: number
   weeklyPoints: number
@@ -55,6 +56,7 @@ export type PropertyActionType =
   | 'proposta'
   | 'negocio'
   | 'perdido'
+  | 'contato_captador'
 
 export interface PropertyAction {
   id: string
