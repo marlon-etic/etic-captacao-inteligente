@@ -1140,17 +1140,20 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         },
         submitDemandResponse: (id, action, payload) => {
           const demand = allDemands.find((d) => d.id === id)
+          if (!demand) return { success: false, message: 'Demanda não encontrada' }
           if (!checkDemandAccess(demand)) return { success: false, message: 'Acesso negado' }
 
-          if (action === 'encontrei' && demand) {
-            if (
-              demand.status === 'Perdida' ||
-              demand.status === 'Impossível' ||
-              demand.status === 'Sem demanda'
-            ) {
+          if (action === 'encontrei') {
+            if (['Perdida', 'Impossível', 'Sem demanda', 'Negócio'].includes(demand.status)) {
               return {
                 success: false,
-                message: 'Não é possível adicionar imóveis a uma demanda fechada',
+                message: 'Não é possível vincular a uma demanda fechada',
+              }
+            }
+            if (payload?.propertyType && payload.propertyType !== demand.type) {
+              return {
+                success: false,
+                message: 'Tipo de imóvel não corresponde ao tipo de demanda',
               }
             }
             if (currentUser?.status === 'inativo') {
@@ -1158,8 +1161,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
             }
 
             const existingProps = demand.capturedProperties || []
-            if (existingProps.length >= 10) {
-              return { success: false, message: 'Limite de 10 imóveis por demanda atingido' }
+            if (existingProps.length >= 100) {
+              return { success: false, message: 'Limite de 100 imóveis por demanda atingido' }
             }
 
             const code = payload?.code || `IMV-${Math.floor(Math.random() * 1000)}`
@@ -1193,6 +1196,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
               tipo_vinculacao: 'vinculado',
               captador_id: currentUser?.id,
               captador_name: currentUser?.name,
+              propertyType: demand.type,
             }
 
             const updatedDemand = {
@@ -1278,6 +1282,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
             tipo_vinculacao: 'solto',
             captador_id: currentUser?.id,
             captador_name: currentUser?.name,
+            propertyType: payload.propertyType,
           }
 
           setLooseProperties((prev) => {
@@ -1330,6 +1335,13 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
               return prevDemands
             }
 
+            const demand = prevDemands[demandIndex]
+
+            if (['Perdida', 'Impossível', 'Sem demanda', 'Negócio'].includes(demand.status)) {
+              message = 'Não é possível vincular a uma demanda fechada'
+              return prevDemands
+            }
+
             const propIndex = loosePropertiesRef.current.findIndex((p) => p.code === code)
             if (propIndex === -1) {
               message = 'Imóvel não encontrado ou já reivindicado'
@@ -1337,7 +1349,11 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
             }
 
             const prop = loosePropertiesRef.current[propIndex]
-            const demand = prevDemands[demandIndex]
+
+            if (prop.propertyType && prop.propertyType !== demand.type) {
+              message = 'Tipo de imóvel não corresponde ao tipo de demanda'
+              return prevDemands
+            }
 
             const action = createAction(
               'captacao',

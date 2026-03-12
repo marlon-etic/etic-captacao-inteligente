@@ -96,6 +96,7 @@ export interface CapturedProperty {
   tipo_vinculacao?: 'vinculado' | 'solto'
   captador_id?: string
   captador_name?: string
+  propertyType?: 'Venda' | 'Aluguel'
 }
 
 export interface Demand {
