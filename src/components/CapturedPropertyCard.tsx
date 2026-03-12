@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import {
   MapPin,
   Calendar,
@@ -15,7 +16,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import useAppStore from '@/stores/useAppStore'
-import { toast } from '@/hooks/use-toast'
+import { InternalChatModal } from '@/components/InternalChatModal'
 
 const statusLabels = {
   'Captado sob demanda': {
@@ -49,6 +50,7 @@ export function CapturedPropertyCard({
   ) => void
 }) {
   const { users, currentUser, logContactAttempt } = useAppStore()
+  const [isChatOpen, setIsChatOpen] = useState(false)
 
   const isClosed = !!property.fechamentoDate
   const isProposta = !!property.propostaDate && !isClosed
@@ -74,17 +76,10 @@ export function CapturedPropertyCard({
     cleanPhone = '55' + cleanPhone
   }
 
-  const lastContact = property.history
-    ?.filter((h) => h.type === 'contato_captador')
-    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0]
-
-  const formatTimeAgo = (isoString: string) => {
-    const diffMs = Date.now() - new Date(isoString).getTime()
-    const diffHrs = Math.floor(diffMs / 3600000)
-    if (diffHrs < 1) return 'menos de 1h'
-    if (diffHrs < 24) return `${diffHrs}h`
-    return `${Math.floor(diffHrs / 24)}d`
-  }
+  const contactHistory =
+    property.history
+      ?.filter((h) => h.type === 'contato_captador')
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()) || []
 
   return (
     <Card
@@ -255,7 +250,8 @@ export function CapturedPropertyCard({
               className="w-full text-xs font-bold bg-[#25D366] hover:bg-[#128C7E] text-white shadow-sm h-8"
               onClick={() => {
                 if (logContactAttempt) logContactAttempt(demand.id, property.code, 'whatsapp')
-                const msg = `Olá ${capturer?.name || capturerName}, tenho dúvidas sobre o imóvel ${property.code}. Você pode me ajudar?`
+                const sysUrl = window.location.origin
+                const msg = `Olá ${capturer?.name || capturerName}, tenho dúvidas sobre o imóvel ${property.code}. Você pode me ajudar? Link: ${sysUrl}/app/demandas`
                 window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank')
               }}
             >
@@ -270,22 +266,33 @@ export function CapturedPropertyCard({
                 size="sm"
                 variant="outline"
                 className="w-full text-xs font-semibold h-8"
-                onClick={() => {
-                  if (logContactAttempt) logContactAttempt(demand.id, property.code, 'interno')
-                  toast({
-                    title: 'Mensagem Enviada',
-                    description: `Sua mensagem interna para ${capturer?.name || capturerName} foi enviada com sucesso.`,
-                  })
-                }}
+                onClick={() => setIsChatOpen(true)}
               >
                 ✉️ Enviar mensagem interna
               </Button>
             </div>
           )}
-          {lastContact && (
-            <p className="text-[10px] text-center text-muted-foreground leading-none">
-              Último contato: há {formatTimeAgo(lastContact.timestamp)}
-            </p>
+
+          {contactHistory.length > 0 && (
+            <div className="mt-2 bg-muted/30 p-2 rounded-md border text-xs">
+              <p className="font-semibold mb-1 text-muted-foreground text-[10px] uppercase tracking-wider flex items-center gap-1">
+                <MessageCircle className="w-3 h-3" /> Últimas comunicações
+              </p>
+              <ul className="space-y-1.5 max-h-24 overflow-y-auto pr-1">
+                {contactHistory.slice(0, 3).map((h) => {
+                  const dt = new Date(h.timestamp)
+                  const formattedDate = `${dt.getDate().toString().padStart(2, '0')}/${(dt.getMonth() + 1).toString().padStart(2, '0')}/${dt.getFullYear()} ${dt.getHours().toString().padStart(2, '0')}:${dt.getMinutes().toString().padStart(2, '0')}`
+                  return (
+                    <li
+                      key={h.id}
+                      className="text-[10px] text-muted-foreground leading-tight bg-background p-1.5 rounded border border-border/50"
+                    >
+                      <span className="font-medium">[{formattedDate}]</span> - {h.description}
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
           )}
         </div>
       )}
@@ -337,6 +344,15 @@ export function CapturedPropertyCard({
           <Clock className="w-4 h-4 mr-2 text-muted-foreground" /> VER HISTÓRICO
         </Button>
       </div>
+
+      <InternalChatModal
+        isOpen={isChatOpen}
+        onClose={() => setIsChatOpen(false)}
+        onSend={(msg) => {
+          if (logContactAttempt) logContactAttempt(demand.id, property.code, 'interno', msg)
+        }}
+        capturerName={capturer?.name || capturerName}
+      />
     </Card>
   )
 }

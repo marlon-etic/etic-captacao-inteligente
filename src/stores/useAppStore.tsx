@@ -48,7 +48,12 @@ interface AppState {
   closeDealByCode: (code: string, payload: any) => void
   prioritizeDemand: (id: string, count: number) => void
   markDemandLost: (id: string, reason: string, obs?: string) => void
-  logContactAttempt: (demandId: string, code: string, method: 'whatsapp' | 'interno') => void
+  logContactAttempt: (
+    demandId: string,
+    code: string,
+    method: 'whatsapp' | 'interno',
+    message?: string,
+  ) => void
 }
 
 const defaultStats: UserStats = {
@@ -411,6 +416,14 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
             `[${new Date().toLocaleTimeString()}] (Sincronizado) ${parsed.lastAction}`,
             ...prev,
           ])
+
+          if (parsed.lastAction.includes('entrou em contato sobre imóvel')) {
+            toast({
+              title: '🔔 Notificação de Contato',
+              description: parsed.lastAction,
+              className: 'bg-blue-600 text-white border-blue-600',
+            })
+          }
         }
       }
     } catch {
@@ -954,7 +967,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   )
 
   const logContactAttempt = useCallback(
-    (demandId: string, code: string, method: 'whatsapp' | 'interno') => {
+    (demandId: string, code: string, method: 'whatsapp' | 'interno', message?: string) => {
       if (currentUser?.role !== 'sdr' && currentUser?.role !== 'corretor') {
         toast({
           title: 'Acesso Negado',
@@ -971,9 +984,11 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       if (propIndex === -1) return
 
       const prop = demand.capturedProperties![propIndex]
+      const typeStr = method === 'whatsapp' ? 'WhatsApp' : 'Chat Interno'
       const action = createAction(
         'contato_captador',
-        `Contato com captador (${prop.captador_name}) via ${method === 'whatsapp' ? 'WhatsApp' : 'Mensagem Interna'}`,
+        `${currentUser?.name} entrou em contato (${typeStr})`,
+        message || `Contato via ${typeStr}`,
       )
 
       if (!action) return
@@ -988,9 +1003,27 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       const nextDemands = allDemands.map((d) => (d.id === demandId ? updatedDemand : d))
 
       setAllDemands(nextDemands)
-      broadcastState(nextDemands, users, 'Contato com captador registrado')
+
+      const broadcastMsg = `SDR/Corretor ${currentUser?.name} entrou em contato sobre imóvel ${code}`
+      broadcastState(nextDemands, users, broadcastMsg)
+
+      enqueueWebhook('contato_captador_registrado', demandId, {
+        imovel_code: code,
+        sdr_corretor_id: currentUser.id,
+        captador_id: prop.captador_id,
+        tipo_contato: method,
+        status: 'registrado',
+        mensagem: message,
+      })
+
+      if (method === 'interno') {
+        toast({
+          title: 'Mensagem Enviada',
+          description: `Sua mensagem interna para ${prop.captador_name} foi enviada com sucesso.`,
+        })
+      }
     },
-    [allDemands, currentUser, users, createAction, broadcastState],
+    [allDemands, currentUser, users, createAction, broadcastState, enqueueWebhook],
   )
 
   const getSimilarDemands = useCallback(
