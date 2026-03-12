@@ -17,6 +17,7 @@ import {
   PropertyAction,
   PropertyActionType,
   CapturedProperty,
+  AppNotification,
 } from '@/types'
 import { toast } from '@/hooks/use-toast'
 
@@ -28,6 +29,8 @@ interface AppState {
   looseProperties: CapturedProperty[]
   webhookQueue: WebhookEvent[]
   auditLogs: string[]
+  notifications: AppNotification[]
+  markNotificationAsRead: (id: string) => void
   login: (email: string, password?: string) => Promise<void>
   logout: () => void
   requestPasswordReset: (email: string) => void
@@ -323,6 +326,20 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const [looseProperties, setLooseProperties] = useState<CapturedProperty[]>(initialLooseProperties)
   const [webhookQueue, setWebhookQueue] = useState<WebhookEvent[]>([])
   const [auditLogs, setAuditLogs] = useState<string[]>([])
+  const [notifications, setNotifications] = useState<AppNotification[]>(() => {
+    try {
+      const raw = localStorage.getItem('etic_state_sync')
+      if (raw) {
+        const parsed = JSON.parse(raw)
+        if (parsed.notifications && Array.isArray(parsed.notifications)) {
+          return parsed.notifications
+        }
+      }
+    } catch {
+      // ignore
+    }
+    return []
+  })
 
   const webhookQueueRef = useRef(webhookQueue)
   const loosePropertiesRef = useRef(looseProperties)
@@ -348,11 +365,13 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       nextUsers: User[],
       actionMsg?: string,
       nextLoose?: CapturedProperty[],
+      nextNotifs?: AppNotification[],
     ) => {
       const payload = {
         demands: nextDemands,
         users: nextUsers,
         looseProperties: nextLoose || loosePropertiesRef.current,
+        notifications: nextNotifs || notifications,
         lastAction: actionMsg,
         timestamp: Date.now(),
       }
@@ -366,7 +385,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         // ignore
       }
     },
-    [],
+    [notifications],
   )
 
   const handleSync = useCallback((payloadRaw: string | null) => {
@@ -406,6 +425,13 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         return prev
       })
 
+      setNotifications((prev) => {
+        if (parsed.notifications && JSON.stringify(prev) !== JSON.stringify(parsed.notifications)) {
+          return parsed.notifications
+        }
+        return prev
+      })
+
       setCurrentUser((prev) => {
         if (!prev) return prev
         const updatedCurrent = parsed.users?.find((u: User) => u.id === prev.id)
@@ -423,14 +449,6 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
             `[${new Date().toLocaleTimeString()}] (Sincronizado) ${parsed.lastAction}`,
             ...prev,
           ])
-
-          if (parsed.lastAction.includes('entrou em contato sobre imóvel')) {
-            toast({
-              title: '🔔 Notificação de Contato',
-              description: parsed.lastAction,
-              className: 'bg-blue-600 text-white border-blue-600',
-            })
-          }
         }
       }
     } catch {
@@ -657,7 +675,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     [currentUser],
   )
 
-  const checkDemandAccess = (demand: Demand | undefined) => {
+  const checkDemandAccess = (demand: Demand | undefined, property?: CapturedProperty) => {
+    if (currentUser?.role === 'admin' || currentUser?.role === 'gestor') return true
+
     if (currentUser?.role === 'corretor' || currentUser?.role === 'sdr') {
       if (!demand || demand.createdBy !== currentUser.id) {
         toast({
@@ -668,6 +688,18 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         return false
       }
     }
+
+    if (currentUser?.role === 'captador') {
+      if (property && property.captador_id !== currentUser.id) {
+        toast({
+          variant: 'destructive',
+          title: 'Acesso negado',
+          description: 'Você não tem permissão para acessar este recurso.',
+        })
+        return false
+      }
+    }
+
     return true
   }
 
@@ -685,18 +717,11 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       }
 
       if (!demand) {
-        toast({ variant: 'destructive', description: 'Imóvel não encontrado' })
+        toast({ variant: 'destructive', description: 'Nenhum imóvel encontrado' })
         return
       }
-      if (!checkDemandAccess(demand)) return
-      if (currentUser?.role === 'captador' && demand.assignedTo !== currentUser.id) {
-        toast({
-          variant: 'destructive',
-          title: 'Acesso negado',
-          description: 'Você não tem permissão para acessar este recurso.',
-        })
-        return
-      }
+      const prop = demand.capturedProperties![propIndex]
+      if (!checkDemandAccess(demand, prop)) return
 
       const formattedDate = new Date(payload.date + 'T00:00:00').toLocaleDateString('pt-BR')
       const action = createAction(
@@ -707,13 +732,11 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
       const updatedProps = [...(demand.capturedProperties || [])]
       updatedProps[propIndex] = {
-        ...updatedProps[propIndex],
+        ...prop,
         visitaDate: payload.date,
         visitaTime: payload.time,
         visitaObs: payload.obs,
-        history: action
-          ? [action, ...(updatedProps[propIndex].history || [])]
-          : updatedProps[propIndex].history,
+        history: action ? [action, ...(prop.history || [])] : prop.history,
       }
 
       const updatedDemand = {
@@ -724,13 +747,51 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
       const nextDemands = allDemands.map((d) => (d.id === demand!.id ? updatedDemand : d))
       setAllDemands(nextDemands)
+
+      let nextUsers = users
+      const captadorId = prop.captador_id
+      if (captadorId) {
+        nextUsers = nextUsers.map((u) =>
+          u.id === captadorId
+            ? { ...u, points: u.points + 25, dailyPoints: u.dailyPoints + 25 }
+            : u,
+        )
+        setUsers(nextUsers)
+
+        if (currentUser?.id === captadorId) {
+          setCurrentUser((prev) =>
+            prev ? { ...prev, points: prev.points + 25, dailyPoints: prev.dailyPoints + 25 } : prev,
+          )
+        }
+      }
+
+      const newNotif = {
+        id: Math.random().toString(36).substr(2, 9),
+        userId: captadorId || '',
+        message: `Visita agendada para o seu imóvel ${code} por ${currentUser?.name}. (+25 pts)`,
+        read: false,
+        createdAt: new Date().toISOString(),
+      }
+
+      const nextNotifs = captadorId ? [newNotif, ...notifications] : notifications
+      if (captadorId) setNotifications(nextNotifs)
+
       enqueueWebhook('visita_agendada', demand.id, updatedProps[propIndex])
       const msg = `Status alterado para Visita Agendada: Imóvel ${code} por ${currentUser?.name || 'Sistema'}`
       addLog(msg)
       toast({ title: 'Visita Agendada', description: 'O status foi sincronizado com sucesso.' })
-      broadcastState(nextDemands, users, msg)
+      broadcastState(nextDemands, nextUsers, msg, undefined, nextNotifs)
     },
-    [allDemands, currentUser, users, enqueueWebhook, addLog, broadcastState, createAction],
+    [
+      allDemands,
+      currentUser,
+      users,
+      notifications,
+      enqueueWebhook,
+      addLog,
+      broadcastState,
+      createAction,
+    ],
   )
 
   const submitProposalByCode = useCallback(
@@ -747,18 +808,12 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       }
 
       if (!demand) {
-        toast({ variant: 'destructive', description: 'Imóvel não encontrado' })
+        toast({ variant: 'destructive', description: 'Nenhum imóvel encontrado' })
         return
       }
-      if (!checkDemandAccess(demand)) return
-      if (currentUser?.role === 'captador' && demand.assignedTo !== currentUser.id) {
-        toast({
-          variant: 'destructive',
-          title: 'Acesso negado',
-          description: 'Você não tem permissão para acessar este recurso.',
-        })
-        return
-      }
+
+      const prop = demand.capturedProperties![propIndex]
+      if (!checkDemandAccess(demand, prop)) return
 
       const formattedVal = new Intl.NumberFormat('pt-BR', {
         style: 'currency',
@@ -768,14 +823,12 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
       const updatedProps = [...(demand.capturedProperties || [])]
       updatedProps[propIndex] = {
-        ...updatedProps[propIndex],
+        ...prop,
         propostaDate: payload.date,
         propostaValue: payload.value,
         propostaObs: payload.obs,
         propostaStatus: 'em análise' as const,
-        history: action
-          ? [action, ...(updatedProps[propIndex].history || [])]
-          : updatedProps[propIndex].history,
+        history: action ? [action, ...(prop.history || [])] : prop.history,
       }
 
       const updatedDemand = {
@@ -786,13 +839,36 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
       const nextDemands = allDemands.map((d) => (d.id === demand!.id ? updatedDemand : d))
       setAllDemands(nextDemands)
+
+      let nextNotifs = notifications
+      if (prop.captador_id) {
+        const newNotif = {
+          id: Math.random().toString(36).substr(2, 9),
+          userId: prop.captador_id,
+          message: `Nova proposta registrada no seu imóvel ${code} por ${currentUser?.name}.`,
+          read: false,
+          createdAt: new Date().toISOString(),
+        }
+        nextNotifs = [newNotif, ...notifications]
+        setNotifications(nextNotifs)
+      }
+
       enqueueWebhook('proposta_enviada', demand.id, updatedProps[propIndex])
       const msg = `Status alterado para Proposta: Imóvel ${code} por ${currentUser?.name || 'Sistema'}`
       addLog(msg)
       toast({ title: 'Proposta Registrada', description: 'O status foi atualizado com sucesso.' })
-      broadcastState(nextDemands, users, msg)
+      broadcastState(nextDemands, users, msg, undefined, nextNotifs)
     },
-    [allDemands, currentUser, users, enqueueWebhook, addLog, broadcastState, createAction],
+    [
+      allDemands,
+      currentUser,
+      users,
+      notifications,
+      enqueueWebhook,
+      addLog,
+      broadcastState,
+      createAction,
+    ],
   )
 
   const closeDealByCode = useCallback(
@@ -809,18 +885,12 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       }
 
       if (!demand) {
-        toast({ variant: 'destructive', description: 'Imóvel não encontrado' })
+        toast({ variant: 'destructive', description: 'Nenhum imóvel encontrado' })
         return
       }
-      if (!checkDemandAccess(demand)) return
-      if (currentUser?.role === 'captador' && demand.assignedTo !== currentUser.id) {
-        toast({
-          variant: 'destructive',
-          title: 'Acesso negado',
-          description: 'Você não tem permissão para acessar este recurso.',
-        })
-        return
-      }
+
+      const prop = demand.capturedProperties![propIndex]
+      if (!checkDemandAccess(demand, prop)) return
 
       let earnedPoints = 100
       const budgetTarget = demand.maxBudget || demand.budget || 0
@@ -845,14 +915,12 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
       const updatedProps = [...(demand.capturedProperties || [])]
       updatedProps[propIndex] = {
-        ...updatedProps[propIndex],
+        ...prop,
         fechamentoDate: payload.date,
         fechamentoValue: payload.value,
         fechamentoType: payload.type,
         fechamentoObs: payload.obs,
-        history: action
-          ? [action, ...(updatedProps[propIndex].history || [])]
-          : updatedProps[propIndex].history,
+        history: action ? [action, ...(prop.history || [])] : prop.history,
       }
 
       const updatedDemand = {
@@ -866,9 +934,10 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       enqueueWebhook('negocio_fechado', demand.id, updatedProps[propIndex])
 
       let nextUsers = users
-      if (demand.assignedTo) {
+      const captadorId = prop.captador_id
+      if (captadorId) {
         nextUsers = users.map((u) =>
-          u.id === demand!.assignedTo
+          u.id === captadorId
             ? {
                 ...u,
                 points: u.points + earnedPoints,
@@ -883,7 +952,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
             : u,
         )
         setUsers(nextUsers)
-        if (currentUser?.id === demand.assignedTo) {
+        if (currentUser?.id === captadorId) {
           setCurrentUser((prev) =>
             prev
               ? {
@@ -902,16 +971,36 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         }
       }
 
+      const newNotif = {
+        id: Math.random().toString(36).substr(2, 9),
+        userId: captadorId || '',
+        message: `Negócio fechado no seu imóvel ${code} por ${currentUser?.name}! (+${earnedPoints} pts)${aboveBudgetInfo}`,
+        read: false,
+        createdAt: new Date().toISOString(),
+      }
+
+      const nextNotifs = captadorId ? [newNotif, ...notifications] : notifications
+      if (captadorId) setNotifications(nextNotifs)
+
       const msg = `Status alterado para Negócio Fechado: Imóvel ${code} por ${currentUser?.name || 'Sistema'}. Pontos gerados: ${earnedPoints}`
       addLog(msg)
       toast({
         title: 'Negócio Fechado! 🎉',
-        description: `O status foi atualizado. +${earnedPoints} pontos ganhos!${aboveBudgetInfo}`,
+        description: `O status foi atualizado. +${earnedPoints} pontos concedidos ao captador.`,
         className: 'bg-emerald-600 text-white border-emerald-600',
       })
-      broadcastState(nextDemands, nextUsers, msg)
+      broadcastState(nextDemands, nextUsers, msg, undefined, nextNotifs)
     },
-    [allDemands, currentUser, users, enqueueWebhook, addLog, broadcastState, createAction],
+    [
+      allDemands,
+      currentUser,
+      users,
+      notifications,
+      enqueueWebhook,
+      addLog,
+      broadcastState,
+      createAction,
+    ],
   )
 
   const prioritizeDemand = useCallback(
@@ -975,15 +1064,6 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
   const logContactAttempt = useCallback(
     (demandId: string, code: string, method: 'whatsapp' | 'interno', message?: string) => {
-      if (currentUser?.role !== 'sdr' && currentUser?.role !== 'corretor') {
-        toast({
-          title: 'Acesso Negado',
-          description: 'Você não tem permissão para contatar este captador.',
-          variant: 'destructive',
-        })
-        return
-      }
-
       let demand = allDemands.find((d) => d.id === demandId)
       if (!demand) return
 
@@ -991,6 +1071,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       if (propIndex === -1) return
 
       const prop = demand.capturedProperties![propIndex]
+
+      if (!checkDemandAccess(demand, prop)) return
+
       const typeStr = method === 'whatsapp' ? 'WhatsApp' : 'Chat Interno'
       const action = createAction(
         'contato_captador',
@@ -1011,12 +1094,30 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
       setAllDemands(nextDemands)
 
-      const broadcastMsg = `SDR/Corretor ${currentUser?.name} entrou em contato sobre imóvel ${code}`
-      broadcastState(nextDemands, users, broadcastMsg)
+      let nextNotifs = notifications
+      const targetUserId = currentUser?.role === 'captador' ? demand.createdBy : prop.captador_id
+
+      if (targetUserId) {
+        const roleName = currentUser?.role === 'captador' ? 'Captador' : 'SDR/Corretor'
+        const notifMsg = `${roleName} ${currentUser?.name} enviou uma mensagem sobre o imóvel ${code}.`
+
+        const newNotif = {
+          id: Math.random().toString(36).substr(2, 9),
+          userId: targetUserId,
+          message: notifMsg,
+          read: false,
+          createdAt: new Date().toISOString(),
+        }
+        nextNotifs = [newNotif, ...notifications]
+        setNotifications(nextNotifs)
+      }
+
+      const broadcastMsg = `${currentUser?.name} entrou em contato sobre imóvel ${code}`
+      broadcastState(nextDemands, users, broadcastMsg, undefined, nextNotifs)
 
       enqueueWebhook('contato_captador_registrado', demandId, {
         imovel_code: code,
-        sdr_corretor_id: currentUser.id,
+        sdr_corretor_id: currentUser?.role !== 'captador' ? currentUser?.id : demand.createdBy,
         captador_id: prop.captador_id,
         tipo_contato: method,
         status: 'registrado',
@@ -1026,11 +1127,11 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       if (method === 'interno') {
         toast({
           title: 'Mensagem Enviada',
-          description: `Sua mensagem interna para ${prop.captador_name} foi enviada com sucesso.`,
+          description: `Sua mensagem foi enviada com sucesso.`,
         })
       }
     },
-    [allDemands, currentUser, users, createAction, broadcastState, enqueueWebhook],
+    [allDemands, currentUser, users, notifications, createAction, broadcastState, enqueueWebhook],
   )
 
   const getSimilarDemands = useCallback(
@@ -1074,7 +1175,15 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         looseProperties,
         webhookQueue,
         auditLogs,
+        notifications,
         triggerCron,
+        markNotificationAsRead: (id: string) => {
+          setNotifications((prev) => {
+            const next = prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+            broadcastState(allDemands, users, undefined, loosePropertiesRef.current, next)
+            return next
+          })
+        },
         getMatchesForProperty: (property: CapturedProperty) => {
           if (property.tipo_vinculacao === 'vinculado') return []
 
@@ -1436,6 +1545,19 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
             const nextLoose = loosePropertiesRef.current.filter((p) => p.code !== code)
             setLooseProperties(nextLoose)
 
+            let nextNotifs = notifications
+            if (prop.captador_id) {
+              const newNotif = {
+                id: Math.random().toString(36).substr(2, 9),
+                userId: prop.captador_id,
+                message: `Seu imóvel solto ${prop.code} foi vinculado à demanda de ${demand.clientName} por ${currentUser?.name}.`,
+                read: false,
+                createdAt: new Date().toISOString(),
+              }
+              nextNotifs = [newNotif, ...notifications]
+              setNotifications(nextNotifs)
+            }
+
             enqueueWebhook('imovel_reivindicado', demandId, {
               mensagem: `Seu imóvel foi vinculado a ${demand.clientName}`,
               captadorId: prop.captador_id,
@@ -1443,7 +1565,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
             const nextDemands = prevDemands.map((d) => (d.id === demandId ? updatedDemand : d))
 
-            broadcastState(nextDemands, users, 'Imóvel reivindicado', nextLoose)
+            broadcastState(nextDemands, users, 'Imóvel reivindicado', nextLoose, nextNotifs)
             return nextDemands
           })
 

@@ -42,13 +42,30 @@ export function CapturedPropertiesView() {
   const allCaptured = useMemo(() => {
     return demands.flatMap((d) => {
       if (!d.capturedProperties || d.capturedProperties.length === 0) return []
-      if (d.createdBy !== currentUser?.id) return []
-      return d.capturedProperties.map((p) => ({ demand: d, property: p }))
+
+      if (currentUser?.role === 'admin' || currentUser?.role === 'gestor') {
+        return d.capturedProperties.map((p) => ({ demand: d, property: p }))
+      }
+
+      if (
+        (currentUser?.role === 'sdr' || currentUser?.role === 'corretor') &&
+        d.createdBy === currentUser.id
+      ) {
+        return d.capturedProperties.map((p) => ({ demand: d, property: p }))
+      }
+
+      if (currentUser?.role === 'captador') {
+        return d.capturedProperties
+          .filter((p) => p.captador_id === currentUser.id)
+          .map((p) => ({ demand: d, property: p }))
+      }
+
+      return []
     })
   }, [demands, currentUser])
 
   const uniqueCapturers = useMemo(() => {
-    const ids = new Set(allCaptured.map((item) => item.demand.assignedTo).filter(Boolean))
+    const ids = new Set(allCaptured.map((item) => item.property.captador_id).filter(Boolean))
     return Array.from(ids)
       .map((id) => users.find((u) => u.id === id))
       .filter(Boolean) as User[]
@@ -70,7 +87,7 @@ export function CapturedPropertiesView() {
 
       const matchStatus = statusFilter === 'all' || propStatus === statusFilter
 
-      const matchCapturer = capturerFilter === 'all' || d.assignedTo === capturerFilter
+      const matchCapturer = capturerFilter === 'all' || p.captador_id === capturerFilter
 
       let matchDate = true
       const capDate = new Date(p.capturedAt || d.createdAt)
@@ -181,9 +198,7 @@ export function CapturedPropertiesView() {
       {filteredAndSorted.length === 0 ? (
         <div className="text-center p-12 bg-background border rounded-xl border-dashed">
           <Search className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
-          <p className="text-muted-foreground font-medium">
-            Nenhum imóvel captado para suas demandas.
-          </p>
+          <p className="text-muted-foreground font-medium">Nenhum imóvel encontrado.</p>
         </div>
       ) : (
         <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">

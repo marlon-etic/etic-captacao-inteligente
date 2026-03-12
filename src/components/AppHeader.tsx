@@ -1,23 +1,22 @@
-import { Bell, Menu, Star } from 'lucide-react'
+import { Bell, Menu, Star, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { SidebarTrigger, useSidebar } from '@/components/ui/sidebar'
 import { Badge } from '@/components/ui/badge'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import useAppStore from '@/stores/useAppStore'
+import { cn } from '@/lib/utils'
 
 export function AppHeader() {
   const store = useAppStore()
   const currentUser = store.currentUser
 
-  // Safely retrieve notifications or fallback to auditLogs to maintain functionality
-  const notifications = 'notifications' in store ? (store as any).notifications : store.auditLogs
+  const notifications = store.notifications?.filter((n: any) => n.userId === currentUser?.id) || []
+  const unreadCount = notifications.filter((n: any) => !n.read).length
+  const { markNotificationAsRead } = store
 
   const { isMobile, setOpenMobile } = useSidebar()
 
   if (!currentUser) return null
-
-  // Fix: implement optional chaining and nullish coalescing to prevent runtime error
-  const unreadCount = notifications?.length ?? 0
 
   return (
     <header className="h-16 border-b bg-background flex items-center justify-between px-4 sticky top-0 z-40">
@@ -55,15 +54,41 @@ export function AppHeader() {
               )}
             </Button>
           </PopoverTrigger>
-          <PopoverContent align="end" className="w-80">
-            <div className="flex flex-col gap-2 max-h-[80vh] overflow-y-auto">
-              <h4 className="font-semibold text-sm">Notificações</h4>
-              {unreadCount === 0 ? (
-                <p className="text-sm text-muted-foreground">Nenhuma notificação</p>
+          <PopoverContent align="end" className="w-80 p-2">
+            <div className="flex flex-col gap-2 max-h-[80vh] overflow-y-auto pr-1">
+              <div className="flex items-center justify-between mb-1 px-1">
+                <h4 className="font-semibold text-sm">Notificações</h4>
+                {unreadCount > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-auto p-1 text-[10px] text-muted-foreground hover:text-foreground"
+                    onClick={() =>
+                      notifications.forEach((n: any) => !n.read && markNotificationAsRead(n.id))
+                    }
+                  >
+                    <Check className="w-3 h-3 mr-1" /> Marcar lidas
+                  </Button>
+                )}
+              </div>
+              {notifications.length === 0 ? (
+                <p className="text-sm text-muted-foreground px-1">Nenhuma notificação</p>
               ) : (
-                notifications.map((n: string, i: number) => (
-                  <div key={i} className="text-sm p-2 bg-muted/50 rounded-md border">
-                    {n}
+                notifications.map((n: any) => (
+                  <div
+                    key={n.id}
+                    className={cn(
+                      'text-sm p-3 rounded-md border cursor-pointer transition-colors',
+                      n.read
+                        ? 'bg-muted/30 text-muted-foreground/80'
+                        : 'bg-primary/5 border-primary/20 text-foreground',
+                    )}
+                    onClick={() => !n.read && markNotificationAsRead(n.id)}
+                  >
+                    <p className="leading-snug">{n.message}</p>
+                    <div className="text-[10px] opacity-70 mt-1.5 font-medium">
+                      {new Date(n.createdAt).toLocaleString('pt-BR')}
+                    </div>
                   </div>
                 ))
               )}

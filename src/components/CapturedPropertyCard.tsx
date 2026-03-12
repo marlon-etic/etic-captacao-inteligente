@@ -82,6 +82,9 @@ export function CapturedPropertyCard({
   const capturerName = capturer?.name || property.captador_name || 'N/A'
 
   const isSdrOrBroker = currentUser?.role === 'sdr' || currentUser?.role === 'corretor'
+  const isCaptador = currentUser?.role === 'captador'
+  const isAdminOrGestor = currentUser?.role === 'admin' || currentUser?.role === 'gestor'
+
   const isCapturerActive = capturer?.status === 'ativo'
 
   let phoneStr = capturer?.phone || ''
@@ -102,6 +105,11 @@ export function CapturedPropertyCard({
   const matches = isLoose ? getMatchesForProperty(property) : []
   const topMatch = matches[0]
   const otherMatches = matches.slice(1)
+
+  const chatTargetName =
+    isCaptador && demand
+      ? users.find((u) => u.id === demand.createdBy)?.name || 'SDR/Corretor'
+      : capturerName
 
   return (
     <>
@@ -364,72 +372,86 @@ export function CapturedPropertyCard({
           )}
         </CardContent>
 
-        {isSdrOrBroker && demand && (
-          <div className="px-4 pb-2 flex flex-col gap-2">
-            {!isCapturerActive ? (
-              <Button
-                size="sm"
-                variant="outline"
-                disabled
-                className="w-full text-xs font-semibold bg-muted/50 h-8"
-              >
-                Captador não está disponível
-              </Button>
-            ) : isValidPhone ? (
-              <Button
-                size="sm"
-                className="w-full text-xs font-bold bg-[#25D366] hover:bg-[#128C7E] text-white shadow-sm h-8"
-                onClick={() => {
-                  if (logContactAttempt) logContactAttempt(demand.id, property.code, 'whatsapp')
-                  const sysUrl = window.location.origin
-                  const msg = `Olá ${capturer?.name || capturerName}, tenho dúvidas sobre o imóvel ${property.code}. Você pode me ajudar? Link: ${sysUrl}/app/demandas`
-                  window.open(
-                    `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`,
-                    '_blank',
-                  )
-                }}
-              >
-                💬 CONTATAR CAPTADOR
-              </Button>
-            ) : (
-              <div className="flex flex-col gap-1 w-full">
-                <span className="text-[10px] text-center text-muted-foreground leading-none">
-                  Número de WhatsApp não disponível
-                </span>
+        {(isSdrOrBroker ||
+          isAdminOrGestor ||
+          (isCaptador && property.captador_id === currentUser.id)) &&
+          demand && (
+            <div className="px-4 pb-2 flex flex-col gap-2">
+              {isCaptador && contactHistory.length > 0 && (
                 <Button
                   size="sm"
                   variant="outline"
-                  className="w-full text-xs font-semibold h-8"
+                  className="w-full text-xs font-semibold h-8 bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
                   onClick={() => setIsChatOpen(true)}
                 >
-                  ✉️ Enviar mensagem interna
+                  ✉️ Responder ao {chatTargetName}
                 </Button>
-              </div>
-            )}
+              )}
 
-            {contactHistory.length > 0 && (
-              <div className="mt-2 bg-muted/30 p-2 rounded-md border text-xs">
-                <p className="font-semibold mb-1 text-muted-foreground text-[10px] uppercase tracking-wider flex items-center gap-1">
-                  <MessageCircle className="w-3 h-3" /> Últimas comunicações
-                </p>
-                <ul className="space-y-1.5 max-h-24 overflow-y-auto pr-1">
-                  {contactHistory.slice(0, 3).map((h) => {
-                    const dt = new Date(h.timestamp)
-                    const formattedDate = `${dt.getDate().toString().padStart(2, '0')}/${(dt.getMonth() + 1).toString().padStart(2, '0')}/${dt.getFullYear()} ${dt.getHours().toString().padStart(2, '0')}:${dt.getMinutes().toString().padStart(2, '0')}`
-                    return (
-                      <li
-                        key={h.id}
-                        className="text-[10px] text-muted-foreground leading-tight bg-background p-1.5 rounded border border-border/50"
-                      >
-                        <span className="font-medium">[{formattedDate}]</span> - {h.description}
-                      </li>
+              {!isCapturerActive && isSdrOrBroker ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled
+                  className="w-full text-xs font-semibold bg-muted/50 h-8"
+                >
+                  Captador não está disponível
+                </Button>
+              ) : isSdrOrBroker && isValidPhone ? (
+                <Button
+                  size="sm"
+                  className="w-full text-xs font-bold bg-[#25D366] hover:bg-[#128C7E] text-white shadow-sm h-8"
+                  onClick={() => {
+                    if (logContactAttempt) logContactAttempt(demand.id, property.code, 'whatsapp')
+                    const sysUrl = window.location.origin
+                    const msg = `Olá ${capturer?.name || capturerName}, tenho dúvidas sobre o imóvel ${property.code}. Você pode me ajudar? Link: ${sysUrl}/app/demandas`
+                    window.open(
+                      `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`,
+                      '_blank',
                     )
-                  })}
-                </ul>
-              </div>
-            )}
-          </div>
-        )}
+                  }}
+                >
+                  💬 CONTATAR CAPTADOR
+                </Button>
+              ) : isSdrOrBroker ? (
+                <div className="flex flex-col gap-1 w-full">
+                  <span className="text-[10px] text-center text-muted-foreground leading-none">
+                    Número de WhatsApp não disponível
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full text-xs font-semibold h-8"
+                    onClick={() => setIsChatOpen(true)}
+                  >
+                    ✉️ Enviar mensagem interna
+                  </Button>
+                </div>
+              ) : null}
+
+              {contactHistory.length > 0 && (
+                <div className="mt-2 bg-muted/30 p-2 rounded-md border text-xs">
+                  <p className="font-semibold mb-1 text-muted-foreground text-[10px] uppercase tracking-wider flex items-center gap-1">
+                    <MessageCircle className="w-3 h-3" /> Últimas comunicações
+                  </p>
+                  <ul className="space-y-1.5 max-h-24 overflow-y-auto pr-1">
+                    {contactHistory.slice(0, 3).map((h) => {
+                      const dt = new Date(h.timestamp)
+                      const formattedDate = `${dt.getDate().toString().padStart(2, '0')}/${(dt.getMonth() + 1).toString().padStart(2, '0')}/${dt.getFullYear()} ${dt.getHours().toString().padStart(2, '0')}:${dt.getMinutes().toString().padStart(2, '0')}`
+                      return (
+                        <li
+                          key={h.id}
+                          className="text-[10px] text-muted-foreground leading-tight bg-background p-1.5 rounded border border-border/50"
+                        >
+                          <span className="font-medium">[{formattedDate}]</span> - {h.description}
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
 
         <div className="p-4 pt-0 mt-auto flex flex-col gap-2 border-t pt-3 bg-card">
           {!isLost && !isLoose && onAction && demand && (
@@ -488,7 +510,7 @@ export function CapturedPropertyCard({
             if (demand && logContactAttempt)
               logContactAttempt(demand.id, property.code, 'interno', msg)
           }}
-          capturerName={capturer?.name || capturerName}
+          capturerName={chatTargetName}
         />
       </Card>
 

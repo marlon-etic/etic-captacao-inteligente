@@ -147,3 +147,11 @@ export interface WebhookEvent {
   data_criacao: string
   data_envio?: string
 }
+
+export interface AppNotification {
+  id: string
+  userId: string
+  message: string
+  read: boolean
+  createdAt: string
+}
