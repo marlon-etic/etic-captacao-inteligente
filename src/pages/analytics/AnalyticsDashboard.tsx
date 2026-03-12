@@ -22,17 +22,26 @@ import useAppStore from '@/stores/useAppStore'
 import { Users, Target, CheckCircle2, Calendar } from 'lucide-react'
 import { Demand } from '@/types'
 
+const getMetrics = (demand: Demand) => {
+  const props = demand.capturedProperties || []
+  const total = props.length
+  const visitas = props.filter((p) => !!p.visitaDate).length
+  const fechados = props.filter((p) => !!p.fechamentoDate).length
+  const rate = total > 0 ? Math.round((fechados / total) * 100) : 0
+
+  return { total, visitas, fechados, rate }
+}
+
 export function AnalyticsDashboard() {
   const { demands, users, currentUser } = useAppStore()
   const [selectedUser, setSelectedUser] = useState('all')
   const [dateRange, setDateRange] = useState('all')
   const [type, setType] = useState('all')
 
-  if (currentUser?.role !== 'gestor' && currentUser?.role !== 'admin') {
-    return <Navigate to="/app" replace />
-  }
-
-  const filterUsers = users.filter((u) => u.role === 'sdr' || u.role === 'corretor')
+  const filterUsers = useMemo(
+    () => users.filter((u) => u.role === 'sdr' || u.role === 'corretor'),
+    [users],
+  )
 
   const filteredDemands = useMemo(() => {
     return demands
@@ -52,16 +61,6 @@ export function AnalyticsDashboard() {
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
   }, [demands, selectedUser, dateRange, type])
 
-  const getMetrics = (demand: Demand) => {
-    const props = demand.capturedProperties || []
-    const total = props.length
-    const visitas = props.filter((p) => !!p.visitaDate).length
-    const fechados = props.filter((p) => !!p.fechamentoDate).length
-    const rate = total > 0 ? Math.round((fechados / total) * 100) : 0
-
-    return { total, visitas, fechados, rate }
-  }
-
   const globalMetrics = useMemo(() => {
     let total = 0,
       visitas = 0,
@@ -74,6 +73,10 @@ export function AnalyticsDashboard() {
     })
     return { total, visitas, fechados, rate: total > 0 ? Math.round((fechados / total) * 100) : 0 }
   }, [filteredDemands])
+
+  if (currentUser?.role !== 'gestor' && currentUser?.role !== 'admin') {
+    return <Navigate to="/app" replace />
+  }
 
   return (
     <div className="space-y-6 pb-8 animate-fade-in-up">
