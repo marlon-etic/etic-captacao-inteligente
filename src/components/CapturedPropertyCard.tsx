@@ -3,14 +3,12 @@ import {
   MapPin,
   Calendar,
   CheckCircle2,
-  Bed,
-  Car,
-  Bath,
-  UserCircle,
-  Clock,
-  MessageCircle,
   BarChart2,
   User,
+  UserCircle,
+  MessageCircle,
+  Clock,
+  Sparkles,
 } from 'lucide-react'
 import { Demand, CapturedProperty } from '@/types'
 import { Card, CardContent } from '@/components/ui/card'
@@ -26,6 +24,8 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { useToast } from '@/hooks/use-toast'
 
 const statusLabels = {
   'Captado sob demanda': {
@@ -50,25 +50,30 @@ export function CapturedPropertyCard({
   property,
   onAction,
 }: {
-  demand: Demand
+  demand?: Demand
   property: CapturedProperty
-  onAction: (
+  onAction?: (
     t: 'visita' | 'proposta' | 'negocio' | 'history',
     d: Demand,
     p: CapturedProperty,
   ) => void
 }) {
-  const { users, currentUser, logContactAttempt } = useAppStore()
+  const { users, currentUser, logContactAttempt, getMatchesForProperty, claimLooseProperty } =
+    useAppStore()
+  const { toast } = useToast()
   const [isChatOpen, setIsChatOpen] = useState(false)
   const [showClientProperties, setShowClientProperties] = useState(false)
+
+  const isLoose = !demand || property.tipo_vinculacao === 'solto'
+  const isLost = demand?.status === 'Perdida'
 
   const isClosed = !!property.fechamentoDate
   const isProposta = !!property.propostaDate && !isClosed
   const isVisita = !!property.visitaDate && !isProposta && !isClosed
-  const isLost = demand.status === 'Perdida'
 
   let st = statusLabels['Captado sob demanda']
-  if (isClosed) st = statusLabels['Negócio']
+  if (isLoose) st = { label: '🔓 Solto', color: 'bg-gray-100 text-gray-800 border-gray-300' }
+  else if (isClosed) st = statusLabels['Negócio']
   else if (isProposta) st = statusLabels['Proposta']
   else if (isVisita) st = statusLabels['Visita']
   else if (isLost) st = statusLabels['Perdida']
@@ -91,8 +96,12 @@ export function CapturedPropertyCard({
       ?.filter((h) => h.type === 'contato_captador')
       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()) || []
 
-  const totalImoveis = demand.capturedProperties?.length || 1
+  const totalImoveis = demand?.capturedProperties?.length || 1
   const numeroImovel = property.numero_imovel_para_demanda || 1
+
+  const matches = isLoose ? getMatchesForProperty(property) : []
+  const topMatch = matches[0]
+  const otherMatches = matches.slice(1)
 
   return (
     <>
@@ -153,45 +162,149 @@ export function CapturedPropertyCard({
             </span>
           </div>
 
-          <div className="flex flex-col gap-1.5 text-xs text-muted-foreground bg-indigo-50/50 p-3 rounded-md border border-indigo-100 mt-2">
-            <p className="flex items-center gap-1.5 font-medium text-foreground">
-              <User className="w-3.5 h-3.5 text-primary shrink-0" />
-              <span className="truncate">👤 Cliente: {demand.clientName}</span>
-            </p>
-            <p className="flex items-center gap-1.5">
-              <MapPin className="w-3.5 h-3.5 text-primary shrink-0" />
-              <span className="truncate">
-                📍 Demanda: {demand.location},{' '}
-                {new Intl.NumberFormat('pt-BR', {
-                  style: 'currency',
-                  currency: 'BRL',
-                  maximumFractionDigits: 0,
-                }).format(demand.budget || demand.maxBudget || 0)}
-                , {demand.bedrooms} dorms
-              </span>
-            </p>
-            <p className="flex items-center gap-1.5 font-medium text-indigo-700">
-              <BarChart2 className="w-3.5 h-3.5 shrink-0" />
-              <span>
-                📊 Imóvel {numeroImovel} de {totalImoveis} para este cliente
-              </span>
-            </p>
-          </div>
+          {demand && (
+            <div className="flex flex-col gap-1.5 text-xs text-muted-foreground bg-indigo-50/50 p-3 rounded-md border border-indigo-100 mt-2">
+              <p className="flex items-center gap-1.5 font-medium text-foreground">
+                <User className="w-3.5 h-3.5 text-primary shrink-0" />
+                <span className="truncate">👤 Cliente: {demand.clientName}</span>
+              </p>
+              <p className="flex items-center gap-1.5">
+                <MapPin className="w-3.5 h-3.5 text-primary shrink-0" />
+                <span className="truncate">
+                  📍 Demanda: {demand.location},{' '}
+                  {new Intl.NumberFormat('pt-BR', {
+                    style: 'currency',
+                    currency: 'BRL',
+                    maximumFractionDigits: 0,
+                  }).format(demand.budget || demand.maxBudget || 0)}
+                  , {demand.bedrooms} dorms
+                </span>
+              </p>
+              <p className="flex items-center gap-1.5 font-medium text-indigo-700">
+                <BarChart2 className="w-3.5 h-3.5 shrink-0" />
+                <span>
+                  📊 Imóvel {numeroImovel} de {totalImoveis} para este cliente
+                </span>
+              </p>
+            </div>
+          )}
 
-          <Button
-            variant="link"
-            size="sm"
-            className="text-xs h-auto p-0 mt-1 justify-start text-primary font-semibold"
-            onClick={() => setShowClientProperties(true)}
-          >
-            Ver todos os imóveis para este cliente
-          </Button>
+          {demand && (
+            <Button
+              variant="link"
+              size="sm"
+              className="text-xs h-auto p-0 mt-1 justify-start text-primary font-semibold"
+              onClick={() => setShowClientProperties(true)}
+            >
+              Ver todos os imóveis para este cliente
+            </Button>
+          )}
+
+          {isLoose && matches.length > 0 && (
+            <div className="mt-3 bg-blue-50/80 border border-blue-200 rounded-md p-3">
+              <div className="flex items-start gap-2">
+                <Sparkles className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-xs font-bold text-blue-900 leading-tight">
+                    ✨ Sugestão de Match: {topMatch.demand.clientName}
+                  </p>
+                  <p className="text-[10px] text-blue-700 mt-0.5 font-medium">
+                    {topMatch.score}% de compatibilidade
+                  </p>
+                  <Button
+                    size="sm"
+                    className="w-full mt-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs h-8"
+                    onClick={() => {
+                      const res = claimLooseProperty(property.code, topMatch.demand.id)
+                      if (res.success) {
+                        toast({
+                          title: 'Imóvel vinculado com sucesso!',
+                          className: 'bg-emerald-600 text-white border-emerald-600',
+                        })
+                      } else {
+                        toast({ title: 'Erro', description: res.message, variant: 'destructive' })
+                      }
+                    }}
+                  >
+                    Vincular a esta Demanda
+                  </Button>
+                  {otherMatches.length > 0 && (
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="link"
+                          className="text-[10px] h-auto p-0 mt-2 text-blue-600"
+                        >
+                          Ver outras {otherMatches.length} sugestões
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-64 p-3 z-50">
+                        <p className="text-xs font-semibold mb-3">Outras compatibilidades:</p>
+                        <div className="space-y-3">
+                          {otherMatches.map((m) => (
+                            <div
+                              key={m.demand.id}
+                              className="flex flex-col gap-1.5 border-b border-border/50 pb-3 last:border-0 last:pb-0"
+                            >
+                              <div className="flex justify-between items-start gap-2">
+                                <div>
+                                  <span className="text-xs font-medium block">
+                                    {m.demand.clientName}
+                                  </span>
+                                  <span className="text-[10px] text-muted-foreground">
+                                    {m.demand.location} • {m.demand.type}
+                                  </span>
+                                </div>
+                                <Badge
+                                  variant="secondary"
+                                  className="text-[10px] shrink-0 bg-blue-100 text-blue-800"
+                                >
+                                  {m.score}%
+                                </Badge>
+                              </div>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-[10px] h-7 w-full mt-1"
+                                onClick={() => {
+                                  const res = claimLooseProperty(property.code, m.demand.id)
+                                  if (res.success) toast({ title: 'Imóvel vinculado!' })
+                                  else
+                                    toast({
+                                      title: 'Erro',
+                                      description: res.message,
+                                      variant: 'destructive',
+                                    })
+                                }}
+                              >
+                                Vincular
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {isLoose && matches.length === 0 && (
+            <div className="mt-3 bg-muted/30 border border-dashed rounded-md p-3 text-center">
+              <p className="text-xs text-muted-foreground font-medium">
+                Nenhum match encontrado no momento
+              </p>
+            </div>
+          )}
 
           <div className="mt-3 flex flex-col gap-1.5 text-xs text-muted-foreground bg-muted/30 p-2 rounded-md border border-muted">
             <p className="flex items-center gap-1.5">
               <Calendar className="w-3.5 h-3.5 shrink-0" />
               Captação:{' '}
-              {new Date(property.capturedAt || demand.createdAt).toLocaleDateString('pt-BR')}
+              {new Date(property.capturedAt || (demand?.createdAt as string)).toLocaleDateString(
+                'pt-BR',
+              )}
             </p>
             <p className="flex items-center gap-1.5">
               <UserCircle className="w-3.5 h-3.5 shrink-0" />👤 Captado por:{' '}
@@ -251,7 +364,7 @@ export function CapturedPropertyCard({
           )}
         </CardContent>
 
-        {isSdrOrBroker && (
+        {isSdrOrBroker && demand && (
           <div className="px-4 pb-2 flex flex-col gap-2">
             {!isCapturerActive ? (
               <Button
@@ -318,8 +431,8 @@ export function CapturedPropertyCard({
           </div>
         )}
 
-        <div className="p-4 pt-0 mt-auto flex flex-col gap-2 border-t pt-3">
-          {!isLost && (
+        <div className="p-4 pt-0 mt-auto flex flex-col gap-2 border-t pt-3 bg-card">
+          {!isLost && !isLoose && onAction && demand && (
             <>
               <Button
                 size="sm"
@@ -356,118 +469,128 @@ export function CapturedPropertyCard({
               </Button>
             </>
           )}
-          <Button
-            size="sm"
-            variant="secondary"
-            className="w-full justify-start text-xs font-semibold mt-1 bg-muted/80 hover:bg-muted"
-            onClick={() => onAction('history', demand, property)}
-          >
-            <Clock className="w-4 h-4 mr-2 text-muted-foreground" /> VER HISTÓRICO
-          </Button>
+          {onAction && demand && (
+            <Button
+              size="sm"
+              variant="secondary"
+              className="w-full justify-start text-xs font-semibold mt-1 bg-muted/80 hover:bg-muted"
+              onClick={() => onAction('history', demand, property)}
+            >
+              <Clock className="w-4 h-4 mr-2 text-muted-foreground" /> VER HISTÓRICO
+            </Button>
+          )}
         </div>
 
         <InternalChatModal
           isOpen={isChatOpen}
           onClose={() => setIsChatOpen(false)}
           onSend={(msg) => {
-            if (logContactAttempt) logContactAttempt(demand.id, property.code, 'interno', msg)
+            if (demand && logContactAttempt)
+              logContactAttempt(demand.id, property.code, 'interno', msg)
           }}
           capturerName={capturer?.name || capturerName}
         />
       </Card>
 
-      <Dialog open={showClientProperties} onOpenChange={setShowClientProperties}>
-        <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Imóveis do Cliente: {demand.clientName}</DialogTitle>
-            <DialogDescription>
-              Demanda: {demand.location} • {demand.type} • {demand.bedrooms} dormitórios
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3 mt-4">
-            {demand.capturedProperties?.map((p) => {
-              const pIsClosed = !!p.fechamentoDate
-              const pIsProposta = !!p.propostaDate && !pIsClosed
-              const pIsVisita = !!p.visitaDate && !pIsProposta && !pIsClosed
+      {demand && (
+        <Dialog open={showClientProperties} onOpenChange={setShowClientProperties}>
+          <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Imóveis do Cliente: {demand.clientName}</DialogTitle>
+              <DialogDescription>
+                Demanda: {demand.location} • {demand.type} • {demand.bedrooms} dormitórios
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3 mt-4">
+              {demand.capturedProperties?.map((p) => {
+                const pIsClosed = !!p.fechamentoDate
+                const pIsProposta = !!p.propostaDate && !pIsClosed
+                const pIsVisita = !!p.visitaDate && !pIsProposta && !pIsClosed
 
-              let statusLabel = '🟡 Captado'
-              let statusClass = 'bg-yellow-100 text-yellow-800 border-yellow-300'
-              if (pIsClosed) {
-                statusLabel = '🟢 Negócio Fechado'
-                statusClass = 'bg-emerald-100 text-emerald-800 border-emerald-300'
-              } else if (pIsProposta) {
-                statusLabel = '🟣 Proposta'
-                statusClass = 'bg-purple-100 text-purple-800 border-purple-300'
-              } else if (pIsVisita) {
-                statusLabel = '🟠 Visita Agendada'
-                statusClass = 'bg-orange-100 text-orange-800 border-orange-300'
-              }
+                let statusLabel = '🟡 Captado'
+                let statusClass = 'bg-yellow-100 text-yellow-800 border-yellow-300'
+                if (pIsClosed) {
+                  statusLabel = '🟢 Negócio Fechado'
+                  statusClass = 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                } else if (pIsProposta) {
+                  statusLabel = '🟣 Proposta'
+                  statusClass = 'bg-purple-100 text-purple-800 border-purple-300'
+                } else if (pIsVisita) {
+                  statusLabel = '🟠 Visita Agendada'
+                  statusClass = 'bg-orange-100 text-orange-800 border-orange-300'
+                }
 
-              return (
-                <div
-                  key={p.code}
-                  className="flex gap-3 border rounded-lg p-3 relative overflow-hidden"
-                >
+                return (
                   <div
-                    className={cn('absolute left-0 top-0 bottom-0 w-1', statusClass.split(' ')[0])}
-                  />
-                  <img
-                    src={
-                      p.photoUrl || `https://img.usecurling.com/p/400/300?q=house&seed=${p.code}`
-                    }
-                    alt={p.code}
-                    className="w-16 h-16 object-cover rounded bg-muted"
-                  />
-                  <div className="flex-1 min-w-0 flex flex-col justify-center">
-                    <div className="flex justify-between items-start gap-2">
-                      <p className="font-semibold text-sm">Cód: {p.code}</p>
-                      <Badge
-                        variant="outline"
-                        className={cn('text-[10px] px-1.5 py-0 whitespace-nowrap', statusClass)}
-                      >
-                        {statusLabel}
-                      </Badge>
+                    key={p.code}
+                    className="flex gap-3 border rounded-lg p-3 relative overflow-hidden"
+                  >
+                    <div
+                      className={cn(
+                        'absolute left-0 top-0 bottom-0 w-1',
+                        statusClass.split(' ')[0],
+                      )}
+                    />
+                    <img
+                      src={
+                        p.photoUrl || `https://img.usecurling.com/p/400/300?q=house&seed=${p.code}`
+                      }
+                      alt={p.code}
+                      className="w-16 h-16 object-cover rounded bg-muted"
+                    />
+                    <div className="flex-1 min-w-0 flex flex-col justify-center">
+                      <div className="flex justify-between items-start gap-2">
+                        <p className="font-semibold text-sm">Cód: {p.code}</p>
+                        <Badge
+                          variant="outline"
+                          className={cn('text-[10px] px-1.5 py-0 whitespace-nowrap', statusClass)}
+                        >
+                          {statusLabel}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground truncate">{p.neighborhood}</p>
+                      <p className="text-xs font-medium text-primary mt-1">
+                        {new Intl.NumberFormat('pt-BR', {
+                          style: 'currency',
+                          currency: 'BRL',
+                        }).format(p.value)}
+                      </p>
                     </div>
-                    <p className="text-xs text-muted-foreground truncate">{p.neighborhood}</p>
-                    <p className="text-xs font-medium text-primary mt-1">
-                      {new Intl.NumberFormat('pt-BR', {
-                        style: 'currency',
-                        currency: 'BRL',
-                      }).format(p.value)}
-                    </p>
+                    <div className="flex flex-col justify-center gap-1 shrink-0">
+                      {onAction && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-[10px]"
+                          onClick={() => {
+                            setShowClientProperties(false)
+                            onAction('history', demand, p)
+                          }}
+                        >
+                          Histórico
+                        </Button>
+                      )}
+                      {!pIsClosed && onAction && (
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          className="h-7 text-[10px]"
+                          onClick={() => {
+                            setShowClientProperties(false)
+                            onAction(pIsVisita ? 'proposta' : 'visita', demand, p)
+                          }}
+                        >
+                          {pIsVisita ? 'Proposta' : 'Agendar Visita'}
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex flex-col justify-center gap-1 shrink-0">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-7 text-[10px]"
-                      onClick={() => {
-                        setShowClientProperties(false)
-                        onAction('history', demand, p)
-                      }}
-                    >
-                      Histórico
-                    </Button>
-                    {!pIsClosed && (
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        className="h-7 text-[10px]"
-                        onClick={() => {
-                          setShowClientProperties(false)
-                          onAction(pIsVisita ? 'proposta' : 'visita', demand, p)
-                        }}
-                      >
-                        {pIsVisita ? 'Proposta' : 'Agendar Visita'}
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </DialogContent>
-      </Dialog>
+                )
+              })}
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </>
   )
 }

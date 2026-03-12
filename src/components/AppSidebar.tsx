@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
-import { LayoutDashboard, Users, Trophy, UserCircle, PlusCircle } from 'lucide-react'
+import { LayoutDashboard, Users, Trophy, UserCircle, PlusCircle, LineChart } from 'lucide-react'
 import {
   Sidebar,
   SidebarContent,
@@ -24,6 +24,9 @@ export function AppSidebar() {
       ? [{ title: 'Nova Demanda', icon: PlusCircle, url: '/app/nova-demanda' }]
       : []),
     { title: 'Demandas', icon: Users, url: '/app/demandas' },
+    ...(currentUser.role === 'gestor' || currentUser.role === 'admin'
+      ? [{ title: 'Analytics', icon: LineChart, url: '/app/analytics' }]
+      : []),
     { title: 'Ranking', icon: Trophy, url: '/app/ranking' },
     { title: 'Perfil', icon: UserCircle, url: '/app/perfil' },
   ]

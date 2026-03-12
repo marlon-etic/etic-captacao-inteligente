@@ -12,6 +12,7 @@ import Ranking from '@/pages/Ranking'
 import Perfil from '@/pages/Perfil'
 import NotFound from '@/pages/NotFound'
 import { GestorDashboard } from '@/pages/dashboard/GestorDashboard'
+import { AnalyticsDashboard } from '@/pages/analytics/AnalyticsDashboard'
 
 const App = () => (
   <AppStoreProvider>
@@ -28,6 +29,7 @@ const App = () => (
             <Route path="ranking" element={<Ranking />} />
             <Route path="perfil" element={<Perfil />} />
             <Route path="gestor-dashboard" element={<GestorDashboard />} />
+            <Route path="analytics" element={<AnalyticsDashboard />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>

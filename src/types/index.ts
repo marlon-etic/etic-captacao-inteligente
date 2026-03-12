@@ -97,6 +97,7 @@ export interface CapturedProperty {
   captador_id?: string
   captador_name?: string
   propertyType?: 'Venda' | 'Aluguel'
+  bedrooms?: number
 }
 
 export interface Demand {

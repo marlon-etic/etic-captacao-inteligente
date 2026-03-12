@@ -54,6 +54,7 @@ interface AppState {
     method: 'whatsapp' | 'interno',
     message?: string,
   ) => void
+  getMatchesForProperty: (property: CapturedProperty) => { demand: Demand; score: number }[]
 }
 
 const defaultStats: UserStats = {
@@ -209,6 +210,8 @@ const initialDemands: Demand[] = [
         tipo_vinculacao: 'vinculado',
         captador_id: '1',
         captador_name: 'Ana Silva',
+        propertyType: 'Venda',
+        bedrooms: 3,
       },
     ],
   },
@@ -240,6 +243,8 @@ const initialDemands: Demand[] = [
         tipo_vinculacao: 'vinculado',
         captador_id: '1',
         captador_name: 'Ana Silva',
+        propertyType: 'Venda',
+        bedrooms: 4,
       },
     ],
   },
@@ -250,7 +255,7 @@ const initialLooseProperties: CapturedProperty[] = [
   {
     code: 'LP-101',
     value: 900000,
-    neighborhood: 'Pinheiros',
+    neighborhood: 'Jardins',
     bairro_tipo: 'listado',
     docCompleta: true,
     photoUrl: 'https://img.usecurling.com/p/400/300?q=house&seed=lp1',
@@ -258,6 +263,8 @@ const initialLooseProperties: CapturedProperty[] = [
     tipo_vinculacao: 'solto',
     captador_id: '1',
     captador_name: 'Ana Silva',
+    propertyType: 'Venda',
+    bedrooms: 3,
     history: [createHistoryItem('captacao', 'Imóvel captado como disponível para todos', 24)],
   },
 ]
@@ -961,7 +968,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       })
       enqueueWebhook('demanda_perdida', id, { reason, obs })
       addLog(`Demanda perdida (ID: ${id}) motivo: ${reason}`)
-      toast({ title: 'Demanda marcada como perdida', description: 'O status foi atualizado.' })
+      toast({ title: 'Demanda marked como perdida', description: 'O status foi atualizado.' })
     },
     [allDemands, currentUser, users, enqueueWebhook, addLog, broadcastState, createAction],
   )
@@ -1068,6 +1075,51 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         webhookQueue,
         auditLogs,
         triggerCron,
+        getMatchesForProperty: (property: CapturedProperty) => {
+          if (property.tipo_vinculacao === 'vinculado') return []
+
+          const matches = allDemands
+            .map((demand) => {
+              if (
+                ['Perdida', 'Impossível', 'Sem demanda', 'Negócio', 'Arquivado'].includes(
+                  demand.status,
+                )
+              )
+                return null
+              if (property.propertyType && demand.type && property.propertyType !== demand.type)
+                return null
+
+              let score = 0
+
+              const pLoc = property.neighborhood?.toLowerCase() || ''
+              const dLocs =
+                demand.location
+                  ?.toLowerCase()
+                  .split(',')
+                  .map((s) => s.trim()) || []
+              if (dLocs.some((dLoc) => dLoc.includes(pLoc) || pLoc.includes(dLoc))) {
+                score += 40
+              }
+
+              const budgetMax = (demand.maxBudget || demand.budget || 0) * 1.1
+              const budgetMin = (demand.minBudget || 0) * 0.9
+              if (property.value >= budgetMin && property.value <= budgetMax) {
+                score += 30
+              }
+
+              if (property.bedrooms && demand.bedrooms) {
+                if (property.bedrooms >= demand.bedrooms) score += 20
+              } else {
+                score += 10
+              }
+
+              if (score > 0) return { demand, score }
+              return null
+            })
+            .filter(Boolean) as { demand: Demand; score: number }[]
+
+          return matches.sort((a, b) => b.score - a.score).slice(0, 3)
+        },
         login: async (email, password) => {
           const cleanEmail = email.toLowerCase().trim()
           const cleanPass = password?.trim()
@@ -1197,6 +1249,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
               captador_id: currentUser?.id,
               captador_name: currentUser?.name,
               propertyType: demand.type,
+              bedrooms: payload?.bedrooms,
             }
 
             const updatedDemand = {
@@ -1283,6 +1336,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
             captador_id: currentUser?.id,
             captador_name: currentUser?.name,
             propertyType: payload.propertyType,
+            bedrooms: payload.bedrooms,
           }
 
           setLooseProperties((prev) => {
