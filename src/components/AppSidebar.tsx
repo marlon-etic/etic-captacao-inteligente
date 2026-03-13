@@ -1,5 +1,13 @@
 import { Link, useLocation } from 'react-router-dom'
-import { LayoutDashboard, Users, Trophy, UserCircle, PlusCircle, LineChart } from 'lucide-react'
+import {
+  LayoutDashboard,
+  Users,
+  Trophy,
+  UserCircle,
+  PlusCircle,
+  LineChart,
+  Bell,
+} from 'lucide-react'
 import {
   Sidebar,
   SidebarContent,
@@ -28,6 +36,7 @@ export function AppSidebar() {
       ? [{ title: 'Analytics', icon: LineChart, url: '/app/analytics' }]
       : []),
     { title: 'Ranking', icon: Trophy, url: '/app/ranking' },
+    { title: 'Notificações', icon: Bell, url: '/app/notificacoes' },
     { title: 'Perfil', icon: UserCircle, url: '/app/perfil' },
   ]
 

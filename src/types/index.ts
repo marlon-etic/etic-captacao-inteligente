@@ -18,6 +18,34 @@ export interface UserStats {
   streakRespostasRapidas: number
 }
 
+export type NotificationType =
+  | 'novo_imovel'
+  | 'reivindicado'
+  | 'ja_reivindicado'
+  | 'demanda_respondida'
+  | 'perdido'
+  | 'visita'
+  | 'negocio'
+
+export type NotificationUrgency = 'alta' | 'media' | 'baixa'
+export type NotificationChannel = 'in_app' | 'push' | 'email'
+
+export interface UserPreferences {
+  notifications: {
+    channels: {
+      in_app: boolean
+      push: boolean
+      email: boolean
+    }
+    types: Record<NotificationType, boolean>
+    quietHours: {
+      enabled: boolean
+      start: string
+      end: string
+    }
+  }
+}
+
 export interface User {
   id: string
   name: string
@@ -34,6 +62,7 @@ export interface User {
   badges: BadgeType[]
   stats: UserStats
   avatarUrl?: string
+  preferences?: UserPreferences
 }
 
 export type DemandStatus =
@@ -161,8 +190,23 @@ export interface WebhookEvent {
 
 export interface AppNotification {
   id: string
-  userId: string
-  message: string
-  read: boolean
-  createdAt: string
+  usuario_id: string
+  tipo_notificacao: NotificationType
+  titulo: string
+  corpo: string
+  detalhes?: Record<string, any>
+  acao_url?: string
+  acao_botao?: string
+  urgencia: NotificationUrgency
+  canais: NotificationChannel[]
+  lida: boolean
+  data_criacao: string
+  data_leitura?: string
+  arquivada?: boolean
+
+  // Legacy compat
+  message?: string
+  userId?: string
+  createdAt?: string
+  read?: boolean
 }
