@@ -54,22 +54,24 @@ export function PerformanceMetricsCards({ metrics }: { metrics: Metrics }) {
   ]
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 lg:gap-8">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-[16px]">
       {cards.map((c, i) => (
         <Card
           key={i}
-          className={`border-l-4 ${c.border} shadow-sm min-h-[100px] md:min-h-[120px] lg:min-h-[140px] flex items-center p-4 md:p-6 lg:p-8`}
+          className={`border-l-4 ${c.border} shadow-sm rounded-[12px] min-h-[100px] md:min-h-[120px] lg:min-h-[140px] flex items-center p-[16px] lg:p-[20px]`}
         >
-          <CardContent className="p-0 flex items-center gap-4 md:gap-6 w-full">
-            <div className={`p-4 md:p-5 rounded-full shrink-0 ${c.bg}`}>
-              <c.icon className={`w-6 h-6 md:w-8 md:h-8 ${c.color}`} />
+          <CardContent className="p-0 flex items-center gap-[8px] w-full">
+            <div className={`p-2 rounded-full shrink-0 ${c.bg}`}>
+              <c.icon
+                className={`w-[32px] h-[32px] md:w-[40px] md:h-[40px] lg:w-[48px] lg:h-[48px] ${c.color}`}
+              />
             </div>
             <div className="flex flex-col justify-center">
-              <p className="text-[12px] md:text-[14px] font-medium text-muted-foreground leading-tight uppercase tracking-wide mb-2 min-h-[14px]">
-                {c.title}
-              </p>
-              <p className="text-[24px] md:text-[28px] lg:text-[32px] font-bold min-h-[28px] md:min-h-[32px]">
+              <p className="text-[28px] md:text-[32px] lg:text-[36px] font-bold leading-none mb-[4px]">
                 {c.value}
+              </p>
+              <p className="text-[12px] md:text-[13px] lg:text-[14px] font-medium text-muted-foreground uppercase tracking-wider leading-tight">
+                {c.title}
               </p>
             </div>
           </CardContent>

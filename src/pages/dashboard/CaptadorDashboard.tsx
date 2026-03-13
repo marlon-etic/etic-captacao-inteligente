@@ -206,20 +206,20 @@ export function CaptadorDashboard() {
 
         <div className="flex flex-col lg:flex-row items-start lg:items-center w-full lg:w-auto">
           <div className="flex w-full overflow-x-auto scrollbar-hide">
-            <TabsList className="flex h-auto bg-transparent border-b border-border p-0 min-w-full justify-start gap-4 md:gap-6 lg:gap-8">
+            <TabsList className="flex h-auto bg-transparent border-b border-border p-0 min-w-full justify-start gap-[16px]">
               <TabsTrigger
                 value="performance"
-                className="h-[48px] lg:h-[44px] px-4 text-[14px] font-medium rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none whitespace-nowrap min-w-[44px]"
+                className="h-[48px] md:h-[44px] lg:h-[40px] px-[16px] md:px-[20px] lg:px-[24px] text-[14px] font-medium rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none whitespace-nowrap min-w-[44px]"
               >
                 Minha Performance
               </TabsTrigger>
               <TabsTrigger
                 value="demandas"
-                className="h-[48px] lg:h-[44px] px-4 text-[14px] font-medium rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none whitespace-nowrap min-w-[44px] relative"
+                className="h-[48px] md:h-[44px] lg:h-[40px] px-[16px] md:px-[20px] lg:px-[24px] text-[14px] font-medium rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none whitespace-nowrap min-w-[44px] relative"
               >
                 Demandas Ativas
                 {quickCounts.awaiting > 0 && (
-                  <span className="absolute top-2 right-0 bg-red-500 text-white text-[10px] min-w-[20px] min-h-[20px] flex items-center justify-center rounded-full px-1">
+                  <span className="absolute -top-[4px] -right-[4px] bg-[#FF4444] text-white font-bold shadow-sm text-[10px] min-w-[20px] min-h-[20px] flex items-center justify-center rounded-full px-1 z-10">
                     {quickCounts.awaiting}
                   </span>
                 )}
@@ -227,25 +227,27 @@ export function CaptadorDashboard() {
             </TabsList>
           </div>
 
-          <Button
-            onClick={() => setIndepModalOpen(true)}
-            className="h-[48px] w-full md:h-[44px] md:w-[200px] lg:h-[40px] lg:w-[200px] bg-emerald-600 hover:bg-emerald-700 mt-4 lg:mt-0 lg:ml-8 self-start shrink-0 text-[14px] font-bold"
-          >
-            <Plus className="w-5 h-5 md:w-4 md:h-4 mr-2" /> Nova Captação
-          </Button>
+          <div className="w-full px-[16px] md:px-0 md:w-auto mt-4 lg:mt-0 md:ml-[24px] lg:ml-[32px] shrink-0">
+            <Button
+              onClick={() => setIndepModalOpen(true)}
+              className="h-[48px] md:h-[44px] lg:h-[40px] w-full md:w-[200px] bg-[#00AA00] hover:bg-[#009500] text-green-950 shadow-[0_2px_4px_rgba(0,170,0,0.2)] text-[14px] font-bold"
+            >
+              <Plus className="w-[20px] h-[20px] mr-[8px]" /> Nova Captação
+            </Button>
+          </div>
 
           <div className="hidden lg:flex gap-4 lg:ml-6 items-center">
             <Badge
               variant="outline"
               className="bg-indigo-50 text-indigo-800 border-indigo-200 py-2 px-4 whitespace-nowrap min-h-[44px] flex items-center gap-2 text-[14px]"
             >
-              <LinkIcon className="w-4 h-4" /> {stats.vinculadosCount} vinculados
+              <LinkIcon className="w-[24px] h-[24px]" /> {stats.vinculadosCount} vinculados
             </Badge>
             <Badge
               variant="outline"
               className="bg-blue-50 text-blue-800 border-blue-200 py-2 px-4 whitespace-nowrap min-h-[44px] flex items-center gap-2 text-[14px]"
             >
-              <Unlock className="w-4 h-4" /> {stats.soltosCount} soltos
+              <Unlock className="w-[24px] h-[24px]" /> {stats.soltosCount} soltos
             </Badge>
           </div>
         </div>
@@ -266,7 +268,7 @@ export function CaptadorDashboard() {
         {quickCounts.awaiting > 0 && (
           <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 md:p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-sm animate-pulse">
             <div className="flex items-center gap-4">
-              <AlertCircle className="w-8 h-8 text-orange-600 shrink-0" />
+              <AlertCircle className="w-[32px] h-[32px] text-orange-600 shrink-0" />
               <div>
                 <p className="font-bold text-[16px] text-orange-900">
                   {quickCounts.awaiting} demandas aguardando resposta
@@ -279,7 +281,7 @@ export function CaptadorDashboard() {
             <Button
               size="sm"
               variant="outline"
-              className="bg-orange-100 text-orange-900 border-orange-300 hover:bg-orange-200 min-h-[44px] w-full md:w-auto text-[14px]"
+              className="bg-orange-100 text-orange-900 border-orange-300 hover:bg-orange-200 min-h-[44px] w-full md:w-auto text-[14px] px-4"
               onClick={() => handleQuickFilterClick('awaiting')}
             >
               Ver Pendentes
@@ -289,21 +291,23 @@ export function CaptadorDashboard() {
 
         <GamificationWidget currentUser={currentUser} />
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6 lg:gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-[16px]">
           {statCards.map((s, i) => (
             <Card
               key={i}
-              className="border-0 shadow-sm min-h-[100px] md:min-h-[120px] lg:min-h-[140px] flex items-center justify-center p-4 lg:p-5"
+              className="border-0 shadow-sm rounded-[12px] min-h-[100px] md:min-h-[120px] lg:min-h-[140px] flex items-center w-full p-[16px] lg:p-[20px]"
             >
-              <CardContent className="p-0 flex items-center justify-start text-left gap-4 w-full">
-                <div className={`p-3 md:p-4 rounded-full ${s.b}`}>
-                  <s.i className={`w-6 h-6 md:w-8 md:h-8 ${s.c}`} />
+              <CardContent className="p-0 flex items-center justify-start text-left gap-[8px] w-full">
+                <div className={`p-2 rounded-full shrink-0 ${s.b}`}>
+                  <s.i
+                    className={`w-[32px] h-[32px] md:w-[40px] md:h-[40px] lg:w-[48px] lg:h-[48px] ${s.c}`}
+                  />
                 </div>
-                <div>
-                  <p className="text-[24px] md:text-[28px] lg:text-[32px] font-bold leading-none mb-1 md:mb-2">
+                <div className="flex flex-col justify-center">
+                  <p className="text-[28px] md:text-[32px] lg:text-[36px] font-bold leading-none mb-[4px]">
                     {s.v}
                   </p>
-                  <p className="text-[12px] md:text-[14px] font-medium text-muted-foreground uppercase tracking-wider leading-tight">
+                  <p className="text-[12px] md:text-[13px] lg:text-[14px] font-medium text-muted-foreground uppercase tracking-wider leading-tight">
                     {s.t}
                   </p>
                 </div>
@@ -322,7 +326,7 @@ export function CaptadorDashboard() {
                   key={opt.id}
                   onClick={() => handleQuickFilterClick(opt.id)}
                   className={cn(
-                    'flex flex-shrink-0 items-center gap-2 px-4 min-h-[44px] rounded-full whitespace-nowrap transition-all duration-200 text-[14px] border',
+                    'flex flex-shrink-0 items-center justify-center gap-2 px-4 min-h-[44px] min-w-[44px] rounded-full whitespace-nowrap transition-all duration-200 text-[14px] border',
                     isActive
                       ? 'bg-primary text-primary-foreground font-bold border-primary shadow-sm'
                       : 'bg-muted/50 text-muted-foreground hover:bg-muted font-medium border-border',
@@ -374,7 +378,7 @@ export function CaptadorDashboard() {
                   setViewMode('new')
                   setPage(1)
                 }}
-                className="shrink-0 min-h-[44px] text-[14px]"
+                className="shrink-0 min-h-[44px] min-w-[44px] text-[14px]"
               >
                 Apenas novas
               </Button>
@@ -384,7 +388,7 @@ export function CaptadorDashboard() {
                   setViewMode('grouped')
                   setPage(1)
                 }}
-                className="shrink-0 min-h-[44px] text-[14px]"
+                className="shrink-0 min-h-[44px] min-w-[44px] text-[14px]"
               >
                 Apenas agrupadas
               </Button>
@@ -394,7 +398,7 @@ export function CaptadorDashboard() {
                   setViewMode('all')
                   setPage(1)
                 }}
-                className="shrink-0 min-h-[44px] text-[14px]"
+                className="shrink-0 min-h-[44px] min-w-[44px] text-[14px]"
               >
                 Mostrar tudo
               </Button>
@@ -403,12 +407,12 @@ export function CaptadorDashboard() {
 
           <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between bg-muted/50 p-4 md:p-6 rounded-lg border border-border/50">
             <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-4 w-full lg:w-auto">
-              <Filter className="w-5 h-5 text-muted-foreground hidden sm:block" />
+              <Filter className="w-[24px] h-[24px] text-muted-foreground hidden sm:block" />
               <Select
                 value={filters.type}
                 onValueChange={(v) => setFilters({ ...filters, type: v, page: 1 } as any)}
               >
-                <SelectTrigger className="w-full sm:w-[140px] min-h-[44px] text-[14px] bg-background">
+                <SelectTrigger className="w-full sm:w-[140px] min-h-[44px] min-w-[44px] text-[14px] bg-background">
                   <SelectValue placeholder="Tipo" />
                 </SelectTrigger>
                 <SelectContent>
@@ -421,7 +425,7 @@ export function CaptadorDashboard() {
                 value={filters.status}
                 onValueChange={(v) => setFilters({ ...filters, status: v, page: 1 } as any)}
               >
-                <SelectTrigger className="w-full sm:w-[160px] min-h-[44px] text-[14px] bg-background">
+                <SelectTrigger className="w-full sm:w-[160px] min-h-[44px] min-w-[44px] text-[14px] bg-background">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -435,7 +439,7 @@ export function CaptadorDashboard() {
                 value={filters.timeframe}
                 onValueChange={(v) => setFilters({ ...filters, timeframe: v, page: 1 } as any)}
               >
-                <SelectTrigger className="w-full sm:w-[160px] min-h-[44px] text-[14px] bg-background">
+                <SelectTrigger className="w-full sm:w-[160px] min-h-[44px] min-w-[44px] text-[14px] bg-background">
                   <SelectValue placeholder="Prazo / Urgência" />
                 </SelectTrigger>
                 <SelectContent>
@@ -449,12 +453,12 @@ export function CaptadorDashboard() {
               </Select>
             </div>
             <div className="flex items-center gap-4 w-full lg:w-auto mt-4 lg:mt-0">
-              <SortDesc className="w-5 h-5 text-muted-foreground hidden lg:block" />
+              <SortDesc className="w-[24px] h-[24px] text-muted-foreground hidden lg:block" />
               <Select
                 value={filters.sort}
                 onValueChange={(v) => setFilters({ ...filters, sort: v, page: 1 } as any)}
               >
-                <SelectTrigger className="w-full lg:w-[180px] min-h-[44px] text-[14px] bg-background">
+                <SelectTrigger className="w-full lg:w-[180px] min-h-[44px] min-w-[44px] text-[14px] bg-background">
                   <SelectValue placeholder="Ordenar por" />
                 </SelectTrigger>
                 <SelectContent>
@@ -475,7 +479,7 @@ export function CaptadorDashboard() {
           ) : allRenderItems.length === 0 ? (
             <div className="text-center p-8 md:p-12 bg-background border rounded-xl border-dashed flex flex-col items-center">
               <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
-                <PackageSearch className="w-8 h-8 text-muted-foreground/50" />
+                <PackageSearch className="w-[32px] h-[32px] text-muted-foreground/50" />
               </div>
               <h3 className="text-[18px] font-semibold mb-2">Nenhuma demanda no momento</h3>
               <p className="text-[14px] text-muted-foreground">
@@ -491,7 +495,7 @@ export function CaptadorDashboard() {
                     setFilters({ type: 'all', status: 'all', timeframe: 'all', sort: 'urgency' })
                     handleQuickFilterClick('all')
                   }}
-                  className="mt-4 min-h-[44px] text-[14px]"
+                  className="mt-4 min-h-[44px] min-w-[44px] text-[14px]"
                 >
                   Limpar filtros
                 </Button>
@@ -537,9 +541,9 @@ export function CaptadorDashboard() {
                           variant="ghost"
                           onClick={() => setPage((p) => Math.max(1, p - 1))}
                           disabled={page === 1}
-                          className="gap-2 min-h-[44px] text-[14px]"
+                          className="gap-2 min-h-[44px] min-w-[44px] text-[14px]"
                         >
-                          <ChevronLeft className="h-5 w-5" /> Anterior
+                          <ChevronLeft className="h-[24px] w-[24px]" /> Anterior
                         </Button>
                       </PaginationItem>
                       <div className="flex items-center px-6 text-[14px] font-medium">
@@ -550,9 +554,9 @@ export function CaptadorDashboard() {
                           variant="ghost"
                           onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                           disabled={page === totalPages}
-                          className="gap-2 min-h-[44px] text-[14px]"
+                          className="gap-2 min-h-[44px] min-w-[44px] text-[14px]"
                         >
-                          Próxima <ChevronRight className="h-5 w-5" />
+                          Próxima <ChevronRight className="h-[24px] w-[24px]" />
                         </Button>
                       </PaginationItem>
                     </PaginationContent>
