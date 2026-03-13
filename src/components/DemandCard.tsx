@@ -152,7 +152,7 @@ export function DemandCard({
       >
         <div
           className={cn(
-            'absolute top-0 left-0 w-1.5 h-full',
+            'absolute top-0 left-0 w-[6px] h-full',
             demand.status === 'Perdida'
               ? 'bg-gray-400'
               : demand.isPrioritized
@@ -180,10 +180,10 @@ export function DemandCard({
                             : 'bg-red-500',
           )}
         />
-        <CardContent className="p-4 flex flex-col gap-3 flex-grow pl-5">
-          <div className="flex justify-between items-start gap-2">
+        <CardContent className="p-4 md:p-6 flex flex-col gap-4 flex-grow pl-[22px] md:pl-[30px]">
+          <div className="flex justify-between items-start gap-4">
             <div className="flex-1 min-w-0">
-              <h3 className="font-semibold text-lg truncate flex items-center gap-2">
+              <h3 className="font-semibold text-[18px] md:text-[20px] truncate flex items-center gap-2">
                 {isNewDemand && (
                   <span title="Nova Demanda" className="text-xl leading-none">
                     🆕
@@ -195,27 +195,27 @@ export function DemandCard({
                     title="Alta Prioridade (>5 interessados)"
                     className="flex items-center text-purple-600"
                   >
-                    <ArrowUpCircle className="w-4 h-4" />
+                    <ArrowUpCircle className="w-5 h-5" />
                   </span>
                 )}
               </h3>
               {totalInterested > 1 && !demand.isPrioritized && (
                 <button
                   onClick={() => setShowSimilar(true)}
-                  className="flex items-center gap-1 text-xs font-medium text-purple-700 mt-1 cursor-pointer hover:underline"
+                  className="flex items-center gap-2 text-[12px] md:text-[14px] font-medium text-purple-700 mt-2 cursor-pointer hover:underline min-h-[44px] py-1"
                   title="Ver clientes interessados"
                 >
-                  <Users className="w-3.5 h-3.5" />
+                  <Users className="w-4 h-4" />
                   <span>{totalInterested} interessados similares</span>
                 </button>
               )}
             </div>
-            <div className="flex flex-col items-end gap-1.5 shrink-0">
+            <div className="flex flex-col items-end gap-2 shrink-0">
               {isPendente && slaBadgeText && (
                 <Badge
                   variant="secondary"
                   className={cn(
-                    'text-[10px] py-0.5 px-2 font-bold flex items-center gap-1 whitespace-nowrap shadow-sm',
+                    'text-[12px] py-1 px-3 font-bold flex items-center gap-1.5 whitespace-nowrap shadow-sm min-h-[28px]',
                     slaLevel === 'green' && 'bg-green-100 text-green-800 border-green-300',
                     slaLevel === 'yellow' && 'bg-yellow-100 text-yellow-800 border-yellow-300',
                     slaLevel === 'red' && 'bg-red-100 text-red-800 border-red-300',
@@ -228,30 +228,34 @@ export function DemandCard({
               {!isPendente && isNewDemand && (
                 <Badge
                   variant="secondary"
-                  className="bg-green-100 text-green-800 border-green-300 text-[10px] py-0.5 px-2 font-bold flex items-center gap-1 whitespace-nowrap shadow-sm"
+                  className="bg-green-100 text-green-800 border-green-300 text-[12px] py-1 px-3 font-bold flex items-center gap-1.5 whitespace-nowrap shadow-sm min-h-[28px]"
                 >
                   ⭐ NOVA - {text}
                 </Badge>
               )}
               <Badge
                 variant="outline"
-                className={cn('px-2 py-0.5 whitespace-nowrap', statusColors[demand.status])}
+                className={cn(
+                  'px-3 py-1 text-[12px] whitespace-nowrap min-h-[28px]',
+                  statusColors[demand.status],
+                )}
               >
                 {demand.status}
               </Badge>
               {demand.isPrioritized && (
-                <Badge
-                  variant="secondary"
-                  className="bg-pink-100 text-pink-800 hover:bg-pink-200 border-pink-300 text-[10px] py-0.5 px-2 font-bold flex items-center gap-1.5 whitespace-nowrap cursor-pointer transition-colors shadow-sm"
-                  onClick={() => setShowPriorityModal(true)}
-                >
-                  <span>🔴</span> PRIORIZADA - {demand.interestedClientsCount || 1} interessados
-                </Badge>
+                <button onClick={() => setShowPriorityModal(true)}>
+                  <Badge
+                    variant="secondary"
+                    className="bg-pink-100 text-pink-800 hover:bg-pink-200 border-pink-300 text-[12px] py-1 px-3 font-bold flex items-center gap-1.5 whitespace-nowrap cursor-pointer transition-colors shadow-sm min-h-[44px]"
+                  >
+                    <span>🔴</span> PRIORIZADA - {demand.interestedClientsCount || 1} interessados
+                  </Badge>
+                </button>
               )}
               {demand.status === 'Perdida' && (
                 <Badge
                   variant="secondary"
-                  className="bg-gray-200 text-gray-800 border-gray-400 text-[10px] py-0 px-1.5 font-bold flex items-center gap-1 whitespace-nowrap"
+                  className="bg-gray-200 text-gray-800 border-gray-400 text-[12px] py-1 px-3 font-bold flex items-center gap-1.5 whitespace-nowrap min-h-[28px]"
                 >
                   ❌ PERDIDA
                 </Badge>
@@ -259,18 +263,20 @@ export function DemandCard({
               {demand.isRepescagem && demand.status === 'Pendente' && (
                 <Badge
                   variant="secondary"
-                  className="bg-amber-100 text-amber-800 border-amber-300 text-[10px] py-0 px-1.5 font-bold flex items-center gap-1 whitespace-nowrap"
+                  className="bg-amber-100 text-amber-800 border-amber-300 text-[12px] py-1 px-3 font-bold flex items-center gap-1.5 whitespace-nowrap min-h-[28px]"
                 >
-                  <RefreshCw className="w-3 h-3" /> Repescagem
+                  <RefreshCw className="w-4 h-4" /> Repescagem
                 </Badge>
               )}
             </div>
           </div>
-          <p className="text-sm line-clamp-2 mt-1 text-foreground/80">{demand.description}</p>
+          <p className="text-[14px] md:text-[16px] line-clamp-2 text-foreground/80 leading-relaxed">
+            {demand.description}
+          </p>
 
           {isPendente && slaText && (
-            <div className="mt-1 mb-1">
-              <div className="flex justify-between items-center text-xs font-bold mb-1">
+            <div className="mt-2 mb-2 min-h-[60px] flex flex-col justify-center">
+              <div className="flex justify-between items-center text-[12px] md:text-[14px] font-bold mb-2">
                 <span
                   className={cn(
                     slaLevel === 'green' && 'text-green-700',
@@ -285,7 +291,7 @@ export function DemandCard({
               <Progress
                 value={slaProgress}
                 className={cn(
-                  'h-1.5',
+                  'h-2',
                   slaLevel === 'green' && 'bg-green-100',
                   slaLevel === 'yellow' && 'bg-yellow-100',
                   slaLevel === 'red' && 'bg-red-100',
@@ -301,48 +307,48 @@ export function DemandCard({
             </div>
           )}
 
-          <div className="mt-2 space-y-1.5 text-sm text-muted-foreground bg-muted/20 p-3 rounded-lg border border-border/50">
-            <p className="flex items-start gap-2">
-              <span className="shrink-0 text-base leading-none">👤</span>
+          <div className="mt-2 space-y-2 text-[14px] text-muted-foreground bg-muted/20 p-4 md:p-5 rounded-lg border border-border/50">
+            <p className="flex items-start gap-3">
+              <span className="shrink-0 text-lg leading-none">👤</span>
               <span className="truncate">
                 <span className="font-medium text-foreground">Cliente:</span> {demand.clientName}
               </span>
             </p>
-            <p className="flex items-start gap-2">
-              <span className="shrink-0 text-base leading-none">👤</span>
+            <p className="flex items-start gap-3">
+              <span className="shrink-0 text-lg leading-none">👤</span>
               <span className="truncate">
                 <span className="font-medium text-foreground">Solicitado por:</span>{' '}
                 {solicitor?.name || 'Desconhecido'}
               </span>
             </p>
-            <p className="flex items-start gap-2">
-              <span className="shrink-0 text-base leading-none">📍</span>
+            <p className="flex items-start gap-3">
+              <span className="shrink-0 text-lg leading-none">📍</span>
               <span className="truncate">
                 <span className="font-medium text-foreground">Localização:</span> {demand.location}
               </span>
             </p>
-            <p className="flex items-start gap-2">
-              <span className="shrink-0 text-base leading-none">💰</span>
+            <p className="flex items-start gap-3">
+              <span className="shrink-0 text-lg leading-none">💰</span>
               <span className="truncate">
                 <span className="font-medium text-foreground">Orçamento:</span>{' '}
                 {formatCurrency(demand.minBudget)} - {formatCurrency(demand.maxBudget)}
               </span>
             </p>
-            <p className="flex items-start gap-2">
-              <span className="shrink-0 text-base leading-none">🏠</span>
+            <p className="flex items-start gap-3">
+              <span className="shrink-0 text-lg leading-none">🏠</span>
               <span className="truncate">
                 <span className="font-medium text-foreground">Perfil:</span> {demand.bedrooms || 0}{' '}
                 dorm, {demand.bathrooms || 0} banh, {demand.parkingSpots || 0} vagas
               </span>
             </p>
-            <p className="flex items-start gap-2">
-              <span className="shrink-0 text-base leading-none">⏰</span>
+            <p className="flex items-start gap-3">
+              <span className="shrink-0 text-lg leading-none">⏰</span>
               <span className="truncate">
                 <span className="font-medium text-foreground">Urgência:</span> {demand.timeframe}
               </span>
             </p>
-            <p className="flex items-start gap-2">
-              <span className="shrink-0 text-base leading-none">📅</span>
+            <p className="flex items-start gap-3">
+              <span className="shrink-0 text-lg leading-none">📅</span>
               <span className="truncate">
                 <span className="font-medium text-foreground">Criado há:</span> {text}
               </span>
@@ -350,7 +356,7 @@ export function DemandCard({
           </div>
 
           <Button
-            className="w-full mt-2 bg-primary/5 hover:bg-primary/10 text-primary border-primary/20 shadow-none font-medium"
+            className="w-full mt-4 bg-primary/5 hover:bg-primary/10 text-primary border-primary/20 shadow-none font-medium min-h-[44px] text-[14px]"
             variant="outline"
             onClick={() => setShowDetails(true)}
           >
@@ -358,9 +364,9 @@ export function DemandCard({
           </Button>
 
           {propCount > 0 && (
-            <div className="mt-2 bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-semibold px-3 py-2 rounded-md flex items-center justify-between shadow-sm">
-              <div className="flex items-center gap-1.5">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+            <div className="mt-4 bg-emerald-50 text-emerald-800 border border-emerald-200 text-[14px] font-semibold p-4 rounded-lg flex items-center justify-between shadow-sm">
+              <div className="flex items-center gap-3">
+                <CheckCircle2 className="w-5 h-5 text-emerald-600" />
                 <span>
                   {propCount} imóvel{propCount !== 1 ? 'eis' : ''} encontrado
                   {propCount !== 1 ? 's' : ''} para {demand.clientName}
@@ -370,17 +376,17 @@ export function DemandCard({
           )}
 
           {propCount > 0 && isAssignedCaptador && (
-            <div className="mt-1 space-y-1.5">
-              <p className="text-[10px] font-bold text-muted-foreground uppercase">
+            <div className="mt-2 space-y-2">
+              <p className="text-[12px] font-bold text-muted-foreground uppercase mb-2">
                 Imóveis Vinculados:
               </p>
               {demand.capturedProperties?.map((p) => (
                 <div
                   key={p.code}
-                  className="bg-muted/40 p-2 rounded border text-xs flex justify-between items-center"
+                  className="bg-muted/40 p-3 rounded-lg border text-[14px] flex justify-between items-center"
                 >
-                  <span className="font-medium">{p.code}</span>
-                  <span className="text-muted-foreground truncate max-w-[120px]">
+                  <span className="font-semibold">{p.code}</span>
+                  <span className="text-muted-foreground truncate max-w-[150px]">
                     {p.neighborhood}
                   </span>
                 </div>
@@ -390,55 +396,50 @@ export function DemandCard({
         </CardContent>
 
         <div className="mt-auto flex flex-col border-t bg-muted/10">
-          <div className="px-4 pb-4 pt-4 flex flex-col gap-2 pl-5">
+          <div className="p-4 md:p-6 flex flex-col gap-4 pl-[22px] md:pl-[30px]">
             {showActions && demand.status === 'Pendente' && propCount === 0 && (
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-4">
                 <Button
-                  size="sm"
-                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm min-h-[44px] text-[14px]"
                   onClick={() => onAction?.(demand.id, 'encontrei')}
                 >
-                  <CheckCircle2 className="w-4 h-4 mr-1.5" />{' '}
+                  <CheckCircle2 className="w-5 h-5 mr-2" />{' '}
                   {demand.isRepescagem ? 'Assumir & Registar' : 'Encontrei'}
                 </Button>
                 <Button
-                  size="sm"
                   variant="outline"
-                  className="flex-1 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  className="flex-1 text-destructive hover:bg-destructive/10 hover:text-destructive min-h-[44px] text-[14px]"
                   onClick={() => onAction?.(demand.id, 'nao_encontrei')}
                 >
-                  <XCircle className="w-4 h-4 mr-1.5" /> Não Encontrei
+                  <XCircle className="w-5 h-5 mr-2" /> Não Encontrei
                 </Button>
               </div>
             )}
 
             {canCapture && (propCount > 0 || demand.status !== 'Pendente') && (
               <Button
-                size="sm"
                 variant="outline"
-                className="w-full border-dashed border-emerald-500/50 text-emerald-700 hover:bg-emerald-50 bg-emerald-50/50 transition-colors"
+                className="w-full border-dashed border-emerald-500/50 text-emerald-700 hover:bg-emerald-50 bg-emerald-50/50 transition-colors min-h-[44px] text-[14px]"
                 onClick={() => onAction?.(demand.id, 'encontrei')}
               >
-                <Plus className="w-4 h-4 mr-1.5" /> Adicionar Imóvel
+                <Plus className="w-5 h-5 mr-2" /> Adicionar Imóvel
               </Button>
             )}
 
             {canManage && (
-              <div className="flex flex-wrap gap-2 mt-1">
+              <div className="flex flex-col sm:flex-row gap-4">
                 {!demand.isPrioritized && (
                   <Button
-                    size="sm"
                     variant="outline"
-                    className="flex-1 bg-pink-50 text-pink-700 hover:bg-pink-100 hover:text-pink-800 border-pink-200 shadow-sm"
+                    className="flex-1 bg-pink-50 text-pink-700 hover:bg-pink-100 hover:text-pink-800 border-pink-200 shadow-sm min-h-[44px] text-[14px]"
                     onClick={() => setShowPrioritize(true)}
                   >
                     🔴 PRIORIZAR
                   </Button>
                 )}
                 <Button
-                  size="sm"
                   variant="outline"
-                  className="flex-1 bg-gray-50 text-gray-700 hover:bg-gray-100 border-gray-200 shadow-sm"
+                  className="flex-1 bg-gray-50 text-gray-700 hover:bg-gray-100 border-gray-200 shadow-sm min-h-[44px] text-[14px]"
                   onClick={() => setShowLost(true)}
                 >
                   ❌ PERDIDO
@@ -446,7 +447,11 @@ export function DemandCard({
               </div>
             )}
 
-            <ContactSolicitorAction demand={demand} solicitor={solicitor} />
+            <ContactSolicitorAction
+              demand={demand}
+              solicitor={solicitor}
+              buttonClassName="w-full min-h-[44px]"
+            />
           </div>
         </div>
       </Card>
@@ -454,37 +459,44 @@ export function DemandCard({
       <Dialog open={showSimilar} onOpenChange={setShowSimilar}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Users className="w-5 h-5 text-purple-600" /> Clientes Interessados
+            <DialogTitle className="flex items-center gap-2 text-[18px]">
+              <Users className="w-6 h-6 text-purple-600" /> Clientes Interessados
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-[14px]">
               Perfis com demandas similares (Mesmo bairro, tipo, quartos, vagas e orçamento ±10%).
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3 mt-2 max-h-[60vh] overflow-y-auto pr-2">
-            <div className="flex items-center gap-3 p-3 bg-purple-50 border border-purple-100 rounded-lg">
+          <div className="space-y-4 mt-4 max-h-[60vh] overflow-y-auto pr-2">
+            <div className="flex items-center gap-4 p-4 bg-purple-50 border border-purple-100 rounded-lg">
               <div className="flex-1">
-                <p className="font-semibold text-purple-900">{demand.clientName}</p>
-                <p className="text-xs text-purple-700/80">{demand.clientEmail || 'Sem email'}</p>
+                <p className="font-bold text-[16px] text-purple-900">{demand.clientName}</p>
+                <p className="text-[14px] text-purple-700/80">
+                  {demand.clientEmail || 'Sem email'}
+                </p>
               </div>
-              <Badge variant="outline" className="bg-white text-purple-700 border-purple-200">
+              <Badge
+                variant="outline"
+                className="bg-white text-purple-700 border-purple-200 px-3 py-1"
+              >
                 Demanda Original
               </Badge>
             </div>
             {similarDemands.map((d) => (
               <div
                 key={d.id}
-                className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                className="flex items-center gap-4 p-4 border rounded-lg hover:bg-muted/50 transition-colors"
               >
                 <div className="flex-1">
-                  <p className="font-medium text-foreground">{d.clientName}</p>
-                  <p className="text-xs text-muted-foreground">{d.clientEmail || 'Sem email'}</p>
+                  <p className="font-semibold text-[16px] text-foreground">{d.clientName}</p>
+                  <p className="text-[14px] text-muted-foreground">
+                    {d.clientEmail || 'Sem email'}
+                  </p>
                 </div>
-                <div className="flex flex-col items-end gap-1">
-                  <Badge variant="secondary" className="text-[10px] bg-secondary/50">
+                <div className="flex flex-col items-end gap-2">
+                  <Badge variant="secondary" className="text-[12px] bg-secondary/50 px-2 py-0.5">
                     {d.status}
                   </Badge>
-                  <span className="text-xs font-medium text-muted-foreground">
+                  <span className="text-[14px] font-bold text-muted-foreground">
                     {formatCurrency(d.budget || d.maxBudget)}
                   </span>
                 </div>
@@ -497,28 +509,35 @@ export function DemandCard({
       <Dialog open={showPriorityModal} onOpenChange={setShowPriorityModal}>
         <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">🔴 Demanda Priorizada</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="flex items-center gap-2 text-[18px]">
+              🔴 Demanda Priorizada
+            </DialogTitle>
+            <DialogDescription className="text-[14px]">
               Esta demanda possui alta probabilidade de conversão imediata.
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4 space-y-4">
-            <div className="flex items-center gap-3 p-3 bg-pink-50 border border-pink-100 rounded-lg">
-              <Users className="w-5 h-5 text-pink-600" />
-              <p className="font-medium text-pink-900">
-                <strong className="text-lg">{demand.interestedClientsCount || 1}</strong> clientes
-                estão interessados neste perfil
+          <div className="py-6 space-y-4">
+            <div className="flex items-center gap-4 p-4 bg-pink-50 border border-pink-100 rounded-lg">
+              <Users className="w-8 h-8 text-pink-600 shrink-0" />
+              <p className="font-medium text-pink-900 text-[14px]">
+                <strong className="text-[18px]">{demand.interestedClientsCount || 1}</strong>{' '}
+                clientes estão interessados neste perfil
               </p>
             </div>
-            <div className="flex items-center gap-3 p-3 bg-amber-50 border border-amber-100 rounded-lg">
-              <Trophy className="w-5 h-5 text-amber-600" />
-              <p className="font-medium text-amber-900">
-                <strong>+25 pontos adicionais</strong> se captar este imóvel
+            <div className="flex items-center gap-4 p-4 bg-amber-50 border border-amber-100 rounded-lg">
+              <Trophy className="w-8 h-8 text-amber-600 shrink-0" />
+              <p className="font-medium text-amber-900 text-[14px]">
+                <strong className="text-[16px]">+25 pontos adicionais</strong> se captar este imóvel
               </p>
             </div>
           </div>
-          <div className="flex justify-end">
-            <Button onClick={() => setShowPriorityModal(false)}>Entendi</Button>
+          <div className="flex justify-end mt-4">
+            <Button
+              className="min-h-[44px] px-6 text-[14px]"
+              onClick={() => setShowPriorityModal(false)}
+            >
+              Entendi
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

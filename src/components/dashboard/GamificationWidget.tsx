@@ -67,7 +67,6 @@ const BADGES_CONFIG: {
 export function GamificationWidget({ currentUser }: { currentUser: User }) {
   const currentBadges = currentUser.badges || []
 
-  // Find next badge
   let nextBadge = null
   let maxProgress = -1
 
@@ -86,60 +85,62 @@ export function GamificationWidget({ currentUser }: { currentUser: User }) {
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-      <Card className="bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
-        <CardContent className="p-5 flex items-center justify-between h-full">
-          <div>
-            <p className="text-sm font-semibold text-primary uppercase tracking-wider mb-1">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 lg:gap-8 mb-4 md:mb-6 lg:mb-8">
+      <Card className="bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20 p-4 md:p-6 lg:p-8">
+        <CardContent className="p-0 flex items-center justify-between h-full w-full gap-4">
+          <div className="flex flex-col">
+            <p className="text-[12px] md:text-[14px] font-semibold text-primary uppercase tracking-wider mb-2 md:mb-3 lg:mb-4">
               Pontos de Hoje
             </p>
             <div className="flex items-baseline gap-2">
-              <span className="text-4xl font-black">{currentUser.dailyPoints}</span>
-              <span className="text-sm font-medium text-muted-foreground uppercase">pts</span>
+              <span className="text-[32px] md:text-[40px] lg:text-[48px] font-black leading-none">
+                {currentUser.dailyPoints}
+              </span>
+              <span className="text-[14px] font-medium text-muted-foreground uppercase">pts</span>
             </div>
-            <p className="text-xs text-muted-foreground mt-2">
+            <p className="text-[12px] md:text-[14px] text-muted-foreground mt-2 md:mt-3 lg:mt-4">
               Semanal: {currentUser.weeklyPoints} | Mensal: {currentUser.monthlyPoints}
             </p>
           </div>
-          <div className="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center text-primary shadow-inner">
-            <Trophy className="w-8 h-8" />
+          <div className="w-16 h-16 md:w-20 md:h-20 lg:w-24 lg:h-24 bg-primary/20 rounded-full flex items-center justify-center text-primary shadow-inner shrink-0">
+            <Trophy className="w-8 h-8 md:w-10 md:h-10 lg:w-12 lg:h-12" />
           </div>
         </CardContent>
       </Card>
 
-      <Card className="lg:col-span-1">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
+      <Card className="p-4 md:p-6 lg:p-8">
+        <CardHeader className="p-0 pb-4">
+          <CardTitle className="text-[14px] md:text-[16px] font-semibold text-muted-foreground flex items-center gap-4">
             Minhas Insígnias{' '}
-            <span className="bg-muted px-2 py-0.5 rounded-full text-xs text-foreground">
+            <span className="bg-muted px-3 py-1 rounded-full text-[12px] text-foreground">
               {currentBadges.length}/{BADGES_CONFIG.length}
             </span>
           </CardTitle>
         </CardHeader>
-        <CardContent className="pb-4">
-          <div className="flex gap-3 items-center overflow-x-auto pb-2 scrollbar-hide">
+        <CardContent className="p-0">
+          <div className="flex gap-4 items-center overflow-x-auto pb-2 scrollbar-hide">
             {BADGES_CONFIG.map((b) => {
               const earned = currentBadges.includes(b.id)
               return (
                 <div
                   key={b.id}
                   className={cn(
-                    'flex flex-col items-center gap-1 min-w-[60px]',
+                    'flex flex-col items-center gap-2 min-w-[64px]',
                     earned ? 'opacity-100' : 'opacity-30 grayscale',
                   )}
                   title={b.id}
                 >
                   <div
                     className={cn(
-                      'w-10 h-10 rounded-full flex items-center justify-center bg-muted border-2',
+                      'w-12 h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center bg-muted border-2',
                       earned
                         ? `border-current ${b.color} bg-background shadow-sm`
                         : 'border-transparent',
                     )}
                   >
-                    <b.icon className="w-5 h-5" />
+                    <b.icon className="w-6 h-6 md:w-7 md:h-7" />
                   </div>
-                  <span className="text-[10px] font-medium text-center leading-tight">
+                  <span className="text-[12px] font-medium text-center leading-tight">
                     {b.label}
                   </span>
                 </div>
@@ -149,22 +150,24 @@ export function GamificationWidget({ currentUser }: { currentUser: User }) {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-semibold text-muted-foreground">
+      <Card className="p-4 md:p-6 lg:p-8">
+        <CardHeader className="p-0 pb-4">
+          <CardTitle className="text-[14px] md:text-[16px] font-semibold text-muted-foreground">
             Próxima Conquista
           </CardTitle>
         </CardHeader>
-        <CardContent className="pb-4 flex flex-col justify-center h-[calc(100%-40px)] gap-3">
+        <CardContent className="p-0 flex flex-col justify-center h-[calc(100%-36px)] gap-4">
           {nextBadge ? (
             <>
-              <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-full bg-muted ${nextBadge.color}`}>
-                  <nextBadge.icon className="w-5 h-5" />
+              <div className="flex items-center gap-4">
+                <div className={`p-3 rounded-full bg-muted ${nextBadge.color}`}>
+                  <nextBadge.icon className="w-6 h-6 md:w-7 md:h-7" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold truncate">{nextBadge.id}</p>
-                  <p className="text-xs text-muted-foreground truncate">
+                  <p className="text-[14px] md:text-[16px] font-bold truncate mb-1">
+                    {nextBadge.id}
+                  </p>
+                  <p className="text-[12px] md:text-[14px] text-muted-foreground truncate">
                     {nextBadge.inverse
                       ? `Atingir média de ${nextBadge.target}h`
                       : `${Math.floor(nextBadge.val)} / ${nextBadge.target} concluído`}
@@ -174,9 +177,9 @@ export function GamificationWidget({ currentUser }: { currentUser: User }) {
               <Progress value={nextBadge.progress} className="h-2" />
             </>
           ) : (
-            <div className="flex flex-col items-center justify-center text-center text-muted-foreground h-full gap-2">
-              <Trophy className="w-6 h-6 text-yellow-500 opacity-50" />
-              <p className="text-xs">Todas as insígnias conquistadas!</p>
+            <div className="flex flex-col items-center justify-center text-center text-muted-foreground h-full gap-4">
+              <Trophy className="w-8 h-8 md:w-10 md:h-10 text-yellow-500 opacity-50" />
+              <p className="text-[14px] font-medium">Todas as insígnias conquistadas!</p>
             </div>
           )}
         </CardContent>

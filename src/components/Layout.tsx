@@ -40,7 +40,7 @@ export default function Layout() {
       <AppSidebar />
       <SidebarInset className="flex flex-col min-h-screen overflow-hidden bg-muted/20">
         <AppHeader />
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 pb-24 md:pb-6 animate-fade-in-up">
+        <main className="flex-1 overflow-y-auto w-full max-w-[1200px] mx-auto px-4 md:px-6 lg:px-8 py-4 md:py-6 lg:py-8 pb-[72px] md:pb-6 animate-fade-in-up">
           <Outlet />
         </main>
         <BottomNav />
