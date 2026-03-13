@@ -119,10 +119,16 @@ export interface Demand {
   createdBy: string
   assignedTo?: string
   createdAt: string
+  notificada_12h?: boolean
   notificada_24h?: boolean
+  reassigned_24h?: boolean
   notificada_48h?: boolean
   notificada_72h?: boolean
   isRepescagem?: boolean
+  isExtension48h?: boolean
+  extensionRequestedAt?: string
+  notificada_ext_24h?: boolean
+  notificada_ext_48h?: boolean
   capturedProperties?: CapturedProperty[]
   isPrioritized?: boolean
   interestedClientsCount?: number

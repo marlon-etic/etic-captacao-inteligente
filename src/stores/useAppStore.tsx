@@ -521,62 +521,128 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     [addLog],
   )
 
+  const addPoints = useCallback(
+    (amount: number, userId?: string) => {
+      const id = userId || currentUser?.id
+      if (!id) return
+      setUsers((p) =>
+        p.map((u) =>
+          u.id === id
+            ? {
+                ...u,
+                points: u.points + amount,
+                dailyPoints: u.dailyPoints + amount,
+                weeklyPoints: u.weeklyPoints + amount,
+                monthlyPoints: u.monthlyPoints + amount,
+              }
+            : u,
+        ),
+      )
+      if (currentUser?.id === id)
+        setCurrentUser((p) =>
+          p
+            ? {
+                ...p,
+                points: p.points + amount,
+                dailyPoints: p.dailyPoints + amount,
+                weeklyPoints: p.weeklyPoints + amount,
+                monthlyPoints: p.monthlyPoints + amount,
+              }
+            : p,
+        )
+    },
+    [currentUser],
+  )
+
   const triggerCron = useCallback(() => {
     const now = Date.now()
-    const actions: Array<{ type: '24h' | '48h' | '72h'; demand: Demand }> = []
+    const actions: Array<{ type: string; demand: Demand; oldAssignedTo?: string }> = []
 
     setAllDemands((prev) => {
       let changed = false
       const next = prev.map((d) => {
-        if (d.status !== 'Pendente') return d
-        const hrs = (now - new Date(d.createdAt).getTime()) / 3600000
         const updated = { ...d }
-        if (hrs >= 72 && !d.notificada_72h) {
-          updated.notificada_72h = true
-          updated.status = 'Impossível'
-          updated.assignedTo = undefined
-          actions.push({ type: '72h', demand: d })
-          changed = true
-        } else if (hrs >= 48 && !d.notificada_48h) {
-          updated.notificada_48h = true
-          updated.isRepescagem = true
-          actions.push({ type: '48h', demand: d })
-          changed = true
-        } else if (hrs >= 24 && !d.notificada_24h) {
-          updated.notificada_24h = true
-          actions.push({ type: '24h', demand: d })
-          changed = true
+        const createdAtMs = new Date(d.createdAt).getTime()
+        const hrsSinceCreation = (now - createdAtMs) / 3600000
+
+        if (d.status === 'Pendente' && !d.isExtension48h) {
+          if (hrsSinceCreation >= 24 && !d.reassigned_24h) {
+            updated.reassigned_24h = true
+            updated.isRepescagem = true
+            const oldAssignedTo = d.assignedTo
+            updated.assignedTo = undefined
+            actions.push({ type: 'reassign_24h', demand: updated, oldAssignedTo })
+            changed = true
+          } else if (hrsSinceCreation >= 12 && hrsSinceCreation < 24 && !d.notificada_12h) {
+            updated.notificada_12h = true
+            actions.push({ type: 'notify_12h', demand: updated })
+            changed = true
+          }
+        } else if (d.status === 'Pendente' && d.isExtension48h && d.extensionRequestedAt) {
+          const extMs = new Date(d.extensionRequestedAt).getTime()
+          const hrsSinceExt = (now - extMs) / 3600000
+          if (hrsSinceExt >= 48 && !d.notificada_ext_48h) {
+            updated.notificada_ext_48h = true
+            updated.status = 'Impossível'
+            actions.push({ type: 'notify_ext_48h_fail', demand: updated })
+            changed = true
+          } else if (hrsSinceExt >= 24 && hrsSinceExt < 48 && !d.notificada_ext_24h) {
+            updated.notificada_ext_24h = true
+            actions.push({ type: 'notify_ext_24h', demand: updated })
+            changed = true
+          }
         }
+
         return updated
       })
       return changed ? next : prev
     })
 
     setTimeout(() => {
-      actions.forEach(({ type, demand }) => {
-        if (type === '72h') {
-          enqueueWebhook('falha_sistema', demand.id, {
-            action: `avaliação da demanda de ${demand.clientName} (sem resposta há 72h)`,
-          })
-          addLog(`[Cron] Demanda de ${demand.clientName} atualizada para Impossível (>72h).`)
-        } else if (type === '48h') {
-          enqueueWebhook('lembrete_prazo', demand.id, {
-            tipo: '48h',
-            clientName: demand.clientName,
-            location: demand.location,
-          })
-          addLog(`[Cron] Demanda de ${demand.clientName} entrou em Repescagem (>48h).`)
-        } else if (type === '24h') {
-          enqueueWebhook('lembrete_prazo', demand.id, {
-            tipo: '24h',
-            clientName: demand.clientName,
-            location: demand.location,
-          })
-          addLog(`[Cron] Lembrete 24h enfileirado para demanda de ${demand.clientName}.`)
+      actions.forEach(({ type, demand, oldAssignedTo }) => {
+        if (type === 'reassign_24h') {
+          if (oldAssignedTo) {
+            addPoints(-20, oldAssignedTo)
+            const newNotif = {
+              id: Math.random().toString(36).substr(2, 9),
+              userId: oldAssignedTo,
+              message: `❌ Demanda de ${demand.clientName} foi repassada para outro captador (Prazo 24h esgotado). -20 pts`,
+              read: false,
+              createdAt: new Date().toISOString(),
+            }
+            setNotifications((p) => [newNotif, ...p])
+          }
+          addLog(`[Cron] Demanda ${demand.clientName} repassada (24h esgotado).`)
+        } else if (type === 'notify_12h') {
+          if (demand.assignedTo) {
+            const newNotif = {
+              id: Math.random().toString(36).substr(2, 9),
+              userId: demand.assignedTo,
+              message: `⏰ Você tem 12h para responder a demanda de ${demand.clientName}`,
+              read: false,
+              createdAt: new Date().toISOString(),
+            }
+            setNotifications((p) => [newNotif, ...p])
+          }
+        } else if (type === 'notify_ext_24h') {
+          if (demand.assignedTo) {
+            const newNotif = {
+              id: Math.random().toString(36).substr(2, 9),
+              userId: demand.assignedTo,
+              message: `Você ainda está buscando imóvel para ${demand.clientName}`,
+              read: false,
+              createdAt: new Date().toISOString(),
+            }
+            setNotifications((p) => [newNotif, ...p])
+          }
+        } else if (type === 'notify_ext_48h_fail') {
+          addLog(
+            `[Cron] Demanda ${demand.clientName} marcada como Impossível (48h extra esgotado).`,
+          )
         }
       })
     }, 100)
-  }, [enqueueWebhook, addLog])
+  }, [addLog, addPoints])
 
   useEffect(() => {
     const t = setTimeout(triggerCron, 2000)
@@ -632,36 +698,6 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     const intervalId = setInterval(processWebhookCron, 300000)
     return () => clearInterval(intervalId)
   }, [processWebhookCron])
-
-  const addPoints = (amount: number, userId?: string) => {
-    const id = userId || currentUser?.id
-    if (!id) return
-    setUsers((p) =>
-      p.map((u) =>
-        u.id === id
-          ? {
-              ...u,
-              points: u.points + amount,
-              dailyPoints: u.dailyPoints + amount,
-              weeklyPoints: u.weeklyPoints + amount,
-              monthlyPoints: u.monthlyPoints + amount,
-            }
-          : u,
-      ),
-    )
-    if (currentUser?.id === id)
-      setCurrentUser((p) =>
-        p
-          ? {
-              ...p,
-              points: p.points + amount,
-              dailyPoints: p.dailyPoints + amount,
-              weeklyPoints: p.weeklyPoints + amount,
-              monthlyPoints: p.monthlyPoints + amount,
-            }
-          : p,
-      )
-  }
 
   const createAction = useCallback(
     (type: PropertyActionType, desc: string, obs?: string): PropertyAction | null => {
@@ -1476,8 +1512,45 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
               },
               cliente: demand.clientName,
             })
+            return { success: true, message: '' }
+          } else if (action === 'nao_encontrei') {
+            const hAction = createAction('perdido', `Sinalizou não encontrado: ${payload.reason}`)
+            let updatedDemand = { ...demand }
+
+            if (payload.continueSearch) {
+              updatedDemand.isExtension48h = true
+              updatedDemand.extensionRequestedAt = new Date().toISOString()
+              if (updatedDemand.capturedProperties && hAction) {
+                updatedDemand.capturedProperties = updatedDemand.capturedProperties.map((p) => ({
+                  ...p,
+                  history: [hAction, ...(p.history || [])],
+                }))
+              }
+              toast({
+                title: 'Busca Estendida',
+                description: 'Você tem mais 48h para buscar um imóvel para este cliente.',
+                className: 'bg-orange-600 text-white border-orange-600',
+              })
+            } else {
+              updatedDemand.status = 'Perdida'
+              updatedDemand.lostReason = payload.reason
+              if (updatedDemand.capturedProperties && hAction) {
+                updatedDemand.capturedProperties = updatedDemand.capturedProperties.map((p) => ({
+                  ...p,
+                  history: [hAction, ...(p.history || [])],
+                }))
+              }
+              toast({ title: 'Demanda Perdida', description: 'Removida do seu painel.' })
+            }
+
+            setAllDemands((p) => {
+              const next = p.map((d) => (d.id === id ? updatedDemand : d))
+              broadcastState(next, users, 'Ação não encontrei registrada')
+              return next
+            })
+            return { success: true, message: '' }
           }
-          return { success: true, message: '' }
+          return { success: false, message: 'Ação desconhecida' }
         },
         submitIndependentCapture: (payload) => {
           const code = payload?.code || `IMV-${Math.floor(Math.random() * 1000)}`

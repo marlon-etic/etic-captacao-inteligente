@@ -4,7 +4,7 @@ import { GroupedDemand } from '@/components/GroupedDemandCard'
 
 interface GroupingOptions {
   demands: Demand[]
-  filters: { type: string; status: string; timeframe: string }
+  filters: { type: string; status: string; timeframe: string; sort: string }
   quickFilter: string
 }
 
@@ -13,27 +13,61 @@ export function useDemandGrouping({ demands, filters, quickFilter }: GroupingOpt
     try {
       let filtered = demands
 
-      if (quickFilter === 'awaiting') filtered = filtered.filter((d) => d.status === 'Pendente')
-      else if (quickFilter === 'visits') filtered = filtered.filter((d) => d.status === 'Visita')
-      else if (quickFilter === 'deals') filtered = filtered.filter((d) => d.status === 'Negócio')
+      const now = Date.now()
+
+      if (quickFilter === 'awaiting') {
+        filtered = filtered.filter((d) => d.status === 'Pendente')
+      } else if (quickFilter === 'sla_24') {
+        filtered = filtered.filter((d) => {
+          if (d.status !== 'Pendente') return false
+          const startMs =
+            d.isExtension48h && d.extensionRequestedAt
+              ? new Date(d.extensionRequestedAt).getTime()
+              : new Date(d.createdAt).getTime()
+          const totalSlaMs = d.isExtension48h ? 48 * 3600000 : 24 * 3600000
+          const elapsedMs = now - startMs
+          return elapsedMs < totalSlaMs
+        })
+      } else if (quickFilter === 'visits') {
+        filtered = filtered.filter((d) => d.status === 'Visita')
+      } else if (quickFilter === 'deals') {
+        filtered = filtered.filter((d) => d.status === 'Negócio')
+      }
 
       filtered = filtered
         .filter((d) => filters.type === 'all' || d.type === filters.type)
         .filter((d) => filters.status === 'all' || d.status === filters.status)
         .filter((d) => filters.timeframe === 'all' || d.timeframe === filters.timeframe)
 
-      const now = Date.now()
       const newItems: Demand[] = []
       const candidatesForGrouping: Demand[] = []
 
       filtered.forEach((d) => {
         const createdMs = new Date(d.createdAt).getTime()
         const hoursAge = (now - createdMs) / 3600000
-        if (hoursAge <= 24) newItems.push(d)
-        else candidatesForGrouping.push(d)
+        if (hoursAge <= 24 && d.status === 'Pendente' && !d.isExtension48h) {
+          newItems.push(d)
+        } else {
+          candidatesForGrouping.push(d)
+        }
       })
 
-      newItems.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      const getRemainingSlaMs = (d: Demand) => {
+        if (d.status !== 'Pendente') return Infinity
+        const startMs =
+          d.isExtension48h && d.extensionRequestedAt
+            ? new Date(d.extensionRequestedAt).getTime()
+            : new Date(d.createdAt).getTime()
+        const totalSlaMs = d.isExtension48h ? 48 * 3600000 : 24 * 3600000
+        const elapsedMs = now - startMs
+        return Math.max(0, totalSlaMs - elapsedMs)
+      }
+
+      if (filters.sort === 'urgency') {
+        newItems.sort((a, b) => getRemainingSlaMs(a) - getRemainingSlaMs(b))
+      } else if (filters.sort === 'time') {
+        newItems.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      }
 
       const groups: GroupedDemand[] = []
       const ungrouped: Demand[] = []
@@ -97,6 +131,9 @@ export function useDemandGrouping({ demands, filters, quickFilter }: GroupingOpt
       groups.sort((a, b) => b.demands.length - a.demands.length)
 
       const finalUngrouped = [...ungrouped, ...others].sort((a, b) => {
+        if (filters.sort === 'urgency') {
+          return getRemainingSlaMs(a) - getRemainingSlaMs(b)
+        }
         if (a.isPrioritized && !b.isPrioritized) return -1
         if (!a.isPrioritized && b.isPrioritized) return 1
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()

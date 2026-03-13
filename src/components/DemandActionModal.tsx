@@ -68,6 +68,7 @@ const REASONS = [
   'Valor incompatível',
   'Não há imóveis no perfil',
   'Proprietário não aceitou',
+  'Perdido',
   'Outro',
 ]
 
@@ -269,11 +270,13 @@ function NaoEncontreiForm({
           control={form.control}
           name="continueSearch"
           render={({ field }) => (
-            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 shadow-sm mt-4">
+            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 shadow-sm mt-4 bg-orange-50/30 border-orange-100">
               <div className="space-y-0.5">
-                <FormLabel className="text-base">Continuar a busca?</FormLabel>
-                <p className="text-sm text-muted-foreground">
-                  Manter a demanda ativa para outros captadores
+                <FormLabel className="text-base font-semibold text-orange-900">
+                  Continuar buscando por mais 48h?
+                </FormLabel>
+                <p className="text-sm text-orange-800/80">
+                  Manter a demanda no seu painel para continuar a busca
                 </p>
               </div>
               <FormControl>

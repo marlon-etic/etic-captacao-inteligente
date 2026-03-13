@@ -75,3 +75,72 @@ export function useTimeElapsed(createdAt: string | undefined) {
 
   return { text, hoursElapsed: diffHours, urgencyLevel, createdDate }
 }
+
+export function useSlaCountdown(
+  createdAt?: string,
+  isExtension?: boolean,
+  extensionRequestedAt?: string,
+  status?: string,
+) {
+  const [now, setNow] = useState(Date.now())
+
+  useEffect(() => {
+    if (status !== 'Pendente') return
+    const i = setInterval(() => setNow(Date.now()), 60000)
+    return () => clearInterval(i)
+  }, [status])
+
+  if (!createdAt || status !== 'Pendente')
+    return {
+      text: '',
+      progress: 0,
+      level: 'none',
+      isExpired: false,
+      hoursRemaining: 0,
+      badgeText: '',
+      remainingMs: 0,
+    }
+
+  const startMs =
+    isExtension && extensionRequestedAt
+      ? new Date(extensionRequestedAt).getTime()
+      : new Date(createdAt).getTime()
+  const totalSlaMs = isExtension ? 48 * 3600000 : 24 * 3600000
+
+  const elapsedMs = Math.max(0, now - startMs)
+  const remainingMs = Math.max(0, totalSlaMs - elapsedMs)
+
+  const hrs = Math.floor(remainingMs / 3600000)
+  const mins = Math.floor((remainingMs % 3600000) / 60000)
+
+  const progress = Math.min(100, (elapsedMs / totalSlaMs) * 100)
+
+  let level: 'green' | 'yellow' | 'red' | 'orange' | 'none' = 'green'
+  let badgeText = ''
+
+  if (isExtension) {
+    level = 'orange'
+    badgeText = '🟠 Continua em busca - 48h'
+  } else {
+    if (elapsedMs >= 24 * 3600000) {
+      level = 'red'
+      badgeText = '🔴 0h para responder'
+    } else if (elapsedMs >= 12 * 3600000) {
+      level = 'yellow'
+      badgeText = '🟡 12h para responder'
+    } else {
+      level = 'green'
+      badgeText = '🟢 NOVA - Responda em 24h'
+    }
+  }
+
+  return {
+    text: `⏰ ${hrs}h ${mins}min`,
+    progress,
+    level,
+    isExpired: remainingMs === 0,
+    hoursRemaining: remainingMs / 3600000,
+    badgeText,
+    remainingMs,
+  }
+}

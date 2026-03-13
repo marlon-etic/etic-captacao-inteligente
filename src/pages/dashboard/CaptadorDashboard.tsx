@@ -13,6 +13,7 @@ import {
   Plus,
   Link as LinkIcon,
   Unlock,
+  AlertCircle,
 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { DemandCard } from '@/components/DemandCard'
@@ -41,6 +42,7 @@ import { useDemandGrouping } from '@/hooks/useDemandGrouping'
 const QUICK_FILTERS = [
   { id: 'all', label: 'Todos', icon: '📊' },
   { id: 'awaiting', label: 'Aguardando', icon: '⏳' },
+  { id: 'sla_24', label: 'Prazo 24h', icon: '⏰' },
   { id: 'visits', label: 'Visitas', icon: '👁️' },
   { id: 'deals', label: 'Negócios', icon: '💰' },
 ]
@@ -49,7 +51,7 @@ export function CaptadorDashboard() {
   const { demands, currentUser, submitDemandResponse, looseProperties } = useAppStore()
   const { toast } = useToast()
 
-  const [activeTab, setActiveTab] = useState('performance')
+  const [activeTab, setActiveTab] = useState('demandas')
 
   const [modal, setModal] = useState<{
     isOpen: boolean
@@ -98,9 +100,19 @@ export function CaptadorDashboard() {
   }
 
   const quickCounts = useMemo(() => {
-    const counts = { all: demands.length, awaiting: 0, visits: 0, deals: 0 }
+    const counts = { all: demands.length, awaiting: 0, sla_24: 0, visits: 0, deals: 0 }
+    const now = Date.now()
     demands.forEach((d) => {
-      if (d.status === 'Pendente') counts.awaiting++
+      if (d.status === 'Pendente') {
+        counts.awaiting++
+        const startMs =
+          d.isExtension48h && d.extensionRequestedAt
+            ? new Date(d.extensionRequestedAt).getTime()
+            : new Date(d.createdAt).getTime()
+        const totalSlaMs = d.isExtension48h ? 48 * 3600000 : 24 * 3600000
+        const elapsedMs = now - startMs
+        if (elapsedMs < totalSlaMs) counts.sla_24++
+      }
       if (d.status === 'Visita') counts.visits++
       if (d.status === 'Negócio') counts.deals++
     })
@@ -190,8 +202,13 @@ export function CaptadorDashboard() {
             <TabsTrigger value="performance" className="py-2 px-4 text-sm">
               Minha Performance
             </TabsTrigger>
-            <TabsTrigger value="demandas" className="py-2 px-4 text-sm">
+            <TabsTrigger value="demandas" className="py-2 px-4 text-sm relative">
               Demandas Ativas
+              {quickCounts.awaiting > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-4 h-4 flex items-center justify-center rounded-full animate-bounce">
+                  {quickCounts.awaiting}
+                </span>
+              )}
             </TabsTrigger>
           </TabsList>
           <div className="hidden md:flex gap-2 ml-2">
@@ -226,6 +243,30 @@ export function CaptadorDashboard() {
       </TabsContent>
 
       <TabsContent value="demandas" className="animate-fade-in-up mt-0 space-y-6 outline-none">
+        {quickCounts.awaiting > 0 && (
+          <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 flex items-center justify-between shadow-sm animate-pulse">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="w-6 h-6 text-orange-600" />
+              <div>
+                <p className="font-bold text-orange-900">
+                  {quickCounts.awaiting} demandas aguardando resposta
+                </p>
+                <p className="text-sm text-orange-800/80">
+                  Fique atento aos prazos para evitar perda de pontos e repasse automático.
+                </p>
+              </div>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              className="bg-orange-100 text-orange-900 border-orange-300 hover:bg-orange-200"
+              onClick={() => handleQuickFilterClick('awaiting')}
+            >
+              Ver Pendentes
+            </Button>
+          </div>
+        )}
+
         <GamificationWidget currentUser={currentUser} />
 
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
@@ -386,7 +427,7 @@ export function CaptadorDashboard() {
                   <SelectValue placeholder="Ordenar por" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="urgency">Maior Urgência</SelectItem>
+                  <SelectItem value="urgency">Tempo Restante (SLA)</SelectItem>
                   <SelectItem value="time">Mais Recentes</SelectItem>
                   <SelectItem value="similar">Perfis Similares</SelectItem>
                 </SelectContent>

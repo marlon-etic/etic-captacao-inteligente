@@ -4,72 +4,63 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
   DialogDescription,
+  DialogFooter,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
+import { Send } from 'lucide-react'
+
+interface Props {
+  isOpen: boolean
+  onClose: () => void
+  onSend: (message: string) => void
+  userName: string
+  title?: string
+  description?: string
+}
 
 export function InternalChatModal({
   isOpen,
   onClose,
   onSend,
-  capturerName,
   userName,
   title,
   description,
-}: {
-  isOpen: boolean
-  onClose: () => void
-  onSend: (msg: string) => void
-  capturerName?: string
-  userName?: string
-  title?: string
-  description?: string
-}) {
-  const [msg, setMsg] = useState('')
-  const targetName = userName || capturerName || 'Usuário'
+}: Props) {
+  const [message, setMessage] = useState('')
+
+  const handleSend = () => {
+    if (!message.trim()) return
+    onSend(message.trim())
+    setMessage('')
+    onClose()
+  }
 
   return (
-    <Dialog
-      open={isOpen}
-      onOpenChange={(v) => {
-        if (!v) onClose()
-      }}
-    >
+    <Dialog open={isOpen} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>{title || 'Mensagem Interna'}</DialogTitle>
+          <DialogTitle>{title || `Mensagem para ${userName}`}</DialogTitle>
           <DialogDescription>
-            {description || (
-              <>
-                Enviar mensagem para <strong>{targetName}</strong>
-              </>
-            )}
+            {description ||
+              `A mensagem será enviada pelo sistema e ${userName} receberá uma notificação.`}
           </DialogDescription>
         </DialogHeader>
         <div className="py-4">
           <Textarea
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
             placeholder="Digite sua mensagem aqui..."
-            value={msg}
-            onChange={(e) => setMsg(e.target.value)}
-            rows={4}
-            className="resize-none"
+            className="min-h-[120px] resize-none"
           />
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
             Cancelar
           </Button>
-          <Button
-            onClick={() => {
-              onSend(msg)
-              setMsg('')
-              onClose()
-            }}
-            disabled={!msg.trim()}
-          >
-            Enviar Mensagem
+          <Button onClick={handleSend} disabled={!message.trim()}>
+            <Send className="w-4 h-4 mr-2" /> Enviar Mensagem
           </Button>
         </DialogFooter>
       </DialogContent>

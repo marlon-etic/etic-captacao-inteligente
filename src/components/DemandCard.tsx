@@ -12,6 +12,7 @@ import {
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Progress } from '@/components/ui/progress'
 import {
   Dialog,
   DialogContent,
@@ -22,7 +23,7 @@ import {
 import { Demand, DemandStatus } from '@/types'
 import { cn } from '@/lib/utils'
 import useAppStore from '@/stores/useAppStore'
-import { useTimeElapsed } from '@/hooks/useTimeElapsed'
+import { useTimeElapsed, useSlaCountdown } from '@/hooks/useTimeElapsed'
 import { PrioritizeModal } from '@/components/PrioritizeModal'
 import { LostModal } from '@/components/LostModal'
 import { DemandDetailsModal } from '@/components/DemandDetailsModal'
@@ -52,7 +53,18 @@ export function DemandCard({
   const [showPriorityModal, setShowPriorityModal] = useState(false)
   const [showDetails, setShowDetails] = useState(false)
 
-  const { text, hoursElapsed, urgencyLevel } = useTimeElapsed(demand.createdAt)
+  const { text, urgencyLevel } = useTimeElapsed(demand.createdAt)
+  const {
+    text: slaText,
+    progress: slaProgress,
+    level: slaLevel,
+    badgeText: slaBadgeText,
+  } = useSlaCountdown(
+    demand.createdAt,
+    demand.isExtension48h,
+    demand.extensionRequestedAt,
+    demand.status,
+  )
 
   const isOwnerSDR =
     currentUser &&
@@ -93,25 +105,44 @@ export function DemandCard({
     Perdida: 'bg-gray-200 text-gray-800 border-gray-400 font-medium',
   }
 
-  const isAwaiting = demand.status === 'Pendente'
-  const isLate = isAwaiting && hoursElapsed > 24
+  const isPendente = demand.status === 'Pendente'
 
   return (
     <>
       <Card
         className={cn(
           'w-full transition-all hover:shadow-md flex flex-col h-full relative overflow-hidden border-2',
-          isNewDemand && 'bg-green-50/50 border-green-300 shadow-sm shadow-green-100',
-          !isNewDemand &&
+          isPendente &&
+            slaLevel === 'green' &&
+            'bg-green-50/30 border-green-200 shadow-sm shadow-green-100/50',
+          isPendente &&
+            slaLevel === 'yellow' &&
+            'bg-yellow-50/50 border-yellow-300 shadow-sm shadow-yellow-100/50',
+          isPendente &&
+            slaLevel === 'red' &&
+            'bg-red-50/50 border-red-400 shadow-sm shadow-red-200/50',
+          isPendente &&
+            slaLevel === 'orange' &&
+            'bg-orange-50/50 border-orange-300 shadow-sm shadow-orange-100/50',
+          !isPendente &&
+            isNewDemand &&
+            'bg-green-50/50 border-green-300 shadow-sm shadow-green-100',
+          !isPendente &&
+            !isNewDemand &&
             urgencyLevel === 'green' &&
             'border-emerald-200 shadow-sm shadow-emerald-100/50',
-          !isNewDemand &&
+          !isPendente &&
+            !isNewDemand &&
             urgencyLevel === 'yellow' &&
             'border-yellow-300 shadow-sm shadow-yellow-100/50',
-          !isNewDemand &&
+          !isPendente &&
+            !isNewDemand &&
             urgencyLevel === 'orange' &&
             'border-orange-300 shadow-sm shadow-orange-100/50',
-          !isNewDemand && urgencyLevel === 'red' && 'border-red-400 shadow-sm shadow-red-200/50',
+          !isPendente &&
+            !isNewDemand &&
+            urgencyLevel === 'red' &&
+            'border-red-400 shadow-sm shadow-red-200/50',
           isHighPriority && 'ring-2 ring-purple-300 ring-offset-1',
           demand.isRepescagem && 'border-amber-400 shadow-amber-200 ring-1 ring-amber-400/50',
           demand.isPrioritized &&
@@ -128,15 +159,25 @@ export function DemandCard({
                 ? 'bg-pink-500'
                 : demand.isRepescagem
                   ? 'bg-amber-500 animate-pulse'
-                  : isNewDemand
-                    ? 'bg-green-500'
-                    : urgencyLevel === 'green'
-                      ? 'bg-emerald-500'
-                      : urgencyLevel === 'yellow'
+                  : isPendente
+                    ? slaLevel === 'green'
+                      ? 'bg-green-500'
+                      : slaLevel === 'yellow'
                         ? 'bg-yellow-400'
-                        : urgencyLevel === 'orange'
-                          ? 'bg-orange-500'
-                          : 'bg-red-500',
+                        : slaLevel === 'red'
+                          ? 'bg-red-500'
+                          : slaLevel === 'orange'
+                            ? 'bg-orange-500'
+                            : 'bg-emerald-500'
+                    : isNewDemand
+                      ? 'bg-green-500'
+                      : urgencyLevel === 'green'
+                        ? 'bg-emerald-500'
+                        : urgencyLevel === 'yellow'
+                          ? 'bg-yellow-400'
+                          : urgencyLevel === 'orange'
+                            ? 'bg-orange-500'
+                            : 'bg-red-500',
           )}
         />
         <CardContent className="p-4 flex flex-col gap-3 flex-grow pl-5">
@@ -149,14 +190,6 @@ export function DemandCard({
                   </span>
                 )}
                 {demand.clientName}
-                {isLate && !demand.isRepescagem && (
-                  <span
-                    title="Atrasado (>24h)"
-                    className="flex items-center text-red-500 animate-pulse"
-                  >
-                    <Clock className="w-4 h-4" />
-                  </span>
-                )}
                 {isHighPriority && !demand.isPrioritized && (
                   <span
                     title="Alta Prioridade (>5 interessados)"
@@ -178,7 +211,21 @@ export function DemandCard({
               )}
             </div>
             <div className="flex flex-col items-end gap-1.5 shrink-0">
-              {isNewDemand && (
+              {isPendente && slaBadgeText && (
+                <Badge
+                  variant="secondary"
+                  className={cn(
+                    'text-[10px] py-0.5 px-2 font-bold flex items-center gap-1 whitespace-nowrap shadow-sm',
+                    slaLevel === 'green' && 'bg-green-100 text-green-800 border-green-300',
+                    slaLevel === 'yellow' && 'bg-yellow-100 text-yellow-800 border-yellow-300',
+                    slaLevel === 'red' && 'bg-red-100 text-red-800 border-red-300',
+                    slaLevel === 'orange' && 'bg-orange-100 text-orange-800 border-orange-300',
+                  )}
+                >
+                  {slaBadgeText}
+                </Badge>
+              )}
+              {!isPendente && isNewDemand && (
                 <Badge
                   variant="secondary"
                   className="bg-green-100 text-green-800 border-green-300 text-[10px] py-0.5 px-2 font-bold flex items-center gap-1 whitespace-nowrap shadow-sm"
@@ -220,6 +267,39 @@ export function DemandCard({
             </div>
           </div>
           <p className="text-sm line-clamp-2 mt-1 text-foreground/80">{demand.description}</p>
+
+          {isPendente && slaText && (
+            <div className="mt-1 mb-1">
+              <div className="flex justify-between items-center text-xs font-bold mb-1">
+                <span
+                  className={cn(
+                    slaLevel === 'green' && 'text-green-700',
+                    slaLevel === 'yellow' && 'text-yellow-700',
+                    slaLevel === 'red' && 'text-red-700',
+                    slaLevel === 'orange' && 'text-orange-700',
+                  )}
+                >
+                  {slaText} restantes
+                </span>
+              </div>
+              <Progress
+                value={slaProgress}
+                className={cn(
+                  'h-1.5',
+                  slaLevel === 'green' && 'bg-green-100',
+                  slaLevel === 'yellow' && 'bg-yellow-100',
+                  slaLevel === 'red' && 'bg-red-100',
+                  slaLevel === 'orange' && 'bg-orange-100',
+                )}
+                indicatorClassName={cn(
+                  slaLevel === 'green' && 'bg-green-500',
+                  slaLevel === 'yellow' && 'bg-yellow-400',
+                  slaLevel === 'red' && 'bg-red-500',
+                  slaLevel === 'orange' && 'bg-orange-500',
+                )}
+              />
+            </div>
+          )}
 
           <div className="mt-2 space-y-1.5 text-sm text-muted-foreground bg-muted/20 p-3 rounded-lg border border-border/50">
             <p className="flex items-start gap-2">

@@ -5,7 +5,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
 import { Demand } from '@/types'
 import { useIsMobile } from '@/hooks/use-mobile'
-import { useTimeElapsed } from '@/hooks/useTimeElapsed'
+import { useTimeElapsed, useSlaCountdown } from '@/hooks/useTimeElapsed'
 import useAppStore from '@/stores/useAppStore'
 import { ContactSolicitorAction } from '@/components/ContactSolicitorAction'
 
@@ -21,6 +21,12 @@ export function DemandDetailsModal({ open, onOpenChange, demand, onAction }: Pro
   const { getSimilarDemands, users } = useAppStore()
 
   const timeElapsed = useTimeElapsed(demand?.createdAt)
+  const slaInfo = useSlaCountdown(
+    demand?.createdAt,
+    demand?.isExtension48h,
+    demand?.extensionRequestedAt,
+    demand?.status,
+  )
 
   if (!demand) {
     const err = (
@@ -55,6 +61,20 @@ export function DemandDetailsModal({ open, onOpenChange, demand, onAction }: Pro
 
   const content = (
     <div className="space-y-6 pb-6">
+      {demand.status === 'Pendente' && slaInfo.text && (
+        <div className="bg-orange-50 border border-orange-200 text-orange-900 p-4 rounded-lg flex items-center justify-between">
+          <div>
+            <h4 className="font-bold">Tempo Restante (SLA)</h4>
+            <p className="text-sm">
+              Esta demanda expira em breve. Evite punições respondendo agora.
+            </p>
+          </div>
+          <div className="text-right">
+            <span className="text-2xl font-black">{slaInfo.text.replace('⏰ ', '')}</span>
+          </div>
+        </div>
+      )}
+
       <section className="space-y-3">
         <h4 className="flex items-center gap-2 font-semibold text-blue-700 border-b pb-2">
           <User className="w-5 h-5" /> SEÇÃO 1: Informações do Cliente
