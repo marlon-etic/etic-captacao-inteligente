@@ -8,14 +8,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationPrevious,
-  PaginationNext,
-} from '@/components/ui/pagination'
+import { Pagination, PaginationContent, PaginationItem } from '@/components/ui/pagination'
 import { Button } from '@/components/ui/button'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 function getPriceRange(val: number) {
   if (val < 500000) return 'Até 500k'
@@ -47,8 +42,8 @@ export function TopProfilesTable({
         map.set(key, {
           bairro,
           faixa,
-          dorm: d.bedrooms,
-          vagas: d.parkingSpots,
+          dorm: d.bedrooms || 0,
+          vagas: d.parkingSpots || 0,
           tipo: d.type,
           demandas: 0,
           visitas: 0,
@@ -98,34 +93,38 @@ export function TopProfilesTable({
   const pages = Math.max(1, Math.ceil(sorted.length / limit))
 
   const fmtCurrency = (v: number) =>
-    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v)
+    new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+      maximumFractionDigits: 0,
+    }).format(v)
 
   return (
-    <div className="bg-card border rounded-xl shadow-sm flex flex-col w-full overflow-hidden">
-      <div className="p-4 md:p-6 border-b bg-muted/20">
-        <h3 className="text-[16px] md:text-[18px] lg:text-[20px] font-bold text-foreground">
+    <div className="bg-card border rounded-xl shadow-sm flex flex-col w-full overflow-hidden min-w-0">
+      <div className="p-4 md:p-6 border-b bg-muted/20 shrink-0">
+        <h3 className="text-base sm:text-lg lg:text-xl font-bold text-foreground leading-tight">
           {isVisits ? 'Bairros/Perfis com mais Visitas' : 'Bairros/Perfis com mais Negócios'}
         </h3>
       </div>
-      <div className="w-full overflow-x-auto min-h-[300px]">
-        <Table className="w-full min-w-[800px]">
-          <TableHeader>
-            <TableRow>
-              <TableHead>Bairro</TableHead>
-              <TableHead>Faixa de Valor</TableHead>
-              <TableHead>Dorm</TableHead>
-              <TableHead>Vagas</TableHead>
-              <TableHead>Tipo</TableHead>
+      <div className="w-full max-h-[500px] overflow-auto">
+        <Table className="w-full min-w-[700px] relative">
+          <TableHeader className="sticky top-0 bg-card z-10 shadow-[0_1px_2px_rgba(0,0,0,0.1)]">
+            <TableRow className="h-[48px]">
+              <TableHead className="font-semibold">Bairro</TableHead>
+              <TableHead className="font-semibold">Faixa de Valor</TableHead>
+              <TableHead className="font-semibold">Dorm.</TableHead>
+              <TableHead className="font-semibold">Vagas</TableHead>
+              <TableHead className="font-semibold">Tipo</TableHead>
               {isVisits ? (
                 <>
-                  <TableHead>Visitas</TableHead>
-                  <TableHead>Taxa Conv. (%)</TableHead>
+                  <TableHead className="font-semibold">Visitas</TableHead>
+                  <TableHead className="font-semibold">Taxa Conv. (%)</TableHead>
                 </>
               ) : (
                 <>
-                  <TableHead>Negócios</TableHead>
-                  <TableHead>Valor Total</TableHead>
-                  <TableHead>Valor Médio</TableHead>
+                  <TableHead className="font-semibold">Negócios</TableHead>
+                  <TableHead className="font-semibold">Valor Total</TableHead>
+                  <TableHead className="font-semibold">Valor Médio</TableHead>
                 </>
               )}
             </TableRow>
@@ -133,30 +132,42 @@ export function TopProfilesTable({
           <TableBody>
             {paginated.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="h-32 text-center text-muted-foreground">
-                  Sem dados suficientes
+                <TableCell
+                  colSpan={8}
+                  className="h-[120px] text-center text-muted-foreground font-medium"
+                >
+                  Sem dados suficientes para exibir.
                 </TableCell>
               </TableRow>
             ) : (
               paginated.map((row, i) => (
-                <TableRow key={i} className="min-h-[44px]">
-                  <TableCell className="font-medium">{row.bairro}</TableCell>
-                  <TableCell>{row.faixa}</TableCell>
-                  <TableCell>{row.dorm}</TableCell>
-                  <TableCell>{row.vagas}</TableCell>
-                  <TableCell>{row.tipo}</TableCell>
+                <TableRow key={i} className="h-[48px] hover:bg-muted/40 transition-colors">
+                  <TableCell
+                    className="font-medium text-foreground max-w-[150px] truncate"
+                    title={row.bairro}
+                  >
+                    {row.bairro}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground whitespace-nowrap">
+                    {row.faixa}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{row.dorm}</TableCell>
+                  <TableCell className="text-muted-foreground">{row.vagas}</TableCell>
+                  <TableCell className="text-muted-foreground">{row.tipo}</TableCell>
                   {isVisits ? (
                     <>
                       <TableCell className="font-bold text-primary">{row.visitas}</TableCell>
-                      <TableCell>
+                      <TableCell className="font-medium">
                         {row.demandas > 0 ? ((row.visitas / row.demandas) * 100).toFixed(1) : 0}%
                       </TableCell>
                     </>
                   ) : (
                     <>
                       <TableCell className="font-bold text-emerald-600">{row.negocios}</TableCell>
-                      <TableCell>{fmtCurrency(row.valorTotal)}</TableCell>
-                      <TableCell>
+                      <TableCell className="font-medium text-foreground">
+                        {fmtCurrency(row.valorTotal)}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
                         {row.negocios > 0 ? fmtCurrency(row.valorTotal / row.negocios) : '-'}
                       </TableCell>
                     </>
@@ -168,30 +179,34 @@ export function TopProfilesTable({
         </Table>
       </div>
       {pages > 1 && (
-        <div className="p-4 border-t bg-muted/10">
+        <div className="p-3 border-t bg-muted/10 shrink-0 flex items-center justify-center">
           <Pagination>
-            <PaginationContent>
+            <PaginationContent className="gap-2">
               <PaginationItem>
                 <Button
                   variant="outline"
+                  size="icon"
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page === 1}
-                  className="min-h-[44px]"
+                  className="w-11 h-11 shadow-sm"
+                  aria-label="Página anterior"
                 >
-                  Anterior
+                  <ChevronLeft className="w-5 h-5" />
                 </Button>
               </PaginationItem>
-              <span className="px-4 text-sm font-medium text-muted-foreground">
-                Página {page} de {pages}
+              <span className="px-4 text-sm font-semibold text-muted-foreground" aria-live="polite">
+                {page} / {pages}
               </span>
               <PaginationItem>
                 <Button
                   variant="outline"
+                  size="icon"
                   onClick={() => setPage((p) => Math.min(pages, p + 1))}
                   disabled={page === pages}
-                  className="min-h-[44px]"
+                  className="w-11 h-11 shadow-sm"
+                  aria-label="Próxima página"
                 >
-                  Próxima
+                  <ChevronRight className="w-5 h-5" />
                 </Button>
               </PaginationItem>
             </PaginationContent>

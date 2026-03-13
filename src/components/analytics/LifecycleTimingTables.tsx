@@ -57,36 +57,44 @@ export function LifecycleTimingTables({ demands }: { demands: Demand[] }) {
   }, [demands])
 
   const renderTable = (title: string, data: any[]) => (
-    <div className="bg-card border rounded-xl shadow-sm flex flex-col overflow-hidden w-full">
-      <div className="p-4 md:p-6 border-b bg-muted/10">
-        <h3 className="text-[16px] md:text-[18px] lg:text-[20px] font-bold">{title}</h3>
+    <div className="bg-card border rounded-xl shadow-sm flex flex-col overflow-hidden w-full min-w-0">
+      <div className="p-4 md:p-6 border-b bg-muted/10 shrink-0">
+        <h3 className="text-base sm:text-lg lg:text-xl font-bold text-foreground">{title}</h3>
       </div>
-      <div className="flex-1 overflow-auto min-h-[300px]">
-        <Table className="min-w-[500px]">
-          <TableHeader>
-            <TableRow>
-              <TableHead>Bairro</TableHead>
-              <TableHead>Tipo</TableHead>
-              <TableHead>Tempo Médio (dias)</TableHead>
-              <TableHead>Mínimo</TableHead>
-              <TableHead>Máximo</TableHead>
+      <div className="w-full max-h-[400px] overflow-auto">
+        <Table className="w-full min-w-[500px] relative">
+          <TableHeader className="sticky top-0 bg-card z-10 shadow-[0_1px_2px_rgba(0,0,0,0.1)]">
+            <TableRow className="h-[48px]">
+              <TableHead className="font-semibold">Bairro</TableHead>
+              <TableHead className="font-semibold">Tipo</TableHead>
+              <TableHead className="font-semibold">Média (dias)</TableHead>
+              <TableHead className="font-semibold">Mínimo</TableHead>
+              <TableHead className="font-semibold">Máximo</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {data.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="h-32 text-center text-muted-foreground">
-                  Sem dados suficientes
+                <TableCell
+                  colSpan={5}
+                  className="h-[100px] text-center text-muted-foreground font-medium"
+                >
+                  Sem dados suficientes.
                 </TableCell>
               </TableRow>
             ) : (
               data.map((row, i) => (
-                <TableRow key={i} className="min-h-[44px]">
-                  <TableCell className="font-medium">{row.bairro}</TableCell>
-                  <TableCell>{row.tipo}</TableCell>
-                  <TableCell className="font-bold">{row.avg.toFixed(1)}</TableCell>
-                  <TableCell>{Math.floor(row.min)}</TableCell>
-                  <TableCell>{Math.ceil(row.max)}</TableCell>
+                <TableRow key={i} className="h-[48px] hover:bg-muted/40 transition-colors">
+                  <TableCell
+                    className="font-medium text-foreground max-w-[150px] truncate"
+                    title={row.bairro}
+                  >
+                    {row.bairro}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{row.tipo}</TableCell>
+                  <TableCell className="font-bold text-primary">{row.avg.toFixed(1)}</TableCell>
+                  <TableCell className="text-muted-foreground">{Math.floor(row.min)}</TableCell>
+                  <TableCell className="text-muted-foreground">{Math.ceil(row.max)}</TableCell>
                 </TableRow>
               ))
             )}
@@ -97,9 +105,9 @@ export function LifecycleTimingTables({ demands }: { demands: Demand[] }) {
   )
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
-      {renderTable('Tempo: Captação até Visita', capToVis)}
-      {renderTable('Tempo: Visita até Fechamento', visToDeal)}
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 w-full min-w-0">
+      {renderTable('Tempo Médio: Captação até Visita', capToVis)}
+      {renderTable('Tempo Médio: Visita até Fechamento', visToDeal)}
     </div>
   )
 }

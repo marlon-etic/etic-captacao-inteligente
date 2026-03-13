@@ -50,38 +50,43 @@ export function AnalyticsModal({ open, onClose, metric, filters }: Props) {
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-[1200px] w-full h-[100dvh] sm:h-[85vh] p-0 flex flex-col rounded-none sm:rounded-2xl overflow-hidden bg-background border-0 shadow-2xl">
-        <DialogHeader className="p-[16px] sm:p-[24px] border-b border-border shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-[16px] sm:gap-[24px] bg-muted/20">
-          <div className="flex-1 pr-8 sm:pr-0">
-            <DialogTitle className="text-[18px] sm:text-[20px] lg:text-[24px] font-black leading-tight text-foreground">
+        <DialogHeader className="p-4 sm:p-6 border-b border-border shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-muted/10 w-full relative">
+          <div className="flex-1 pr-12 sm:pr-0">
+            <DialogTitle className="text-lg sm:text-xl lg:text-2xl font-black leading-tight text-foreground">
               {metric.title} - Período: {period}
             </DialogTitle>
-            <DialogDescription className="text-[14px] sm:text-[15px] mt-2 font-medium">
+            <DialogDescription className="text-sm sm:text-base mt-1 font-medium">
               Análise detalhada ({metric.data.length} registros encontrados)
             </DialogDescription>
           </div>
-          <div className="flex items-center gap-[12px]">
+          <div className="flex items-center gap-3">
             <Button
               variant="default"
               onClick={handleExport}
-              className="h-[48px] sm:h-[44px] px-[20px] text-[14px] font-bold shadow-sm"
+              className="min-h-[44px] h-[44px] px-4 text-sm font-bold shadow-sm w-full sm:w-auto"
+              aria-label="Exportar tabela para CSV"
             >
-              <Download className="w-[18px] h-[18px] mr-2" /> Exportar em CSV
+              <Download className="w-[18px] h-[18px] mr-2" aria-hidden="true" /> Exportar em CSV
             </Button>
             <DialogClose asChild>
               <Button
                 variant="outline"
-                className="h-[48px] sm:h-[44px] px-[16px] hidden sm:flex text-[14px] font-bold shadow-sm"
+                className="min-h-[44px] h-[44px] px-4 hidden sm:flex text-sm font-bold shadow-sm"
+                aria-label="Fechar modal"
               >
                 Fechar
               </Button>
             </DialogClose>
           </div>
-          <DialogClose className="absolute right-4 top-4 sm:hidden rounded-sm opacity-70 transition-opacity hover:opacity-100 p-2 bg-muted/50 text-foreground">
-            <X className="h-6 w-6" />
-            <span className="sr-only">Close</span>
+          <DialogClose
+            className="absolute right-3 top-3 sm:hidden rounded-sm opacity-70 transition-opacity hover:opacity-100 p-2 min-h-[44px] min-w-[44px] flex items-center justify-center bg-muted/50 text-foreground"
+            aria-label="Fechar"
+          >
+            <X className="h-5 w-5" aria-hidden="true" />
+            <span className="sr-only">Fechar</span>
           </DialogClose>
         </DialogHeader>
-        <div className="flex-1 overflow-hidden flex flex-col bg-background relative">
+        <div className="flex-1 overflow-hidden flex flex-col bg-background relative w-full">
           <AnalyticsTable data={metric.data} />
         </div>
       </DialogContent>

@@ -18,13 +18,25 @@ import { Navigate } from 'react-router-dom'
 export function PerformanceDashboard() {
   const { demands, currentUser } = useAppStore()
 
-  const [filters, setFilters] = useState<PerformanceFilterState>({
-    period: 'Mês',
-    startDate: null,
-    endDate: null,
-    type: 'Ambos',
-    neighborhood: 'Todos',
+  const [filters, setFilters] = useState<PerformanceFilterState>(() => {
+    try {
+      const stored = localStorage.getItem('performance_filters')
+      if (stored) return JSON.parse(stored)
+    } catch {
+      // ignore parsing errors
+    }
+    return {
+      period: 'Mês',
+      startDate: null,
+      endDate: null,
+      type: 'Ambos',
+      neighborhood: 'Todos',
+    }
   })
+
+  useEffect(() => {
+    localStorage.setItem('performance_filters', JSON.stringify(filters))
+  }, [filters])
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(false)
@@ -131,22 +143,24 @@ export function PerformanceDashboard() {
   }
 
   return (
-    <div className="flex flex-col space-y-[24px] pb-[40px] animate-fade-in-up w-full max-w-screen-2xl mx-auto">
-      <div className="flex flex-col gap-[16px] md:flex-row md:items-center justify-between border-b border-border/50 pb-6">
-        <div>
-          <h1 className="text-[20px] md:text-[24px] lg:text-[28px] font-black text-foreground leading-tight tracking-tight">
+    <div className="flex flex-col space-y-6 pb-10 animate-fade-in-up w-full max-w-[1920px] mx-auto min-w-0">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center justify-between border-b border-border/50 pb-6 w-full">
+        <div className="flex-1">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-black text-foreground leading-tight tracking-tight">
             Performance Dashboard
           </h1>
-          <p className="text-[14px] md:text-[16px] text-muted-foreground font-medium mt-1">
+          <p className="text-sm sm:text-base text-muted-foreground font-medium mt-1">
             Análise detalhada de bairros, perfis e funil de conversão.
           </p>
         </div>
         <Button
           onClick={handleExport}
           variant="outline"
-          className="min-h-[44px] font-bold shadow-sm self-start md:self-auto"
+          className="min-h-[44px] h-[44px] w-full sm:w-auto font-bold shadow-sm shrink-0"
+          aria-label="Exportar relatório em formato CSV"
         >
-          <Download className="w-[18px] h-[18px] mr-2" /> Exportar Relatório (CSV)
+          <Download className="w-[18px] h-[18px] mr-2" aria-hidden="true" /> Exportar Relatório
+          (CSV)
         </Button>
       </div>
 
@@ -154,27 +168,31 @@ export function PerformanceDashboard() {
 
       {error ? (
         <Alert variant="destructive" className="mt-8">
-          <AlertCircle className="h-5 w-5" />
+          <AlertCircle className="h-5 w-5" aria-hidden="true" />
           <AlertTitle>Erro ao carregar dados.</AlertTitle>
           <AlertDescription>
             Ocorreu um erro inesperado. Tente aplicar os filtros novamente.
           </AlertDescription>
         </Alert>
       ) : loading ? (
-        <div className="flex flex-col items-center justify-center min-h-[400px] text-muted-foreground mt-8">
-          <Loader2 className="w-10 h-10 animate-spin mb-4" />
+        <div
+          className="flex flex-col items-center justify-center min-h-[400px] text-muted-foreground mt-8"
+          aria-live="polite"
+          aria-busy="true"
+        >
+          <Loader2 className="w-10 h-10 animate-spin mb-4" aria-hidden="true" />
           <p className="font-medium text-lg">Processando métricas...</p>
         </div>
       ) : filteredDemands.length === 0 ? (
-        <div className="flex flex-col items-center justify-center p-12 bg-card rounded-xl border border-dashed text-muted-foreground mt-8 min-h-[400px]">
-          <AlertCircle className="w-16 h-16 mb-4 opacity-50 text-muted-foreground" />
-          <p className="font-bold text-xl text-foreground mb-2">
+        <div className="flex flex-col items-center justify-center p-8 md:p-12 bg-card rounded-xl border border-dashed text-muted-foreground mt-8 min-h-[300px] md:min-h-[400px] text-center w-full">
+          <AlertCircle className="w-12 h-12 md:w-16 md:h-16 mb-4 opacity-50" aria-hidden="true" />
+          <p className="font-bold text-lg md:text-xl text-foreground mb-2">
             Nenhum dado disponível para este período
           </p>
           <p className="text-sm">Altere os filtros de data ou bairro para visualizar resultados.</p>
         </div>
       ) : (
-        <div className="space-y-[24px] lg:space-y-[32px] pt-4 w-full">
+        <div className="space-y-6 lg:space-y-8 pt-4 w-full min-w-0">
           <ConversionCharts demands={filteredDemands} />
           <TopProfilesTable demands={filteredDemands} metric="visits" />
           <TopProfilesTable demands={filteredDemands} metric="deals" />

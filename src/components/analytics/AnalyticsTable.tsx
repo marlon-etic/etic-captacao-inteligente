@@ -57,46 +57,52 @@ export function AnalyticsTable({ data }: { data: Demand[] }) {
   }
 
   const th = (label: string, key: string) => (
-    <TableHead
-      className="whitespace-nowrap cursor-pointer hover:bg-muted/70 transition-colors"
-      onClick={() => toggleSort(key)}
-    >
-      <div className="flex items-center gap-2 font-bold text-foreground">
-        {label} <ArrowUpDown className="w-3.5 h-3.5 opacity-50 shrink-0" />
-      </div>
+    <TableHead className="whitespace-nowrap px-4">
+      <button
+        onClick={() => toggleSort(key)}
+        className="flex items-center gap-2 font-bold text-foreground w-full py-2 hover:text-primary transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-sm"
+        aria-label={`Ordenar por ${label}`}
+      >
+        {label} <ArrowUpDown className="w-3.5 h-3.5 opacity-50 shrink-0" aria-hidden="true" />
+      </button>
     </TableHead>
   )
 
   if (data.length === 0)
     return (
-      <div className="flex-1 flex flex-col items-center justify-center p-12 text-muted-foreground text-center bg-background">
-        <div className="w-20 h-20 bg-muted/50 rounded-full flex items-center justify-center mb-4">
-          <Search className="w-10 h-10 opacity-30" />
+      <div className="flex-1 flex flex-col items-center justify-center p-8 md:p-12 text-muted-foreground text-center bg-background w-full">
+        <div
+          className="w-16 h-16 md:w-20 md:h-20 bg-muted/50 rounded-full flex items-center justify-center mb-4"
+          aria-hidden="true"
+        >
+          <Search className="w-8 h-8 md:w-10 md:h-10 opacity-30" />
         </div>
-        <p className="text-[18px] font-bold text-foreground mb-1">Nenhuma demanda neste período</p>
-        <p className="text-[14px]">Tente alterar os filtros aplicados para ver mais resultados.</p>
+        <p className="text-base md:text-lg font-bold text-foreground mb-1">
+          Nenhuma demanda neste período
+        </p>
+        <p className="text-sm">Tente alterar os filtros aplicados para ver mais resultados.</p>
       </div>
     )
 
   return (
-    <div className="flex flex-col h-full min-h-0 w-full bg-background">
-      <div className="flex-1 overflow-auto p-0 m-0 w-full relative">
-        <Table className="w-full min-w-[1000px]">
-          <TableHeader className="sticky top-0 bg-muted/95 backdrop-blur z-10 shadow-sm border-b border-border">
-            <TableRow className="h-[48px] lg:h-[56px]">
+    <div className="flex flex-col h-full min-h-0 w-full bg-background overflow-hidden relative">
+      <div className="flex-1 overflow-auto w-full max-h-[calc(85vh-160px)] relative">
+        <Table className="w-full min-w-[1000px] relative">
+          <TableHeader className="sticky top-0 bg-card z-20 shadow-[0_1px_2px_rgba(0,0,0,0.1)] m-0 p-0 border-b border-border before:absolute before:inset-0 before:bg-background before:-z-10">
+            <TableRow className="h-[48px] hover:bg-transparent">
               {th('👤 Cliente', 'clientName')}
               {th('📍 Localização', 'location')}
               {th('🏷️ Tipo', 'type')}
               {th('💰 Orçamento', 'budget')}
               {th('📅 Abertura', 'createdAt')}
-              <TableHead className="whitespace-nowrap font-bold text-foreground">
+              <TableHead className="whitespace-nowrap font-bold text-foreground px-4">
                 📅 Finalização
               </TableHead>
-              <TableHead className="whitespace-nowrap font-bold text-foreground">
+              <TableHead className="whitespace-nowrap font-bold text-foreground px-4">
                 ⏱️ Tempo Aberto
               </TableHead>
               {th('🎯 Status', 'status')}
-              <TableHead className="whitespace-nowrap font-bold text-foreground">
+              <TableHead className="whitespace-nowrap font-bold text-foreground px-4">
                 💬 Motivo
               </TableHead>
             </TableRow>
@@ -105,21 +111,21 @@ export function AnalyticsTable({ data }: { data: Demand[] }) {
             {paginated.map((d) => {
               const fDate = getFinalDate(d)
               return (
-                <TableRow key={d.id} className="h-[56px] hover:bg-muted/40 transition-colors">
+                <TableRow key={d.id} className="h-[48px] hover:bg-muted/40 transition-colors">
                   <TableCell
-                    className="font-semibold text-foreground max-w-[180px] truncate"
+                    className="font-semibold text-foreground max-w-[180px] truncate px-4"
                     title={d.clientName}
                   >
                     {d.clientName}
                   </TableCell>
                   <TableCell
-                    className="max-w-[180px] truncate text-muted-foreground"
+                    className="max-w-[180px] truncate text-muted-foreground px-4"
                     title={d.location}
                   >
                     {d.location}
                   </TableCell>
-                  <TableCell className="font-medium">{d.type}</TableCell>
-                  <TableCell className="font-medium text-foreground">
+                  <TableCell className="font-medium px-4">{d.type}</TableCell>
+                  <TableCell className="font-medium text-foreground px-4">
                     <span className="whitespace-nowrap text-muted-foreground">
                       R$ {(d.minBudget || 0).toLocaleString('pt-BR')}
                     </span>
@@ -128,20 +134,22 @@ export function AnalyticsTable({ data }: { data: Demand[] }) {
                       R$ {(d.maxBudget || d.budget || 0).toLocaleString('pt-BR')}
                     </span>
                   </TableCell>
-                  <TableCell className="text-muted-foreground">
+                  <TableCell className="text-muted-foreground px-4 whitespace-nowrap">
                     {format(new Date(d.createdAt), 'dd/MM/yyyy')}
                   </TableCell>
-                  <TableCell className="text-muted-foreground">
+                  <TableCell className="text-muted-foreground px-4 whitespace-nowrap">
                     {fDate ? format(fDate, 'dd/MM/yyyy') : '-'}
                   </TableCell>
-                  <TableCell className="font-medium">{getOpenTimeStr(d)}</TableCell>
-                  <TableCell>
+                  <TableCell className="font-medium px-4 whitespace-nowrap">
+                    {getOpenTimeStr(d)}
+                  </TableCell>
+                  <TableCell className="px-4">
                     <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-muted text-foreground whitespace-nowrap shadow-sm border border-border/50">
                       {d.status}
                     </span>
                   </TableCell>
                   <TableCell
-                    className="max-w-[200px] truncate text-muted-foreground"
+                    className="max-w-[200px] truncate text-muted-foreground px-4"
                     title={d.lostReason}
                   >
                     {d.lostReason || '-'}
@@ -153,7 +161,7 @@ export function AnalyticsTable({ data }: { data: Demand[] }) {
         </Table>
       </div>
       {pages > 1 && (
-        <div className="p-3 lg:p-4 border-t border-border flex items-center justify-center bg-muted/10 shrink-0 z-20">
+        <div className="p-3 border-t border-border flex items-center justify-center bg-muted/10 shrink-0 z-20 w-full">
           <Pagination>
             <PaginationContent>
               <PaginationItem>
@@ -161,12 +169,16 @@ export function AnalyticsTable({ data }: { data: Demand[] }) {
                   variant="outline"
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page === 1}
-                  className="min-h-[44px] px-4 font-semibold shadow-sm"
+                  className="min-h-[44px] h-[44px] px-4 font-semibold shadow-sm"
+                  aria-label="Página anterior"
                 >
                   Anterior
                 </Button>
               </PaginationItem>
-              <div className="px-6 text-[14px] font-bold text-muted-foreground">
+              <div
+                className="px-4 sm:px-6 text-sm font-bold text-muted-foreground"
+                aria-live="polite"
+              >
                 Página {page} de {pages}
               </div>
               <PaginationItem>
@@ -174,7 +186,8 @@ export function AnalyticsTable({ data }: { data: Demand[] }) {
                   variant="outline"
                   onClick={() => setPage((p) => Math.min(pages, p + 1))}
                   disabled={page === pages}
-                  className="min-h-[44px] px-4 font-semibold shadow-sm"
+                  className="min-h-[44px] h-[44px] px-4 font-semibold shadow-sm"
+                  aria-label="Próxima página"
                 >
                   Próxima
                 </Button>

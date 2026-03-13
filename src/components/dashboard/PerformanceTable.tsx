@@ -36,39 +36,47 @@ export function PerformanceTable({ demands, users }: { demands: Demand[]; users:
     .sort((a, b) => b.total - a.total)
 
   return (
-    <Card className="border-0 shadow-md mb-[24px]">
-      <CardHeader className="p-[16px]">
-        <CardTitle className="text-[16px] leading-[24px]">Performance por SDR/Corretor</CardTitle>
+    <Card className="border-0 shadow-md mb-6 w-full min-w-0 overflow-hidden flex flex-col">
+      <CardHeader className="p-4 md:p-6 shrink-0 border-b bg-muted/10">
+        <CardTitle className="text-base sm:text-lg font-bold leading-tight">
+          Performance por SDR/Corretor
+        </CardTitle>
       </CardHeader>
-      <CardContent className="p-0 overflow-x-auto">
-        <Table className="w-full min-w-[600px]">
-          <TableHeader>
-            <TableRow>
-              <TableHead className="text-[12px] h-[48px] px-[12px]">Nome</TableHead>
-              <TableHead className="text-[12px] h-[48px] px-[12px] text-center">Total</TableHead>
-              <TableHead className="text-[12px] h-[48px] px-[12px] text-center">
-                Em Andamento
-              </TableHead>
-              <TableHead className="text-[12px] h-[48px] px-[12px] text-center">Captadas</TableHead>
-              <TableHead className="text-[12px] h-[48px] px-[12px] text-center">Perdidas</TableHead>
-              <TableHead className="text-[12px] h-[48px] px-[12px] text-center">Visitas</TableHead>
-              <TableHead className="text-[12px] h-[48px] px-[12px] text-center">Negócios</TableHead>
+      <CardContent className="p-0 overflow-auto max-h-[500px]">
+        <Table className="w-full min-w-[700px] relative">
+          <TableHeader className="sticky top-0 bg-card z-10 shadow-[0_1px_2px_rgba(0,0,0,0.1)]">
+            <TableRow className="h-[48px]">
+              <TableHead className="font-semibold px-4">Nome</TableHead>
+              <TableHead className="font-semibold px-4 text-center">Total</TableHead>
+              <TableHead className="font-semibold px-4 text-center">Em Andamento</TableHead>
+              <TableHead className="font-semibold px-4 text-center">Captadas</TableHead>
+              <TableHead className="font-semibold px-4 text-center">Perdidas</TableHead>
+              <TableHead className="font-semibold px-4 text-center">Visitas</TableHead>
+              <TableHead className="font-semibold px-4 text-center">Negócios</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {data.map((row) => (
-              <TableRow key={row.id} className="h-[48px]">
-                <TableCell className="text-[12px] px-[12px] font-medium whitespace-nowrap">
+              <TableRow key={row.id} className="h-[48px] hover:bg-muted/40 transition-colors">
+                <TableCell className="px-4 font-semibold text-foreground whitespace-nowrap">
                   {row.name}
                 </TableCell>
-                <TableCell className="text-[12px] px-[12px] text-center">{row.total}</TableCell>
-                <TableCell className="text-[12px] px-[12px] text-center">
+                <TableCell className="px-4 text-center text-muted-foreground">
+                  {row.total}
+                </TableCell>
+                <TableCell className="px-4 text-center text-muted-foreground">
                   {row.emAndamento}
                 </TableCell>
-                <TableCell className="text-[12px] px-[12px] text-center">{row.captadas}</TableCell>
-                <TableCell className="text-[12px] px-[12px] text-center">{row.perdidas}</TableCell>
-                <TableCell className="text-[12px] px-[12px] text-center">{row.visitas}</TableCell>
-                <TableCell className="text-[12px] px-[12px] text-center font-bold text-emerald-600">
+                <TableCell className="px-4 text-center text-muted-foreground">
+                  {row.captadas}
+                </TableCell>
+                <TableCell className="px-4 text-center text-muted-foreground">
+                  {row.perdidas}
+                </TableCell>
+                <TableCell className="px-4 text-center text-muted-foreground">
+                  {row.visitas}
+                </TableCell>
+                <TableCell className="px-4 text-center font-bold text-emerald-600 bg-emerald-50/30">
                   {row.negocios}
                 </TableCell>
               </TableRow>
@@ -77,9 +85,9 @@ export function PerformanceTable({ demands, users }: { demands: Demand[]; users:
               <TableRow>
                 <TableCell
                   colSpan={7}
-                  className="text-center text-muted-foreground h-[48px] text-[12px]"
+                  className="text-center text-muted-foreground h-[100px] font-medium"
                 >
-                  Nenhum dado encontrado.
+                  Nenhum dado encontrado para exibição.
                 </TableCell>
               </TableRow>
             )}

@@ -9,37 +9,45 @@ export function RankingCards({ users }: { users: User[] }) {
     .slice(0, 10)
 
   return (
-    <div className="flex flex-col gap-[12px] mb-[24px]">
-      <h2 className="text-[16px] font-bold leading-[24px]">Ranking da Equipe</h2>
+    <div className="flex flex-col gap-3 mb-6 w-full">
+      <h2 className="text-base sm:text-lg font-bold leading-tight mb-1">Ranking da Equipe</h2>
       {staff.map((u, i) => {
         const isGold = i === 0
         const isSilver = i === 1
         const isBronze = i === 2
 
-        let borderClass = 'border-border bg-background'
-        if (isGold) borderClass = 'border-yellow-400 bg-yellow-50/30'
-        if (isSilver) borderClass = 'border-gray-400 bg-gray-50/30'
-        if (isBronze) borderClass = 'border-amber-600 bg-amber-50/30'
+        let borderClass = 'border-border bg-card'
+        if (isGold) borderClass = 'border-yellow-400 bg-yellow-50/50'
+        if (isSilver) borderClass = 'border-gray-400 bg-gray-50/50'
+        if (isBronze) borderClass = 'border-amber-600 bg-amber-50/50'
 
         return (
           <Card
             key={u.id}
-            className={`h-[80px] p-[16px] flex flex-col justify-center ${borderClass} shadow-sm rounded-lg`}
+            className={`min-h-[80px] p-4 flex flex-col justify-center ${borderClass} shadow-sm rounded-xl hover:shadow-md transition-shadow`}
           >
             <div className="flex items-center gap-2 mb-1">
               {isGold || isSilver || isBronze ? (
                 <Trophy
-                  className={`w-[16px] h-[16px] ${
-                    isGold ? 'text-yellow-500' : isSilver ? 'text-gray-400' : 'text-amber-700'
+                  className={`w-5 h-5 shrink-0 ${
+                    isGold
+                      ? 'text-yellow-500 fill-yellow-500/20'
+                      : isSilver
+                        ? 'text-gray-400 fill-gray-400/20'
+                        : 'text-amber-700 fill-amber-700/20'
                   }`}
+                  aria-hidden="true"
                 />
               ) : null}
-              <p className="text-[14px] font-bold leading-[20px] text-foreground truncate">
-                🏆 {i + 1}º - {u.name}
+              <p className="text-sm font-bold leading-tight text-foreground truncate max-w-full">
+                <span className="sr-only">Posição </span>
+                {i + 1}º - {u.name}
               </p>
             </div>
-            <p className="text-[12px] text-muted-foreground leading-[16px]">
-              ⭐ {u.points} pontos | 📊 {u.stats?.imoveisCaptados || 0} imóveis
+            <p className="text-xs text-muted-foreground font-medium pl-7">
+              <span aria-hidden="true">⭐</span> {u.points} pontos{' '}
+              <span className="mx-1 opacity-50">|</span> <span aria-hidden="true">📊</span>{' '}
+              {u.stats?.imoveisCaptados || 0} imóveis
             </p>
           </Card>
         )

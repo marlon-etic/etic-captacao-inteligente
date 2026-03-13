@@ -85,16 +85,20 @@ export function AnalyticsDashboard() {
         return
       }
     }
+    // Simulate loading for UI feedback
     setFilters(newFilters)
+    toast({
+      description: 'Filtros aplicados com sucesso.',
+    })
   }
 
   return (
-    <div className="p-[16px] md:p-[24px] lg:p-[32px] max-w-screen-2xl mx-auto space-y-[24px] md:space-y-[32px] pb-[96px]">
+    <div className="p-4 md:p-6 lg:p-8 max-w-[1920px] mx-auto space-y-6 md:space-y-8 pb-24 w-full min-w-0">
       <div className="flex flex-col gap-2 border-b border-border/50 pb-6">
-        <h1 className="text-[20px] md:text-[24px] lg:text-[28px] font-black text-foreground leading-tight tracking-tight">
+        <h1 className="text-xl sm:text-2xl lg:text-3xl font-black text-foreground leading-tight tracking-tight">
           Análise de Demandas
         </h1>
-        <p className="text-[14px] md:text-[16px] text-muted-foreground font-medium">
+        <p className="text-sm sm:text-base text-muted-foreground font-medium">
           Monitore sua performance de captação e negócios com filtros inteligentes
         </p>
       </div>

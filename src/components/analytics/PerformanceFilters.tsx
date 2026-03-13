@@ -28,17 +28,24 @@ export function PerformanceFilters({ filters, onApply }: Props) {
   const [local, setLocal] = useState<PerformanceFilterState>(filters)
 
   return (
-    <div className="bg-card p-4 md:p-6 rounded-xl border border-border shadow-sm space-y-4 lg:space-y-0 lg:flex lg:gap-4 lg:items-end">
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:flex lg:flex-1 gap-4">
-        <div className="space-y-2 lg:flex-1">
-          <label className="text-[12px] md:text-[13px] lg:text-[14px] font-semibold text-muted-foreground">
+    <div className="bg-card p-4 md:p-6 rounded-xl border border-border shadow-sm flex flex-col xl:flex-row xl:items-end gap-4 w-full min-w-0">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 flex-1">
+        <div className="flex flex-col gap-2">
+          <label
+            htmlFor="period-select"
+            className="text-xs sm:text-sm font-bold text-foreground/80 uppercase tracking-wide"
+          >
             Período
           </label>
           <Select
             value={local.period}
             onValueChange={(v: any) => setLocal({ ...local, period: v })}
           >
-            <SelectTrigger className="min-h-[44px] bg-background">
+            <SelectTrigger
+              id="period-select"
+              className="min-h-[44px] h-[44px] bg-background border-input text-sm"
+              aria-label="Selecionar período"
+            >
               <SelectValue placeholder="Selecione" />
             </SelectTrigger>
             <SelectContent zIndex={100}>
@@ -52,35 +59,42 @@ export function PerformanceFilters({ filters, onApply }: Props) {
 
         {local.period === 'Customizado' && (
           <>
-            <div className="space-y-2 lg:flex-1">
-              <label className="text-[12px] md:text-[13px] lg:text-[14px] font-semibold text-muted-foreground">
+            <div className="flex flex-col gap-2">
+              <label className="text-xs sm:text-sm font-bold text-foreground/80 uppercase tracking-wide">
                 Início
               </label>
               <DatePicker
                 date={local.startDate ? new Date(local.startDate) : undefined}
                 setDate={(d) => setLocal({ ...local, startDate: d?.toISOString() || null })}
-                className="min-h-[44px]"
+                className="min-h-[44px] h-[44px]"
               />
             </div>
-            <div className="space-y-2 lg:flex-1">
-              <label className="text-[12px] md:text-[13px] lg:text-[14px] font-semibold text-muted-foreground">
+            <div className="flex flex-col gap-2">
+              <label className="text-xs sm:text-sm font-bold text-foreground/80 uppercase tracking-wide">
                 Fim
               </label>
               <DatePicker
                 date={local.endDate ? new Date(local.endDate) : undefined}
                 setDate={(d) => setLocal({ ...local, endDate: d?.toISOString() || null })}
-                className="min-h-[44px]"
+                className="min-h-[44px] h-[44px]"
               />
             </div>
           </>
         )}
 
-        <div className="space-y-2 lg:flex-1">
-          <label className="text-[12px] md:text-[13px] lg:text-[14px] font-semibold text-muted-foreground">
+        <div className="flex flex-col gap-2">
+          <label
+            htmlFor="type-select"
+            className="text-xs sm:text-sm font-bold text-foreground/80 uppercase tracking-wide"
+          >
             Tipo de Negócio
           </label>
           <Select value={local.type} onValueChange={(v: any) => setLocal({ ...local, type: v })}>
-            <SelectTrigger className="min-h-[44px] bg-background">
+            <SelectTrigger
+              id="type-select"
+              className="min-h-[44px] h-[44px] bg-background border-input text-sm"
+              aria-label="Selecionar tipo de negócio"
+            >
               <SelectValue placeholder="Selecione" />
             </SelectTrigger>
             <SelectContent zIndex={100}>
@@ -91,19 +105,26 @@ export function PerformanceFilters({ filters, onApply }: Props) {
           </Select>
         </div>
 
-        <div className="space-y-2 lg:flex-1">
-          <label className="text-[12px] md:text-[13px] lg:text-[14px] font-semibold text-muted-foreground">
+        <div className="flex flex-col gap-2">
+          <label
+            htmlFor="neighborhood-select"
+            className="text-xs sm:text-sm font-bold text-foreground/80 uppercase tracking-wide"
+          >
             Bairro
           </label>
           <Select
             value={local.neighborhood}
             onValueChange={(v: any) => setLocal({ ...local, neighborhood: v })}
           >
-            <SelectTrigger className="min-h-[44px] bg-background">
+            <SelectTrigger
+              id="neighborhood-select"
+              className="min-h-[44px] h-[44px] bg-background border-input text-sm"
+              aria-label="Selecionar bairro"
+            >
               <SelectValue placeholder="Selecione" />
             </SelectTrigger>
-            <SelectContent zIndex={100}>
-              <SelectItem value="Todos">Todos</SelectItem>
+            <SelectContent zIndex={100} className="max-h-[300px]">
+              <SelectItem value="Todos">Todos os bairros</SelectItem>
               {BAIRROS_ETIC.map((b) => (
                 <SelectItem key={b} value={b}>
                   {b}
@@ -116,9 +137,10 @@ export function PerformanceFilters({ filters, onApply }: Props) {
 
       <Button
         onClick={() => onApply(local)}
-        className="w-full lg:w-auto min-h-[44px] gap-2 font-bold shrink-0 mt-4 lg:mt-0"
+        className="w-full xl:w-auto min-h-[44px] h-[44px] gap-2 font-bold shrink-0 shadow-sm mt-2 xl:mt-0"
+        aria-label="Aplicar filtros de performance"
       >
-        <Filter className="w-4 h-4" /> Aplicar Filtros
+        <Filter className="w-4 h-4" aria-hidden="true" /> Aplicar Filtros
       </Button>
     </div>
   )

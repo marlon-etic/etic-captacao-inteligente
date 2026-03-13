@@ -9,8 +9,11 @@ import {
 } from '@/components/ui/chart'
 import { FunnelChart, Funnel, LabelList, PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
 import { Demand } from '@/types'
+import { useIsMobile } from '@/hooks/use-mobile'
 
 export function GestorCharts({ demands }: { demands: Demand[] }) {
+  const isMobile = useIsMobile()
+
   const funnelData = useMemo(() => {
     const total = demands.length
     const captadas = demands.filter((d) =>
@@ -49,7 +52,7 @@ export function GestorCharts({ demands }: { demands: Demand[] }) {
   )
 
   const pieData = Object.entries(lostReasons).map(([name, value], i) => ({
-    name,
+    name: name.length > 15 && isMobile ? name.substring(0, 12) + '...' : name,
     value,
     fill: `var(--color-Motivo${i + 1})`,
   }))
@@ -60,31 +63,38 @@ export function GestorCharts({ demands }: { demands: Demand[] }) {
   }, {} as any)
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-[24px] mb-[24px]">
-      <Card className="border-0 shadow-md">
-        <CardHeader className="p-[16px]">
-          <CardTitle className="text-[16px] leading-[24px]">Funil de Conversão</CardTitle>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6 w-full min-w-0">
+      <Card className="border-0 shadow-md flex flex-col min-w-0">
+        <CardHeader className="p-4 md:p-6 shrink-0 border-b bg-muted/10">
+          <CardTitle className="text-base sm:text-lg font-bold leading-tight">
+            Funil de Conversão Global
+          </CardTitle>
         </CardHeader>
-        <CardContent className="p-[16px] pt-0">
-          <div className="h-[300px] md:h-[400px] lg:h-[500px] w-full">
-            <ChartContainer config={funnelConfig} className="h-full w-full">
+        <CardContent className="p-4 md:p-6 flex-1 flex flex-col min-w-0">
+          <div className="h-[300px] md:h-[350px] w-full min-h-0 flex-1 relative overflow-hidden">
+            <ChartContainer config={funnelConfig} className="h-full w-full absolute inset-0">
               <ResponsiveContainer width="100%" height="100%">
-                <FunnelChart>
-                  <ChartTooltip content={<ChartTooltipContent />} />
+                <FunnelChart margin={{ top: 10, bottom: 10, left: 10, right: 30 }}>
+                  <ChartTooltip
+                    content={<ChartTooltipContent />}
+                    cursor={{ fill: 'transparent' }}
+                  />
                   <Funnel dataKey="value" data={funnelData} isAnimationActive>
                     <LabelList
                       position="inside"
                       fill="#fff"
                       stroke="none"
                       dataKey="name"
-                      fontSize={12}
+                      fontSize={isMobile ? 11 : 13}
+                      className="font-bold drop-shadow-md"
                     />
                     <LabelList
                       position="right"
                       fill="currentColor"
                       stroke="none"
                       dataKey="label"
-                      fontSize={12}
+                      fontSize={isMobile ? 11 : 13}
+                      className="font-bold"
                     />
                   </Funnel>
                 </FunnelChart>
@@ -94,24 +104,26 @@ export function GestorCharts({ demands }: { demands: Demand[] }) {
         </CardContent>
       </Card>
 
-      <Card className="border-0 shadow-md">
-        <CardHeader className="p-[16px]">
-          <CardTitle className="text-[16px] leading-[24px]">Motivos de Perda</CardTitle>
+      <Card className="border-0 shadow-md flex flex-col min-w-0">
+        <CardHeader className="p-4 md:p-6 shrink-0 border-b bg-muted/10">
+          <CardTitle className="text-base sm:text-lg font-bold leading-tight">
+            Motivos de Perda (Desistências)
+          </CardTitle>
         </CardHeader>
-        <CardContent className="p-[16px] pt-0">
-          <div className="h-[300px] md:h-[350px] lg:h-[400px] w-full flex flex-col md:flex-row">
+        <CardContent className="p-4 md:p-6 flex-1 flex flex-col min-w-0">
+          <div className="h-[300px] md:h-[350px] w-full min-h-0 flex-1 relative overflow-hidden">
             {pieData.length > 0 ? (
-              <ChartContainer config={pieConfig} className="h-full w-full">
+              <ChartContainer config={pieConfig} className="h-full w-full absolute inset-0">
                 <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
+                  <PieChart margin={{ top: 10, bottom: isMobile ? 40 : 10, left: 0, right: 0 }}>
                     <ChartTooltip content={<ChartTooltipContent />} />
                     <Pie
                       data={pieData}
                       dataKey="value"
                       nameKey="name"
                       cx="50%"
-                      cy="50%"
-                      innerRadius="40%"
+                      cy={isMobile ? '40%' : '50%'}
+                      innerRadius="45%"
                       outerRadius="80%"
                       paddingAngle={2}
                     >
@@ -120,16 +132,17 @@ export function GestorCharts({ demands }: { demands: Demand[] }) {
                       ))}
                     </Pie>
                     <ChartLegend
-                      content={<ChartLegendContent className="flex-wrap" />}
+                      content={<ChartLegendContent className="flex-wrap text-[11px] sm:text-xs" />}
                       layout="horizontal"
                       verticalAlign="bottom"
+                      align="center"
                     />
                   </PieChart>
                 </ResponsiveContainer>
               </ChartContainer>
             ) : (
-              <div className="h-full w-full flex flex-col items-center justify-center text-muted-foreground bg-muted/10 rounded-lg">
-                <p className="text-[14px]">Nenhuma demanda perdida no período</p>
+              <div className="h-full w-full flex flex-col items-center justify-center text-muted-foreground bg-muted/10 rounded-lg absolute inset-0">
+                <p className="text-sm font-medium">Nenhuma demanda perdida no período.</p>
               </div>
             )}
           </div>

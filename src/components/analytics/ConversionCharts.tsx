@@ -14,8 +14,11 @@ import {
   ResponsiveContainer,
 } from 'recharts'
 import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart'
+import { useIsMobile } from '@/hooks/use-mobile'
 
 export function ConversionCharts({ demands }: { demands: Demand[] }) {
+  const isMobile = useIsMobile()
+
   const funnelData = useMemo(() => {
     let demandas = demands.length
     let captadas = 0
@@ -42,7 +45,12 @@ export function ConversionCharts({ demands }: { demands: Demand[] }) {
     ]
   }, [demands])
 
-  const colors = ['#3b82f6', '#0284c7', '#059669', '#16a34a']
+  const colors = [
+    'hsl(var(--primary))',
+    'hsl(var(--chart-2))',
+    'hsl(var(--chart-3))',
+    'hsl(var(--chart-4))',
+  ]
 
   const bairroData = useMemo(() => {
     const map = new Map<string, { total: number; neg: number }>()
@@ -55,30 +63,41 @@ export function ConversionCharts({ demands }: { demands: Demand[] }) {
     })
     return Array.from(map.entries())
       .map(([name, v]) => ({
-        name,
+        name: name.length > 12 && isMobile ? name.substring(0, 10) + '...' : name,
         taxa: v.total > 0 ? Number(((v.neg / v.total) * 100).toFixed(1)) : 0,
       }))
       .sort((a, b) => b.taxa - a.taxa)
-      .slice(0, 8)
-  }, [demands])
+      .slice(0, isMobile ? 5 : 8) // Show fewer bars on mobile to prevent squishing
+  }, [demands, isMobile])
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
-      <div className="bg-card border rounded-xl p-4 md:p-6 shadow-sm flex flex-col h-[300px] md:h-[400px] lg:h-[500px]">
-        <h3 className="text-[16px] md:text-[18px] lg:text-[20px] font-bold mb-4">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 w-full min-w-0">
+      <div className="bg-card border rounded-xl p-4 md:p-6 shadow-sm flex flex-col h-[350px] md:h-[450px] lg:h-[500px] min-w-0">
+        <h3 className="text-base sm:text-lg lg:text-xl font-bold mb-2 text-foreground leading-tight">
           Funil de Conversão
         </h3>
-        <div className="flex-1 min-h-0">
+        <p className="text-xs sm:text-sm text-muted-foreground mb-4">
+          Taxa de retenção entre etapas.
+        </p>
+        <div className="flex-1 min-h-0 w-full overflow-hidden">
           <ResponsiveContainer width="100%" height="100%">
-            <FunnelChart>
-              <Tooltip cursor={{ fill: 'transparent' }} contentStyle={{ borderRadius: '8px' }} />
+            <FunnelChart margin={{ top: 10, right: 30, left: 10, bottom: 10 }}>
+              <Tooltip
+                cursor={{ fill: 'transparent' }}
+                contentStyle={{
+                  borderRadius: '8px',
+                  border: 'none',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                }}
+              />
               <Funnel dataKey="value" data={funnelData} isAnimationActive>
                 <LabelList
                   position="right"
                   fill="currentColor"
                   stroke="none"
                   dataKey="name"
-                  className="text-xs font-bold"
+                  fontSize={isMobile ? 11 : 13}
+                  className="font-bold"
                 />
                 {funnelData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
@@ -89,28 +108,47 @@ export function ConversionCharts({ demands }: { demands: Demand[] }) {
         </div>
       </div>
 
-      <div className="bg-card border rounded-xl p-4 md:p-6 shadow-sm flex flex-col h-[300px] md:h-[400px] lg:h-[500px]">
-        <h3 className="text-[16px] md:text-[18px] lg:text-[20px] font-bold mb-4">
+      <div className="bg-card border rounded-xl p-4 md:p-6 shadow-sm flex flex-col h-[350px] md:h-[450px] lg:h-[500px] min-w-0">
+        <h3 className="text-base sm:text-lg lg:text-xl font-bold mb-2 text-foreground leading-tight">
           Taxa de Conversão por Bairro (%)
         </h3>
-        <div className="flex-1 min-h-0">
+        <p className="text-xs sm:text-sm text-muted-foreground mb-4">
+          Percentual de demandas fechadas.
+        </p>
+        <div className="flex-1 min-h-0 w-full overflow-hidden">
           <ChartContainer
             config={{ taxa: { label: 'Conversão (%)', color: 'hsl(var(--primary))' } }}
             className="h-full w-full"
           >
-            <BarChart data={bairroData} margin={{ left: -20, right: 10, bottom: 20 }}>
+            <BarChart data={bairroData} margin={{ left: -15, right: 10, bottom: 30, top: 10 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
               <XAxis
                 dataKey="name"
-                tick={{ fontSize: 12 }}
+                tick={{ fontSize: isMobile ? 10 : 12, fill: 'hsl(var(--muted-foreground))' }}
                 interval={0}
                 angle={-45}
                 textAnchor="end"
-                height={60}
+                axisLine={false}
+                tickLine={false}
+                dy={15}
               />
-              <YAxis tickFormatter={(v) => `${v}%`} tick={{ fontSize: 12 }} />
-              <Tooltip content={<ChartTooltipContent />} cursor={{ fill: 'var(--color-muted)' }} />
-              <Bar dataKey="taxa" fill="var(--color-taxa)" radius={[4, 4, 0, 0]} maxBarSize={50} />
+              <YAxis
+                tickFormatter={(v) => `${v}%`}
+                tick={{ fontSize: isMobile ? 10 : 12, fill: 'hsl(var(--muted-foreground))' }}
+                axisLine={false}
+                tickLine={false}
+                width={40}
+              />
+              <Tooltip
+                content={<ChartTooltipContent />}
+                cursor={{ fill: 'hsl(var(--muted)/0.4)' }}
+              />
+              <Bar
+                dataKey="taxa"
+                fill="var(--color-taxa)"
+                radius={[4, 4, 0, 0]}
+                maxBarSize={isMobile ? 30 : 50}
+              />
             </BarChart>
           </ChartContainer>
         </div>
