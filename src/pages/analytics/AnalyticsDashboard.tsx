@@ -20,7 +20,9 @@ export function AnalyticsDashboard() {
     try {
       const stored = localStorage.getItem('analytics_filters')
       if (stored) return JSON.parse(stored)
-    } catch {}
+    } catch {
+      // ignore parsing errors
+    }
     return { startDate: null, endDate: null, type: 'Ambos' }
   })
 
