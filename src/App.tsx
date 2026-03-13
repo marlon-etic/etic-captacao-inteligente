@@ -13,6 +13,7 @@ import Perfil from '@/pages/Perfil'
 import NotFound from '@/pages/NotFound'
 import { GestorDashboard } from '@/pages/dashboard/GestorDashboard'
 import { AnalyticsDashboard } from '@/pages/analytics/AnalyticsDashboard'
+import { PerformanceDashboard } from '@/pages/analytics/PerformanceDashboard'
 
 const App = () => (
   <AppStoreProvider>
@@ -30,6 +31,7 @@ const App = () => (
             <Route path="perfil" element={<Perfil />} />
             <Route path="gestor-dashboard" element={<GestorDashboard />} />
             <Route path="analytics" element={<AnalyticsDashboard />} />
+            <Route path="performance" element={<PerformanceDashboard />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>
