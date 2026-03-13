@@ -10,7 +10,6 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog'
 import useAppStore from '@/stores/useAppStore'
-import { useTimeElapsed } from '@/hooks/useTimeElapsed'
 import { InternalChatModal } from '@/components/InternalChatModal'
 import { cn } from '@/lib/utils'
 
@@ -29,21 +28,12 @@ export function ContactSolicitorAction({
   buttonClassName,
   buttonText,
 }: Props) {
-  const { logSolicitorContactAttempt, currentUser } = useAppStore()
+  const { logSolicitorContactAttempt } = useAppStore()
   const [showOptions, setShowOptions] = useState(false)
   const [showChat, setShowChat] = useState(false)
 
-  const timeElapsed = useTimeElapsed(demand.lastContactedSolicitorAt)
-
-  const canContact = currentUser?.role === 'captador' || currentUser?.role === 'admin'
-  if (!canContact) return null
-
   const handleWhatsApp = () => {
-    if (!solicitor || solicitor.status === 'inativo') {
-      setShowOptions(true)
-      return
-    }
-    if (!solicitor.phone) {
+    if (!solicitor || solicitor.status === 'inativo' || !solicitor.phone) {
       setShowOptions(true)
       return
     }
@@ -59,28 +49,23 @@ export function ContactSolicitorAction({
   }
 
   return (
-    <div className={cn('flex flex-col gap-1 w-full', className)}>
+    <div className={cn('flex flex-col', className)}>
       <Button
         className={cn(
-          'bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200 text-xs sm:text-sm font-semibold',
+          'w-full bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200',
           buttonClassName,
         )}
         variant="outline"
         onClick={handleWhatsApp}
       >
-        {buttonText || '💬 DÚVIDAS SOBRE ESTA DEMANDA?'}
+        {buttonText || '💬 Contatar'}
       </Button>
-      {demand.lastContactedSolicitorAt && (
-        <span className="text-[10px] text-muted-foreground text-center block font-medium">
-          Último contato: {timeElapsed.text}
-        </span>
-      )}
 
       <Dialog open={showOptions} onOpenChange={setShowOptions}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[425px] p-[16px]">
           <DialogHeader>
-            <DialogTitle>Contatar Solicitante</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-[16px] font-bold">Contatar Solicitante</DialogTitle>
+            <DialogDescription className="text-[12px]">
               {!solicitor
                 ? 'Solicitante não encontrado.'
                 : solicitor.status === 'inativo'
@@ -88,27 +73,29 @@ export function ContactSolicitorAction({
                   : 'Número não disponível. Escolha uma alternativa:'}
             </DialogDescription>
           </DialogHeader>
-          <div className="flex flex-col gap-3 py-4">
+          <div className="flex flex-col gap-[12px] py-[16px]">
             {solicitor?.email && (
               <Button
                 variant="outline"
+                className="h-[44px] w-full text-[14px]"
                 onClick={() => {
                   logSolicitorContactAttempt(demand.id, 'email')
                   window.location.href = `mailto:${solicitor.email}?subject=Dúvida Demanda ${demand.clientName}`
                   setShowOptions(false)
                 }}
               >
-                <Mail className="w-4 h-4 mr-2" />📧 Enviar Email
+                <Mail className="w-5 h-5 mr-2" /> Enviar Email
               </Button>
             )}
             <Button
               variant="outline"
+              className="h-[44px] w-full text-[14px]"
               onClick={() => {
                 setShowOptions(false)
                 setShowChat(true)
               }}
             >
-              <MessageSquare className="w-4 h-4 mr-2" />💬 Chat Interno
+              <MessageSquare className="w-5 h-5 mr-2" /> Chat Interno
             </Button>
           </div>
         </DialogContent>

@@ -8,16 +8,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog'
 import { CapturedPropertyCard } from './CapturedPropertyCard'
 import { CapturedPropertyModals } from './CapturedPropertyModals'
-import { PropertyTimeline } from './PropertyTimeline'
 import { Demand, CapturedProperty, User } from '@/types'
 
 export function CapturedPropertiesView() {
@@ -31,7 +23,6 @@ export function CapturedPropertiesView() {
   } = useAppStore()
   const [statusFilter, setStatusFilter] = useState('all')
   const [capturerFilter, setCapturerFilter] = useState('all')
-  const [dateFilter, setDateFilter] = useState('all')
 
   const [actionDemand, setActionDemand] = useState<Demand | null>(null)
   const [actionProperty, setActionProperty] = useState<CapturedProperty | null>(null)
@@ -42,24 +33,20 @@ export function CapturedPropertiesView() {
   const allCaptured = useMemo(() => {
     return demands.flatMap((d) => {
       if (!d.capturedProperties || d.capturedProperties.length === 0) return []
-
       if (currentUser?.role === 'admin' || currentUser?.role === 'gestor') {
         return d.capturedProperties.map((p) => ({ demand: d, property: p }))
       }
-
       if (
         (currentUser?.role === 'sdr' || currentUser?.role === 'corretor') &&
         d.createdBy === currentUser.id
       ) {
         return d.capturedProperties.map((p) => ({ demand: d, property: p }))
       }
-
       if (currentUser?.role === 'captador') {
         return d.capturedProperties
           .filter((p) => p.captador_id === currentUser.id)
           .map((p) => ({ demand: d, property: p }))
       }
-
       return []
     })
   }, [demands, currentUser])
@@ -72,7 +59,6 @@ export function CapturedPropertiesView() {
   }, [allCaptured, users])
 
   const filteredAndSorted = useMemo(() => {
-    const now = new Date()
     let result = allCaptured.filter(({ demand: d, property: p }) => {
       const isClosed = !!p.fechamentoDate
       const isProposta = !!p.propostaDate && !isClosed
@@ -86,54 +72,12 @@ export function CapturedPropertiesView() {
       else if (isLost) propStatus = 'Perdida'
 
       const matchStatus = statusFilter === 'all' || propStatus === statusFilter
-
       const matchCapturer = capturerFilter === 'all' || p.captador_id === capturerFilter
 
-      let matchDate = true
-      const capDate = new Date(p.capturedAt || d.createdAt)
-      if (dateFilter === 'today') {
-        matchDate = capDate.toDateString() === now.toDateString()
-      } else if (dateFilter === 'week') {
-        const diffTime = Math.abs(now.getTime() - capDate.getTime())
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-        matchDate = diffDays <= 7
-      } else if (dateFilter === 'month') {
-        matchDate =
-          capDate.getMonth() === now.getMonth() && capDate.getFullYear() === now.getFullYear()
-      }
-
-      return matchStatus && matchCapturer && matchDate
+      return matchStatus && matchCapturer
     })
-
-    const statusWeight: Record<string, number> = {
-      Visita: 1,
-      Proposta: 2,
-      Captado: 3,
-      Negócio: 4,
-      Perdida: 5,
-    }
-
-    return result.sort((a, b) => {
-      const getStatus = (p: CapturedProperty, d: Demand) => {
-        if (p.fechamentoDate) return 'Negócio'
-        if (p.propostaDate) return 'Proposta'
-        if (p.visitaDate) return 'Visita'
-        if (d.status === 'Perdida') return 'Perdida'
-        return 'Captado'
-      }
-
-      const weightA = statusWeight[getStatus(a.property, a.demand)] || 5
-      const weightB = statusWeight[getStatus(b.property, b.demand)] || 5
-
-      if (weightA !== weightB) {
-        return weightA - weightB
-      }
-
-      const dateA = new Date(a.property.capturedAt || a.demand.createdAt).getTime()
-      const dateB = new Date(b.property.capturedAt || b.demand.createdAt).getTime()
-      return dateB - dateA
-    })
-  }, [allCaptured, statusFilter, capturerFilter, dateFilter])
+    return result
+  }, [allCaptured, statusFilter, capturerFilter])
 
   const handleAction = (
     type: 'visita' | 'proposta' | 'negocio' | 'history',
@@ -152,24 +96,22 @@ export function CapturedPropertiesView() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+    <div className="space-y-[24px]">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-[12px]">
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger>
-            <SelectValue placeholder="Status do Imóvel" />
+          <SelectTrigger className="h-[44px]">
+            <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos os Status</SelectItem>
-            <SelectItem value="Captado">🟡 Captado</SelectItem>
-            <SelectItem value="Visita">🔵 Visita Agendada</SelectItem>
-            <SelectItem value="Proposta">🟣 Proposta</SelectItem>
-            <SelectItem value="Negócio">🟢 Negócio Fechado</SelectItem>
-            <SelectItem value="Perdida">❌ Perdida</SelectItem>
+            <SelectItem value="Captado">Captado</SelectItem>
+            <SelectItem value="Visita">Visita Agendada</SelectItem>
+            <SelectItem value="Negócio">Negócio Fechado</SelectItem>
           </SelectContent>
         </Select>
 
         <Select value={capturerFilter} onValueChange={setCapturerFilter}>
-          <SelectTrigger>
+          <SelectTrigger className="h-[44px]">
             <SelectValue placeholder="Captador" />
           </SelectTrigger>
           <SelectContent>
@@ -181,27 +123,17 @@ export function CapturedPropertiesView() {
             ))}
           </SelectContent>
         </Select>
-
-        <Select value={dateFilter} onValueChange={setDateFilter}>
-          <SelectTrigger>
-            <SelectValue placeholder="Data de Captação" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Qualquer Data</SelectItem>
-            <SelectItem value="today">Hoje</SelectItem>
-            <SelectItem value="week">Esta Semana</SelectItem>
-            <SelectItem value="month">Este Mês</SelectItem>
-          </SelectContent>
-        </Select>
       </div>
 
       {filteredAndSorted.length === 0 ? (
-        <div className="text-center p-12 bg-background border rounded-xl border-dashed">
+        <div className="text-center py-[48px] bg-background border rounded-[12px] border-dashed">
           <Search className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
-          <p className="text-muted-foreground font-medium">Nenhum imóvel encontrado.</p>
+          <p className="text-[14px] text-muted-foreground font-medium">
+            Nenhuma demanda no momento
+          </p>
         </div>
       ) : (
-        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-[12px] grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           {filteredAndSorted.map(({ demand, property }) => (
             <CapturedPropertyCard
               key={`${demand.id}-${property.code}`}
@@ -211,22 +143,6 @@ export function CapturedPropertiesView() {
             />
           ))}
         </div>
-      )}
-
-      {actionType === 'history' && actionDemand && actionProperty && (
-        <Dialog open onOpenChange={(v) => !v && closeModals()}>
-          <DialogContent className="sm:max-w-[500px] max-h-[85vh] overflow-hidden flex flex-col">
-            <DialogHeader className="pb-2">
-              <DialogTitle>Histórico de Ações do Imóvel</DialogTitle>
-              <DialogDescription>
-                Cód: <strong>{actionProperty.code}</strong> • Cliente: {actionDemand.clientName}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="overflow-y-auto flex-1 -mx-6 px-6 pb-2">
-              <PropertyTimeline history={actionProperty.history || []} />
-            </div>
-          </DialogContent>
-        </Dialog>
       )}
 
       <CapturedPropertyModals

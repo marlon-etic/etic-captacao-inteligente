@@ -19,21 +19,21 @@ export function AppHeader() {
   if (!currentUser) return null
 
   return (
-    <header className="h-16 border-b bg-background flex items-center justify-between px-4 sticky top-0 z-40">
-      <div className="flex items-center gap-4">
+    <header className="h-[56px] border-b bg-background flex items-center justify-between px-[12px] py-[8px] sticky top-0 z-40">
+      <div className="flex items-center gap-[12px]">
         {isMobile ? (
-          <Button variant="ghost" size="icon" onClick={() => setOpenMobile(true)}>
-            <Menu className="h-5 w-5" />
+          <Button
+            variant="ghost"
+            size="icon"
+            className="w-[24px] h-[24px] p-0"
+            onClick={() => setOpenMobile(true)}
+          >
+            <Menu className="w-[24px] h-[24px]" />
           </Button>
         ) : (
-          <SidebarTrigger />
+          <SidebarTrigger className="w-[24px] h-[24px] p-0" />
         )}
-        <div className="hidden sm:block">
-          <h2 className="text-sm font-semibold capitalize text-muted-foreground">
-            {currentUser.role}
-          </h2>
-          <p className="text-sm font-medium">{currentUser.name}</p>
-        </div>
+        <h1 className="text-[16px] font-bold leading-[24px]">Demandas de Locação</h1>
       </div>
 
       <div className="flex items-center gap-4">
@@ -47,7 +47,7 @@ export function AppHeader() {
 
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="ghost" size="icon" className="relative">
+            <Button variant="ghost" size="icon" className="relative w-[44px] h-[44px]">
               <Bell className="w-5 h-5 text-muted-foreground" />
               {unreadCount > 0 && (
                 <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-destructive rounded-full border-2 border-background animate-pulse" />

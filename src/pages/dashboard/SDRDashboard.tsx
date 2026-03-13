@@ -1,11 +1,7 @@
-import { Link } from 'react-router-dom'
-import { PlusCircle, Search, Activity, Target } from 'lucide-react'
-import { Card, CardContent } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
+import { Search } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { DemandCard } from '@/components/DemandCard'
 import { CapturedPropertiesView } from '@/components/CapturedPropertiesView'
-import { LoosePropertiesView } from '@/components/LoosePropertiesView'
 import useAppStore from '@/stores/useAppStore'
 
 export function SDRDashboard() {
@@ -15,103 +11,75 @@ export function SDRDashboard() {
   const activeCount = myDemands.filter(
     (d) => d.status === 'Pendente' || d.status === 'Em Captação',
   ).length
-  const successCount = myDemands.filter(
-    (d) => d.status === 'Captado sob demanda' || d.status === 'Negócio',
-  ).length
+
+  const activeDemands = myDemands.filter(
+    (d) => !['Negócio', 'Perdida', 'Impossível', 'Arquivado'].includes(d.status),
+  )
 
   const historyDemands = myDemands.filter((d) =>
     ['Negócio', 'Perdida', 'Impossível', 'Arquivado'].includes(d.status),
   )
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-end">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight mb-1">Meu Painel</h1>
-          <p className="text-muted-foreground text-sm">Acompanhe as demandas que você gerou.</p>
-        </div>
-        <Button asChild className="hidden sm:flex" size="sm">
-          <Link to="/app/nova-demanda">
-            <PlusCircle className="w-4 h-4 mr-2" /> Nova Demanda
-          </Link>
-        </Button>
-      </div>
-
+    <div className="px-[16px] pb-[72px] pt-[24px] max-w-7xl mx-auto flex flex-col gap-[24px]">
       <Tabs defaultValue="demandas" className="w-full">
-        <TabsList className="grid w-full sm:w-[600px] grid-cols-4 mb-6">
-          <TabsTrigger value="demandas">DEMANDAS</TabsTrigger>
-          <TabsTrigger value="captados">CAPTADOS</TabsTrigger>
-          <TabsTrigger value="disponiveis">DISPONÍVEIS</TabsTrigger>
-          <TabsTrigger value="historico">HISTÓRICO</TabsTrigger>
+        <TabsList className="flex h-[48px] w-full bg-transparent p-0 border-b overflow-x-auto justify-start gap-[16px] rounded-none">
+          <TabsTrigger
+            value="demandas"
+            className="relative h-[48px] px-[16px] text-[14px] data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none rounded-none bg-transparent whitespace-nowrap"
+          >
+            Minhas Demandas
+            {activeCount > 0 && (
+              <span className="ml-[8px] inline-flex items-center justify-center w-[20px] h-[20px] bg-primary text-primary-foreground rounded-full text-[10px] font-bold">
+                {activeCount}
+              </span>
+            )}
+          </TabsTrigger>
+          <TabsTrigger
+            value="captados"
+            className="relative h-[48px] px-[16px] text-[14px] data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none rounded-none bg-transparent whitespace-nowrap"
+          >
+            Captados
+          </TabsTrigger>
+          <TabsTrigger
+            value="historico"
+            className="relative h-[48px] px-[16px] text-[14px] data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none rounded-none bg-transparent whitespace-nowrap"
+          >
+            Histórico
+          </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="demandas" className="space-y-6 mt-0">
-          <div className="grid grid-cols-2 gap-4">
-            <Card className="bg-primary/5 border-primary/20">
-              <CardContent className="p-4 flex items-center gap-4">
-                <div className="bg-primary/20 p-3 rounded-full text-primary">
-                  <Activity className="w-6 h-6" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground font-medium">Em Andamento</p>
-                  <p className="text-3xl font-bold text-primary">{activeCount}</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="bg-emerald-50 border-emerald-200">
-              <CardContent className="p-4 flex items-center gap-4">
-                <div className="bg-emerald-200 p-3 rounded-full text-emerald-700">
-                  <Target className="w-6 h-6" />
-                </div>
-                <div>
-                  <p className="text-sm text-emerald-700/80 font-medium">Convertidas</p>
-                  <p className="text-3xl font-bold text-emerald-700">{successCount}</p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div>
-            <h2 className="text-lg font-semibold mb-4">Minhas Demandas Ativas</h2>
-            {myDemands.length === 0 ? (
-              <div className="text-center p-12 bg-background border rounded-xl border-dashed">
-                <Search className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
-                <p className="text-muted-foreground font-medium">Você ainda não criou demandas.</p>
-                <Button asChild variant="outline" className="mt-4">
-                  <Link to="/app/nova-demanda">Criar Primeira Demanda</Link>
-                </Button>
-              </div>
-            ) : (
-              <div className="grid gap-4 sm:grid-cols-2">
-                {myDemands
-                  .filter(
-                    (d) => !['Negócio', 'Perdida', 'Impossível', 'Arquivado'].includes(d.status),
-                  )
-                  .slice(0, 4)
-                  .map((demand) => (
-                    <DemandCard key={demand.id} demand={demand} />
-                  ))}
-              </div>
-            )}
-          </div>
+        <TabsContent value="demandas" className="mt-[24px]">
+          {activeDemands.length === 0 ? (
+            <div className="text-center py-[48px] bg-background border rounded-[12px] border-dashed">
+              <Search className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
+              <p className="text-[14px] text-muted-foreground font-medium">
+                Nenhuma demanda no momento
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-[12px] grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+              {activeDemands.map((demand) => (
+                <DemandCard key={demand.id} demand={demand} />
+              ))}
+            </div>
+          )}
         </TabsContent>
 
-        <TabsContent value="captados" className="mt-0">
+        <TabsContent value="captados" className="mt-[24px]">
           <CapturedPropertiesView />
         </TabsContent>
 
-        <TabsContent value="disponiveis" className="mt-0">
-          <LoosePropertiesView />
-        </TabsContent>
-
-        <TabsContent value="historico" className="mt-0">
-          <h2 className="text-lg font-semibold mb-4">Histórico de Demandas</h2>
+        <TabsContent value="historico" className="mt-[24px]">
           {historyDemands.length === 0 ? (
-            <div className="text-center p-12 bg-background border rounded-xl border-dashed">
-              <p className="text-muted-foreground font-medium">Nenhum histórico encontrado.</p>
+            <div className="text-center py-[48px] bg-background border rounded-[12px] border-dashed">
+              <Search className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
+              <p className="text-[14px] text-muted-foreground font-medium">
+                Nenhuma demanda no momento
+              </p>
             </div>
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-[12px] grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
               {historyDemands.map((demand) => (
                 <DemandCard key={demand.id} demand={demand} />
               ))}
