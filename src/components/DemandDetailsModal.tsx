@@ -50,14 +50,15 @@ export function DemandDetailsModal({ open, onOpenChange, demand, onAction }: Pro
   const captadoresCount = users.filter((u) => u.role === 'captador').length
   const solicitor = users.find((u) => u.id === demand.createdBy)
 
-  const formatCurrency = (val?: number) =>
-    val
-      ? new Intl.NumberFormat('pt-BR', {
-          style: 'currency',
-          currency: 'BRL',
-          maximumFractionDigits: 0,
-        }).format(val)
-      : 'Não informado'
+  const formatPrice = (val?: number, type?: string) => {
+    if (!val) return 'Não informado'
+    const formatted = new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+      maximumFractionDigits: 0,
+    }).format(val)
+    return type === 'Aluguel' ? `${formatted}/mês` : formatted
+  }
 
   const content = (
     <div className="space-y-6 pb-6">
@@ -122,13 +123,13 @@ export function DemandDetailsModal({ open, onOpenChange, demand, onAction }: Pro
             <span className="text-muted-foreground block text-xs uppercase tracking-wider mb-1">
               Orçamento Mínimo
             </span>
-            <span className="font-medium">{formatCurrency(demand.minBudget)}</span>
+            <span className="font-medium">{formatPrice(demand.minBudget, demand.type)}</span>
           </div>
           <div>
             <span className="text-muted-foreground block text-xs uppercase tracking-wider mb-1">
               Orçamento Máximo
             </span>
-            <span className="font-medium">{formatCurrency(demand.maxBudget)}</span>
+            <span className="font-medium">{formatPrice(demand.maxBudget, demand.type)}</span>
           </div>
           <div>
             <span className="text-muted-foreground block text-xs uppercase tracking-wider mb-1">
@@ -166,7 +167,7 @@ export function DemandDetailsModal({ open, onOpenChange, demand, onAction }: Pro
           </div>
           <div>
             <span className="text-muted-foreground block text-xs uppercase tracking-wider mb-1">
-              Características Desejadas
+              Tipo de Transação
             </span>
             <span className="font-medium">{demand.type || 'Não informado'}</span>
           </div>
@@ -259,6 +260,7 @@ export function DemandDetailsModal({ open, onOpenChange, demand, onAction }: Pro
             demand={demand}
             solicitor={solicitor}
             buttonClassName="h-12 w-full text-sm font-semibold"
+            buttonText="💬 Contatar"
           />
         </div>
       </section>

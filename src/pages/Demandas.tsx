@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useTransition } from 'react'
 import { Filter, Activity } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -6,30 +6,40 @@ import { Badge } from '@/components/ui/badge'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { DemandCard } from '@/components/DemandCard'
 import useAppStore from '@/stores/useAppStore'
+import { cn } from '@/lib/utils'
 
 export default function Demandas() {
-  const { demands, getSimilarDemands, webhookQueue, auditLogs, triggerCron } = useAppStore()
+  const { demands, webhookQueue, auditLogs, triggerCron } = useAppStore()
   const [search, setSearch] = useState('')
+  const [activeTab, setActiveTab] = useState<'all' | 'Venda' | 'Aluguel'>('all')
+  const [isPending, startTransition] = useTransition()
 
-  const filtered = demands
-    .filter(
-      (d) =>
-        d.status !== 'Perdida' &&
-        (d.clientName.toLowerCase().includes(search.toLowerCase()) ||
-          d.location.toLowerCase().includes(search.toLowerCase())),
-    )
-    .sort((a, b) => {
-      if (a.isPrioritized && !b.isPrioritized) return -1
-      if (!a.isPrioritized && b.isPrioritized) return 1
-      if (a.isRepescagem && !b.isRepescagem) return -1
-      if (!a.isRepescagem && b.isRepescagem) return 1
-      const aTotal = getSimilarDemands(a.id).length + 1
-      const bTotal = getSimilarDemands(b.id).length + 1
-      if (aTotal >= 5 && bTotal < 5) return -1
-      if (bTotal >= 5 && aTotal < 5) return 1
-      if (aTotal !== bTotal) return bTotal - aTotal
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  const handleTabChange = (tab: 'all' | 'Venda' | 'Aluguel') => {
+    startTransition(() => {
+      setActiveTab(tab)
     })
+  }
+
+  const baseDemands = demands.filter(
+    (d) =>
+      d.status !== 'Perdida' &&
+      (d.clientName.toLowerCase().includes(search.toLowerCase()) ||
+        d.location.toLowerCase().includes(search.toLowerCase())),
+  )
+
+  const countAll = baseDemands.length
+  const countVenda = baseDemands.filter((d) => d.type === 'Venda').length
+  const countAluguel = baseDemands.filter((d) => d.type === 'Aluguel').length
+
+  const filtered = baseDemands.filter((d) => (activeTab === 'all' ? true : d.type === activeTab))
+
+  const sorted = [...filtered].sort((a, b) => {
+    if (activeTab === 'all') {
+      if (a.type === 'Venda' && b.type !== 'Venda') return -1
+      if (a.type !== 'Venda' && b.type === 'Venda') return 1
+    }
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  })
 
   return (
     <div className="space-y-6 animate-fade-in-up">
@@ -43,7 +53,7 @@ export default function Demandas() {
             <SheetTrigger asChild>
               <Button
                 variant="outline"
-                className="gap-2 border-primary/30 text-primary bg-primary/5 hover:bg-primary/10"
+                className="gap-2 border-primary/30 text-primary bg-primary/5 hover:bg-primary/10 min-h-[44px]"
               >
                 <Activity className="w-4 h-4" /> Automação & Logs
               </Button>
@@ -53,7 +63,7 @@ export default function Demandas() {
                 <SheetTitle>Console de Automação</SheetTitle>
               </SheetHeader>
               <div className="mt-6 space-y-6">
-                <Button onClick={triggerCron} className="w-full">
+                <Button onClick={triggerCron} className="w-full min-h-[44px]">
                   Forçar Auditoria Cron
                 </Button>
                 <div>
@@ -106,24 +116,67 @@ export default function Demandas() {
           </Sheet>
           <Input
             placeholder="Buscar bairro ou cliente..."
-            className="max-w-[200px] bg-background"
+            className="max-w-[200px] bg-background min-h-[44px]"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-          <Button variant="outline" size="icon">
+          <Button variant="outline" size="icon" className="min-h-[44px] min-w-[44px]">
             <Filter className="w-4 h-4" />
           </Button>
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {filtered.map((demand) => (
+      <div className="flex overflow-x-auto gap-4 lg:gap-6 border-b border-border/50 pb-px [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        <button
+          onClick={() => handleTabChange('all')}
+          className={cn(
+            'h-[48px] lg:h-[44px] px-1 flex items-center justify-center gap-2 font-semibold whitespace-nowrap min-w-[44px] transition-colors',
+            activeTab === 'all'
+              ? 'text-primary border-b-2 border-primary'
+              : 'text-muted-foreground hover:text-foreground border-b-2 border-transparent',
+          )}
+        >
+          📊 Todas ({countAll})
+        </button>
+        <button
+          onClick={() => handleTabChange('Venda')}
+          className={cn(
+            'h-[48px] lg:h-[44px] px-1 flex items-center justify-center gap-2 font-semibold whitespace-nowrap min-w-[44px] transition-colors',
+            activeTab === 'Venda'
+              ? 'text-[#FF4444] border-b-2 border-[#FF4444]'
+              : 'text-muted-foreground hover:text-foreground border-b-2 border-transparent',
+          )}
+        >
+          🏢 Venda ({countVenda})
+        </button>
+        <button
+          onClick={() => handleTabChange('Aluguel')}
+          className={cn(
+            'h-[48px] lg:h-[44px] px-1 flex items-center justify-center gap-2 font-semibold whitespace-nowrap min-w-[44px] transition-colors',
+            activeTab === 'Aluguel'
+              ? 'text-[#4444FF] border-b-2 border-[#4444FF]'
+              : 'text-muted-foreground hover:text-foreground border-b-2 border-transparent',
+          )}
+        >
+          🏠 Aluguel ({countAluguel})
+        </button>
+      </div>
+
+      <div className={cn('grid gap-4 grid-cols-1 lg:grid-cols-2', isPending && 'opacity-50')}>
+        {sorted.map((demand) => (
           <DemandCard key={demand.id} demand={demand} />
         ))}
-        {filtered.length === 0 && (
-          <p className="col-span-full text-center text-muted-foreground py-8">
-            Nenhuma demanda encontrada.
-          </p>
+        {sorted.length === 0 && (
+          <div className="col-span-full flex flex-col items-center justify-center py-16 text-center bg-muted/10 border border-dashed rounded-xl">
+            <div className="text-4xl mb-4">
+              {activeTab === 'Venda' ? '🏢' : activeTab === 'Aluguel' ? '🏠' : '📊'}
+            </div>
+            <p className="text-muted-foreground font-medium">
+              {activeTab === 'all'
+                ? 'Nenhuma demanda encontrada no momento.'
+                : `Nenhuma demanda de ${activeTab} no momento.`}
+            </p>
+          </div>
         )}
       </div>
     </div>

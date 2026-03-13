@@ -1,14 +1,5 @@
 import { useState } from 'react'
-import {
-  Clock,
-  ArrowUpCircle,
-  RefreshCw,
-  Trophy,
-  Users,
-  CheckCircle2,
-  XCircle,
-  Plus,
-} from 'lucide-react'
+import { ArrowUpCircle, RefreshCw, Users, CheckCircle2, XCircle, Plus } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -20,6 +11,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog'
+import { Trophy } from 'lucide-react'
 import { Demand, DemandStatus } from '@/types'
 import { cn } from '@/lib/utils'
 import useAppStore from '@/stores/useAppStore'
@@ -81,14 +73,15 @@ export function DemandCard({
 
   const propCount = demand.capturedProperties?.length || 0
 
-  const formatCurrency = (val?: number) =>
-    val
-      ? new Intl.NumberFormat('pt-BR', {
-          style: 'currency',
-          currency: 'BRL',
-          maximumFractionDigits: 0,
-        }).format(val)
-      : 'Não informado'
+  const formatPrice = (val?: number, type?: string) => {
+    if (!val) return 'Não informado'
+    const formatted = new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+      maximumFractionDigits: 0,
+    }).format(val)
+    return type === 'Aluguel' ? `${formatted}/mês` : formatted
+  }
 
   const statusColors: Record<DemandStatus, string> = {
     Pendente: 'bg-orange-100 text-orange-700 border-orange-200',
@@ -106,6 +99,11 @@ export function DemandCard({
   }
 
   const isPendente = demand.status === 'Pendente'
+
+  const hasFooterActions =
+    (showActions && demand.status === 'Pendente' && propCount === 0) ||
+    (canCapture && (propCount > 0 || demand.status !== 'Pendente')) ||
+    canManage
 
   return (
     <>
@@ -181,8 +179,19 @@ export function DemandCard({
           )}
         />
         <CardContent className="p-4 md:p-6 flex flex-col gap-4 flex-grow pl-[22px] md:pl-[30px]">
-          <div className="flex justify-between items-start gap-4">
-            <div className="flex-1 min-w-0">
+          <div className="flex justify-between items-start gap-4 mb-2">
+            <div className="flex flex-col gap-2 flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                {demand.type === 'Venda' ? (
+                  <Badge className="bg-[#FF4444] hover:bg-[#FF4444]/90 text-white font-bold gap-1.5 text-[12px] min-h-[28px] border-transparent shadow-sm w-fit">
+                    <span className="text-sm">🏢</span> VENDA
+                  </Badge>
+                ) : demand.type === 'Aluguel' ? (
+                  <Badge className="bg-[#4444FF] hover:bg-[#4444FF]/90 text-white font-bold gap-1.5 text-[12px] min-h-[28px] border-transparent shadow-sm w-fit">
+                    <span className="text-sm">🏠</span> ALUGUEL
+                  </Badge>
+                ) : null}
+              </div>
               <h3 className="font-semibold text-[18px] md:text-[20px] truncate flex items-center gap-2">
                 {isNewDemand && (
                   <span title="Nova Demanda" className="text-xl leading-none">
@@ -193,7 +202,7 @@ export function DemandCard({
                 {isHighPriority && !demand.isPrioritized && (
                   <span
                     title="Alta Prioridade (>5 interessados)"
-                    className="flex items-center text-purple-600"
+                    className="flex items-center text-purple-600 shrink-0"
                   >
                     <ArrowUpCircle className="w-5 h-5" />
                   </span>
@@ -202,7 +211,7 @@ export function DemandCard({
               {totalInterested > 1 && !demand.isPrioritized && (
                 <button
                   onClick={() => setShowSimilar(true)}
-                  className="flex items-center gap-2 text-[12px] md:text-[14px] font-medium text-purple-700 mt-2 cursor-pointer hover:underline min-h-[44px] py-1"
+                  className="flex items-center gap-2 text-[12px] md:text-[14px] font-medium text-purple-700 cursor-pointer hover:underline py-1 w-fit"
                   title="Ver clientes interessados"
                 >
                   <Users className="w-4 h-4" />
@@ -210,6 +219,7 @@ export function DemandCard({
                 </button>
               )}
             </div>
+
             <div className="flex flex-col items-end gap-2 shrink-0">
               {isPendente && slaBadgeText && (
                 <Badge
@@ -248,7 +258,7 @@ export function DemandCard({
                     variant="secondary"
                     className="bg-pink-100 text-pink-800 hover:bg-pink-200 border-pink-300 text-[12px] py-1 px-3 font-bold flex items-center gap-1.5 whitespace-nowrap cursor-pointer transition-colors shadow-sm min-h-[44px]"
                   >
-                    <span>🔴</span> PRIORIZADA - {demand.interestedClientsCount || 1} interessados
+                    <span>🔴</span> PRIORIZADA
                   </Badge>
                 </button>
               )}
@@ -309,19 +319,6 @@ export function DemandCard({
 
           <div className="mt-2 space-y-2 text-[14px] text-muted-foreground bg-muted/20 p-4 md:p-5 rounded-lg border border-border/50">
             <p className="flex items-start gap-3">
-              <span className="shrink-0 text-lg leading-none">👤</span>
-              <span className="truncate">
-                <span className="font-medium text-foreground">Cliente:</span> {demand.clientName}
-              </span>
-            </p>
-            <p className="flex items-start gap-3">
-              <span className="shrink-0 text-lg leading-none">👤</span>
-              <span className="truncate">
-                <span className="font-medium text-foreground">Solicitado por:</span>{' '}
-                {solicitor?.name || 'Desconhecido'}
-              </span>
-            </p>
-            <p className="flex items-start gap-3">
               <span className="shrink-0 text-lg leading-none">📍</span>
               <span className="truncate">
                 <span className="font-medium text-foreground">Localização:</span> {demand.location}
@@ -331,7 +328,8 @@ export function DemandCard({
               <span className="shrink-0 text-lg leading-none">💰</span>
               <span className="truncate">
                 <span className="font-medium text-foreground">Orçamento:</span>{' '}
-                {formatCurrency(demand.minBudget)} - {formatCurrency(demand.maxBudget)}
+                {formatPrice(demand.minBudget, demand.type)} -{' '}
+                {formatPrice(demand.maxBudget, demand.type)}
               </span>
             </p>
             <p className="flex items-start gap-3">
@@ -355,13 +353,22 @@ export function DemandCard({
             </p>
           </div>
 
-          <Button
-            className="w-full mt-4 bg-primary/5 hover:bg-primary/10 text-primary border-primary/20 shadow-none font-medium min-h-[44px] text-[14px]"
-            variant="outline"
-            onClick={() => setShowDetails(true)}
-          >
-            📖 Ver Detalhes Completos
-          </Button>
+          <div className="mt-4 flex flex-col sm:flex-row gap-3">
+            <Button
+              className="flex-1 bg-primary/5 hover:bg-primary/10 text-primary border-primary/20 shadow-none font-medium min-h-[44px] text-[14px]"
+              variant="outline"
+              onClick={() => setShowDetails(true)}
+            >
+              📖 Ver Detalhes
+            </Button>
+            <ContactSolicitorAction
+              demand={demand}
+              solicitor={solicitor}
+              buttonClassName="w-full min-h-[44px] text-[14px]"
+              buttonText="💬 Contatar"
+              className="flex-1"
+            />
+          </div>
 
           {propCount > 0 && (
             <div className="mt-4 bg-emerald-50 text-emerald-800 border border-emerald-200 text-[14px] font-semibold p-4 rounded-lg flex items-center justify-between shadow-sm">
@@ -395,65 +402,61 @@ export function DemandCard({
           )}
         </CardContent>
 
-        <div className="mt-auto flex flex-col border-t bg-muted/10">
-          <div className="p-4 md:p-6 flex flex-col gap-4 pl-[22px] md:pl-[30px]">
-            {showActions && demand.status === 'Pendente' && propCount === 0 && (
-              <div className="flex flex-col sm:flex-row gap-4">
-                <Button
-                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm min-h-[44px] text-[14px]"
-                  onClick={() => onAction?.(demand.id, 'encontrei')}
-                >
-                  <CheckCircle2 className="w-5 h-5 mr-2" />{' '}
-                  {demand.isRepescagem ? 'Assumir & Registar' : 'Encontrei'}
-                </Button>
-                <Button
-                  variant="outline"
-                  className="flex-1 text-destructive hover:bg-destructive/10 hover:text-destructive min-h-[44px] text-[14px]"
-                  onClick={() => onAction?.(demand.id, 'nao_encontrei')}
-                >
-                  <XCircle className="w-5 h-5 mr-2" /> Não Encontrei
-                </Button>
-              </div>
-            )}
-
-            {canCapture && (propCount > 0 || demand.status !== 'Pendente') && (
-              <Button
-                variant="outline"
-                className="w-full border-dashed border-emerald-500/50 text-emerald-700 hover:bg-emerald-50 bg-emerald-50/50 transition-colors min-h-[44px] text-[14px]"
-                onClick={() => onAction?.(demand.id, 'encontrei')}
-              >
-                <Plus className="w-5 h-5 mr-2" /> Adicionar Imóvel
-              </Button>
-            )}
-
-            {canManage && (
-              <div className="flex flex-col sm:flex-row gap-4">
-                {!demand.isPrioritized && (
+        {hasFooterActions && (
+          <div className="mt-auto flex flex-col border-t bg-muted/10">
+            <div className="p-4 md:p-6 flex flex-col gap-4 pl-[22px] md:pl-[30px]">
+              {showActions && demand.status === 'Pendente' && propCount === 0 && (
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <Button
+                    className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm min-h-[44px] text-[14px]"
+                    onClick={() => onAction?.(demand.id, 'encontrei')}
+                  >
+                    <CheckCircle2 className="w-5 h-5 mr-2" />{' '}
+                    {demand.isRepescagem ? 'Assumir & Registar' : 'Encontrei'}
+                  </Button>
                   <Button
                     variant="outline"
-                    className="flex-1 bg-pink-50 text-pink-700 hover:bg-pink-100 hover:text-pink-800 border-pink-200 shadow-sm min-h-[44px] text-[14px]"
-                    onClick={() => setShowPrioritize(true)}
+                    className="flex-1 text-destructive hover:bg-destructive/10 hover:text-destructive min-h-[44px] text-[14px]"
+                    onClick={() => onAction?.(demand.id, 'nao_encontrei')}
                   >
-                    🔴 PRIORIZAR
+                    <XCircle className="w-5 h-5 mr-2" /> Não Encontrei
                   </Button>
-                )}
+                </div>
+              )}
+
+              {canCapture && (propCount > 0 || demand.status !== 'Pendente') && (
                 <Button
                   variant="outline"
-                  className="flex-1 bg-gray-50 text-gray-700 hover:bg-gray-100 border-gray-200 shadow-sm min-h-[44px] text-[14px]"
-                  onClick={() => setShowLost(true)}
+                  className="w-full border-dashed border-emerald-500/50 text-emerald-700 hover:bg-emerald-50 bg-emerald-50/50 transition-colors min-h-[44px] text-[14px]"
+                  onClick={() => onAction?.(demand.id, 'encontrei')}
                 >
-                  ❌ PERDIDO
+                  <Plus className="w-5 h-5 mr-2" /> Adicionar Imóvel
                 </Button>
-              </div>
-            )}
+              )}
 
-            <ContactSolicitorAction
-              demand={demand}
-              solicitor={solicitor}
-              buttonClassName="w-full min-h-[44px]"
-            />
+              {canManage && (
+                <div className="flex flex-col sm:flex-row gap-4">
+                  {!demand.isPrioritized && (
+                    <Button
+                      variant="outline"
+                      className="flex-1 bg-pink-50 text-pink-700 hover:bg-pink-100 hover:text-pink-800 border-pink-200 shadow-sm min-h-[44px] text-[14px]"
+                      onClick={() => setShowPrioritize(true)}
+                    >
+                      🔴 PRIORIZAR
+                    </Button>
+                  )}
+                  <Button
+                    variant="outline"
+                    className="flex-1 bg-gray-50 text-gray-700 hover:bg-gray-100 border-gray-200 shadow-sm min-h-[44px] text-[14px]"
+                    onClick={() => setShowLost(true)}
+                  >
+                    ❌ PERDIDO
+                  </Button>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </Card>
 
       <Dialog open={showSimilar} onOpenChange={setShowSimilar}>
@@ -497,7 +500,7 @@ export function DemandCard({
                     {d.status}
                   </Badge>
                   <span className="text-[14px] font-bold text-muted-foreground">
-                    {formatCurrency(d.budget || d.maxBudget)}
+                    {formatPrice(d.budget || d.maxBudget, d.type)}
                   </span>
                 </div>
               </div>

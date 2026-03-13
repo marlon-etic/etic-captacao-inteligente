@@ -256,7 +256,14 @@ const initialDemands: Demand[] = [
       },
     ],
   },
-  createDem('d4', 'Fernanda Lima', 'Centro', 73, 'Até 90 dias ou +'),
+  {
+    ...createDem('d4', 'Fernanda Lima', 'Centro', 73, 'Até 90 dias ou +'),
+    type: 'Aluguel',
+    budget: 4500,
+    minBudget: 3000,
+    maxBudget: 5000,
+    description: 'Procuro apartamento para alugar com urgência próximo ao metrô.',
+  },
 ]
 
 const initialLooseProperties: CapturedProperty[] = [
