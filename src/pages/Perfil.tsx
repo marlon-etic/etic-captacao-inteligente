@@ -31,17 +31,17 @@ export default function Perfil() {
   const { currentUser, logout, updateUserPreferences } = useAppStore()
   const navigate = useNavigate()
 
+  const prefs = currentUser?.preferences || defaultPreferences
+  const [localPrefs, setLocalPrefs] = useState<UserPreferences['notifications']>(
+    prefs.notifications,
+  )
+
   if (!currentUser) return null
 
   const handleLogout = () => {
     logout()
     navigate('/')
   }
-
-  const prefs = currentUser.preferences || defaultPreferences
-  const [localPrefs, setLocalPrefs] = useState<UserPreferences['notifications']>(
-    prefs.notifications,
-  )
 
   const handleSavePrefs = () => {
     updateUserPreferences(localPrefs)
