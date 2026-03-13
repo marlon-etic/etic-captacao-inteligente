@@ -26,6 +26,7 @@ import { useTimeElapsed } from '@/hooks/useTimeElapsed'
 import { PrioritizeModal } from '@/components/PrioritizeModal'
 import { LostModal } from '@/components/LostModal'
 import { DemandDetailsModal } from '@/components/DemandDetailsModal'
+import { ContactSolicitorAction } from '@/components/ContactSolicitorAction'
 
 export function DemandCard({
   demand,
@@ -36,10 +37,12 @@ export function DemandCard({
   showActions?: boolean
   onAction?: (id: string, a: 'encontrei' | 'nao_encontrei') => void
 }) {
-  const { currentUser, prioritizeDemand, markDemandLost, getSimilarDemands } = useAppStore()
+  const { currentUser, prioritizeDemand, markDemandLost, getSimilarDemands, users } = useAppStore()
   const similarDemands = getSimilarDemands(demand.id)
   const totalInterested = similarDemands.length + 1 + (demand.interestedClientsCount || 0)
   const isHighPriority = totalInterested >= 5 || demand.isPrioritized
+
+  const solicitor = users.find((u) => u.id === demand.createdBy)
 
   const [showSimilar, setShowSimilar] = useState(false)
   const [showPrioritize, setShowPrioritize] = useState(false)
@@ -202,6 +205,13 @@ export function DemandCard({
               </span>
             </p>
             <p className="flex items-start gap-2">
+              <span className="shrink-0 text-base leading-none">👤</span>
+              <span className="truncate">
+                <span className="font-medium text-foreground">Solicitado por:</span>{' '}
+                {solicitor?.name || 'Desconhecido'}
+              </span>
+            </p>
+            <p className="flex items-start gap-2">
               <span className="shrink-0 text-base leading-none">📍</span>
               <span className="truncate">
                 <span className="font-medium text-foreground">Localização:</span> {demand.location}
@@ -331,6 +341,8 @@ export function DemandCard({
                 </Button>
               </div>
             )}
+
+            <ContactSolicitorAction demand={demand} solicitor={solicitor} />
           </div>
         </div>
       </Card>

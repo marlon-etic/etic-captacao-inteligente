@@ -57,6 +57,11 @@ interface AppState {
     method: 'whatsapp' | 'interno',
     message?: string,
   ) => void
+  logSolicitorContactAttempt: (
+    demandId: string,
+    method: 'whatsapp' | 'email' | 'interno',
+    message?: string,
+  ) => void
   getMatchesForProperty: (property: CapturedProperty) => { demand: Demand; score: number }[]
 }
 
@@ -1134,6 +1139,53 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     [allDemands, currentUser, users, notifications, createAction, broadcastState, enqueueWebhook],
   )
 
+  const logSolicitorContactAttempt = useCallback(
+    (demandId: string, method: 'whatsapp' | 'email' | 'interno', message?: string) => {
+      let demand = allDemands.find((d) => d.id === demandId)
+      if (!demand) return
+
+      setAllDemands((prev) => {
+        const next = prev.map((d) => {
+          if (d.id === demandId) {
+            return { ...d, lastContactedSolicitorAt: new Date().toISOString() }
+          }
+          return d
+        })
+        broadcastState(next, users, `Contato com solicitante registrado`)
+        return next
+      })
+
+      let nextNotifs = notifications
+      if (method === 'interno') {
+        const newNotif = {
+          id: Math.random().toString(36).substr(2, 9),
+          userId: demand.createdBy,
+          message: `Captador ${currentUser?.name} enviou uma dúvida sobre a demanda de ${demand.clientName}${message ? `: ${message}` : '.'}`,
+          read: false,
+          createdAt: new Date().toISOString(),
+        }
+        nextNotifs = [newNotif, ...notifications]
+        setNotifications(nextNotifs)
+      }
+
+      enqueueWebhook('contato_solicitante_registrado', demandId, {
+        sdr_corretor_id: demand.createdBy,
+        captador_id: currentUser?.id,
+        tipo_contato: method,
+        status: 'registrado',
+        mensagem: message,
+      })
+
+      if (method === 'interno') {
+        toast({
+          title: 'Mensagem Enviada',
+          description: `Sua mensagem foi enviada ao solicitante com sucesso.`,
+        })
+      }
+    },
+    [allDemands, currentUser, users, notifications, broadcastState, enqueueWebhook],
+  )
+
   const getSimilarDemands = useCallback(
     (id: string) => {
       const listToSearch =
@@ -1579,6 +1631,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         prioritizeDemand,
         markDemandLost,
         logContactAttempt,
+        logSolicitorContactAttempt,
         addPoints,
         getSimilarDemands,
         enqueueWebhook,

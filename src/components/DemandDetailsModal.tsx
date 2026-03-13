@@ -1,14 +1,4 @@
-import {
-  User,
-  MapPin,
-  Search,
-  Clock,
-  History,
-  Zap,
-  CheckCircle2,
-  XCircle,
-  MessageCircle,
-} from 'lucide-react'
+import { User, MapPin, Search, Clock, History, Zap, CheckCircle2, XCircle } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -17,7 +7,7 @@ import { Demand } from '@/types'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useTimeElapsed } from '@/hooks/useTimeElapsed'
 import useAppStore from '@/stores/useAppStore'
-import { toast } from '@/hooks/use-toast'
+import { ContactSolicitorAction } from '@/components/ContactSolicitorAction'
 
 interface Props {
   open: boolean
@@ -52,15 +42,7 @@ export function DemandDetailsModal({ open, onOpenChange, demand, onAction }: Pro
   const { text } = timeElapsed
   const similarCount = getSimilarDemands(demand.id).length
   const captadoresCount = users.filter((u) => u.role === 'captador').length
-
-  const handleContact = () => {
-    toast({
-      title: 'Contato Solicitado',
-      description: 'Sua intenção de contato foi registrada e o solicitante será notificado.',
-      className: 'bg-blue-600 text-white border-blue-600',
-    })
-    onOpenChange(false)
-  }
+  const solicitor = users.find((u) => u.id === demand.createdBy)
 
   const formatCurrency = (val?: number) =>
     val
@@ -86,6 +68,12 @@ export function DemandDetailsModal({ open, onOpenChange, demand, onAction }: Pro
           </div>
           <div>
             <span className="text-muted-foreground block text-xs uppercase tracking-wider mb-1">
+              Solicitado por
+            </span>
+            <span className="font-medium">{solicitor?.name || 'Desconhecido'}</span>
+          </div>
+          <div>
+            <span className="text-muted-foreground block text-xs uppercase tracking-wider mb-1">
               Email
             </span>
             <span className="font-medium">{demand.clientEmail || 'Não informado'}</span>
@@ -95,12 +83,6 @@ export function DemandDetailsModal({ open, onOpenChange, demand, onAction }: Pro
               Telefone
             </span>
             <span className="font-medium">Não informado</span>
-          </div>
-          <div>
-            <span className="text-muted-foreground block text-xs uppercase tracking-wider mb-1">
-              Tipo de Cliente
-            </span>
-            <span className="font-medium">Pessoa Física</span>
           </div>
         </div>
       </section>
@@ -231,29 +213,33 @@ export function DemandDetailsModal({ open, onOpenChange, demand, onAction }: Pro
         <h4 className="flex items-center gap-2 font-semibold text-red-700 border-b pb-2">
           <Zap className="w-5 h-5" /> SEÇÃO 6: Ações Rápidas
         </h4>
-        <div className="flex flex-col sm:flex-row gap-3">
-          <Button
-            className="flex-1 bg-emerald-600 hover:bg-emerald-700 h-12"
-            onClick={() => onAction && onAction('encontrei')}
-            disabled={!onAction}
-          >
-            <CheckCircle2 className="w-5 h-5 mr-2" /> ✅ Encontrei Imóvel
-          </Button>
-          <Button
-            className="flex-1 h-12"
-            variant="outline"
-            onClick={() => onAction && onAction('nao_encontrei')}
-            disabled={!onAction}
-          >
-            <XCircle className="w-5 h-5 mr-2 text-destructive" /> ❌ Não Encontrei
-          </Button>
-          <Button
-            className="flex-1 bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200 h-12"
-            variant="outline"
-            onClick={handleContact}
-          >
-            <MessageCircle className="w-5 h-5 mr-2" /> 💬 Contatar Solicitante
-          </Button>
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <Button
+              className="flex-1 bg-emerald-600 hover:bg-emerald-700 h-12"
+              onClick={() => {
+                if (onAction) onAction('encontrei')
+              }}
+              disabled={!onAction}
+            >
+              <CheckCircle2 className="w-5 h-5 mr-2" /> ✅ Encontrei Imóvel
+            </Button>
+            <Button
+              className="flex-1 h-12"
+              variant="outline"
+              onClick={() => {
+                if (onAction) onAction('nao_encontrei')
+              }}
+              disabled={!onAction}
+            >
+              <XCircle className="w-5 h-5 mr-2 text-destructive" /> ❌ Não Encontrei
+            </Button>
+          </div>
+          <ContactSolicitorAction
+            demand={demand}
+            solicitor={solicitor}
+            buttonClassName="h-12 w-full text-sm font-semibold"
+          />
         </div>
       </section>
     </div>

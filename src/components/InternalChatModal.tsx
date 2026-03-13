@@ -15,13 +15,20 @@ export function InternalChatModal({
   onClose,
   onSend,
   capturerName,
+  userName,
+  title,
+  description,
 }: {
   isOpen: boolean
   onClose: () => void
   onSend: (msg: string) => void
-  capturerName: string
+  capturerName?: string
+  userName?: string
+  title?: string
+  description?: string
 }) {
   const [msg, setMsg] = useState('')
+  const targetName = userName || capturerName || 'Usuário'
 
   return (
     <Dialog
@@ -32,9 +39,13 @@ export function InternalChatModal({
     >
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Mensagem Interna</DialogTitle>
+          <DialogTitle>{title || 'Mensagem Interna'}</DialogTitle>
           <DialogDescription>
-            Enviar mensagem para o captador <strong>{capturerName}</strong>
+            {description || (
+              <>
+                Enviar mensagem para <strong>{targetName}</strong>
+              </>
+            )}
           </DialogDescription>
         </DialogHeader>
         <div className="py-4">

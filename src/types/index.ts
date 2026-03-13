@@ -128,6 +128,7 @@ export interface Demand {
   interestedClientsCount?: number
   lostReason?: string
   lostObs?: string
+  lastContactedSolicitorAt?: string
 }
 
 export interface WebhookEvent {
