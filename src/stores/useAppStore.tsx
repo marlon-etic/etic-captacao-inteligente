@@ -775,6 +775,39 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(intervalId)
   }, [processWebhookCron])
 
+  const addPoints = useCallback(
+    (amount: number, userId?: string) => {
+      const id = userId || currentUser?.id
+      if (!id) return
+      setUsers((p) =>
+        p.map((u) =>
+          u.id === id
+            ? {
+                ...u,
+                points: u.points + amount,
+                dailyPoints: u.dailyPoints + amount,
+                weeklyPoints: u.weeklyPoints + amount,
+                monthlyPoints: u.monthlyPoints + amount,
+              }
+            : u,
+        ),
+      )
+      if (currentUser?.id === id)
+        setCurrentUser((p) =>
+          p
+            ? {
+                ...p,
+                points: p.points + amount,
+                dailyPoints: p.dailyPoints + amount,
+                weeklyPoints: p.weeklyPoints + amount,
+                monthlyPoints: p.monthlyPoints + amount,
+              }
+            : p,
+        )
+    },
+    [currentUser],
+  )
+
   const triggerCron = useCallback(() => {
     const now = Date.now()
     const actions: Array<{ type: string; demand: Demand; oldAssignedTo?: string }> = []
@@ -880,39 +913,6 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     }
     return true
   }
-
-  const addPoints = useCallback(
-    (amount: number, userId?: string) => {
-      const id = userId || currentUser?.id
-      if (!id) return
-      setUsers((p) =>
-        p.map((u) =>
-          u.id === id
-            ? {
-                ...u,
-                points: u.points + amount,
-                dailyPoints: u.dailyPoints + amount,
-                weeklyPoints: u.weeklyPoints + amount,
-                monthlyPoints: u.monthlyPoints + amount,
-              }
-            : u,
-        ),
-      )
-      if (currentUser?.id === id)
-        setCurrentUser((p) =>
-          p
-            ? {
-                ...p,
-                points: p.points + amount,
-                dailyPoints: p.dailyPoints + amount,
-                weeklyPoints: p.weeklyPoints + amount,
-                monthlyPoints: p.monthlyPoints + amount,
-              }
-            : p,
-        )
-    },
-    [currentUser],
-  )
 
   const createAction = useCallback(
     (type: PropertyActionType, desc: string, obs?: string): PropertyAction | null => {
