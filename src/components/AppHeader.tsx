@@ -22,7 +22,7 @@ export function AppHeader() {
     if (currentUser.role === 'corretor') return 'Demandas de Venda'
     if (currentUser.role === 'sdr') return 'Demandas de Locação'
     if (currentUser.role === 'captador') return 'Demandas de Captação'
-    if (currentUser.role === 'gestor' || currentUser.role === 'admin') return 'Painel Gerencial'
+    if (currentUser.role === 'gestor' || currentUser.role === 'admin') return 'Dashboard Gerencial'
     return 'Demandas'
   }
 
@@ -33,13 +33,13 @@ export function AppHeader() {
           <Button
             variant="ghost"
             size="icon"
-            className="w-[24px] h-[24px] p-0"
+            className="w-[44px] h-[44px] p-0"
             onClick={() => setOpenMobile(true)}
           >
             <Menu className="w-[24px] h-[24px]" />
           </Button>
         ) : (
-          <SidebarTrigger className="w-[24px] h-[24px] p-0" />
+          <SidebarTrigger className="w-[44px] h-[44px] p-0" />
         )}
         <h1 className="text-[16px] font-bold leading-[24px]">{getTitle()}</h1>
       </div>
