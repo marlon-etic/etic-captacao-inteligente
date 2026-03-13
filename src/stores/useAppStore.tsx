@@ -20,6 +20,7 @@ import {
   AppNotification,
 } from '@/types'
 import { toast } from '@/hooks/use-toast'
+import { ToastAction } from '@/components/ui/toast'
 
 interface AppState {
   currentUser: User | null
@@ -117,6 +118,7 @@ const mockUsers: User[] = [
     status: 'ativo',
     phone: '5511977777777',
     tipo_demanda: 'vendas',
+    tipos_demanda_solicitados: ['locacao', 'vendas'],
     points: 950,
     dailyPoints: 50,
     weeklyPoints: 300,
@@ -276,6 +278,7 @@ const initialLooseProperties: CapturedProperty[] = [
     photoUrl: 'https://img.usecurling.com/p/400/300?q=house&seed=lp1',
     capturedAt: new Date(Date.now() - 24 * 3600000).toISOString(),
     tipo_vinculacao: 'solto',
+    status_reivindicacao: 'disponivel',
     captador_id: '1',
     captador_name: 'Ana Silva',
     propertyType: 'Venda',
@@ -356,6 +359,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const webhookQueueRef = useRef(webhookQueue)
   const loosePropertiesRef = useRef(looseProperties)
   const isProcessingRef = useRef(false)
+  const prevLooseRef = useRef<CapturedProperty[]>([])
 
   useEffect(() => {
     webhookQueueRef.current = webhookQueue
@@ -364,6 +368,52 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     loosePropertiesRef.current = looseProperties
   }, [looseProperties])
+
+  // Real-time toast logic for new available loose properties
+  useEffect(() => {
+    if (!currentUser) return
+
+    const newProps = looseProperties.filter(
+      (p) => !prevLooseRef.current.find((old) => old.code === p.code),
+    )
+
+    newProps.forEach((np) => {
+      if (np.status_reivindicacao === 'disponivel') {
+        let isEligible = false
+        if (np.propertyType === 'Aluguel') {
+          isEligible =
+            currentUser.role === 'sdr' ||
+            (currentUser.role === 'corretor' &&
+              currentUser.tipos_demanda_solicitados?.includes('locacao'))
+        } else if (np.propertyType === 'Venda') {
+          isEligible = currentUser.role === 'corretor'
+        }
+
+        if (isEligible && np.captador_id !== currentUser.id) {
+          toast({
+            title:
+              np.propertyType === 'Aluguel'
+                ? '🏠 NOVO IMÓVEL DE ALUGUEL!'
+                : '🏢 NOVO IMÓVEL DE VENDA!',
+            description: `${np.neighborhood} | R$ ${np.value} | ${np.bedrooms || 0} dorms.`,
+            action: (
+              <ToastAction
+                altText="Ver Imóvel"
+                onClick={() => {
+                  // Direct the user visually if they are not already there
+                }}
+              >
+                Ver
+              </ToastAction>
+            ),
+            duration: 8000,
+          })
+        }
+      }
+    })
+
+    prevLooseRef.current = looseProperties
+  }, [looseProperties, currentUser])
 
   const addLog = useCallback(
     (msg: string) =>
@@ -1574,11 +1624,44 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
             capturedAt: new Date().toISOString(),
             history: hAction ? [hAction] : [],
             tipo_vinculacao: 'solto',
+            status_reivindicacao: 'disponivel',
             captador_id: currentUser?.id,
             captador_name: currentUser?.name,
             propertyType: payload.propertyType,
             bedrooms: payload.bedrooms,
           }
+
+          let hasEligible = false
+          const eligibleUsers = users.filter((u) => {
+            if (u.status === 'inativo') return false
+            if (payload.propertyType === 'Aluguel') {
+              if (
+                u.role === 'sdr' ||
+                (u.role === 'corretor' && u.tipos_demanda_solicitados?.includes('locacao'))
+              ) {
+                hasEligible = true
+                return true
+              }
+            } else if (payload.propertyType === 'Venda') {
+              if (u.role === 'corretor') {
+                hasEligible = true
+                return true
+              }
+            }
+            return false
+          })
+
+          if (!hasEligible) {
+            addLog(`Nenhum usuário disponível para este tipo de imóvel (${payload.propertyType})`)
+          }
+
+          const newNotifs = eligibleUsers.map((u) => ({
+            id: Math.random().toString(36).substr(2, 9),
+            userId: u.id,
+            message: `${payload.propertyType === 'Aluguel' ? '🏠' : '🏢'} NOVO IMÓVEL DISPONÍVEL! ${payload.propertyType} em ${payload.neighborhood}, R$ ${payload.value}, ${payload.bedrooms || 0} dorms.`,
+            read: false,
+            createdAt: new Date().toISOString(),
+          }))
 
           setLooseProperties((prev) => {
             const nextLoose = [newProp, ...prev]
@@ -1603,6 +1686,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
                   : prevU,
               )
             }
+
+            setNotifications((prevN) => [...newNotifs, ...prevN])
 
             toast({
               title: 'Imóvel Disponível Registrado! 🔓',
@@ -1639,13 +1724,23 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
             const propIndex = loosePropertiesRef.current.findIndex((p) => p.code === code)
             if (propIndex === -1) {
-              message = 'Imóvel não encontrado ou já reivindicado'
+              message = 'Imóvel não encontrado'
               return prevDemands
             }
 
             const prop = loosePropertiesRef.current[propIndex]
 
-            if (prop.propertyType && prop.propertyType !== demand.type) {
+            if (prop.status_reivindicacao && prop.status_reivindicacao !== 'disponivel') {
+              message = 'Este imóvel já foi reivindicado'
+              return prevDemands
+            }
+
+            if (currentUser?.role === 'captador' && currentUser.id !== prop.captador_id) {
+              message = 'Você não tem permissão para reivindicar este imóvel'
+              return prevDemands
+            }
+
+            if (prop.propertyType && demand.type && prop.propertyType !== demand.type) {
               message = 'Tipo de imóvel não corresponde ao tipo de demanda'
               return prevDemands
             }
@@ -1658,6 +1753,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
             const newProp: CapturedProperty = {
               ...prop,
               tipo_vinculacao: 'vinculado',
+              status_reivindicacao: 'reivindicado',
+              usuario_reivindicou_id: currentUser?.id,
+              data_reivindicacao: new Date().toISOString(),
               demandas_atendidas_ids: [...(prop.demandas_atendidas_ids || []), demandId],
               numero_imovel_para_demanda: (demand.capturedProperties?.length || 0) + 1,
               history: action ? [action, ...(prop.history || [])] : prop.history,
@@ -1674,21 +1772,36 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
             success = true
 
-            const nextLoose = loosePropertiesRef.current.filter((p) => p.code !== code)
+            const nextLoose = loosePropertiesRef.current.map((p) => (p.code === code ? newProp : p))
             setLooseProperties(nextLoose)
 
-            let nextNotifs = notifications
+            let nextNotifs = [...notifications]
+
             if (prop.captador_id) {
               const newNotif = {
                 id: Math.random().toString(36).substr(2, 9),
                 userId: prop.captador_id,
-                message: `Seu imóvel solto ${prop.code} foi vinculado à demanda de ${demand.clientName} por ${currentUser?.name}.`,
+                message: `Seu imóvel solto ${prop.code} foi reivindicado por ${currentUser?.name} para cliente ${demand.clientName}.`,
                 read: false,
                 createdAt: new Date().toISOString(),
               }
-              nextNotifs = [newNotif, ...notifications]
-              setNotifications(nextNotifs)
+              nextNotifs = [newNotif, ...nextNotifs]
             }
+
+            const othersNotifs = users
+              .filter(
+                (u) => u.id !== currentUser?.id && u.role !== 'captador' && u.role !== 'admin',
+              )
+              .map((u) => ({
+                id: Math.random().toString(36).substr(2, 9),
+                userId: u.id,
+                message: `Imóvel ${code} foi reivindicado por outro usuário.`,
+                read: false,
+                createdAt: new Date().toISOString(),
+              }))
+
+            nextNotifs = [...othersNotifs, ...nextNotifs]
+            setNotifications(nextNotifs)
 
             enqueueWebhook('imovel_reivindicado', demandId, {
               mensagem: `Seu imóvel foi vinculado a ${demand.clientName}`,

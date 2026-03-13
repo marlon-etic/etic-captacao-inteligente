@@ -7,9 +7,11 @@ import { Button } from '@/components/ui/button'
 export function LoosePropertyCard({
   property,
   onClaim,
+  onIgnore,
 }: {
   property: CapturedProperty
   onClaim: (p: CapturedProperty) => void
+  onIgnore?: (code: string) => void
 }) {
   return (
     <Card className="overflow-hidden flex flex-col h-full border-2 border-blue-200 hover:shadow-md relative transition-all bg-card">
@@ -42,7 +44,7 @@ export function LoosePropertyCard({
       <CardContent className="p-4 flex-grow flex flex-col gap-2">
         <div className="flex justify-between items-start gap-2">
           <h4 className="font-semibold text-lg line-clamp-1 flex-1 text-blue-900">
-            Oportunidade Solta
+            {property.propertyType === 'Aluguel' ? '🏠 Locação' : '🏢 Venda'}
           </h4>
           <span className="font-bold text-primary whitespace-nowrap">
             {new Intl.NumberFormat('pt-BR', {
@@ -59,6 +61,14 @@ export function LoosePropertyCard({
             {property.neighborhood}
           </span>
         </p>
+
+        <div className="flex gap-3 text-xs text-muted-foreground mt-1">
+          {property.bedrooms !== undefined && (
+            <span className="flex items-center gap-1">
+              <Bed className="w-3.5 h-3.5" /> {property.bedrooms}
+            </span>
+          )}
+        </div>
 
         <div className="mt-3 flex flex-col gap-1.5 text-xs text-muted-foreground bg-blue-50/50 p-2 rounded-md border border-blue-100">
           <p className="flex items-center gap-1.5">
@@ -80,11 +90,21 @@ export function LoosePropertyCard({
       <div className="p-4 pt-0 mt-auto flex flex-col gap-2">
         <Button
           size="sm"
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white shadow-sm font-semibold"
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white shadow-sm font-semibold h-[44px]"
           onClick={() => onClaim(property)}
         >
-          <Hand className="w-4 h-4 mr-2" /> Usar para meu cliente
+          ✅ Usar para meu cliente
         </Button>
+        {onIgnore && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="w-full h-[44px]"
+            onClick={() => onIgnore(property.code)}
+          >
+            ❌ Não me interessa
+          </Button>
+        )}
       </div>
     </Card>
   )

@@ -25,6 +25,7 @@ export interface User {
   role: Role
   status?: 'ativo' | 'inativo'
   tipo_demanda?: 'locacao' | 'vendas'
+  tipos_demanda_solicitados?: ('locacao' | 'vendas' | 'ambos')[]
   phone?: string
   points: number
   dailyPoints: number
@@ -94,6 +95,9 @@ export interface CapturedProperty {
   numero_imovel_para_demanda?: number
   demandas_atendidas_ids?: string[]
   tipo_vinculacao?: 'vinculado' | 'solto'
+  status_reivindicacao?: 'disponivel' | 'reivindicado' | 'vinculado'
+  usuario_reivindicou_id?: string
+  data_reivindicacao?: string
   captador_id?: string
   captador_name?: string
   propertyType?: 'Venda' | 'Aluguel'

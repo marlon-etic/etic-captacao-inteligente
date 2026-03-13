@@ -2,10 +2,11 @@ import { Search } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { DemandCard } from '@/components/DemandCard'
 import { CapturedPropertiesView } from '@/components/CapturedPropertiesView'
+import { LoosePropertiesView } from '@/components/LoosePropertiesView'
 import useAppStore from '@/stores/useAppStore'
 
 export function CorretorDashboard() {
-  const { demands, currentUser } = useAppStore()
+  const { demands, currentUser, looseProperties } = useAppStore()
 
   const myDemands = demands.filter((d) => d.createdBy === currentUser?.id && d.type === 'Venda')
   const activeCount = myDemands.filter(
@@ -20,6 +21,14 @@ export function CorretorDashboard() {
     ['Negócio', 'Perdida', 'Impossível', 'Arquivado'].includes(d.status),
   )
 
+  const looseCount = looseProperties.filter((p) => {
+    if (p.status_reivindicacao && p.status_reivindicacao !== 'disponivel') return false
+    if (p.propertyType === 'Venda') return true
+    if (p.propertyType === 'Aluguel' && currentUser?.tipos_demanda_solicitados?.includes('locacao'))
+      return true
+    return false
+  }).length
+
   return (
     <div className="px-[16px] pb-[72px] pt-[24px] max-w-7xl mx-auto flex flex-col gap-[24px]">
       <Tabs defaultValue="demandas" className="w-full">
@@ -32,6 +41,17 @@ export function CorretorDashboard() {
             {activeCount > 0 && (
               <span className="ml-[8px] inline-flex items-center justify-center w-[20px] h-[20px] bg-[#FF4444] text-white rounded-full text-[10px] font-bold">
                 {activeCount}
+              </span>
+            )}
+          </TabsTrigger>
+          <TabsTrigger
+            value="disponiveis"
+            className="relative h-[48px] px-[16px] text-[14px] data-[state=active]:border-b-2 data-[state=active]:border-[#FF4444] data-[state=active]:text-[#FF4444] data-[state=active]:shadow-none rounded-none bg-transparent whitespace-nowrap transition-colors"
+          >
+            Disponíveis
+            {looseCount > 0 && (
+              <span className="ml-[8px] inline-flex items-center justify-center w-[20px] h-[20px] bg-[#FF4444] text-white rounded-full text-[10px] font-bold">
+                {looseCount}
               </span>
             )}
           </TabsTrigger>
@@ -64,6 +84,10 @@ export function CorretorDashboard() {
               ))}
             </div>
           )}
+        </TabsContent>
+
+        <TabsContent value="disponiveis" className="mt-[24px]">
+          <LoosePropertiesView />
         </TabsContent>
 
         <TabsContent value="captados" className="mt-[24px]">

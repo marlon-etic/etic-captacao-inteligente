@@ -26,6 +26,16 @@ CREATE TABLE captadores (
     CONSTRAINT "Este e-mail já foi registrado" UNIQUE (email)
 );
 
+-- Table: usuarios_perfil_tipo
+CREATE TABLE usuarios_perfil_tipo (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    usuario_id UUID REFERENCES captadores(id) ON DELETE CASCADE,
+    tipo_trabalho VARCHAR(50) CHECK (tipo_trabalho IN ('sdr', 'corretor')),
+    tipos_demanda_solicitados TEXT[],
+    ativo BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Table: auth_audit_logs
 CREATE TABLE auth_audit_logs (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -97,6 +107,11 @@ CREATE TABLE imoveis_captados (
     proposta_feita TIMESTAMP WITH TIME ZONE,
     valor_proposta DECIMAL(12,2),
     status_proposta VARCHAR(50),
+    tipo_vinculacao VARCHAR(20) DEFAULT 'vinculado' CHECK (tipo_vinculacao IN ('vinculado', 'solto')),
+    tipo_imovel VARCHAR(20) CHECK (tipo_imovel IN ('locacao', 'vendas')),
+    status_reivindicacao VARCHAR(20) DEFAULT 'disponivel' CHECK (status_reivindicacao IN ('disponivel', 'reivindicado', 'vinculado')),
+    usuario_reivindicou_id UUID REFERENCES captadores(id) ON DELETE SET NULL,
+    data_reivindicacao TIMESTAMP WITH TIME ZONE,
     data_criacao TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "Valor deve ser positivo" CHECK (valor > 0),
@@ -239,6 +254,7 @@ CREATE INDEX idx_badges_captador_id ON badges_obtidos(captador_id);
 
 -- Enable RLS on all tables
 ALTER TABLE captadores ENABLE ROW LEVEL SECURITY;
+ALTER TABLE usuarios_perfil_tipo ENABLE ROW LEVEL SECURITY;
 ALTER TABLE auth_audit_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE demandas_locacao ENABLE ROW LEVEL SECURITY;
 ALTER TABLE demandas_vendas ENABLE ROW LEVEL SECURITY;
@@ -251,6 +267,9 @@ ALTER TABLE webhook_queue ENABLE ROW LEVEL SECURITY;
 -- Policies: Captadores
 CREATE POLICY "Users can view all captadores" ON captadores FOR SELECT USING (true);
 CREATE POLICY "Users can update own captador profile" ON captadores FOR UPDATE USING (auth.uid() = id);
+
+-- Policies: Usuarios Perfil Tipo
+CREATE POLICY "Anyone can view usuarios_perfil_tipo" ON usuarios_perfil_tipo FOR SELECT USING (true);
 
 -- Policies: Auth Audit Logs
 CREATE POLICY "Gestores and Admins can view audit logs" ON auth_audit_logs FOR SELECT USING (
