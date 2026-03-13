@@ -18,6 +18,14 @@ export function AppHeader() {
 
   if (!currentUser) return null
 
+  const getTitle = () => {
+    if (currentUser.role === 'corretor') return 'Demandas de Venda'
+    if (currentUser.role === 'sdr') return 'Demandas de Locação'
+    if (currentUser.role === 'captador') return 'Demandas de Captação'
+    if (currentUser.role === 'gestor' || currentUser.role === 'admin') return 'Painel Gerencial'
+    return 'Demandas'
+  }
+
   return (
     <header className="h-[56px] border-b bg-background flex items-center justify-between px-[12px] py-[8px] sticky top-0 z-40">
       <div className="flex items-center gap-[12px]">
@@ -33,7 +41,7 @@ export function AppHeader() {
         ) : (
           <SidebarTrigger className="w-[24px] h-[24px] p-0" />
         )}
-        <h1 className="text-[16px] font-bold leading-[24px]">Demandas de Locação</h1>
+        <h1 className="text-[16px] font-bold leading-[24px]">{getTitle()}</h1>
       </div>
 
       <div className="flex items-center gap-4">

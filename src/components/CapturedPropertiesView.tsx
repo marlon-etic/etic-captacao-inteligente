@@ -12,7 +12,15 @@ import { CapturedPropertyCard } from './CapturedPropertyCard'
 import { CapturedPropertyModals } from './CapturedPropertyModals'
 import { Demand, CapturedProperty, User } from '@/types'
 
-export function CapturedPropertiesView() {
+interface Props {
+  filterType?: 'Venda' | 'Aluguel'
+  emptyStateText?: string
+}
+
+export function CapturedPropertiesView({
+  filterType,
+  emptyStateText = 'Nenhuma demanda no momento',
+}: Props) {
   const {
     demands,
     users,
@@ -32,6 +40,7 @@ export function CapturedPropertiesView() {
 
   const allCaptured = useMemo(() => {
     return demands.flatMap((d) => {
+      if (filterType && d.type !== filterType) return []
       if (!d.capturedProperties || d.capturedProperties.length === 0) return []
       if (currentUser?.role === 'admin' || currentUser?.role === 'gestor') {
         return d.capturedProperties.map((p) => ({ demand: d, property: p }))
@@ -49,7 +58,7 @@ export function CapturedPropertiesView() {
       }
       return []
     })
-  }, [demands, currentUser])
+  }, [demands, currentUser, filterType])
 
   const uniqueCapturers = useMemo(() => {
     const ids = new Set(allCaptured.map((item) => item.property.captador_id).filter(Boolean))
@@ -128,9 +137,7 @@ export function CapturedPropertiesView() {
       {filteredAndSorted.length === 0 ? (
         <div className="text-center py-[48px] bg-background border rounded-[12px] border-dashed">
           <Search className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
-          <p className="text-[14px] text-muted-foreground font-medium">
-            Nenhuma demanda no momento
-          </p>
+          <p className="text-[14px] text-muted-foreground font-medium">{emptyStateText}</p>
         </div>
       ) : (
         <div className="grid gap-[12px] grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
