@@ -19,6 +19,7 @@ import { DemandCard } from '@/components/DemandCard'
 import { DemandActionModal } from '@/components/DemandActionModal'
 import { IndependentCaptureModal } from '@/components/IndependentCaptureModal'
 import { GamificationWidget } from '@/components/dashboard/GamificationWidget'
+import { GroupedDemandCard } from '@/components/GroupedDemandCard'
 import {
   Select,
   SelectContent,
@@ -33,6 +34,7 @@ import { useToast } from '@/hooks/use-toast'
 import { Demand } from '@/types'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
+import { useDemandGrouping } from '@/hooks/useDemandGrouping'
 
 const QUICK_FILTERS = [
   { id: 'all', label: 'Todos', icon: '📊' },
@@ -76,6 +78,7 @@ export function CaptadorDashboard() {
   })
   const [page, setPage] = useState(1)
   const ITEMS_PER_PAGE = 20
+  const [viewMode, setViewMode] = useState<'all' | 'new' | 'grouped'>('all')
 
   const handleQuickFilterClick = (id: string) => {
     try {
@@ -122,50 +125,29 @@ export function CaptadorDashboard() {
     return { ...c, vinculadosCount, soltosCount }
   }, [demands, looseProperties, currentUser])
 
-  const sortedDemands = useMemo(() => {
-    let filtered = demands
+  const {
+    newDemands,
+    groupedDemands,
+    oldDemands,
+    error: groupingError,
+  } = useDemandGrouping({
+    demands,
+    filters,
+    quickFilter,
+  })
 
-    if (quickFilter === 'awaiting') filtered = filtered.filter((d) => d.status === 'Pendente')
-    else if (quickFilter === 'visits') filtered = filtered.filter((d) => d.status === 'Visita')
-    else if (quickFilter === 'deals') filtered = filtered.filter((d) => d.status === 'Negócio')
+  const allRenderItems = useMemo(() => {
+    let items: any[] = []
+    if (viewMode === 'all' || viewMode === 'new')
+      items.push(...newDemands.map((d) => ({ type: 'new', item: d })))
+    if (viewMode === 'all' || viewMode === 'grouped')
+      items.push(...groupedDemands.map((g) => ({ type: 'group', item: g })))
+    if (viewMode === 'all') items.push(...oldDemands.map((d) => ({ type: 'old', item: d })))
+    return items
+  }, [newDemands, groupedDemands, oldDemands, viewMode])
 
-    return filtered
-      .filter((d) => filters.type === 'all' || d.type === filters.type)
-      .filter((d) => filters.status === 'all' || d.status === filters.status)
-      .filter((d) => filters.timeframe === 'all' || d.timeframe === filters.timeframe)
-      .sort((a, b) => {
-        if (a.isPrioritized && !b.isPrioritized) return -1
-        if (!a.isPrioritized && b.isPrioritized) return 1
-
-        if (a.isPrioritized && b.isPrioritized) {
-          const aCount = a.interestedClientsCount || 1
-          const bCount = b.interestedClientsCount || 1
-          if (aCount !== bCount) return bCount - aCount
-        }
-
-        if (a.status === 'Pendente' && b.status !== 'Pendente') return -1
-        if (a.status !== 'Pendente' && b.status === 'Pendente') return 1
-
-        if (filters.sort === 'urgency') {
-          const u: any = {
-            Urgente: 5,
-            'Até 15 dias': 4,
-            'Até 30 dias': 3,
-            'Até 60 dias': 2,
-            'Até 90 dias ou +': 1,
-          }
-          return (u[b.timeframe] || 0) - (u[a.timeframe] || 0)
-        }
-        if (filters.sort === 'time')
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        if (filters.sort === 'similar')
-          return (b.similarProfilesCount || 0) - (a.similarProfilesCount || 0)
-        return 0
-      })
-  }, [demands, filters, quickFilter])
-
-  const paginated = sortedDemands.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE)
-  const totalPages = Math.ceil(sortedDemands.length / ITEMS_PER_PAGE)
+  const paginatedItems = allRenderItems.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE)
+  const totalPages = Math.ceil(allRenderItems.length / ITEMS_PER_PAGE)
 
   const handleAction = (payload: any) => {
     if (!modal.demand || !modal.type) return
@@ -273,6 +255,56 @@ export function CaptadorDashboard() {
       </div>
 
       <div className="space-y-4">
+        <div className="bg-muted/30 border border-border rounded-lg p-4 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm mb-2">
+          <div className="text-sm font-semibold flex items-center gap-2 flex-wrap">
+            <span className="whitespace-nowrap">📊 Demandas:</span>
+            <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-200">
+              {newDemands.length} novas
+            </Badge>
+            <Badge variant="secondary" className="bg-red-100 text-red-800 border-red-200">
+              {groupedDemands.length} agrupadas
+            </Badge>
+            <Badge variant="secondary" className="bg-gray-100 text-gray-800 border-gray-200">
+              {oldDemands.length} antigas
+            </Badge>
+          </div>
+          <div className="flex gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0 scrollbar-hide">
+            <Button
+              variant={viewMode === 'new' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => {
+                setViewMode('new')
+                setPage(1)
+              }}
+              className="shrink-0"
+            >
+              Mostrar apenas novas
+            </Button>
+            <Button
+              variant={viewMode === 'grouped' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => {
+                setViewMode('grouped')
+                setPage(1)
+              }}
+              className="shrink-0"
+            >
+              Mostrar apenas agrupadas
+            </Button>
+            <Button
+              variant={viewMode === 'all' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => {
+                setViewMode('all')
+                setPage(1)
+              }}
+              className="shrink-0"
+            >
+              Mostrar tudo
+            </Button>
+          </div>
+        </div>
+
         <div className="flex flex-col sm:flex-row gap-3 items-center justify-between bg-muted/50 p-3 rounded-lg border border-border/50">
           <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
             <Filter className="w-4 h-4 text-muted-foreground hidden sm:block" />
@@ -338,12 +370,16 @@ export function CaptadorDashboard() {
           </div>
         </div>
 
-        {sortedDemands.length === 0 ? (
+        {groupingError ? (
+          <div className="text-center p-12 bg-destructive/10 border rounded-xl border-dashed border-destructive">
+            <h3 className="text-lg font-semibold text-destructive">Erro ao agrupar demandas</h3>
+          </div>
+        ) : allRenderItems.length === 0 ? (
           <div className="text-center p-12 bg-background border rounded-xl border-dashed flex flex-col items-center">
             <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
               <PackageSearch className="w-8 h-8 text-muted-foreground/50" />
             </div>
-            <h3 className="text-lg font-semibold mb-1">Nenhum imóvel nesta categoria</h3>
+            <h3 className="text-lg font-semibold mb-1">Nenhuma demanda no momento</h3>
             <p className="text-muted-foreground">Nenhuma demanda no momento. Volte mais tarde!</p>
             {(filters.type !== 'all' ||
               filters.status !== 'all' ||
@@ -364,14 +400,33 @@ export function CaptadorDashboard() {
         ) : (
           <>
             <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {paginated.map((d) => (
-                <DemandCard
-                  key={d.id}
-                  demand={d}
-                  showActions={d.status === 'Pendente' || d.status === 'Em Captação'}
-                  onAction={(id, type) => setModal({ isOpen: true, demand: d, type })}
-                />
-              ))}
+              {paginatedItems.map((entry, idx) => {
+                if (entry.type === 'group') {
+                  return (
+                    <GroupedDemandCard
+                      key={`group-${entry.item.id}`}
+                      group={entry.item}
+                      onAction={(id, type) =>
+                        setModal({
+                          isOpen: true,
+                          demand: demands.find((d) => d.id === id) || null,
+                          type,
+                        })
+                      }
+                    />
+                  )
+                }
+                const d = entry.item
+                return (
+                  <DemandCard
+                    key={d.id}
+                    demand={d}
+                    isNewDemand={entry.type === 'new'}
+                    showActions={d.status === 'Pendente' || d.status === 'Em Captação'}
+                    onAction={(id, type) => setModal({ isOpen: true, demand: d, type })}
+                  />
+                )
+              })}
             </div>
             {totalPages > 1 && (
               <div className="pt-4 flex justify-center">

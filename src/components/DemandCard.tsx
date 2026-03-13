@@ -32,10 +32,12 @@ export function DemandCard({
   demand,
   showActions = false,
   onAction,
+  isNewDemand = false,
 }: {
   demand: Demand
   showActions?: boolean
   onAction?: (id: string, a: 'encontrei' | 'nao_encontrei') => void
+  isNewDemand?: boolean
 }) {
   const { currentUser, prioritizeDemand, markDemandLost, getSimilarDemands, users } = useAppStore()
   const similarDemands = getSimilarDemands(demand.id)
@@ -99,10 +101,17 @@ export function DemandCard({
       <Card
         className={cn(
           'w-full transition-all hover:shadow-md flex flex-col h-full relative overflow-hidden border-2',
-          urgencyLevel === 'green' && 'border-emerald-200 shadow-sm shadow-emerald-100/50',
-          urgencyLevel === 'yellow' && 'border-yellow-300 shadow-sm shadow-yellow-100/50',
-          urgencyLevel === 'orange' && 'border-orange-300 shadow-sm shadow-orange-100/50',
-          urgencyLevel === 'red' && 'border-red-400 shadow-sm shadow-red-200/50',
+          isNewDemand && 'bg-green-50/50 border-green-300 shadow-sm shadow-green-100',
+          !isNewDemand &&
+            urgencyLevel === 'green' &&
+            'border-emerald-200 shadow-sm shadow-emerald-100/50',
+          !isNewDemand &&
+            urgencyLevel === 'yellow' &&
+            'border-yellow-300 shadow-sm shadow-yellow-100/50',
+          !isNewDemand &&
+            urgencyLevel === 'orange' &&
+            'border-orange-300 shadow-sm shadow-orange-100/50',
+          !isNewDemand && urgencyLevel === 'red' && 'border-red-400 shadow-sm shadow-red-200/50',
           isHighPriority && 'ring-2 ring-purple-300 ring-offset-1',
           demand.isRepescagem && 'border-amber-400 shadow-amber-200 ring-1 ring-amber-400/50',
           demand.isPrioritized &&
@@ -119,19 +128,26 @@ export function DemandCard({
                 ? 'bg-pink-500'
                 : demand.isRepescagem
                   ? 'bg-amber-500 animate-pulse'
-                  : urgencyLevel === 'green'
-                    ? 'bg-emerald-500'
-                    : urgencyLevel === 'yellow'
-                      ? 'bg-yellow-400'
-                      : urgencyLevel === 'orange'
-                        ? 'bg-orange-500'
-                        : 'bg-red-500',
+                  : isNewDemand
+                    ? 'bg-green-500'
+                    : urgencyLevel === 'green'
+                      ? 'bg-emerald-500'
+                      : urgencyLevel === 'yellow'
+                        ? 'bg-yellow-400'
+                        : urgencyLevel === 'orange'
+                          ? 'bg-orange-500'
+                          : 'bg-red-500',
           )}
         />
         <CardContent className="p-4 flex flex-col gap-3 flex-grow pl-5">
           <div className="flex justify-between items-start gap-2">
             <div className="flex-1 min-w-0">
               <h3 className="font-semibold text-lg truncate flex items-center gap-2">
+                {isNewDemand && (
+                  <span title="Nova Demanda" className="text-xl leading-none">
+                    🆕
+                  </span>
+                )}
                 {demand.clientName}
                 {isLate && !demand.isRepescagem && (
                   <span
@@ -162,6 +178,14 @@ export function DemandCard({
               )}
             </div>
             <div className="flex flex-col items-end gap-1.5 shrink-0">
+              {isNewDemand && (
+                <Badge
+                  variant="secondary"
+                  className="bg-green-100 text-green-800 border-green-300 text-[10px] py-0.5 px-2 font-bold flex items-center gap-1 whitespace-nowrap shadow-sm"
+                >
+                  ⭐ NOVA - {text}
+                </Badge>
+              )}
               <Badge
                 variant="outline"
                 className={cn('px-2 py-0.5 whitespace-nowrap', statusColors[demand.status])}

@@ -19,9 +19,16 @@ interface Props {
   solicitor?: User
   className?: string
   buttonClassName?: string
+  buttonText?: string
 }
 
-export function ContactSolicitorAction({ demand, solicitor, className, buttonClassName }: Props) {
+export function ContactSolicitorAction({
+  demand,
+  solicitor,
+  className,
+  buttonClassName,
+  buttonText,
+}: Props) {
   const { logSolicitorContactAttempt, currentUser } = useAppStore()
   const [showOptions, setShowOptions] = useState(false)
   const [showChat, setShowChat] = useState(false)
@@ -61,7 +68,7 @@ export function ContactSolicitorAction({ demand, solicitor, className, buttonCla
         variant="outline"
         onClick={handleWhatsApp}
       >
-        💬 DÚVIDAS SOBRE ESTA DEMANDA?
+        {buttonText || '💬 DÚVIDAS SOBRE ESTA DEMANDA?'}
       </Button>
       {demand.lastContactedSolicitorAt && (
         <span className="text-[10px] text-muted-foreground text-center block font-medium">
