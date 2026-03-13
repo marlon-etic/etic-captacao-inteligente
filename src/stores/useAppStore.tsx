@@ -57,6 +57,7 @@ interface AppState {
   closeDealByCode: (code: string, payload: any) => void
   prioritizeDemand: (id: string, count: number) => void
   markDemandLost: (id: string, reason: string, obs?: string) => void
+  markPropertyLost: (code: string, demandId: string, reason: string, obs?: string) => void
   logContactAttempt: (
     demandId: string,
     code: string,
@@ -557,10 +558,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
         drafts.forEach((draft) => {
           const user = currentUsers.find((u) => u.id === draft.usuario_id)
-          if (!user) {
-            addLog(
-              `[Erro] Erro ao enviar notificação: usuário não encontrado (${draft.usuario_id})`,
-            )
+          if (!user || user.status === 'inativo') {
             return
           }
 
@@ -620,8 +618,6 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
             setTimeout(() => {
               if (Math.random() < 0.05) {
                 addLog(`[Notificação] Falha no Push para ${user.name}. Retentando em 5 min...`)
-              } else {
-                // Success mock
               }
             }, 1000)
           }
@@ -940,7 +936,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       let demand: Demand | undefined
       let propIndex = -1
       for (const d of allDemands) {
-        const idx = d.capturedProperties?.findIndex((p) => p.code === code) ?? -1
+        const idx = d.capturedProperties?.findIndex((p) => p.code === code && !p.discarded) ?? -1
         if (idx !== -1) {
           demand = d
           propIndex = idx
@@ -1032,7 +1028,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       let demand: Demand | undefined
       let propIndex = -1
       for (const d of allDemands) {
-        const idx = d.capturedProperties?.findIndex((p) => p.code === code) ?? -1
+        const idx = d.capturedProperties?.findIndex((p) => p.code === code && !p.discarded) ?? -1
         if (idx !== -1) {
           demand = d
           propIndex = idx
@@ -1106,7 +1102,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       let demand: Demand | undefined
       let propIndex = -1
       for (const d of allDemands) {
-        const idx = d.capturedProperties?.findIndex((p) => p.code === code) ?? -1
+        const idx = d.capturedProperties?.findIndex((p) => p.code === code && !p.discarded) ?? -1
         if (idx !== -1) {
           demand = d
           propIndex = idx
@@ -1282,6 +1278,147 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       toast({ title: 'Demanda perdida', description: 'Status atualizado.' })
     },
     [allDemands, currentUser, users, enqueueWebhook, addLog, broadcastState, createAction],
+  )
+
+  const markPropertyLost = useCallback(
+    (code: string, demandId: string, reason: string, obs?: string) => {
+      let demand: Demand | undefined
+      let propIndex = -1
+      for (const d of allDemandsRef.current) {
+        if (d.id === demandId) {
+          const idx = d.capturedProperties?.findIndex((p) => p.code === code) ?? -1
+          if (idx !== -1) {
+            demand = d
+            propIndex = idx
+            break
+          }
+        }
+      }
+
+      if (!demand) {
+        toast({ variant: 'destructive', description: 'Demanda ou imóvel não encontrados' })
+        return
+      }
+
+      const prop = demand.capturedProperties![propIndex]
+      if (!checkDemandAccess(demand, prop)) return
+
+      const action = createAction('perdido', `Imóvel dispensado: ${reason}`, obs)
+
+      let releasedToLoose = false
+
+      const updatedProps = [...(demand.capturedProperties || [])]
+      updatedProps[propIndex] = {
+        ...prop,
+        discarded: true,
+        discardReason: reason,
+        history: action ? [action, ...(prop.history || [])] : prop.history,
+      }
+
+      const activeProps = updatedProps.filter((p) => !p.discarded)
+      let newDemandStatus = demand.status
+      if (
+        activeProps.length === 0 &&
+        (demand.status === 'Captado sob demanda' ||
+          demand.status === 'Visita' ||
+          demand.status === 'Proposta')
+      ) {
+        newDemandStatus = 'Em Captação'
+      }
+
+      const updatedDemand = {
+        ...demand,
+        status: newDemandStatus,
+        capturedProperties: updatedProps,
+      }
+
+      let nextLoose = loosePropertiesRef.current
+      if (prop.tipo_vinculacao === 'solto' || prop.tipo_vinculacao === 'vinculado') {
+        const looseIdx = nextLoose.findIndex((lp) => lp.code === code)
+        if (looseIdx !== -1) {
+          releasedToLoose = true
+          nextLoose = nextLoose.map((lp) =>
+            lp.code === code
+              ? {
+                  ...lp,
+                  status_reivindicacao: 'disponivel',
+                  usuario_reivindicou_id: undefined,
+                  data_reivindicacao: undefined,
+                  demandas_atendidas_ids: lp.demandas_atendidas_ids?.filter(
+                    (id) => id !== demandId,
+                  ),
+                  history: action ? [action, ...(lp.history || [])] : lp.history,
+                }
+              : lp,
+          )
+          setLooseProperties(nextLoose)
+        }
+      }
+
+      const nextDemands = allDemandsRef.current.map((d) => (d.id === demandId ? updatedDemand : d))
+      setAllDemands(nextDemands)
+
+      const drafts: Partial<AppNotification>[] = []
+
+      if (prop.captador_id) {
+        drafts.push({
+          usuario_id: prop.captador_id,
+          tipo_notificacao: 'perdido',
+          titulo: '❌ IMÓVEL DISPENSADO',
+          corpo: `Seu imóvel ${code} foi dispensado pelo cliente ${demand.clientName}.`,
+          detalhes: { motivo: reason },
+          urgencia: 'media',
+          canais: ['in_app', 'push'],
+        })
+      }
+
+      if (releasedToLoose) {
+        const eligibleUsers = usersRef.current.filter((u) => {
+          if (u.id === currentUser?.id || u.status === 'inativo') return false
+          if (prop.propertyType === 'Aluguel') {
+            return (
+              u.role === 'sdr' ||
+              (u.role === 'corretor' && u.tipos_demanda_solicitados?.includes('locacao'))
+            )
+          } else if (prop.propertyType === 'Venda') {
+            return u.role === 'corretor'
+          }
+          return false
+        })
+
+        eligibleUsers.forEach((u) => {
+          drafts.push({
+            usuario_id: u.id,
+            tipo_notificacao: 'novo_imovel',
+            titulo: '♻️ IMÓVEL DISPONÍVEL NOVAMENTE',
+            corpo: `O imóvel ${code} (${prop.neighborhood}) voltou para a base e está disponível.`,
+            acao_url: '/app/demandas',
+            urgencia: 'alta',
+            canais: ['in_app'],
+          })
+        })
+      }
+
+      if (drafts.length > 0) dispatchNotifications(drafts)
+      enqueueWebhook('imovel_dispensado', demandId, { code, reason })
+
+      const msg = `Imóvel ${code} dispensado e retornado à base`
+      addLog(msg)
+      toast({
+        title: 'Imóvel Dispensado',
+        description: 'O imóvel foi marcado como descartado e voltou para a base se aplicável.',
+      })
+      broadcastState(nextDemands, usersRef.current, msg, nextLoose)
+    },
+    [
+      checkDemandAccess,
+      createAction,
+      currentUser?.id,
+      dispatchNotifications,
+      enqueueWebhook,
+      addLog,
+      broadcastState,
+    ],
   )
 
   const logContactAttempt = useCallback(
@@ -1815,10 +1952,20 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
               })
             }
 
-            const others = users.filter(
-              (u) => u.id !== currentUser?.id && u.role !== 'captador' && u.role !== 'admin',
-            )
-            others.forEach((u) => {
+            const eligibleUsers = usersRef.current.filter((u) => {
+              if (u.id === currentUser?.id || u.status === 'inativo') return false
+              if (prop.propertyType === 'Aluguel') {
+                return (
+                  u.role === 'sdr' ||
+                  (u.role === 'corretor' && u.tipos_demanda_solicitados?.includes('locacao'))
+                )
+              } else if (prop.propertyType === 'Venda') {
+                return u.role === 'corretor'
+              }
+              return false
+            })
+
+            eligibleUsers.forEach((u) => {
               drafts.push({
                 usuario_id: u.id,
                 tipo_notificacao: 'ja_reivindicado',
@@ -1849,6 +1996,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         closeDealByCode,
         prioritizeDemand,
         markDemandLost,
+        markPropertyLost,
         logContactAttempt,
         logSolicitorContactAttempt,
         addPoints,

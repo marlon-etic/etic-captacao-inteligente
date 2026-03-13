@@ -22,6 +22,13 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Demand, CapturedProperty } from '@/types'
 
 const visitaSchema = z.object({
@@ -59,6 +66,19 @@ const negocioSchema = z.object({
   obs: z.string().optional(),
 })
 
+const lostSchema = z.object({
+  reason: z.string().min(1, 'Selecione um motivo'),
+  obs: z.string().optional(),
+})
+
+const LOST_REASONS = [
+  'Cliente não gostou',
+  'Fora do orçamento',
+  'Já alugado/vendido',
+  'Proprietário não atende',
+  'Outro',
+]
+
 export function CapturedPropertyModals({
   demand,
   property,
@@ -67,18 +87,21 @@ export function CapturedPropertyModals({
   onSubmitVisita,
   onSubmitProposta,
   onSubmitNegocio,
+  onSubmitLost,
 }: {
   demand: Demand | null
   property: CapturedProperty | null
-  actionType: 'visita' | 'proposta' | 'negocio' | null
+  actionType: 'visita' | 'proposta' | 'negocio' | 'lost' | null
   onClose: () => void
   onSubmitVisita: (data: any) => void
   onSubmitProposta: (data: any) => void
   onSubmitNegocio: (data: any) => void
+  onSubmitLost?: (data: any) => void
 }) {
   const isVisita = actionType === 'visita'
   const isProposta = actionType === 'proposta'
   const isNegocio = actionType === 'negocio'
+  const isLost = actionType === 'lost'
   const isOpen = !!demand && !!property && !!actionType
 
   const formVisita = useForm({
@@ -94,6 +117,11 @@ export function CapturedPropertyModals({
   const formNegocio = useForm({
     resolver: zodResolver(negocioSchema),
     defaultValues: { date: '', value: 0, type: undefined as any, obs: '' },
+  })
+
+  const formLost = useForm({
+    resolver: zodResolver(lostSchema),
+    defaultValues: { reason: '', obs: '' },
   })
 
   useEffect(() => {
@@ -124,6 +152,7 @@ export function CapturedPropertyModals({
             {isVisita && 'Agendar Visita'}
             {isProposta && 'Registrar Proposta'}
             {isNegocio && 'Registrar Negócio Fechado'}
+            {isLost && 'Dispensar Imóvel'}
           </DialogTitle>
           {demand && property && (
             <DialogDescription>
@@ -336,6 +365,64 @@ export function CapturedPropertyModals({
                   </Button>
                   <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700 text-white">
                     Confirmar Negócio
+                  </Button>
+                </DialogFooter>
+              </form>
+            </Form>
+          )}
+
+          {isLost && onSubmitLost && (
+            <Form {...formLost}>
+              <form
+                onSubmit={formLost.handleSubmit((d) => {
+                  onSubmitLost(d)
+                  formLost.reset()
+                })}
+                className="space-y-4"
+              >
+                <FormField
+                  control={formLost.control}
+                  name="reason"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Motivo da Dispensa</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione o motivo" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {LOST_REASONS.map((r) => (
+                            <SelectItem key={r} value={r}>
+                              {r}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={formLost.control}
+                  name="obs"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Observações (Opcional)</FormLabel>
+                      <FormControl>
+                        <Textarea {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={onClose}>
+                    Cancelar
+                  </Button>
+                  <Button type="submit" variant="destructive">
+                    Confirmar Dispensa
                   </Button>
                 </DialogFooter>
               </form>

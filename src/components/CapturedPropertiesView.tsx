@@ -28,6 +28,7 @@ export function CapturedPropertiesView({
     scheduleVisitByCode,
     submitProposalByCode,
     closeDealByCode,
+    markPropertyLost,
   } = useAppStore()
   const [statusFilter, setStatusFilter] = useState('all')
   const [capturerFilter, setCapturerFilter] = useState('all')
@@ -35,7 +36,7 @@ export function CapturedPropertiesView({
   const [actionDemand, setActionDemand] = useState<Demand | null>(null)
   const [actionProperty, setActionProperty] = useState<CapturedProperty | null>(null)
   const [actionType, setActionType] = useState<
-    'visita' | 'proposta' | 'negocio' | 'history' | null
+    'visita' | 'proposta' | 'negocio' | 'lost' | 'history' | null
   >(null)
 
   const allCaptured = useMemo(() => {
@@ -69,6 +70,8 @@ export function CapturedPropertiesView({
 
   const filteredAndSorted = useMemo(() => {
     let result = allCaptured.filter(({ demand: d, property: p }) => {
+      if (p.discarded) return false
+
       const isClosed = !!p.fechamentoDate
       const isProposta = !!p.propostaDate && !isClosed
       const isVisita = !!p.visitaDate && !isProposta && !isClosed
@@ -89,7 +92,7 @@ export function CapturedPropertiesView({
   }, [allCaptured, statusFilter, capturerFilter])
 
   const handleAction = (
-    type: 'visita' | 'proposta' | 'negocio' | 'history',
+    type: 'visita' | 'proposta' | 'negocio' | 'lost' | 'history',
     demand: Demand,
     property: CapturedProperty,
   ) => {
@@ -167,6 +170,12 @@ export function CapturedPropertiesView({
         }}
         onSubmitNegocio={(data) => {
           if (actionProperty?.code) closeDealByCode(actionProperty.code, data)
+          closeModals()
+        }}
+        onSubmitLost={(data) => {
+          if (actionProperty?.code && actionDemand?.id) {
+            markPropertyLost(actionProperty.code, actionDemand.id, data.reason, data.obs)
+          }
           closeModals()
         }}
       />
