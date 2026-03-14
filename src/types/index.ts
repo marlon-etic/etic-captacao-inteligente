@@ -172,6 +172,18 @@ export interface Demand {
   lostReason?: string
   lostObs?: string
   lastContactedSolicitorAt?: string
+  data_priorizacao?: string
+  motivo_priorizacao?: string
+  data_perda?: string
+  motivo_perda?:
+    | 'desistiu'
+    | 'alugou'
+    | 'comprou'
+    | 'fora_mercado'
+    | 'mudou_ideia'
+    | 'outro'
+    | string
+  observacoes_perda?: string
 }
 
 export interface WebhookEvent {

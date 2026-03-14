@@ -17,6 +17,8 @@ export function useDemandGrouping({ demands, filters, quickFilter }: GroupingOpt
 
       if (quickFilter === 'awaiting') {
         filtered = filtered.filter((d) => d.status === 'Pendente')
+      } else if (quickFilter === 'prioritized') {
+        filtered = filtered.filter((d) => d.isPrioritized && d.status !== 'Perdida')
       } else if (quickFilter === 'sla_24') {
         filtered = filtered.filter((d) => {
           if (d.status !== 'Pendente') return false
@@ -45,7 +47,8 @@ export function useDemandGrouping({ demands, filters, quickFilter }: GroupingOpt
       filtered.forEach((d) => {
         const createdMs = new Date(d.createdAt).getTime()
         const hoursAge = (now - createdMs) / 3600000
-        if (hoursAge <= 24 && d.status === 'Pendente' && !d.isExtension48h) {
+        // New demands are those created < 24h ago that are pending, or prioritized demands that are still pending
+        if ((hoursAge <= 24 && d.status === 'Pendente' && !d.isExtension48h) || d.isPrioritized) {
           newItems.push(d)
         } else {
           candidatesForGrouping.push(d)
@@ -54,6 +57,7 @@ export function useDemandGrouping({ demands, filters, quickFilter }: GroupingOpt
 
       const getRemainingSlaMs = (d: Demand) => {
         if (d.status !== 'Pendente') return Infinity
+        if (d.isPrioritized) return 0 // Prioritized goes to top
         const startMs =
           d.isExtension48h && d.extensionRequestedAt
             ? new Date(d.extensionRequestedAt).getTime()
@@ -73,10 +77,14 @@ export function useDemandGrouping({ demands, filters, quickFilter }: GroupingOpt
       const ungrouped: Demand[] = []
 
       const activeForGrouping = candidatesForGrouping.filter(
-        (d) => !['Perdida', 'Impossível', 'Sem demanda', 'Negócio', 'Arquivado'].includes(d.status),
+        (d) =>
+          !['Perdida', 'Impossível', 'Sem demanda', 'Negócio', 'Arquivado'].includes(d.status) &&
+          !d.isPrioritized,
       )
-      const others = candidatesForGrouping.filter((d) =>
-        ['Perdida', 'Impossível', 'Sem demanda', 'Negócio', 'Arquivado'].includes(d.status),
+      const others = candidatesForGrouping.filter(
+        (d) =>
+          ['Perdida', 'Impossível', 'Sem demanda', 'Negócio', 'Arquivado'].includes(d.status) ||
+          d.isPrioritized,
       )
 
       const potentialGroups = new Map<string, Demand[]>()

@@ -39,7 +39,16 @@ export function PrioritizeModal({ open, onOpenChange, onConfirm, similarCount }:
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(val) => {
+        onOpenChange(val)
+        if (!val) {
+          setReason('')
+          setError('')
+        }
+      }}
+    >
       <DialogContent className="sm:max-w-[400px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">🔴 Priorizar Demanda</DialogTitle>

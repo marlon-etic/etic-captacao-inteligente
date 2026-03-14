@@ -8,9 +8,17 @@ import useAppStore from '@/stores/useAppStore'
 import { DemandDetailsModal } from '@/components/DemandDetailsModal'
 import { PrioritizeModal } from '@/components/PrioritizeModal'
 import { LostModal } from '@/components/LostModal'
+import { CheckCircle2, XCircle } from 'lucide-react'
 
-export function DemandCard({ demand }: { demand: Demand }) {
-  const { getSimilarDemands, prioritizeDemand, markDemandLost } = useAppStore()
+interface DemandCardProps {
+  demand: Demand
+  isNewDemand?: boolean
+  showActions?: boolean
+  onAction?: (id: string, type: 'encontrei' | 'nao_encontrei') => void
+}
+
+export function DemandCard({ demand, isNewDemand, showActions, onAction }: DemandCardProps) {
+  const { currentUser, getSimilarDemands, prioritizeDemand, markDemandLost } = useAppStore()
   const [showDetails, setShowDetails] = useState(false)
   const [showPrioritize, setShowPrioritize] = useState(false)
   const [showLost, setShowLost] = useState(false)
@@ -19,6 +27,11 @@ export function DemandCard({ demand }: { demand: Demand }) {
   const totalClients = similar.length + 1
   const isHighUrgency = demand.timeframe === 'Urgente' || demand.timeframe === 'Até 15 dias'
   const canPrioritize = totalClients >= 2 || isHighUrgency
+
+  const isCreator =
+    currentUser?.id === demand.createdBy ||
+    currentUser?.role === 'admin' ||
+    currentUser?.role === 'gestor'
 
   const handlePrioritize = (reason: string) => {
     prioritizeDemand(demand.id, reason, totalClients)
@@ -46,28 +59,40 @@ export function DemandCard({ demand }: { demand: Demand }) {
     statusBadge = { label: '⚫ Perdida', class: 'bg-gray-200 text-gray-800 border-gray-300' }
   } else if (demand.isPrioritized) {
     statusBadge = { label: '🔴 Priorizada', class: 'bg-red-100 text-red-800 border-red-200' }
+  } else if (demand.status !== 'Pendente') {
+    statusBadge = {
+      label: `🔵 ${demand.status}`,
+      class: 'bg-blue-100 text-blue-800 border-blue-200',
+    }
   }
 
   let cardBg = 'bg-card'
-  if (demand.status === 'Perdida') cardBg = 'bg-gray-50/50 opacity-80'
-  else if (demand.isPrioritized) cardBg = 'bg-red-50/30 border-red-200'
+  if (demand.status === 'Perdida') cardBg = 'bg-gray-50 opacity-80'
+  else if (demand.isPrioritized) cardBg = 'bg-red-50/50 border-red-200'
 
   return (
     <>
       <Card
         className={cn(
-          'w-full min-h-[120px] rounded-[12px] mb-[12px] border transition-all hover:shadow-md',
+          'w-full min-h-[120px] rounded-[12px] mb-[12px] border transition-all hover:shadow-md flex flex-col',
           cardBg,
         )}
       >
-        <CardContent className="p-[16px] flex flex-col">
+        <CardContent className="p-[16px] flex flex-col flex-1">
           <div className="flex justify-between items-start mb-[8px]">
             <Badge className={cn('font-bold text-[12px] h-[24px] border-transparent', badgeColor)}>
               {badgeLabel}
             </Badge>
-            <Badge variant="outline" className={cn('text-[11px] font-medium', statusBadge.class)}>
-              {statusBadge.label}
-            </Badge>
+            <div className="flex gap-2">
+              {isNewDemand && (
+                <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100 border-emerald-200 font-bold text-[11px]">
+                  ✨ NOVA
+                </Badge>
+              )}
+              <Badge variant="outline" className={cn('text-[11px] font-medium', statusBadge.class)}>
+                {statusBadge.label}
+              </Badge>
+            </div>
           </div>
 
           <div className="flex flex-col gap-[2px]">
@@ -101,33 +126,53 @@ export function DemandCard({ demand }: { demand: Demand }) {
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center gap-[8px] mt-[16px]">
-            <Button
-              className="h-[44px] md:h-[40px] flex-1 text-[14px] leading-[20px] bg-primary/10 text-primary hover:bg-primary/20 min-w-0 w-full"
-              variant="outline"
-              onClick={() => setShowDetails(true)}
-            >
-              📖 Ver Detalhes
-            </Button>
-            {demand.status !== 'Perdida' && (
-              <>
+          <div className="flex flex-col mt-auto pt-[16px] gap-[8px]">
+            {showActions && onAction && (
+              <div className="flex gap-2 mb-2">
                 <Button
-                  className="h-[44px] md:h-[40px] flex-1 text-[14px] leading-[20px] text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 min-w-0 w-full"
-                  variant="outline"
-                  disabled={!canPrioritize || demand.isPrioritized}
-                  onClick={() => setShowPrioritize(true)}
+                  className="h-[40px] flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[13px] px-2"
+                  onClick={() => onAction(demand.id, 'encontrei')}
                 >
-                  🔴 PRIORIZAR
+                  <CheckCircle2 className="w-4 h-4 mr-1.5" /> Encontrei Imóvel
                 </Button>
                 <Button
-                  className="h-[44px] md:h-[40px] flex-1 text-[14px] leading-[20px] text-gray-600 hover:text-gray-700 hover:bg-gray-100 border-gray-200 min-w-0 w-full"
                   variant="outline"
-                  onClick={() => setShowLost(true)}
+                  className="h-[40px] flex-1 text-destructive hover:bg-destructive/10 text-[13px] px-2 border-destructive/20"
+                  onClick={() => onAction(demand.id, 'nao_encontrei')}
                 >
-                  ❌ PERDIDO
+                  <XCircle className="w-4 h-4 mr-1.5" /> Não Encontrei
                 </Button>
-              </>
+              </div>
             )}
+
+            <div className="flex flex-col sm:flex-row items-center gap-[8px]">
+              <Button
+                className="h-[44px] md:h-[40px] flex-1 text-[14px] leading-[20px] bg-primary/10 text-primary hover:bg-primary/20 min-w-0 w-full"
+                variant="outline"
+                onClick={() => setShowDetails(true)}
+              >
+                📖 Ver Detalhes
+              </Button>
+              {demand.status !== 'Perdida' && isCreator && (
+                <>
+                  <Button
+                    className="h-[44px] md:h-[40px] flex-1 text-[14px] leading-[20px] text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 min-w-0 w-full"
+                    variant="outline"
+                    disabled={!canPrioritize || demand.isPrioritized}
+                    onClick={() => setShowPrioritize(true)}
+                  >
+                    🔴 PRIORIZAR
+                  </Button>
+                  <Button
+                    className="h-[44px] md:h-[40px] flex-1 text-[14px] leading-[20px] text-gray-600 hover:text-gray-700 hover:bg-gray-100 border-gray-200 min-w-0 w-full"
+                    variant="outline"
+                    onClick={() => setShowLost(true)}
+                  >
+                    ❌ PERDIDO
+                  </Button>
+                </>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -137,11 +182,11 @@ export function DemandCard({ demand }: { demand: Demand }) {
         onOpenChange={setShowDetails}
         demand={demand}
         onPrioritize={
-          demand.status !== 'Perdida' && !demand.isPrioritized
+          demand.status !== 'Perdida' && !demand.isPrioritized && isCreator
             ? () => setShowPrioritize(true)
             : undefined
         }
-        onLost={demand.status !== 'Perdida' ? () => setShowLost(true) : undefined}
+        onLost={demand.status !== 'Perdida' && isCreator ? () => setShowLost(true) : undefined}
       />
 
       <PrioritizeModal

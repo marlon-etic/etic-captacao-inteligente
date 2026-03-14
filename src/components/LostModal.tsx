@@ -40,7 +40,17 @@ export function LostModal({ open, onOpenChange, onConfirm }: Props) {
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(val) => {
+        onOpenChange(val)
+        if (!val) {
+          setReason('')
+          setObs('')
+          setError('')
+        }
+      }}
+    >
       <DialogContent className="sm:max-w-[400px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -62,12 +72,12 @@ export function LostModal({ open, onOpenChange, onConfirm }: Props) {
                 <SelectValue placeholder="Selecione um motivo..." />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Cliente desistiu">Cliente desistiu</SelectItem>
-                <SelectItem value="Cliente já alugou">Cliente já alugou</SelectItem>
-                <SelectItem value="Cliente já comprou">Cliente já comprou</SelectItem>
-                <SelectItem value="Imóvel fora do mercado">Imóvel fora do mercado</SelectItem>
-                <SelectItem value="Cliente mudou de ideia">Cliente mudou de ideia</SelectItem>
-                <SelectItem value="Outro">Outro</SelectItem>
+                <SelectItem value="desistiu">Cliente desistiu</SelectItem>
+                <SelectItem value="alugou">Cliente já alugou</SelectItem>
+                <SelectItem value="comprou">Cliente já comprou</SelectItem>
+                <SelectItem value="fora_mercado">Imóvel fora do mercado</SelectItem>
+                <SelectItem value="mudou_ideia">Cliente mudou de ideia</SelectItem>
+                <SelectItem value="outro">Outro</SelectItem>
               </SelectContent>
             </Select>
             {error && <p className="text-sm font-medium text-destructive">{error}</p>}

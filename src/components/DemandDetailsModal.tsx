@@ -21,7 +21,7 @@ interface Props {
 }
 
 export function DemandDetailsModal({ open, onOpenChange, demand, onPrioritize, onLost }: Props) {
-  const { getSimilarDemands } = useAppStore()
+  const { getSimilarDemands, users } = useAppStore()
 
   if (!demand) {
     return (
@@ -43,9 +43,11 @@ export function DemandDetailsModal({ open, onOpenChange, demand, onPrioritize, o
     return new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 }).format(val)
   }
 
-  let statusLabel = 'Aberta'
-  if (demand.status === 'Perdida') statusLabel = 'Perdida'
-  else if (demand.isPrioritized) statusLabel = 'Priorizada'
+  let statusLabel = demand.status
+  if (demand.status === 'Pendente' && demand.isPrioritized) statusLabel = 'Priorizada'
+
+  const creator = users.find((u) => u.id === demand.createdBy)
+  const creatorName = creator?.name || 'Desconhecido'
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -155,7 +157,7 @@ export function DemandDetailsModal({ open, onOpenChange, demand, onPrioritize, o
                     📅 Data de Criação
                   </span>
                   <span className="text-[14px] leading-[20px] font-bold">
-                    {new Date(demand.createdAt).toLocaleDateString('pt-BR')}
+                    {new Date(demand.createdAt).toLocaleDateString('pt-BR')} por {creatorName}
                   </span>
                 </div>
                 <div>
@@ -171,6 +173,41 @@ export function DemandDetailsModal({ open, onOpenChange, demand, onPrioritize, o
                       : '-'}
                   </span>
                 </div>
+
+                {demand.isPrioritized && demand.data_priorizacao && (
+                  <div className="col-span-1 sm:col-span-2 mt-2 p-3 bg-red-50 rounded-md border border-red-100">
+                    <span className="text-[12px] leading-[16px] text-red-800/80 block uppercase font-bold mb-1">
+                      🔴 Priorização
+                    </span>
+                    <span className="text-[14px] leading-[20px] font-medium text-red-900">
+                      Realizada em {new Date(demand.data_priorizacao).toLocaleDateString('pt-BR')}{' '}
+                      por {creatorName}
+                    </span>
+                    <span className="text-[14px] leading-[20px] text-red-800 block mt-1">
+                      Motivo: {demand.motivo_priorizacao}
+                    </span>
+                  </div>
+                )}
+
+                {demand.status === 'Perdida' && demand.data_perda && (
+                  <div className="col-span-1 sm:col-span-2 mt-2 p-3 bg-gray-100 rounded-md border border-gray-200">
+                    <span className="text-[12px] leading-[16px] text-gray-600 block uppercase font-bold mb-1">
+                      ⚫ Demanda Perdida
+                    </span>
+                    <span className="text-[14px] leading-[20px] font-medium text-gray-900">
+                      Marcada em {new Date(demand.data_perda).toLocaleDateString('pt-BR')} por{' '}
+                      {creatorName}
+                    </span>
+                    <span className="text-[14px] leading-[20px] text-gray-800 block mt-1 capitalize">
+                      Motivo: {demand.motivo_perda?.replace('_', ' ')}
+                    </span>
+                    {demand.observacoes_perda && (
+                      <span className="text-[13px] leading-[20px] text-gray-700 block mt-1 italic">
+                        Obs: {demand.observacoes_perda}
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
             </section>
 

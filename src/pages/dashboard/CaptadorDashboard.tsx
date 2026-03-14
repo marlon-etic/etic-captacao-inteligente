@@ -14,6 +14,7 @@ import {
   Link as LinkIcon,
   Unlock,
   AlertCircle,
+  Flame,
 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { DemandCard } from '@/components/DemandCard'
@@ -41,6 +42,7 @@ import { useDemandGrouping } from '@/hooks/useDemandGrouping'
 
 const QUICK_FILTERS = [
   { id: 'all', label: 'Todos', icon: '📊' },
+  { id: 'prioritized', label: 'Priorizadas', icon: '🔴' },
   { id: 'awaiting', label: 'Aguardando', icon: '⏳' },
   { id: 'sla_24', label: 'Prazo 24h', icon: '⏰' },
   { id: 'visits', label: 'Visitas', icon: '👁️' },
@@ -100,9 +102,17 @@ export function CaptadorDashboard() {
   }
 
   const quickCounts = useMemo(() => {
-    const counts = { all: demands.length, awaiting: 0, sla_24: 0, visits: 0, deals: 0 }
+    const counts = {
+      all: demands.length,
+      prioritized: 0,
+      awaiting: 0,
+      sla_24: 0,
+      visits: 0,
+      deals: 0,
+    }
     const now = Date.now()
     demands.forEach((d) => {
+      if (d.isPrioritized && d.status !== 'Perdida') counts.prioritized++
       if (d.status === 'Pendente') {
         counts.awaiting++
         const startMs =
@@ -159,6 +169,16 @@ export function CaptadorDashboard() {
     if (viewMode === 'all' || viewMode === 'grouped')
       items.push(...groupedDemands.map((g) => ({ type: 'group', item: g })))
     if (viewMode === 'all') items.push(...oldDemands.map((d) => ({ type: 'old', item: d })))
+
+    // Sort so prioritized is always at top inside current view
+    items.sort((a, b) => {
+      const aPrio = a.type !== 'group' && a.item.isPrioritized
+      const bPrio = b.type !== 'group' && b.item.isPrioritized
+      if (aPrio && !bPrio) return -1
+      if (!aPrio && bPrio) return 1
+      return 0
+    })
+
     return items
   }, [newDemands, groupedDemands, oldDemands, viewMode])
 
@@ -265,26 +285,25 @@ export function CaptadorDashboard() {
         value="demandas"
         className="animate-fade-in-up mt-0 space-y-4 md:space-y-6 lg:space-y-8 outline-none"
       >
-        {quickCounts.awaiting > 0 && (
-          <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 md:p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-sm animate-pulse">
+        {quickCounts.prioritized > 0 && quickFilter !== 'prioritized' && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 md:p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-sm animate-pulse">
             <div className="flex items-center gap-4">
-              <AlertCircle className="w-[32px] h-[32px] text-orange-600 shrink-0" />
+              <Flame className="w-[32px] h-[32px] text-red-600 shrink-0" />
               <div>
-                <p className="font-bold text-[16px] text-orange-900">
-                  {quickCounts.awaiting} demandas aguardando resposta
+                <p className="font-bold text-[16px] text-red-900">
+                  {quickCounts.prioritized} demandas priorizadas!
                 </p>
-                <p className="text-[14px] text-orange-800/80">
-                  Fique atento aos prazos para evitar perda de pontos e repasse automático.
+                <p className="text-[14px] text-red-800/80">
+                  Foque nestas captações primeiro para garantir bônus e atender clientes urgentes.
                 </p>
               </div>
             </div>
             <Button
               size="sm"
-              variant="outline"
-              className="bg-orange-100 text-orange-900 border-orange-300 hover:bg-orange-200 min-h-[44px] w-full md:w-auto text-[14px] px-4"
-              onClick={() => handleQuickFilterClick('awaiting')}
+              className="bg-red-600 hover:bg-red-700 text-white min-h-[44px] w-full md:w-auto text-[14px] px-4 font-bold"
+              onClick={() => handleQuickFilterClick('prioritized')}
             >
-              Ver Pendentes
+              Ver Priorizadas
             </Button>
           </div>
         )}
@@ -330,6 +349,10 @@ export function CaptadorDashboard() {
                     isActive
                       ? 'bg-primary text-primary-foreground font-bold border-primary shadow-sm'
                       : 'bg-muted/50 text-muted-foreground hover:bg-muted font-medium border-border',
+                    opt.id === 'prioritized' && isActive && 'bg-red-600 text-white border-red-600',
+                    opt.id === 'prioritized' &&
+                      !isActive &&
+                      'text-red-600 hover:bg-red-50 border-red-200',
                   )}
                 >
                   <span>{opt.icon}</span>
@@ -338,6 +361,7 @@ export function CaptadorDashboard() {
                     className={cn(
                       'px-2 py-0.5 rounded-full text-[12px] font-bold ml-1 min-h-[24px] flex items-center',
                       isActive ? 'bg-primary-foreground/20' : 'bg-muted-foreground/20',
+                      opt.id === 'prioritized' && !isActive && 'bg-red-100 text-red-700',
                     )}
                   >
                     {count}
@@ -525,7 +549,7 @@ export function CaptadorDashboard() {
                     <DemandCard
                       key={d.id}
                       demand={d}
-                      isNewDemand={entry.type === 'new'}
+                      isNewDemand={entry.type === 'new' && !d.isPrioritized}
                       showActions={d.status === 'Pendente' || d.status === 'Em Captação'}
                       onAction={(id, type) => setModal({ isOpen: true, demand: d, type })}
                     />

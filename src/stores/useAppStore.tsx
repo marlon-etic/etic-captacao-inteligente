@@ -20,6 +20,7 @@ import {
   AppNotification,
   UserPreferences,
   NotificationType,
+  NotificationUrgency,
 } from '@/types'
 import { toast } from '@/hooks/use-toast'
 import { ToastAction } from '@/components/ui/toast'
@@ -1224,14 +1225,33 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const prioritizeDemand = useCallback(
     (id: string, reason: string, count: number) => {
       const demand = allDemands.find((d) => d.id === id)
-      if (!demand || !checkDemandAccess(demand)) return
+      if (!demand) return
+      if (
+        demand.createdBy !== currentUser?.id &&
+        currentUser?.role !== 'admin' &&
+        currentUser?.role !== 'gestor'
+      ) {
+        toast({
+          title: 'Erro',
+          description: 'Você não tem permissão para esta ação',
+          variant: 'destructive',
+        })
+        return
+      }
 
       const action = createAction('priorizado', `Demanda priorizada: ${reason}`)
 
       setAllDemands((prev) => {
         const next = prev.map((d) =>
           d.id === id
-            ? { ...d, isPrioritized: true, interestedClientsCount: count, prioritizeReason: reason }
+            ? {
+                ...d,
+                isPrioritized: true,
+                interestedClientsCount: count,
+                prioritizeReason: reason,
+                motivo_priorizacao: reason,
+                data_priorizacao: new Date().toISOString(),
+              }
             : d,
         )
         broadcastState(next, users, 'Demanda priorizada')
@@ -1244,8 +1264,16 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           drafts.push({
             usuario_id: u.id,
             tipo_notificacao: 'novo_imovel',
-            titulo: '🔴 DEMANDA PRIORIZADA',
-            corpo: `Demanda priorizada: ${demand.clientName} em ${demand.location}`,
+            titulo: '🔴 DEMANDA PRIORIZADA!',
+            corpo: `${demand.clientName} em ${demand.location} - ${count} clientes interessados`,
+            detalhes: {
+              código: demand.id,
+              bairro: demand.location,
+              valor: demand.maxBudget ? `Até R$ ${demand.maxBudget}` : '-',
+              perfil: `${demand.bedrooms || 0} dorms`,
+            },
+            acao_botao: 'Ver demanda',
+            acao_url: '/app/demandas',
             urgencia: 'alta',
             canais: ['in_app', 'push'],
           })
@@ -1276,7 +1304,19 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const markDemandLost = useCallback(
     (id: string, reason: string, obs?: string) => {
       const demand = allDemands.find((d) => d.id === id)
-      if (!demand || !checkDemandAccess(demand)) return
+      if (!demand) return
+      if (
+        demand.createdBy !== currentUser?.id &&
+        currentUser?.role !== 'admin' &&
+        currentUser?.role !== 'gestor'
+      ) {
+        toast({
+          title: 'Erro',
+          description: 'Você não tem permissão para esta ação',
+          variant: 'destructive',
+        })
+        return
+      }
 
       const action = createAction('perdido', `Demanda perdida: ${reason}`, obs)
 
@@ -1288,6 +1328,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
               status: 'Perdida' as DemandStatus,
               lostReason: reason,
               lostObs: obs,
+              motivo_perda: reason,
+              observacoes_perda: obs,
+              data_perda: new Date().toISOString(),
             }
             if (updated.capturedProperties && action) {
               updated.capturedProperties = updated.capturedProperties.map((p) => ({
@@ -1303,19 +1346,22 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         return next
       })
 
-      const drafts: Partial<AppNotification>[] = []
-      usersRef.current.forEach((u) => {
-        if (u.role === 'captador' && u.status === 'ativo') {
-          drafts.push({
-            usuario_id: u.id,
-            tipo_notificacao: 'perdido',
-            titulo: '❌ DEMANDA PERDIDA',
-            corpo: `Demanda de ${demand.clientName} marcada como perdida.`,
-            urgencia: 'baixa',
-            canais: ['in_app'],
-          })
-        }
+      const activeCaptadores = new Set<string>()
+      if (demand.assignedTo) activeCaptadores.add(demand.assignedTo)
+      demand.capturedProperties?.forEach((p) => {
+        if (p.captador_id) activeCaptadores.add(p.captador_id)
       })
+
+      const drafts: Partial<AppNotification>[] = Array.from(activeCaptadores).map((uId) => ({
+        usuario_id: uId,
+        tipo_notificacao: 'perdido',
+        titulo: '⚫ DEMANDA PERDIDA',
+        corpo: `A demanda de ${demand.clientName} em ${demand.location} foi perdida.`,
+        detalhes: { motivo: reason },
+        urgencia: 'baixa',
+        canais: ['in_app'],
+      }))
+
       if (drafts.length > 0) dispatchNotifications(drafts)
 
       enqueueWebhook('demanda_perdida', id, { reason, obs })
@@ -1837,6 +1883,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
             } else {
               updatedDemand.status = 'Perdida'
               updatedDemand.lostReason = payload.reason
+              updatedDemand.motivo_perda = payload.reason
+              updatedDemand.data_perda = new Date().toISOString()
             }
             if (updatedDemand.capturedProperties && hAction) {
               updatedDemand.capturedProperties = updatedDemand.capturedProperties.map((p) => ({

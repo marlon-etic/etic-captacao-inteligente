@@ -5,9 +5,10 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- ENUMS
 -- ==========================================
 CREATE TYPE user_role AS ENUM ('captador', 'sdr', 'corretor', 'gestor', 'admin');
-CREATE TYPE demand_status AS ENUM ('aberta', 'atendida', 'impossível', 'sem_resposta_24h');
+CREATE TYPE demand_status AS ENUM ('aberta', 'priorizada', 'perdida', 'captada', 'visita', 'negocio', 'impossível', 'sem_resposta_24h');
 CREATE TYPE demand_urgency AS ENUM ('até 5 dias', 'até 15 dias');
 CREATE TYPE property_action_type AS ENUM ('captacao', 'visita_agendada', 'visita_realizada', 'proposta', 'negocio', 'perdido');
+CREATE TYPE motivo_perda_enum AS ENUM ('desistiu', 'alugou', 'comprou', 'fora_mercado', 'mudou_ideia', 'outro');
 
 -- ==========================================
 -- TABLES
@@ -57,6 +58,11 @@ CREATE TABLE demandas_locacao (
     vagas INTEGER NOT NULL,
     status demand_status NOT NULL DEFAULT 'aberta',
     urgencia demand_urgency NOT NULL,
+    data_priorizacao TIMESTAMP WITH TIME ZONE,
+    motivo_priorizacao TEXT,
+    data_perda TIMESTAMP WITH TIME ZONE,
+    motivo_perda motivo_perda_enum,
+    observacoes_perda TEXT,
     captador_id UUID REFERENCES captadores(id) ON DELETE SET NULL,
     data_criacao TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -78,6 +84,11 @@ CREATE TABLE demandas_vendas (
     vagas INTEGER NOT NULL,
     status demand_status NOT NULL DEFAULT 'aberta',
     urgencia demand_urgency NOT NULL,
+    data_priorizacao TIMESTAMP WITH TIME ZONE,
+    motivo_priorizacao TEXT,
+    data_perda TIMESTAMP WITH TIME ZONE,
+    motivo_perda motivo_perda_enum,
+    observacoes_perda TEXT,
     captador_id UUID REFERENCES captadores(id) ON DELETE SET NULL,
     data_criacao TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
