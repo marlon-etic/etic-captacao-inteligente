@@ -40,7 +40,7 @@ const visitaSchema = z.object({
       const today = new Date()
       today.setHours(0, 0, 0, 0)
       return d >= today
-    }, 'Data não pode ser no passado'),
+    }, 'A data não pode estar no passado'),
   time: z.string().min(1, 'Obrigatório'),
   obs: z.string().optional(),
 })
@@ -60,7 +60,7 @@ const negocioSchema = z.object({
       const today = new Date()
       today.setHours(23, 59, 59, 999)
       return d <= today
-    }, 'Data não pode ser no futuro'),
+    }, 'A data não pode estar no futuro'),
   value: z.coerce.number().positive('Valor deve ser um número positivo'),
   type: z.enum(['Venda', 'Aluguel'], { required_error: 'Selecione o tipo (Venda ou Aluguel)' }),
   obs: z.string().optional(),
@@ -91,7 +91,7 @@ export function CapturedPropertyModals({
 }: {
   demand: Demand | null
   property: CapturedProperty | null
-  actionType: 'visita' | 'proposta' | 'negocio' | 'lost' | null
+  actionType: 'visita' | 'proposta' | 'negocio' | 'lost' | 'details' | null
   onClose: () => void
   onSubmitVisita: (data: any) => void
   onSubmitProposta: (data: any) => void
@@ -102,6 +102,7 @@ export function CapturedPropertyModals({
   const isProposta = actionType === 'proposta'
   const isNegocio = actionType === 'negocio'
   const isLost = actionType === 'lost'
+  const isDetails = actionType === 'details'
   const isOpen = !!demand && !!property && !!actionType
 
   const formVisita = useForm({
@@ -153,8 +154,9 @@ export function CapturedPropertyModals({
             {isProposta && 'Registrar Proposta'}
             {isNegocio && 'Registrar Negócio Fechado'}
             {isLost && 'Dispensar Imóvel'}
+            {isDetails && 'Detalhes do Imóvel'}
           </DialogTitle>
-          {demand && property && (
+          {demand && property && !isDetails && (
             <DialogDescription>
               Cliente: <strong>{demand.clientName}</strong> • Cód: {property.code}
             </DialogDescription>
@@ -215,7 +217,7 @@ export function CapturedPropertyModals({
                   <Button type="button" variant="outline" onClick={onClose}>
                     Cancelar
                   </Button>
-                  <Button type="submit">Agendar Visita</Button>
+                  <Button type="submit">✅ Confirmar Visita</Button>
                 </DialogFooter>
               </form>
             </Form>
@@ -364,7 +366,7 @@ export function CapturedPropertyModals({
                     Cancelar
                   </Button>
                   <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700 text-white">
-                    Confirmar Negócio
+                    ✅ Confirmar Negócio
                   </Button>
                 </DialogFooter>
               </form>
@@ -427,6 +429,88 @@ export function CapturedPropertyModals({
                 </DialogFooter>
               </form>
             </Form>
+          )}
+
+          {isDetails && demand && property && (
+            <div className="space-y-4 text-sm mt-2">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-muted-foreground text-xs">Imóvel</p>
+                  <p className="font-medium">{property.code}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground text-xs">Captador</p>
+                  <p className="font-medium">{property.captador_name || 'Não informado'}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground text-xs">Valor</p>
+                  <p className="font-medium">R$ {property.value?.toLocaleString('pt-BR')}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground text-xs">Data de Captação</p>
+                  <p className="font-medium">
+                    {new Date(property.capturedAt || '').toLocaleDateString('pt-BR')}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground text-xs">Tipo</p>
+                  <p className="font-medium">{property.propertyType || demand.type}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground text-xs">Perfil</p>
+                  <p className="font-medium">
+                    {property.bedrooms || 0} dorm, {property.bathrooms || 0} banh,{' '}
+                    {property.parkingSpots || 0} vagas
+                  </p>
+                </div>
+              </div>
+
+              {property.visitaDate && (
+                <div className="bg-orange-50 p-3 rounded-md border border-orange-100">
+                  <p className="font-bold text-xs text-orange-800 mb-1 flex items-center gap-1">
+                    <span>🟠</span> Visita Agendada
+                  </p>
+                  <p className="text-orange-900">
+                    Data: {new Date(property.visitaDate + 'T00:00:00').toLocaleDateString('pt-BR')}{' '}
+                    às {property.visitaTime}
+                  </p>
+                  {property.visitaObs && (
+                    <p className="mt-1 text-orange-800/80 italic text-xs">"{property.visitaObs}"</p>
+                  )}
+                </div>
+              )}
+
+              {property.fechamentoDate && (
+                <div className="bg-emerald-50 p-3 rounded-md border border-emerald-100">
+                  <p className="font-bold text-xs text-emerald-800 mb-1 flex items-center gap-1">
+                    <span>🟢</span> Negócio Fechado ({property.fechamentoType})
+                  </p>
+                  <p className="text-emerald-900">
+                    Data:{' '}
+                    {new Date(property.fechamentoDate + 'T00:00:00').toLocaleDateString('pt-BR')}
+                  </p>
+                  <p className="text-emerald-900">
+                    Valor: R$ {property.fechamentoValue?.toLocaleString('pt-BR')}
+                  </p>
+                  {property.fechamentoObs && (
+                    <p className="mt-1 text-emerald-800/80 italic text-xs">
+                      "{property.fechamentoObs}"
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <DialogFooter className="mt-6">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full sm:w-auto"
+                  onClick={onClose}
+                >
+                  Fechar
+                </Button>
+              </DialogFooter>
+            </div>
           )}
         </div>
       </DialogContent>
