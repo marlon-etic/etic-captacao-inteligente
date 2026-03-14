@@ -9,7 +9,7 @@ import { DemandDetailsModal } from '@/components/DemandDetailsModal'
 import { PrioritizeModal } from '@/components/PrioritizeModal'
 import { LostModal } from '@/components/LostModal'
 import { ContactSolicitorAction } from '@/components/ContactSolicitorAction'
-import { CheckCircle2, XCircle } from 'lucide-react'
+import { CheckCircle2, XCircle, BookOpen, Circle, X } from 'lucide-react'
 
 interface DemandCardProps {
   demand: Demand
@@ -131,47 +131,50 @@ export function DemandCard({ demand, isNewDemand, showActions, onAction }: Deman
 
           <div className="flex flex-col mt-auto pt-[16px] gap-[8px]">
             {showActions && onAction && (
-              <div className="flex gap-2 mb-2">
+              <div className="flex flex-wrap gap-2 mb-2">
                 <Button
-                  className="h-[40px] flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[13px] px-2"
+                  className="h-[44px] flex-1 basis-full sm:basis-0 bg-emerald-600 hover:bg-emerald-700 text-white text-[13px] px-3 whitespace-nowrap"
                   onClick={() => onAction(demand.id, 'encontrei')}
                 >
-                  <CheckCircle2 className="w-4 h-4 mr-1.5" /> Encontrei Imóvel
+                  <CheckCircle2 className="w-4 h-4 mr-1.5 shrink-0" /> Encontrei Imóvel
                 </Button>
                 <Button
                   variant="outline"
-                  className="h-[40px] flex-1 text-destructive hover:bg-destructive/10 text-[13px] px-2 border-destructive/20"
+                  className="h-[44px] flex-1 basis-full sm:basis-0 text-destructive hover:bg-destructive/10 text-[13px] px-3 border-destructive/20 whitespace-nowrap"
                   onClick={() => onAction(demand.id, 'nao_encontrei')}
                 >
-                  <XCircle className="w-4 h-4 mr-1.5" /> Não Encontrei
+                  <XCircle className="w-4 h-4 mr-1.5 shrink-0" /> Não Encontrei
                 </Button>
               </div>
             )}
 
-            <div className="flex flex-col sm:flex-row items-center gap-[8px]">
+            <div className="flex flex-wrap gap-2 mt-2">
               <Button
-                className="h-[44px] md:h-[40px] flex-1 text-[14px] leading-[20px] bg-primary/10 text-primary hover:bg-primary/20 min-w-0 w-full"
+                className="flex-1 basis-full lg:basis-0 min-w-[120px] h-[44px] md:h-[40px] text-[13px] font-medium bg-blue-50/50 text-blue-700 hover:bg-blue-100 hover:text-blue-800 border-blue-200 whitespace-nowrap"
                 variant="outline"
                 onClick={() => setShowDetails(true)}
               >
-                📖 Ver Detalhes
+                <BookOpen className="w-4 h-4 mr-1.5 shrink-0" />
+                Ver Detalhes
               </Button>
               {demand.status !== 'Perdida' && isCreator && (
                 <>
                   <Button
-                    className="h-[44px] md:h-[40px] flex-1 text-[14px] leading-[20px] text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 min-w-0 w-full"
+                    className="flex-1 basis-full lg:basis-0 min-w-[120px] h-[44px] md:h-[40px] text-[13px] font-medium text-red-700 hover:text-red-800 hover:bg-red-50 border-red-200 bg-background whitespace-nowrap"
                     variant="outline"
                     disabled={!canPrioritize || demand.isPrioritized}
                     onClick={() => setShowPrioritize(true)}
                   >
-                    🔴 PRIORIZAR
+                    <Circle className="w-4 h-4 mr-1.5 shrink-0 fill-red-600 text-red-600" />
+                    PRIORIZAR
                   </Button>
                   <Button
-                    className="h-[44px] md:h-[40px] flex-1 text-[14px] leading-[20px] text-gray-600 hover:text-gray-700 hover:bg-gray-100 border-gray-200 min-w-0 w-full"
+                    className="flex-1 basis-full lg:basis-0 min-w-[120px] h-[44px] md:h-[40px] text-[13px] font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 border-gray-300 bg-background whitespace-nowrap"
                     variant="outline"
                     onClick={() => setShowLost(true)}
                   >
-                    ❌ PERDIDO
+                    <X className="w-4 h-4 mr-1.5 shrink-0 text-red-600" />
+                    PERDIDO
                   </Button>
                 </>
               )}
