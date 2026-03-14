@@ -8,8 +8,9 @@ import useAppStore from '@/stores/useAppStore'
 import { DemandDetailsModal } from '@/components/DemandDetailsModal'
 import { PrioritizeModal } from '@/components/PrioritizeModal'
 import { LostModal } from '@/components/LostModal'
-import { ContactSolicitorAction } from '@/components/ContactSolicitorAction'
-import { CheckCircle2, XCircle, BookOpen, Circle, X } from 'lucide-react'
+import { BookOpen, AlertCircle, X, Clock } from 'lucide-react'
+import { useSlaCountdown } from '@/hooks/useTimeElapsed'
+import { Progress } from '@/components/ui/progress'
 
 interface DemandCardProps {
   demand: Demand
@@ -19,22 +20,14 @@ interface DemandCardProps {
 }
 
 export function DemandCard({ demand, isNewDemand, showActions, onAction }: DemandCardProps) {
-  const { currentUser, users, getSimilarDemands, prioritizeDemand, markDemandLost } = useAppStore()
+  const { currentUser, getSimilarDemands, prioritizeDemand, markDemandLost } = useAppStore()
   const [showDetails, setShowDetails] = useState(false)
   const [showPrioritize, setShowPrioritize] = useState(false)
   const [showLost, setShowLost] = useState(false)
 
   const similar = getSimilarDemands(demand.id)
   const totalClients = similar.length + 1
-  const isHighUrgency = demand.timeframe === 'Urgente' || demand.timeframe === 'Até 15 dias'
-  const canPrioritize = totalClients >= 2 || isHighUrgency
-
-  const isCreator =
-    currentUser?.id === demand.createdBy ||
-    currentUser?.role === 'admin' ||
-    currentUser?.role === 'gestor'
-
-  const isCaptador = currentUser?.role === 'captador'
+  const canPrioritize = totalClients >= 2
 
   const handlePrioritize = (reason: string) => {
     prioritizeDemand(demand.id, reason, totalClients)
@@ -46,172 +39,135 @@ export function DemandCard({ demand, isNewDemand, showActions, onAction }: Deman
 
   const formatPrice = (val?: number) => {
     if (!val) return '0'
-    return new Intl.NumberFormat('pt-BR', {
-      maximumFractionDigits: 0,
-    }).format(val)
+    return new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 }).format(val)
   }
 
   const isAluguel = demand.type === 'Aluguel'
-  const badgeLabel = isAluguel ? '🏠 ALUGUEL' : '🏢 VENDA'
-  const badgeColor = isAluguel
-    ? 'bg-[#4444FF] hover:bg-[#4444FF]/90 text-white'
-    : 'bg-[#FF4444] hover:bg-[#FF4444]/90 text-white'
+  const typeColor = isAluguel ? 'bg-[#4444FF]' : 'bg-[#FF4444]'
 
-  let statusBadge = { label: '🟢 Aberta', class: 'bg-green-100 text-green-800 border-green-200' }
+  let statusBadge = { label: '🟢 Aberta', class: 'text-[#00AA00] bg-[#00AA00]/10 border-none' }
   if (demand.status === 'Perdida') {
-    statusBadge = { label: '⚫ Perdida', class: 'bg-gray-200 text-gray-800 border-gray-300' }
+    statusBadge = { label: '⚫ Perdida', class: 'text-[#333333] bg-[#E5E5E5] border-none' }
   } else if (demand.isPrioritized) {
-    statusBadge = { label: '🔴 Priorizada', class: 'bg-red-100 text-red-800 border-red-200' }
-  } else if (demand.status !== 'Pendente') {
-    statusBadge = {
-      label: `🔵 ${demand.status}`,
-      class: 'bg-blue-100 text-blue-800 border-blue-200',
-    }
+    statusBadge = { label: '🔴 Priorizada', class: 'text-[#FF4444] bg-[#FF4444]/10 border-none' }
   }
 
-  let cardBg = 'bg-card'
-  if (demand.status === 'Perdida') cardBg = 'bg-gray-50 opacity-80'
-  else if (demand.isPrioritized) cardBg = 'bg-red-50/50 border-red-200'
+  const {
+    text: slaText,
+    progress: slaProgress,
+    level: slaLevel,
+  } = useSlaCountdown(
+    demand.createdAt,
+    demand.isExtension48h,
+    demand.extensionRequestedAt,
+    demand.status,
+  )
+
+  const showCountdown = isNewDemand && demand.status === 'Pendente' && !demand.isExtension48h
 
   return (
     <>
       <Card
         className={cn(
-          'w-full min-h-[120px] rounded-[12px] mb-[12px] border transition-all hover:shadow-md flex flex-col',
-          cardBg,
+          'w-full min-h-[140px] md:min-h-[160px] rounded-[12px] mb-[16px] border border-[#E5E5E5] transition-all duration-200 hover:bg-black/[0.02] hover:shadow-md flex flex-col overflow-hidden',
+          demand.status === 'Perdida' ? 'opacity-70 bg-[#F9F9F9]' : 'bg-[#FFFFFF]',
         )}
       >
-        <CardContent className="p-[16px] flex flex-col flex-1">
-          <div className="flex justify-between items-start mb-[8px]">
-            <Badge className={cn('font-bold text-[12px] h-[24px] border-transparent', badgeColor)}>
-              {badgeLabel}
-            </Badge>
-            <div className="flex gap-2">
-              {isNewDemand && (
-                <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100 border-emerald-200 font-bold text-[11px]">
-                  ✨ NOVA
-                </Badge>
-              )}
-              <Badge variant="outline" className={cn('text-[11px] font-medium', statusBadge.class)}>
-                {statusBadge.label}
+        {showCountdown && (
+          <div className="bg-[#00AA00]/10 px-[16px] py-[12px] border-b border-[#00AA00]/20 flex flex-col gap-[8px]">
+            <div className="flex justify-between items-center">
+              <Badge className="bg-[#00AA00] text-white font-bold text-[10px] hover:bg-[#00AA00]">
+                🆕 NOVA
               </Badge>
+              <span className="text-[#00AA00] font-bold text-[12px] flex items-center gap-1">
+                <Clock className="w-3 h-3" /> {slaText} para responder
+              </span>
             </div>
+            <Progress
+              value={slaProgress}
+              className="h-[6px] bg-[#00AA00]/20"
+              indicatorClassName={
+                slaLevel === 'red'
+                  ? 'bg-[#FF4444]'
+                  : slaLevel === 'yellow'
+                    ? 'bg-[#FFD700]'
+                    : 'bg-[#00AA00]'
+              }
+            />
+          </div>
+        )}
+
+        <CardContent className="p-[16px] flex flex-col flex-1">
+          <div className="flex justify-between items-start mb-[12px]">
+            <Badge className={cn('font-bold text-[10px] text-white px-2 py-1', typeColor)}>
+              {isAluguel ? '🏠 ALUGUEL' : '🏢 VENDA'}
+            </Badge>
+            <Badge variant="outline" className={cn('text-[10px] font-bold', statusBadge.class)}>
+              {statusBadge.label}
+            </Badge>
           </div>
 
-          <div className="flex flex-col gap-[2px]">
-            <div className="text-[14px] font-bold leading-[20px]">
+          <div className="flex flex-col gap-[4px] flex-grow">
+            <h3 className="text-[14px] font-bold text-[#333333] leading-tight">
               👤 Cliente: {demand.clientName}
-            </div>
-            <div className="text-[12px] leading-[16px]">📍 Localização: {demand.location}</div>
-            <div className="text-[14px] font-bold leading-[20px]">
+            </h3>
+            <p className="text-[12px] text-[#999999] leading-tight">
+              📍 Localização: <span className="text-[#333333]">{demand.location}</span>
+            </p>
+            <p className="text-[14px] font-bold text-[#333333] mt-[4px]">
               💰 Orçamento: R$ {formatPrice(demand.minBudget)} - R$ {formatPrice(demand.maxBudget)}
-            </div>
-            <div className="text-[12px] leading-[16px]">
+            </p>
+            <p className="text-[12px] text-[#333333] mt-[2px]">
               🏠 Perfil: {demand.bedrooms || 0} dorm, {demand.bathrooms || 0} banh,{' '}
               {demand.parkingSpots || 0} vagas
-            </div>
+            </p>
 
-            <div className="mt-[8px] flex flex-col gap-[4px]">
-              <Badge
-                variant="outline"
-                className={cn(
-                  'w-fit text-[11px]',
-                  totalClients >= 2
-                    ? 'bg-amber-100 text-amber-800 border-amber-200'
-                    : 'bg-muted/50 text-muted-foreground',
-                )}
-              >
-                👥 {totalClients} cliente{totalClients !== 1 ? 's' : ''} com este perfil
-              </Badge>
-              <div className="text-[11px] leading-[16px] text-muted-foreground mt-[4px]">
-                📅 Criado em: {new Date(demand.createdAt).toLocaleDateString('pt-BR')}
+            {similar.length > 0 && (
+              <div className="mt-[8px] bg-[#00AA00]/10 text-[#00AA00] font-bold text-[12px] p-[8px] rounded-[6px] w-fit border border-[#00AA00]/20">
+                👥 {totalClients} clientes com este perfil
               </div>
-            </div>
+            )}
           </div>
 
-          <div className="flex flex-col mt-auto pt-[16px] gap-[8px]">
-            {showActions && onAction && (
-              <div className="flex flex-wrap gap-2 mb-2">
-                <Button
-                  className="h-[44px] flex-1 basis-full sm:basis-0 bg-emerald-600 hover:bg-emerald-700 text-white text-[13px] px-3 whitespace-nowrap"
-                  onClick={() => onAction(demand.id, 'encontrei')}
-                >
-                  <CheckCircle2 className="w-4 h-4 mr-1.5 shrink-0" /> Encontrei Imóvel
-                </Button>
-                <Button
-                  variant="outline"
-                  className="h-[44px] flex-1 basis-full sm:basis-0 text-destructive hover:bg-destructive/10 text-[13px] px-3 border-destructive/20 whitespace-nowrap"
-                  onClick={() => onAction(demand.id, 'nao_encontrei')}
-                >
-                  <XCircle className="w-4 h-4 mr-1.5 shrink-0" /> Não Encontrei
-                </Button>
-              </div>
-            )}
-
-            <div className="flex flex-wrap gap-2 mt-2">
-              <Button
-                className="flex-1 basis-full lg:basis-0 min-w-[120px] h-[44px] md:h-[40px] text-[13px] font-medium bg-blue-50/50 text-blue-700 hover:bg-blue-100 hover:text-blue-800 border-blue-200 whitespace-nowrap"
-                variant="outline"
-                onClick={() => setShowDetails(true)}
-              >
-                <BookOpen className="w-4 h-4 mr-1.5 shrink-0" />
-                Ver Detalhes
-              </Button>
-              {demand.status !== 'Perdida' && isCreator && (
-                <>
-                  <Button
-                    className="flex-1 basis-full lg:basis-0 min-w-[120px] h-[44px] md:h-[40px] text-[13px] font-medium text-red-700 hover:text-red-800 hover:bg-red-50 border-red-200 bg-background whitespace-nowrap"
-                    variant="outline"
-                    disabled={!canPrioritize || demand.isPrioritized}
-                    onClick={() => setShowPrioritize(true)}
-                  >
-                    <Circle className="w-4 h-4 mr-1.5 shrink-0 fill-red-600 text-red-600" />
-                    PRIORIZAR
-                  </Button>
-                  <Button
-                    className="flex-1 basis-full lg:basis-0 min-w-[120px] h-[44px] md:h-[40px] text-[13px] font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 border-gray-300 bg-background whitespace-nowrap"
-                    variant="outline"
-                    onClick={() => setShowLost(true)}
-                  >
-                    <X className="w-4 h-4 mr-1.5 shrink-0 text-red-600" />
-                    PERDIDO
-                  </Button>
-                </>
+          <div className="flex flex-row gap-[8px] mt-[16px] w-full">
+            <Button
+              className="flex-1 h-[44px] min-w-0 bg-[#4444FF] hover:bg-[#4444FF]/90 text-white text-[14px] font-bold px-1"
+              onClick={() => setShowDetails(true)}
+            >
+              <BookOpen className="w-[16px] h-[16px] sm:mr-[6px]" />
+              <span className="hidden sm:inline">Detalhes</span>
+            </Button>
+            <Button
+              className={cn(
+                'flex-1 h-[44px] min-w-0 text-[14px] font-bold px-1',
+                canPrioritize && !demand.isPrioritized
+                  ? 'bg-[#FF4444] hover:bg-[#FF4444]/90 text-white'
+                  : 'bg-[#E5E5E5] text-[#999999] cursor-not-allowed',
               )}
-            </div>
-
-            {isCaptador && demand.status !== 'Perdida' && (
-              <ContactSolicitorAction
-                demand={demand}
-                solicitor={users.find((u) => u.id === demand.createdBy)}
-                className="w-full mt-[4px]"
-                buttonClassName="w-full h-[44px] md:h-[40px] text-[14px] bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200 font-semibold"
-                buttonText="💬 CONTATAR SOLICITANTE"
-              />
-            )}
+              disabled={!canPrioritize || demand.isPrioritized}
+              onClick={() => setShowPrioritize(true)}
+            >
+              <AlertCircle className="w-[16px] h-[16px] sm:mr-[6px]" />
+              <span className="hidden sm:inline">Priorizar</span>
+            </Button>
+            <Button
+              className="flex-1 h-[44px] min-w-0 bg-[#999999] hover:bg-[#333333] text-white text-[14px] font-bold px-1"
+              onClick={() => setShowLost(true)}
+            >
+              <X className="w-[16px] h-[16px] sm:mr-[6px]" />
+              <span className="hidden sm:inline">Perdido</span>
+            </Button>
           </div>
         </CardContent>
       </Card>
 
-      <DemandDetailsModal
-        open={showDetails}
-        onOpenChange={setShowDetails}
-        demand={demand}
-        onPrioritize={
-          demand.status !== 'Perdida' && !demand.isPrioritized && isCreator
-            ? () => setShowPrioritize(true)
-            : undefined
-        }
-        onLost={demand.status !== 'Perdida' && isCreator ? () => setShowLost(true) : undefined}
-      />
-
+      <DemandDetailsModal open={showDetails} onOpenChange={setShowDetails} demand={demand} />
       <PrioritizeModal
         open={showPrioritize}
         onOpenChange={setShowPrioritize}
         onConfirm={handlePrioritize}
         similarCount={totalClients}
       />
-
       <LostModal open={showLost} onOpenChange={setShowLost} onConfirm={handleLost} />
     </>
   )

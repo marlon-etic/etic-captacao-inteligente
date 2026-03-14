@@ -1,605 +1,367 @@
-import { useMemo, useState, useEffect } from 'react'
-import {
-  PackageSearch,
-  Clock,
-  Map,
-  Handshake,
-  CheckSquare,
-  Search,
-  Filter,
-  SortDesc,
-  ChevronLeft,
-  ChevronRight,
-  Plus,
-  Link as LinkIcon,
-  Unlock,
-  AlertCircle,
-  Flame,
-} from 'lucide-react'
+import { useState, useMemo } from 'react'
+import { useSearchParams, useNavigate } from 'react-router-dom'
+import { FileText, Home, Handshake, Search, Filter, RefreshCw, XCircle } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { DemandCard } from '@/components/DemandCard'
-import { DemandActionModal } from '@/components/DemandActionModal'
-import { IndependentCaptureModal } from '@/components/IndependentCaptureModal'
-import { GamificationWidget } from '@/components/dashboard/GamificationWidget'
 import { GroupedDemandCard } from '@/components/GroupedDemandCard'
-import { CaptadorPerformanceTab } from '@/components/dashboard/CaptadorPerformanceTab'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { GamificationWidget } from '@/components/dashboard/GamificationWidget'
+import { CapturedPropertiesView } from '@/components/CapturedPropertiesView'
 import { Button } from '@/components/ui/button'
-import { Pagination, PaginationContent, PaginationItem } from '@/components/ui/pagination'
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import useAppStore from '@/stores/useAppStore'
-import { useToast } from '@/hooks/use-toast'
-import { Demand } from '@/types'
-import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
-import { useDemandGrouping } from '@/hooks/useDemandGrouping'
-
-const QUICK_FILTERS = [
-  { id: 'all', label: 'Todos', icon: '📊' },
-  { id: 'prioritized', label: 'Priorizadas', icon: '🔴' },
-  { id: 'awaiting', label: 'Aguardando', icon: '⏳' },
-  { id: 'sla_24', label: 'Prazo 24h', icon: '⏰' },
-  { id: 'visits', label: 'Visitas', icon: '👁️' },
-  { id: 'deals', label: 'Negócios', icon: '💰' },
-]
+import useAppStore from '@/stores/useAppStore'
+import { cn } from '@/lib/utils'
 
 export function CaptadorDashboard() {
-  const { demands, currentUser, submitDemandResponse, looseProperties } = useAppStore()
-  const { toast } = useToast()
+  const { demands, currentUser, looseProperties } = useAppStore()
+  const [searchParams, setSearchParams] = useSearchParams()
 
-  const [activeTab, setActiveTab] = useState('demandas')
+  const mainTab = searchParams.get('tab') === 'captados' ? 'captados' : 'demandas'
+  const [demandFilter, setDemandFilter] = useState<'todas' | 'venda' | 'aluguel' | 'novas'>('todas')
+  const [periodFilter, setPeriodFilter] = useState('todas')
+  const [priorityFilter, setPriorityFilter] = useState('todas')
 
-  const [modal, setModal] = useState<{
-    isOpen: boolean
-    demand: Demand | null
-    type: 'encontrei' | 'nao_encontrei' | null
-  }>({ isOpen: false, demand: null, type: null })
-  const [indepModalOpen, setIndepModalOpen] = useState(false)
-
-  const [quickFilter, setQuickFilter] = useState(() => {
-    try {
-      return localStorage.getItem('captador_quick_filter') || 'all'
-    } catch {
-      return 'all'
-    }
-  })
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('captador_quick_filter', quickFilter)
-    } catch {
-      // ignore
-    }
-  }, [quickFilter])
-
-  const [filters, setFilters] = useState({
-    type: 'all',
-    status: 'all',
-    timeframe: 'all',
-    sort: 'urgency',
-  })
-  const [page, setPage] = useState(1)
-  const ITEMS_PER_PAGE = 20
-  const [viewMode, setViewMode] = useState<'all' | 'new' | 'grouped'>('all')
-
-  const handleQuickFilterClick = (id: string) => {
-    try {
-      setQuickFilter(id)
-      setPage(1)
-    } catch (err) {
-      toast({
-        title: 'Erro',
-        description: 'Erro ao aplicar filtro. Tente novamente',
-        variant: 'destructive',
-      })
-    }
+  const setMainTab = (tab: 'demandas' | 'captados') => {
+    setSearchParams(tab === 'demandas' ? {} : { tab })
   }
 
-  const quickCounts = useMemo(() => {
-    const counts = {
-      all: demands.length,
-      prioritized: 0,
-      awaiting: 0,
-      sla_24: 0,
-      visits: 0,
-      deals: 0,
-    }
-    const now = Date.now()
-    demands.forEach((d) => {
-      if (d.isPrioritized && d.status !== 'Perdida') counts.prioritized++
-      if (d.status === 'Pendente') {
-        counts.awaiting++
-        const startMs =
-          d.isExtension48h && d.extensionRequestedAt
-            ? new Date(d.extensionRequestedAt).getTime()
-            : new Date(d.createdAt).getTime()
-        const totalSlaMs = d.isExtension48h ? 48 * 3600000 : 24 * 3600000
-        const elapsedMs = now - startMs
-        if (elapsedMs < totalSlaMs) counts.sla_24++
-      }
-      if (d.status === 'Visita') counts.visits++
-      if (d.status === 'Negócio') counts.deals++
-    })
-    return counts
-  }, [demands])
+  // Calculate Header Metrics (Weekly data representation)
+  const headerMetrics = useMemo(() => {
+    const userDemands = demands.filter(
+      (d) =>
+        d.assignedTo === currentUser?.id ||
+        d.capturedProperties?.some((p) => p.captador_id === currentUser?.id),
+    )
+    const recebidas = userDemands.length
+    const captados = currentUser?.stats.imoveisCaptadosSemana || 0
+    const fechados = currentUser?.stats.negociosFechados || 0
 
-  const stats = useMemo(() => {
-    const c = { capDem: 0, capInd: 0, search: 0, visit: 0, deal: 0, await: 0 }
-    let vinculadosCount = 0
-    demands.forEach((d) => {
-      if (d.status === 'Captado sob demanda') c.capDem++
-      if (d.status === 'Captado independente') c.capInd++
-      if (d.status === 'Em Captação') c.search++
-      if (d.status === 'Visita') c.visit++
-      if (d.status === 'Negócio') c.deal++
-      if (d.status === 'Pendente') c.await++
-      if (d.capturedProperties) {
-        vinculadosCount += d.capturedProperties.filter(
-          (p) => p.captador_id === currentUser?.id,
-        ).length
-      }
-    })
+    return { recebidas, captados, fechados }
+  }, [demands, currentUser])
 
-    const soltosCount = looseProperties.filter((p) => p.captador_id === currentUser?.id).length
+  // Filter demands based on selected tabs and quick filters
+  const filteredDemands = useMemo(() => {
+    let result = demands
 
-    return { ...c, vinculadosCount, soltosCount }
-  }, [demands, looseProperties, currentUser])
-
-  const {
-    newDemands,
-    groupedDemands,
-    oldDemands,
-    error: groupingError,
-  } = useDemandGrouping({
-    demands,
-    filters,
-    quickFilter,
-  })
-
-  const allRenderItems = useMemo(() => {
-    let items: any[] = []
-    if (viewMode === 'all' || viewMode === 'new')
-      items.push(...newDemands.map((d) => ({ type: 'new', item: d })))
-    if (viewMode === 'all' || viewMode === 'grouped')
-      items.push(...groupedDemands.map((g) => ({ type: 'group', item: g })))
-    if (viewMode === 'all') items.push(...oldDemands.map((d) => ({ type: 'old', item: d })))
-
-    // Sort so prioritized is always at top inside current view
-    items.sort((a, b) => {
-      const aPrio = a.type !== 'group' && a.item.isPrioritized
-      const bPrio = b.type !== 'group' && b.item.isPrioritized
-      if (aPrio && !bPrio) return -1
-      if (!aPrio && bPrio) return 1
-      return 0
-    })
-
-    return items
-  }, [newDemands, groupedDemands, oldDemands, viewMode])
-
-  const paginatedItems = allRenderItems.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE)
-  const totalPages = Math.ceil(allRenderItems.length / ITEMS_PER_PAGE)
-
-  const handleAction = (payload: any) => {
-    if (!modal.demand || !modal.type) return
-    const res = submitDemandResponse(modal.demand.id, modal.type, payload)
-    if (!res.success) {
-      toast({
-        title: 'Erro',
-        description: res.message || 'Erro ao registrar.',
-        variant: 'destructive',
+    // Main type filter
+    if (demandFilter === 'venda') result = result.filter((d) => d.type === 'Venda')
+    if (demandFilter === 'aluguel') result = result.filter((d) => d.type === 'Aluguel')
+    if (demandFilter === 'novas') {
+      const now = Date.now()
+      result = result.filter((d) => {
+        if (d.status !== 'Pendente' || d.isExtension48h) return false
+        const hoursAge = (now - new Date(d.createdAt).getTime()) / 3600000
+        return hoursAge <= 24
       })
     }
-    setModal({ isOpen: false, demand: null, type: null })
-  }
 
-  const statCards = [
-    { t: 'Aguardando', v: stats.await, i: Clock, c: 'text-orange-500', b: 'bg-orange-100' },
-    { t: 'Em Captação', v: stats.search, i: Search, c: 'text-blue-500', b: 'bg-blue-100' },
-    { t: 'Captado (Dem)', v: stats.capDem, i: CheckSquare, c: 'text-green-600', b: 'bg-green-100' },
-    { t: 'Visitas', v: stats.visit, i: Map, c: 'text-purple-600', b: 'bg-purple-100' },
-    { t: 'Negócios', v: stats.deal, i: Handshake, c: 'text-emerald-600', b: 'bg-emerald-100' },
-  ]
+    // Quick filters
+    if (periodFilter === '24h') {
+      const now = Date.now()
+      result = result.filter((d) => (now - new Date(d.createdAt).getTime()) / 3600000 <= 24)
+    } else if (periodFilter === '7d') {
+      const now = Date.now()
+      result = result.filter((d) => (now - new Date(d.createdAt).getTime()) / 86400000 <= 7)
+    } else if (periodFilter === '30d') {
+      const now = Date.now()
+      result = result.filter((d) => (now - new Date(d.createdAt).getTime()) / 86400000 <= 30)
+    }
+
+    if (priorityFilter === 'priorizadas') {
+      result = result.filter((d) => d.isPrioritized && d.status !== 'Perdida')
+    } else if (priorityFilter === 'novas') {
+      const now = Date.now()
+      result = result.filter(
+        (d) => (now - new Date(d.createdAt).getTime()) / 3600000 <= 24 && d.status === 'Pendente',
+      )
+    }
+
+    // Always sort prioritized to top, then newest
+    return result.sort((a, b) => {
+      if (a.isPrioritized && !b.isPrioritized) return -1
+      if (!a.isPrioritized && b.isPrioritized) return 1
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    })
+  }, [demands, demandFilter, periodFilter, priorityFilter])
+
+  // Group similar demands (simplified version for UI)
+  const groupedDemands = useMemo(() => {
+    const groups: any[] = []
+    const ungrouped: any[] = []
+    const pendingDemands = filteredDemands.filter(
+      (d) => ['Pendente', 'Em Captação'].includes(d.status) && !d.isPrioritized,
+    )
+
+    const map = new Map<string, any[]>()
+    pendingDemands.forEach((d) => {
+      const key = `${d.location}|${d.type}|${d.bedrooms || 0}`
+      if (!map.has(key)) map.set(key, [])
+      map.get(key)!.push(d)
+    })
+
+    map.forEach((group) => {
+      if (group.length > 1) {
+        groups.push({
+          id: `group-${group[0].id}`,
+          location: group[0].location,
+          type: group[0].type,
+          bedrooms: group[0].bedrooms || 0,
+          bathrooms: group[0].bathrooms || 0,
+          parkingSpots: group[0].parkingSpots || 0,
+          minBudget: Math.min(...group.map((d: any) => d.minBudget || 0)),
+          maxBudget: Math.max(...group.map((d: any) => d.maxBudget || 0)),
+          demands: group,
+        })
+      } else {
+        ungrouped.push(group[0])
+      }
+    })
+
+    const others = filteredDemands.filter(
+      (d) => !['Pendente', 'Em Captação'].includes(d.status) || d.isPrioritized,
+    )
+
+    return {
+      groups,
+      ungrouped: [...ungrouped, ...others].sort(
+        (a, b) => (b.isPrioritized ? 1 : 0) - (a.isPrioritized ? 1 : 0),
+      ),
+    }
+  }, [filteredDemands])
 
   if (!currentUser) return null
 
   return (
-    <Tabs
-      value={activeTab}
-      onValueChange={setActiveTab}
-      className="space-y-4 md:space-y-6 lg:space-y-8 relative"
-    >
-      <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4 md:gap-6 lg:gap-8">
-        <div className="flex flex-col gap-2">
-          <h1 className="text-[16px] md:text-[18px] lg:text-[20px] leading-[24px] md:leading-[28px] lg:leading-[30px] font-bold tracking-tight">
-            Painel de Captação
-          </h1>
-          <p className="text-muted-foreground text-[14px]">
-            Gerencie demandas e acompanhe seu desempenho gamificado.
-          </p>
-        </div>
-
-        <div className="flex flex-col lg:flex-row items-start lg:items-center w-full lg:w-auto">
-          <div className="flex w-full overflow-x-auto scrollbar-hide">
-            <TabsList className="flex h-auto bg-transparent border-b border-border p-0 min-w-full justify-start gap-[16px]">
-              <TabsTrigger
-                value="performance"
-                className="h-[48px] md:h-[44px] lg:h-[40px] px-[16px] md:px-[20px] lg:px-[24px] text-[14px] font-medium rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none whitespace-nowrap min-w-[44px]"
-              >
-                Minha Performance
-              </TabsTrigger>
-              <TabsTrigger
-                value="demandas"
-                className="h-[48px] md:h-[44px] lg:h-[40px] px-[16px] md:px-[20px] lg:px-[24px] text-[14px] font-medium rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none whitespace-nowrap min-w-[44px] relative"
-              >
-                Demandas Ativas
-                {quickCounts.awaiting > 0 && (
-                  <span className="absolute -top-[4px] -right-[4px] bg-[#FF4444] text-white font-bold shadow-sm text-[10px] min-w-[20px] min-h-[20px] flex items-center justify-center rounded-full px-1 z-10">
-                    {quickCounts.awaiting}
-                  </span>
-                )}
-              </TabsTrigger>
-            </TabsList>
-          </div>
-
-          <div className="w-full px-[16px] md:px-0 md:w-auto mt-4 lg:mt-0 md:ml-[24px] lg:ml-[32px] shrink-0">
-            <Button
-              onClick={() => setIndepModalOpen(true)}
-              className="h-[48px] md:h-[44px] lg:h-[40px] w-full md:w-[200px] bg-[#00AA00] hover:bg-[#009500] text-green-950 shadow-[0_2px_4px_rgba(0,170,0,0.2)] text-[14px] font-bold"
-            >
-              <Plus className="w-[20px] h-[20px] mr-[8px]" /> Nova Captação
-            </Button>
-          </div>
-
-          <div className="hidden lg:flex gap-4 lg:ml-6 items-center">
-            <Badge
-              variant="outline"
-              className="bg-indigo-50 text-indigo-800 border-indigo-200 py-2 px-4 whitespace-nowrap min-h-[44px] flex items-center gap-2 text-[14px]"
-            >
-              <LinkIcon className="w-[24px] h-[24px]" /> {stats.vinculadosCount} vinculados
-            </Badge>
-            <Badge
-              variant="outline"
-              className="bg-blue-50 text-blue-800 border-blue-200 py-2 px-4 whitespace-nowrap min-h-[44px] flex items-center gap-2 text-[14px]"
-            >
-              <Unlock className="w-[24px] h-[24px]" /> {stats.soltosCount} soltos
-            </Badge>
-          </div>
-        </div>
+    <div className="space-y-[24px] pb-[80px] md:pb-0 animate-fade-in">
+      {/* 1. Header Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-[16px] md:gap-[24px]">
+        <MetricCard
+          title="Demandas Recebidas"
+          value={headerMetrics.recebidas}
+          icon={FileText}
+          color="text-[#4444FF]"
+          trend="Na base"
+        />
+        <MetricCard
+          title="Imóveis Captados"
+          value={headerMetrics.captados}
+          icon={Home}
+          color="text-[#00AA00]"
+          trend="Esta semana"
+        />
+        <MetricCard
+          title="Negócios Fechados"
+          value={headerMetrics.fechados}
+          icon={Handshake}
+          color="text-[#FF4444]"
+          trend="Total"
+        />
       </div>
 
-      <TabsContent value="performance" className="animate-fade-in-up mt-0 outline-none">
-        <CaptadorPerformanceTab
-          demands={demands}
-          currentUser={currentUser}
-          onViewDemands={() => setActiveTab('demandas')}
-        />
-      </TabsContent>
+      {/* 2. Gamification Module */}
+      <GamificationWidget currentUser={currentUser} />
 
-      <TabsContent
-        value="demandas"
-        className="animate-fade-in-up mt-0 space-y-4 md:space-y-6 lg:space-y-8 outline-none"
-      >
-        {quickCounts.prioritized > 0 && quickFilter !== 'prioritized' && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 md:p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-sm animate-pulse">
-            <div className="flex items-center gap-4">
-              <Flame className="w-[32px] h-[32px] text-red-600 shrink-0" />
-              <div>
-                <p className="font-bold text-[16px] text-red-900">
-                  {quickCounts.prioritized} demandas priorizadas!
-                </p>
-                <p className="text-[14px] text-red-800/80">
-                  Foque nestas captações primeiro para garantir bônus e atender clientes urgentes.
-                </p>
-              </div>
+      {/* Main Tabs */}
+      <div className="flex gap-[16px] border-b border-[#E5E5E5] sticky top-[60px] md:top-0 z-40 bg-background pt-[16px]">
+        <button
+          onClick={() => setMainTab('demandas')}
+          className={cn(
+            'pb-[12px] px-[8px] text-[16px] font-bold border-b-[3px] transition-colors',
+            mainTab === 'demandas'
+              ? 'border-[#4444FF] text-[#4444FF]'
+              : 'border-transparent text-[#999999] hover:text-[#333333]',
+          )}
+        >
+          Painel de Demandas
+        </button>
+        <button
+          onClick={() => setMainTab('captados')}
+          className={cn(
+            'pb-[12px] px-[8px] text-[16px] font-bold border-b-[3px] transition-colors',
+            mainTab === 'captados'
+              ? 'border-[#00AA00] text-[#00AA00]'
+              : 'border-transparent text-[#999999] hover:text-[#333333]',
+          )}
+        >
+          Meus Imóveis Captados
+        </button>
+      </div>
+
+      {mainTab === 'demandas' ? (
+        <div className="space-y-[24px] animate-fade-in-up">
+          {/* 3. Sticky Navigation Tabs for Demands */}
+          <div className="sticky top-[110px] md:top-[60px] z-30 bg-background/95 backdrop-blur py-[12px] -mx-[16px] px-[16px] md:mx-0 md:px-0">
+            <div className="flex gap-[8px] overflow-x-auto scrollbar-hide">
+              <FilterTab
+                label="📊 Todas"
+                active={demandFilter === 'todas'}
+                onClick={() => setDemandFilter('todas')}
+                count={demands.length}
+              />
+              <FilterTab
+                label="🏢 Venda"
+                active={demandFilter === 'venda'}
+                onClick={() => setDemandFilter('venda')}
+                count={demands.filter((d) => d.type === 'Venda').length}
+                color="border-[#FF4444]"
+                activeBg="bg-[#FF4444]"
+              />
+              <FilterTab
+                label="🏠 Aluguel"
+                active={demandFilter === 'aluguel'}
+                onClick={() => setDemandFilter('aluguel')}
+                count={demands.filter((d) => d.type === 'Aluguel').length}
+                color="border-[#4444FF]"
+                activeBg="bg-[#4444FF]"
+              />
+              <FilterTab
+                label="🆕 Novas"
+                active={demandFilter === 'novas'}
+                onClick={() => setDemandFilter('novas')}
+                count={
+                  demands.filter((d) => {
+                    const age = (Date.now() - new Date(d.createdAt).getTime()) / 3600000
+                    return age <= 24 && d.status === 'Pendente'
+                  }).length
+                }
+                color="border-[#00AA00]"
+                activeBg="bg-[#00AA00]"
+              />
             </div>
+          </div>
+
+          {/* 8. Quick Filters */}
+          <div className="flex items-center gap-[12px] bg-[#F9F9F9] p-[12px] rounded-[12px] border border-[#E5E5E5] overflow-x-auto scrollbar-hide">
+            <Filter className="w-[16px] h-[16px] text-[#999999] shrink-0" />
+            <span className="text-[12px] font-bold text-[#999999] uppercase shrink-0">
+              Período:
+            </span>
+            {['todas', '24h', '7d', '30d'].map((p) => (
+              <Badge
+                key={p}
+                onClick={() => setPeriodFilter(p)}
+                className={cn(
+                  'cursor-pointer shrink-0',
+                  periodFilter === p
+                    ? 'bg-[#333333] text-white'
+                    : 'bg-white text-[#333333] border border-[#E5E5E5] hover:bg-[#E5E5E5]',
+                )}
+              >
+                {p === 'todas' ? 'Todos' : p}
+              </Badge>
+            ))}
+            <div className="w-[1px] h-[20px] bg-[#E5E5E5] mx-[8px] shrink-0" />
+            <span className="text-[12px] font-bold text-[#999999] uppercase shrink-0">
+              Prioridade:
+            </span>
+            {['todas', 'priorizadas', 'novas'].map((p) => (
+              <Badge
+                key={p}
+                onClick={() => setPriorityFilter(p)}
+                className={cn(
+                  'cursor-pointer shrink-0 capitalize',
+                  priorityFilter === p
+                    ? 'bg-[#333333] text-white'
+                    : 'bg-white text-[#333333] border border-[#E5E5E5] hover:bg-[#E5E5E5]',
+                )}
+              >
+                {p}
+              </Badge>
+            ))}
+            <div className="flex-1 min-w-[20px]"></div>
             <Button
+              variant="ghost"
               size="sm"
-              className="bg-red-600 hover:bg-red-700 text-white min-h-[44px] w-full md:w-auto text-[14px] px-4 font-bold"
-              onClick={() => handleQuickFilterClick('prioritized')}
+              onClick={() => {
+                setPeriodFilter('todas')
+                setPriorityFilter('todas')
+              }}
+              className="text-[#4444FF] font-bold text-[12px] h-[28px] shrink-0 hover:bg-[#4444FF]/10"
             >
-              Ver Priorizadas
+              <RefreshCw className="w-[14px] h-[14px] mr-[4px]" /> Limpar
             </Button>
           </div>
-        )}
 
-        <GamificationWidget currentUser={currentUser} />
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-[16px]">
-          {statCards.map((s, i) => (
-            <Card
-              key={i}
-              className="border-0 shadow-sm rounded-[12px] min-h-[100px] md:min-h-[120px] lg:min-h-[140px] flex items-center w-full p-[16px] lg:p-[20px]"
-            >
-              <CardContent className="p-0 flex items-center justify-start text-left gap-[8px] w-full">
-                <div className={`p-2 rounded-full shrink-0 ${s.b}`}>
-                  <s.i
-                    className={`w-[32px] h-[32px] md:w-[40px] md:h-[40px] lg:w-[48px] lg:h-[48px] ${s.c}`}
-                  />
-                </div>
-                <div className="flex flex-col justify-center">
-                  <p className="text-[28px] md:text-[32px] lg:text-[36px] font-bold leading-none mb-[4px]">
-                    {s.v}
-                  </p>
-                  <p className="text-[12px] md:text-[13px] lg:text-[14px] font-medium text-muted-foreground uppercase tracking-wider leading-tight">
-                    {s.t}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        <div className="sticky top-0 z-30 pt-4 pb-4 bg-background/95 backdrop-blur -mx-4 px-4 md:-mx-6 md:px-6 lg:-mx-8 lg:px-8 border-b border-border/50 mb-4">
-          <div className="flex gap-4 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-            {QUICK_FILTERS.map((opt) => {
-              const isActive = quickFilter === opt.id
-              const count = quickCounts[opt.id as keyof typeof quickCounts]
-              return (
-                <button
-                  key={opt.id}
-                  onClick={() => handleQuickFilterClick(opt.id)}
-                  className={cn(
-                    'flex flex-shrink-0 items-center justify-center gap-2 px-4 min-h-[44px] min-w-[44px] rounded-full whitespace-nowrap transition-all duration-200 text-[14px] border',
-                    isActive
-                      ? 'bg-primary text-primary-foreground font-bold border-primary shadow-sm'
-                      : 'bg-muted/50 text-muted-foreground hover:bg-muted font-medium border-border',
-                    opt.id === 'prioritized' && isActive && 'bg-red-600 text-white border-red-600',
-                    opt.id === 'prioritized' &&
-                      !isActive &&
-                      'text-red-600 hover:bg-red-50 border-red-200',
-                  )}
-                >
-                  <span>{opt.icon}</span>
-                  <span>{opt.label}</span>
-                  <span
-                    className={cn(
-                      'px-2 py-0.5 rounded-full text-[12px] font-bold ml-1 min-h-[24px] flex items-center',
-                      isActive ? 'bg-primary-foreground/20' : 'bg-muted-foreground/20',
-                      opt.id === 'prioritized' && !isActive && 'bg-red-100 text-red-700',
-                    )}
-                  >
-                    {count}
-                  </span>
-                </button>
-              )
-            })}
-          </div>
-        </div>
-
-        <div className="space-y-4 md:space-y-6 lg:space-y-8">
-          <div className="bg-muted/30 border border-border rounded-lg p-4 md:p-6 flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4 shadow-sm mb-2">
-            <div className="text-[14px] font-semibold flex items-center gap-4 flex-wrap">
-              <span className="whitespace-nowrap min-h-[32px] flex items-center">📊 Demandas:</span>
-              <Badge
-                variant="secondary"
-                className="bg-green-100 text-green-800 border-green-200 min-h-[32px] px-3"
-              >
-                {newDemands.length} novas
-              </Badge>
-              <Badge
-                variant="secondary"
-                className="bg-red-100 text-red-800 border-red-200 min-h-[32px] px-3"
-              >
-                {groupedDemands.length} agrupadas
-              </Badge>
-              <Badge
-                variant="secondary"
-                className="bg-gray-100 text-gray-800 border-gray-200 min-h-[32px] px-3"
-              >
-                {oldDemands.length} antigas
-              </Badge>
-            </div>
-            <div className="flex gap-4 w-full xl:w-auto overflow-x-auto pb-2 xl:pb-0 scrollbar-hide">
-              <Button
-                variant={viewMode === 'new' ? 'default' : 'outline'}
-                onClick={() => {
-                  setViewMode('new')
-                  setPage(1)
-                }}
-                className="shrink-0 min-h-[44px] min-w-[44px] text-[14px]"
-              >
-                Apenas novas
-              </Button>
-              <Button
-                variant={viewMode === 'grouped' ? 'default' : 'outline'}
-                onClick={() => {
-                  setViewMode('grouped')
-                  setPage(1)
-                }}
-                className="shrink-0 min-h-[44px] min-w-[44px] text-[14px]"
-              >
-                Apenas agrupadas
-              </Button>
-              <Button
-                variant={viewMode === 'all' ? 'default' : 'outline'}
-                onClick={() => {
-                  setViewMode('all')
-                  setPage(1)
-                }}
-                className="shrink-0 min-h-[44px] min-w-[44px] text-[14px]"
-              >
-                Mostrar tudo
-              </Button>
-            </div>
-          </div>
-
-          <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between bg-muted/50 p-4 md:p-6 rounded-lg border border-border/50">
-            <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-4 w-full lg:w-auto">
-              <Filter className="w-[24px] h-[24px] text-muted-foreground hidden sm:block" />
-              <Select
-                value={filters.type}
-                onValueChange={(v) => setFilters({ ...filters, type: v, page: 1 } as any)}
-              >
-                <SelectTrigger className="w-full sm:w-[140px] min-h-[44px] min-w-[44px] text-[14px] bg-background">
-                  <SelectValue placeholder="Tipo" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos Tipos</SelectItem>
-                  <SelectItem value="Venda">Venda</SelectItem>
-                  <SelectItem value="Aluguel">Aluguel</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select
-                value={filters.status}
-                onValueChange={(v) => setFilters({ ...filters, status: v, page: 1 } as any)}
-              >
-                <SelectTrigger className="w-full sm:w-[160px] min-h-[44px] min-w-[44px] text-[14px] bg-background">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos Status</SelectItem>
-                  <SelectItem value="Pendente">Aguardando</SelectItem>
-                  <SelectItem value="Em Captação">Em Captação</SelectItem>
-                  <SelectItem value="Captado sob demanda">Captados</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select
-                value={filters.timeframe}
-                onValueChange={(v) => setFilters({ ...filters, timeframe: v, page: 1 } as any)}
-              >
-                <SelectTrigger className="w-full sm:w-[160px] min-h-[44px] min-w-[44px] text-[14px] bg-background">
-                  <SelectValue placeholder="Prazo / Urgência" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Qualquer Prazo</SelectItem>
-                  <SelectItem value="Urgente">Urgente</SelectItem>
-                  <SelectItem value="Até 15 dias">Até 15 dias</SelectItem>
-                  <SelectItem value="Até 30 dias">Até 30 dias</SelectItem>
-                  <SelectItem value="Até 60 dias">Até 60 dias</SelectItem>
-                  <SelectItem value="Até 90 dias ou +">Até 90 dias ou +</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex items-center gap-4 w-full lg:w-auto mt-4 lg:mt-0">
-              <SortDesc className="w-[24px] h-[24px] text-muted-foreground hidden lg:block" />
-              <Select
-                value={filters.sort}
-                onValueChange={(v) => setFilters({ ...filters, sort: v, page: 1 } as any)}
-              >
-                <SelectTrigger className="w-full lg:w-[180px] min-h-[44px] min-w-[44px] text-[14px] bg-background">
-                  <SelectValue placeholder="Ordenar por" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="urgency">Tempo Restante (SLA)</SelectItem>
-                  <SelectItem value="time">Mais Recentes</SelectItem>
-                  <SelectItem value="similar">Perfis Similares</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {groupingError ? (
-            <div className="text-center p-8 md:p-12 bg-destructive/10 border rounded-xl border-dashed border-destructive">
-              <h3 className="text-[18px] font-semibold text-destructive">
-                Erro ao agrupar demandas
-              </h3>
-            </div>
-          ) : allRenderItems.length === 0 ? (
-            <div className="text-center p-8 md:p-12 bg-background border rounded-xl border-dashed flex flex-col items-center">
-              <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
-                <PackageSearch className="w-[32px] h-[32px] text-muted-foreground/50" />
-              </div>
-              <h3 className="text-[18px] font-semibold mb-2">Nenhuma demanda no momento</h3>
-              <p className="text-[14px] text-muted-foreground">
-                Nenhuma demanda no momento. Volte mais tarde!
+          {/* Demands List */}
+          {filteredDemands.length === 0 ? (
+            <div className="text-center py-[48px] bg-[#F9F9F9] border rounded-[12px] border-dashed border-[#E5E5E5]">
+              <Search className="w-12 h-12 text-[#999999]/50 mx-auto mb-3" />
+              <p className="text-[14px] text-[#999999] font-medium">
+                Nenhuma demanda encontrada com estes filtros.
               </p>
-              {(filters.type !== 'all' ||
-                filters.status !== 'all' ||
-                filters.timeframe !== 'all' ||
-                quickFilter !== 'all') && (
-                <Button
-                  variant="link"
-                  onClick={() => {
-                    setFilters({ type: 'all', status: 'all', timeframe: 'all', sort: 'urgency' })
-                    handleQuickFilterClick('all')
-                  }}
-                  className="mt-4 min-h-[44px] min-w-[44px] text-[14px]"
-                >
-                  Limpar filtros
-                </Button>
-              )}
             </div>
           ) : (
-            <>
-              <div className="grid gap-4 md:gap-6 lg:gap-8 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {paginatedItems.map((entry) => {
-                  if (entry.type === 'group') {
-                    return (
-                      <GroupedDemandCard
-                        key={`group-${entry.item.id}`}
-                        group={entry.item}
-                        onAction={(id, type) =>
-                          setModal({
-                            isOpen: true,
-                            demand: demands.find((d) => d.id === id) || null,
-                            type,
-                          })
-                        }
-                      />
-                    )
-                  }
-                  const d = entry.item
-                  return (
-                    <DemandCard
-                      key={d.id}
-                      demand={d}
-                      isNewDemand={entry.type === 'new' && !d.isPrioritized}
-                      showActions={d.status === 'Pendente' || d.status === 'Em Captação'}
-                      onAction={(id, type) => setModal({ isOpen: true, demand: d, type })}
-                    />
-                  )
-                })}
-              </div>
-              {totalPages > 1 && (
-                <div className="pt-6 flex justify-center">
-                  <Pagination>
-                    <PaginationContent>
-                      <PaginationItem>
-                        <Button
-                          variant="ghost"
-                          onClick={() => setPage((p) => Math.max(1, p - 1))}
-                          disabled={page === 1}
-                          className="gap-2 min-h-[44px] min-w-[44px] text-[14px]"
-                        >
-                          <ChevronLeft className="h-[24px] w-[24px]" /> Anterior
-                        </Button>
-                      </PaginationItem>
-                      <div className="flex items-center px-6 text-[14px] font-medium">
-                        Página {page} de {totalPages}
-                      </div>
-                      <PaginationItem>
-                        <Button
-                          variant="ghost"
-                          onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                          disabled={page === totalPages}
-                          className="gap-2 min-h-[44px] min-w-[44px] text-[14px]"
-                        >
-                          Próxima <ChevronRight className="h-[24px] w-[24px]" />
-                        </Button>
-                      </PaginationItem>
-                    </PaginationContent>
-                  </Pagination>
-                </div>
-              )}
-            </>
+            <div className="grid gap-[16px] grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
+              {groupedDemands.groups.map((g) => (
+                <GroupedDemandCard key={g.id} group={g} onAction={() => {}} />
+              ))}
+              {groupedDemands.ungrouped.map((d) => {
+                const ageHours = (Date.now() - new Date(d.createdAt).getTime()) / 3600000
+                const isNew = ageHours <= 24 && d.status === 'Pendente'
+                return <DemandCard key={d.id} demand={d} isNewDemand={isNew} />
+              })}
+            </div>
           )}
         </div>
-      </TabsContent>
+      ) : (
+        <CapturedPropertiesView />
+      )}
+    </div>
+  )
+}
 
-      <DemandActionModal
-        isOpen={modal.isOpen}
-        demand={modal.demand}
-        actionType={modal.type}
-        onClose={() => setModal({ isOpen: false, demand: null, type: null })}
-        onConfirm={handleAction}
-      />
-      <IndependentCaptureModal isOpen={indepModalOpen} onClose={() => setIndepModalOpen(false)} />
-    </Tabs>
+function MetricCard({ title, value, icon: Icon, color, trend }: any) {
+  return (
+    <Card className="rounded-[12px] border border-[#E5E5E5] shadow-sm bg-[#FFFFFF] overflow-hidden">
+      <CardContent className="p-[24px] flex items-center justify-between">
+        <div className="flex flex-col">
+          <p className="text-[12px] font-bold text-[#999999] uppercase tracking-wider mb-[4px]">
+            {title}
+          </p>
+          <div className="flex items-baseline gap-[8px]">
+            <span className="text-[36px] font-black text-[#333333] leading-none">{value}</span>
+            <span className={cn('text-[12px] font-bold', color)}>{trend}</span>
+          </div>
+        </div>
+        <div
+          className={cn(
+            'w-[48px] h-[48px] rounded-[12px] bg-[#F9F9F9] flex items-center justify-center border border-[#E5E5E5]',
+            color,
+          )}
+        >
+          <Icon className="w-[24px] h-[24px] currentColor" />
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+function FilterTab({
+  label,
+  active,
+  onClick,
+  count,
+  color = 'border-[#333333]',
+  activeBg = 'bg-[#333333]',
+}: any) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        'flex items-center gap-[8px] h-[44px] md:h-[48px] px-[16px] rounded-full border-2 transition-all whitespace-nowrap',
+        active
+          ? cn('text-white shadow-sm', activeBg, color)
+          : 'bg-white text-[#999999] border-[#E5E5E5] hover:border-[#333333] hover:text-[#333333]',
+      )}
+    >
+      <span className="text-[14px] font-bold">{label}</span>
+      <span
+        className={cn(
+          'text-[10px] font-bold px-[6px] py-[2px] rounded-full',
+          active ? 'bg-white/20 text-white' : 'bg-[#E5E5E5] text-[#333333]',
+        )}
+      >
+        {count}
+      </span>
+    </button>
   )
 }

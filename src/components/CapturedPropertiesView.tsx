@@ -1,14 +1,7 @@
 import { useState, useMemo, useTransition } from 'react'
-import { Search, RefreshCw } from 'lucide-react'
+import { Search, RefreshCw, Home, Eye, Handshake } from 'lucide-react'
 import useAppStore from '@/stores/useAppStore'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Label } from '@/components/ui/label'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { CapturedPropertyCard } from './CapturedPropertyCard'
 import { CapturedPropertyModals } from './CapturedPropertyModals'
@@ -35,12 +28,6 @@ export function CapturedPropertiesView({
 
   const [filterStatus, setFilterStatus] = useState('Todas')
   const [filterPeriod, setFilterPeriod] = useState('Todas')
-  const [sortOrder, setSortOrder] = useState('recent')
-
-  const [activeFilters, setActiveFilters] = useState({
-    status: 'Todas',
-    period: 'Todas',
-  })
 
   const [isPending, startTransition] = useTransition()
 
@@ -85,15 +72,6 @@ export function CapturedPropertiesView({
     return { captados, visitas, negocios }
   }, [allCaptured])
 
-  const applyFilters = () => {
-    startTransition(() => {
-      setActiveFilters({
-        status: filterStatus,
-        period: filterPeriod,
-      })
-    })
-  }
-
   const filteredAndSorted = useMemo(() => {
     let result = allCaptured.filter(({ demand: d, property: p }) => {
       if (p.discarded) return false
@@ -105,43 +83,27 @@ export function CapturedPropertiesView({
       if (isClosed) propStatus = 'Negócios'
       else if (isVisita) propStatus = 'Visitas'
 
-      if (activeFilters.status !== 'Todas' && propStatus !== activeFilters.status) return false
+      if (filterStatus !== 'Todas' && propStatus !== filterStatus) return false
 
       const capDate = new Date(p.capturedAt || '')
       const now = new Date()
       const diffDays = (now.getTime() - capDate.getTime()) / (1000 * 3600 * 24)
 
-      if (activeFilters.period === '7dias' && diffDays > 7) return false
-      if (activeFilters.period === '30dias' && diffDays > 30) return false
+      if (filterPeriod === '7d' && diffDays > 7) return false
+      if (filterPeriod === '30d' && diffDays > 30) return false
 
       return true
     })
 
-    if (sortOrder === 'priority') {
-      result.sort((a, b) => {
-        const getScore = (p: CapturedProperty) => {
-          if (p.fechamentoDate) return 3
-          if (p.visitaDate) return 2
-          return 1
-        }
-        const sA = getScore(a.property)
-        const sB = getScore(b.property)
-        if (sA !== sB) return sB - sA
-        return (
-          new Date(b.property.capturedAt || '').getTime() -
-          new Date(a.property.capturedAt || '').getTime()
-        )
-      })
-    } else {
-      result.sort(
-        (a, b) =>
-          new Date(b.property.capturedAt || '').getTime() -
-          new Date(a.property.capturedAt || '').getTime(),
-      )
-    }
+    // Sort by most recent
+    result.sort(
+      (a, b) =>
+        new Date(b.property.capturedAt || '').getTime() -
+        new Date(a.property.capturedAt || '').getTime(),
+    )
 
     return result
-  }, [allCaptured, activeFilters, sortOrder])
+  }, [allCaptured, filterStatus, filterPeriod])
 
   const handleAction = (
     type: 'visita' | 'proposta' | 'negocio' | 'lost' | 'history' | 'details',
@@ -161,87 +123,101 @@ export function CapturedPropertiesView({
 
   return (
     <div className="space-y-[24px] animate-fade-in-up">
-      {/* Counters */}
-      <div className="flex flex-wrap gap-4 items-center justify-between bg-card p-4 rounded-xl border shadow-sm">
-        <div className="flex flex-wrap gap-4 md:gap-6 text-sm md:text-base font-bold text-foreground">
-          <span className="flex items-center gap-2">
-            <span className="text-xl">📊</span> Imóveis Captados:{' '}
-            <span className="text-primary">{stats.captados}</span>
-          </span>
-          <span className="text-border hidden sm:inline">|</span>
-          <span className="flex items-center gap-2">
-            <span className="text-xl">👁️</span> Visitas:{' '}
-            <span className="text-orange-500">{stats.visitas}</span>
-          </span>
-          <span className="text-border hidden sm:inline">|</span>
-          <span className="flex items-center gap-2">
-            <span className="text-xl">💰</span> Negócios:{' '}
-            <span className="text-emerald-500">{stats.negocios}</span>
-          </span>
+      {/* Counters styled to match the new UI */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-[16px]">
+        <div className="bg-[#FFFFFF] border border-[#E5E5E5] rounded-[12px] p-[16px] flex items-center justify-between shadow-sm">
+          <div>
+            <p className="text-[12px] font-bold text-[#999999] uppercase">Imóveis Captados</p>
+            <p className="text-[28px] font-black text-[#333333] leading-none mt-1">
+              {stats.captados}
+            </p>
+          </div>
+          <div className="w-[48px] h-[48px] rounded-[12px] bg-[#4444FF]/10 flex items-center justify-center">
+            <Home className="w-[24px] h-[24px] text-[#4444FF]" />
+          </div>
+        </div>
+        <div className="bg-[#FFFFFF] border border-[#E5E5E5] rounded-[12px] p-[16px] flex items-center justify-between shadow-sm">
+          <div>
+            <p className="text-[12px] font-bold text-[#999999] uppercase">Visitas Agendadas</p>
+            <p className="text-[28px] font-black text-[#333333] leading-none mt-1">
+              {stats.visitas}
+            </p>
+          </div>
+          <div className="w-[48px] h-[48px] rounded-[12px] bg-[#FFD700]/20 flex items-center justify-center">
+            <Eye className="w-[24px] h-[24px] text-[#B8860B]" />
+          </div>
+        </div>
+        <div className="bg-[#FFFFFF] border border-[#E5E5E5] rounded-[12px] p-[16px] flex items-center justify-between shadow-sm">
+          <div>
+            <p className="text-[12px] font-bold text-[#999999] uppercase">Negócios Fechados</p>
+            <p className="text-[28px] font-black text-[#333333] leading-none mt-1">
+              {stats.negocios}
+            </p>
+          </div>
+          <div className="w-[48px] h-[48px] rounded-[12px] bg-[#00AA00]/10 flex items-center justify-center">
+            <Handshake className="w-[24px] h-[24px] text-[#00AA00]" />
+          </div>
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="bg-card border rounded-xl p-[16px] md:p-[20px] space-y-[16px] shadow-sm">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-[16px]">
-          <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground">Status</Label>
-            <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger className="h-[44px]">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Todas">Todas</SelectItem>
-                <SelectItem value="Captados">Captados</SelectItem>
-                <SelectItem value="Visitas">Visitas</SelectItem>
-                <SelectItem value="Negócios">Negócios</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground">Período</Label>
-            <Select value={filterPeriod} onValueChange={setFilterPeriod}>
-              <SelectTrigger className="h-[44px]">
-                <SelectValue placeholder="Período" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Todas">Todas</SelectItem>
-                <SelectItem value="7dias">Últimos 7 dias</SelectItem>
-                <SelectItem value="30dias">Últimos 30 dias</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground">Ordenar por</Label>
-            <Select value={sortOrder} onValueChange={setSortOrder}>
-              <SelectTrigger className="h-[44px]">
-                <SelectValue placeholder="Ordem" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="recent">Mais Recentes</SelectItem>
-                <SelectItem value="priority">Prioridade (Negócio &gt; Visita)</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-        <div className="flex justify-end">
-          <Button onClick={applyFilters} className="w-full sm:w-auto h-[44px] gap-2 font-bold">
-            <RefreshCw className="w-4 h-4" /> Aplicar Filtros
-          </Button>
-        </div>
+      {/* Quick Filters */}
+      <div className="flex items-center gap-[12px] bg-[#F9F9F9] p-[12px] rounded-[12px] border border-[#E5E5E5] overflow-x-auto scrollbar-hide">
+        <span className="text-[12px] font-bold text-[#999999] uppercase shrink-0">Status:</span>
+        {['Todas', 'Captados', 'Visitas', 'Negócios'].map((p) => (
+          <Badge
+            key={p}
+            onClick={() => startTransition(() => setFilterStatus(p))}
+            className={cn(
+              'cursor-pointer shrink-0 h-[28px]',
+              filterStatus === p
+                ? 'bg-[#333333] text-white'
+                : 'bg-white text-[#333333] border border-[#E5E5E5] hover:bg-[#E5E5E5]',
+            )}
+          >
+            {p}
+          </Badge>
+        ))}
+        <div className="w-[1px] h-[20px] bg-[#E5E5E5] mx-[8px] shrink-0" />
+        <span className="text-[12px] font-bold text-[#999999] uppercase shrink-0">Período:</span>
+        {['Todas', '7d', '30d'].map((p) => (
+          <Badge
+            key={p}
+            onClick={() => startTransition(() => setFilterPeriod(p))}
+            className={cn(
+              'cursor-pointer shrink-0 h-[28px]',
+              filterPeriod === p
+                ? 'bg-[#333333] text-white'
+                : 'bg-white text-[#333333] border border-[#E5E5E5] hover:bg-[#E5E5E5]',
+            )}
+          >
+            {p === 'Todas' ? 'Tudo' : p}
+          </Badge>
+        ))}
+        <div className="flex-1 min-w-[20px]"></div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            startTransition(() => {
+              setFilterStatus('Todas')
+              setFilterPeriod('Todas')
+            })
+          }}
+          className="text-[#4444FF] font-bold text-[12px] h-[28px] shrink-0 hover:bg-[#4444FF]/10"
+        >
+          <RefreshCw className="w-[14px] h-[14px] mr-[4px]" /> Limpar
+        </Button>
       </div>
 
       {/* Grid */}
       <div className={cn('transition-opacity duration-200', isPending && 'opacity-50')}>
         {filteredAndSorted.length === 0 ? (
-          <div className="text-center py-[48px] bg-background border rounded-[12px] border-dashed">
-            <Search className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
-            <p className="text-[14px] text-muted-foreground font-medium">{emptyStateText}</p>
+          <div className="text-center py-[48px] bg-[#F9F9F9] border rounded-[12px] border-dashed border-[#E5E5E5]">
+            <Search className="w-12 h-12 text-[#999999]/30 mx-auto mb-3" />
+            <p className="text-[14px] text-[#999999] font-medium">{emptyStateText}</p>
           </div>
         ) : (
-          <div className="grid gap-[16px] grid-cols-1 md:grid-cols-2">
+          <div className="grid gap-[16px] grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
             {filteredAndSorted.map(({ demand, property }) => (
               <CapturedPropertyCard
                 key={`${demand.id}-${property.code}`}

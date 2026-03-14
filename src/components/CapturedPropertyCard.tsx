@@ -3,6 +3,8 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import useAppStore from '@/stores/useAppStore'
+import { cn } from '@/lib/utils'
+import { Eye, Handshake, BookOpen } from 'lucide-react'
 
 export function CapturedPropertyCard({
   demand,
@@ -36,79 +38,88 @@ export function CapturedPropertyCard({
   const isClosed = !!property.fechamentoDate
   const isVisita = !!property.visitaDate && !isClosed
 
-  const status = isClosed ? 'Negócio Fechado' : isVisita ? 'Visita Agendada' : 'Captado'
+  const status = isClosed ? 'Negócio' : isVisita ? 'Visita' : 'Captado'
   const badgeClass = isClosed
-    ? 'bg-green-100 text-green-800 border-green-200'
+    ? 'bg-[#00AA00]/10 text-[#00AA00] border-none'
     : isVisita
-      ? 'bg-orange-100 text-orange-800 border-orange-200'
-      : 'bg-yellow-100 text-yellow-800 border-yellow-200'
+      ? 'bg-[#FFD700]/20 text-[#B8860B] border-none'
+      : 'bg-[#4444FF]/10 text-[#4444FF] border-none'
   const badgeIcon = isClosed ? '🟢' : isVisita ? '🟠' : '🟡'
 
+  const propType = property.propertyType || demand?.type || 'Venda'
+  const isAluguel = propType === 'Aluguel'
+  const typeColor = isAluguel ? 'bg-[#4444FF]' : 'bg-[#FF4444]'
+
   return (
-    <Card className="w-full rounded-xl mb-3 border hover:shadow-md flex flex-col bg-card">
-      <CardContent className="p-4 flex flex-col flex-1">
-        <div className="flex justify-between items-start mb-4 gap-2">
-          <div className="font-bold text-[14px]">🏠 Cód: {property.code}</div>
-          <Badge variant="outline" className={`font-bold text-[11px] h-6 shrink-0 ${badgeClass}`}>
+    <Card className="w-full min-h-[140px] md:min-h-[160px] rounded-[12px] mb-[16px] border border-[#E5E5E5] hover:shadow-md flex flex-col bg-[#FFFFFF] transition-all duration-200">
+      <CardContent className="p-[16px] flex flex-col flex-1">
+        <div className="flex justify-between items-start mb-[12px] gap-[8px]">
+          <Badge className={cn('font-bold text-[10px] text-white px-2 py-1', typeColor)}>
+            {isAluguel ? '🏠 ALUGUEL' : '🏢 VENDA'}
+          </Badge>
+          <Badge variant="outline" className={cn('font-bold text-[10px]', badgeClass)}>
             {badgeIcon} {status}
           </Badge>
         </div>
 
-        <div className="flex flex-col gap-[4px] text-[13px] flex-grow text-muted-foreground">
-          <div>
-            📍 Localização:{' '}
-            <span className="font-semibold text-foreground">{property.neighborhood}</span>
-          </div>
-          <div>
-            💰 Valor:{' '}
-            <span className="font-semibold text-foreground">R$ {formatPrice(property.value)}</span>
-          </div>
-          <div>
-            🏠 Perfil:{' '}
-            <span className="font-semibold text-foreground">
-              {property.bedrooms || 0} dorm, {property.bathrooms || 0} banh,{' '}
-              {property.parkingSpots || 0} vagas
-            </span>
-          </div>
-          <div>
-            👤 Captador: <span className="font-semibold text-foreground">{capturerName}</span>
-          </div>
-          <div>
+        <div className="flex flex-col gap-[4px] flex-grow">
+          <h3 className="text-[14px] font-bold text-[#333333] leading-tight">
+            🏠 Cód: {property.code}
+          </h3>
+          <p className="text-[12px] text-[#999999] leading-tight">
+            📍 Localização: <span className="text-[#333333]">{property.neighborhood}</span>
+          </p>
+          <p className="text-[14px] font-bold text-[#333333] mt-[4px]">
+            💰 Valor: R$ {formatPrice(property.value)}
+          </p>
+          <p className="text-[12px] text-[#333333] mt-[2px]">
+            🏠 Perfil: {property.bedrooms || 0} dorm, {property.bathrooms || 0} banh,{' '}
+            {property.parkingSpots || 0} vagas
+          </p>
+          <p className="text-[12px] text-[#999999] mt-[4px]">
+            👤 Captador: <span className="text-[#333333] font-medium">{capturerName}</span>
+          </p>
+          <p className="text-[12px] text-[#999999]">
             📅 Data de Captação:{' '}
-            <span className="font-semibold text-foreground">
+            <span className="text-[#333333] font-medium">
               {new Date(property.capturedAt || '').toLocaleDateString('pt-BR')}
             </span>
-          </div>
+          </p>
 
-          <div className="mt-3 pt-3 border-t text-[12px]">
-            Demanda Atendida: <strong className="text-foreground">{demand?.clientName}</strong> em{' '}
-            {demand?.location}
-          </div>
+          {demand && (
+            <div className="mt-[12px] pt-[12px] border-t border-[#E5E5E5] text-[12px] text-[#999999]">
+              Demanda: <strong className="text-[#333333]">{demand.clientName}</strong> em{' '}
+              {demand.location}
+            </div>
+          )}
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-2 mt-4 pt-4 border-t w-full">
+        <div className="flex flex-row flex-wrap sm:flex-nowrap gap-[8px] mt-[16px] w-full">
           {!isClosed && !isVisita && (
             <Button
-              className="h-[44px] sm:h-[40px] flex-1 bg-orange-500 hover:bg-orange-600 text-white font-bold text-[12px] min-w-0"
+              className="flex-1 h-[44px] min-w-[100px] bg-[#FFD700] hover:bg-[#E6C200] text-[#333333] font-bold text-[14px] px-2 shadow-sm"
               onClick={() => handleAction('visita')}
             >
-              👁️ VISITA AGENDADA
+              <Eye className="w-[16px] h-[16px] sm:mr-[6px]" />
+              <span className="hidden sm:inline">Visita</span>
             </Button>
           )}
           {isVisita && (
             <Button
-              className="h-[44px] sm:h-[40px] flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[12px] min-w-0"
+              className="flex-1 h-[44px] min-w-[100px] bg-[#00AA00] hover:bg-[#009000] text-white font-bold text-[14px] px-2 shadow-sm"
               onClick={() => handleAction('negocio')}
             >
-              💰 NEGÓCIO FECHADO
+              <Handshake className="w-[16px] h-[16px] sm:mr-[6px]" />
+              <span className="hidden sm:inline">Negócio</span>
             </Button>
           )}
           <Button
             variant="outline"
-            className="h-[44px] sm:h-[40px] flex-1 font-bold text-[12px] bg-secondary/50 min-w-0"
+            className="flex-1 h-[44px] min-w-[100px] border-[#4444FF] text-[#4444FF] hover:bg-[#4444FF] hover:text-white font-bold text-[14px] px-2"
             onClick={() => handleAction('details')}
           >
-            📖 Ver Detalhes
+            <BookOpen className="w-[16px] h-[16px] sm:mr-[6px]" />
+            <span className="hidden sm:inline">Detalhes</span>
           </Button>
         </div>
       </CardContent>
