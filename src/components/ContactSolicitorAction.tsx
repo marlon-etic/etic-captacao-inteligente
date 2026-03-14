@@ -1,16 +1,7 @@
-import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Mail, MessageSquare } from 'lucide-react'
 import { Demand, User } from '@/types'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog'
 import useAppStore from '@/stores/useAppStore'
-import { InternalChatModal } from '@/components/InternalChatModal'
+import { useToast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 
 interface Props {
@@ -29,12 +20,15 @@ export function ContactSolicitorAction({
   buttonText,
 }: Props) {
   const { logSolicitorContactAttempt } = useAppStore()
-  const [showOptions, setShowOptions] = useState(false)
-  const [showChat, setShowChat] = useState(false)
+  const { toast } = useToast()
 
   const handleWhatsApp = () => {
     if (!solicitor || solicitor.status === 'inativo' || !solicitor.phone) {
-      setShowOptions(true)
+      toast({
+        title: 'Erro',
+        description: 'Número não disponível',
+        variant: 'destructive',
+      })
       return
     }
 
@@ -60,57 +54,6 @@ export function ContactSolicitorAction({
       >
         {buttonText || '💬 Contatar'}
       </Button>
-
-      <Dialog open={showOptions} onOpenChange={setShowOptions}>
-        <DialogContent className="sm:max-w-[425px] p-[16px]">
-          <DialogHeader>
-            <DialogTitle className="text-[16px] font-bold">Contatar Solicitante</DialogTitle>
-            <DialogDescription className="text-[12px]">
-              {!solicitor
-                ? 'Solicitante não encontrado.'
-                : solicitor.status === 'inativo'
-                  ? 'Solicitante não está disponível.'
-                  : 'Número não disponível. Escolha uma alternativa:'}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-col gap-[12px] py-[16px]">
-            {solicitor?.email && (
-              <Button
-                variant="outline"
-                className="h-[44px] w-full text-[14px]"
-                onClick={() => {
-                  logSolicitorContactAttempt(demand.id, 'email')
-                  window.location.href = `mailto:${solicitor.email}?subject=Dúvida Demanda ${demand.clientName}`
-                  setShowOptions(false)
-                }}
-              >
-                <Mail className="w-5 h-5 mr-2" /> Enviar Email
-              </Button>
-            )}
-            <Button
-              variant="outline"
-              className="h-[44px] w-full text-[14px]"
-              onClick={() => {
-                setShowOptions(false)
-                setShowChat(true)
-              }}
-            >
-              <MessageSquare className="w-5 h-5 mr-2" /> Chat Interno
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <InternalChatModal
-        isOpen={showChat}
-        onClose={() => setShowChat(false)}
-        onSend={(msg) => {
-          logSolicitorContactAttempt(demand.id, 'interno', msg)
-        }}
-        userName={solicitor?.name || 'Solicitante'}
-        title="Mensagem para Solicitante"
-        description={`Enviar mensagem interna para ${solicitor?.name || 'o solicitante desta demanda'}.`}
-      />
     </div>
   )
 }

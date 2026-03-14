@@ -18,7 +18,7 @@ import {
   DrawerDescription,
 } from '@/components/ui/drawer'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { CheckCircle2, XCircle, MapPin, Search } from 'lucide-react'
+import { CheckCircle2, XCircle } from 'lucide-react'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { ContactSolicitorAction } from '@/components/ContactSolicitorAction'
 import useAppStore from '@/stores/useAppStore'
@@ -44,7 +44,7 @@ export function GroupedDemandCard({
 }) {
   const [showModal, setShowModal] = useState(false)
   const isMobile = useIsMobile()
-  const { users } = useAppStore()
+  const { users, currentUser } = useAppStore()
 
   const formatCurrency = (val: number) =>
     new Intl.NumberFormat('pt-BR', {
@@ -75,7 +75,7 @@ export function GroupedDemandCard({
             <div className="flex flex-wrap gap-2 pt-2">
               <Button
                 size="sm"
-                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
+                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white min-w-[140px]"
                 onClick={() => onAction(d.id, 'encontrei')}
               >
                 <CheckCircle2 className="w-4 h-4 mr-1.5" /> ✅ Encontrei Imóvel
@@ -83,18 +83,20 @@ export function GroupedDemandCard({
               <Button
                 size="sm"
                 variant="outline"
-                className="flex-1 text-destructive hover:bg-destructive/10"
+                className="flex-1 text-destructive hover:bg-destructive/10 min-w-[140px]"
                 onClick={() => onAction(d.id, 'nao_encontrei')}
               >
                 <XCircle className="w-4 h-4 mr-1.5" /> ❌ Não Encontrei
               </Button>
-              <ContactSolicitorAction
-                demand={d}
-                solicitor={solicitor}
-                className="flex-1"
-                buttonClassName="w-full h-9"
-                buttonText="💬 Contatar"
-              />
+              {currentUser?.role === 'captador' && (
+                <ContactSolicitorAction
+                  demand={d}
+                  solicitor={solicitor}
+                  className="flex-1 min-w-[140px]"
+                  buttonClassName="w-full h-9 font-semibold"
+                  buttonText="💬 Contatar"
+                />
+              )}
             </div>
           </div>
         )

@@ -1263,7 +1263,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           drafts.push({
             usuario_id: u.id,
             tipo_notificacao: 'novo_imovel',
-            titulo: '🔴 DEMANDA PRIORIZADA!',
+            titulo: `🔴 DEMANDA PRIORIZADA! ${demand.clientName} em ${demand.location}`,
             corpo: `${demand.clientName} em ${demand.location} - ${count} clientes interessados`,
             detalhes: {
               código: demand.id,
@@ -1354,12 +1354,24 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       const drafts: Partial<AppNotification>[] = Array.from(activeCaptadores).map((uId) => ({
         usuario_id: uId,
         tipo_notificacao: 'perdido',
-        titulo: '⚫ DEMANDA PERDIDA',
+        titulo: `⚫ DEMANDA PERDIDA: ${demand.clientName} em ${demand.location} - Motivo: ${reason}`,
         corpo: `A demanda de ${demand.clientName} em ${demand.location} foi perdida.`,
         detalhes: { motivo: reason },
         urgencia: 'baixa',
         canais: ['in_app'],
       }))
+
+      if (currentUser?.role === 'captador' && demand.createdBy) {
+        drafts.push({
+          usuario_id: demand.createdBy,
+          tipo_notificacao: 'perdido',
+          titulo: `⚫ PERDIDO: ${demand.clientName} em ${demand.location} - Motivo: ${reason}`,
+          corpo: `O captador marcou a demanda como perdida.`,
+          detalhes: { motivo: reason },
+          urgencia: 'baixa',
+          canais: ['in_app'],
+        })
+      }
 
       if (drafts.length > 0) dispatchNotifications(drafts)
 
@@ -1858,8 +1870,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
               {
                 usuario_id: demand.createdBy,
                 tipo_notificacao: 'demanda_respondida',
-                titulo: '🎯 DEMANDA RESPONDIDA!',
-                corpo: `Um novo imóvel foi captado para ${demand.clientName}`,
+                titulo: `✅ IMÓVEL CAPTADO! ${code} para ${demand.clientName}`,
+                corpo: `Um novo imóvel foi captado para ${demand.clientName} em ${demand.location}`,
                 detalhes: { captador: currentUser?.name, codigo: code },
                 acao_url: `/app/demandas`,
                 urgencia: 'alta',
@@ -1902,7 +1914,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
               {
                 usuario_id: demand.createdBy,
                 tipo_notificacao: 'perdido',
-                titulo: '❌ DEMANDA SEM IMÓVEL',
+                titulo: `❌ NÃO ENCONTROU: ${demand.clientName} em ${demand.location}`,
                 corpo: payload.continueSearch
                   ? `Captador pediu extensão para ${demand.clientName}`
                   : `Captador não encontrou imóvel para ${demand.clientName}`,

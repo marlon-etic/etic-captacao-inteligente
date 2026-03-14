@@ -8,6 +8,7 @@ import useAppStore from '@/stores/useAppStore'
 import { DemandDetailsModal } from '@/components/DemandDetailsModal'
 import { PrioritizeModal } from '@/components/PrioritizeModal'
 import { LostModal } from '@/components/LostModal'
+import { ContactSolicitorAction } from '@/components/ContactSolicitorAction'
 import { CheckCircle2, XCircle } from 'lucide-react'
 
 interface DemandCardProps {
@@ -18,7 +19,7 @@ interface DemandCardProps {
 }
 
 export function DemandCard({ demand, isNewDemand, showActions, onAction }: DemandCardProps) {
-  const { currentUser, getSimilarDemands, prioritizeDemand, markDemandLost } = useAppStore()
+  const { currentUser, users, getSimilarDemands, prioritizeDemand, markDemandLost } = useAppStore()
   const [showDetails, setShowDetails] = useState(false)
   const [showPrioritize, setShowPrioritize] = useState(false)
   const [showLost, setShowLost] = useState(false)
@@ -32,6 +33,8 @@ export function DemandCard({ demand, isNewDemand, showActions, onAction }: Deman
     currentUser?.id === demand.createdBy ||
     currentUser?.role === 'admin' ||
     currentUser?.role === 'gestor'
+
+  const isCaptador = currentUser?.role === 'captador'
 
   const handlePrioritize = (reason: string) => {
     prioritizeDemand(demand.id, reason, totalClients)
@@ -173,6 +176,16 @@ export function DemandCard({ demand, isNewDemand, showActions, onAction }: Deman
                 </>
               )}
             </div>
+
+            {isCaptador && demand.status !== 'Perdida' && (
+              <ContactSolicitorAction
+                demand={demand}
+                solicitor={users.find((u) => u.id === demand.createdBy)}
+                className="w-full mt-[4px]"
+                buttonClassName="w-full h-[44px] md:h-[40px] text-[14px] bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200 font-semibold"
+                buttonText="💬 CONTATAR SOLICITANTE"
+              />
+            )}
           </div>
         </CardContent>
       </Card>
