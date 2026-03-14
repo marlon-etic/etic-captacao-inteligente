@@ -1,181 +1,156 @@
 import { useState, useTransition } from 'react'
-import { Filter, Activity } from 'lucide-react'
-import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
+import { Label } from '@/components/ui/label'
 import { DemandCard } from '@/components/DemandCard'
 import useAppStore from '@/stores/useAppStore'
 import { cn } from '@/lib/utils'
+import { RefreshCw } from 'lucide-react'
 
 export default function Demandas() {
-  const { demands, webhookQueue, auditLogs, triggerCron } = useAppStore()
-  const [search, setSearch] = useState('')
-  const [activeTab, setActiveTab] = useState<'all' | 'Venda' | 'Aluguel'>('all')
+  const { demands } = useAppStore()
+
+  const [filterStatus, setFilterStatus] = useState<string>('all')
+  const [filterType, setFilterType] = useState<string>('all')
+  const [filterPeriod, setFilterPeriod] = useState<string>('all')
+
+  const [activeFilters, setActiveFilters] = useState({
+    status: 'all',
+    type: 'all',
+    period: 'all',
+  })
+
   const [isPending, startTransition] = useTransition()
 
-  const handleTabChange = (tab: 'all' | 'Venda' | 'Aluguel') => {
+  const applyFilters = () => {
     startTransition(() => {
-      setActiveTab(tab)
+      setActiveFilters({
+        status: filterStatus,
+        type: filterType,
+        period: filterPeriod,
+      })
     })
   }
 
-  const baseDemands = demands.filter(
-    (d) =>
-      d.status !== 'Perdida' &&
-      (d.clientName.toLowerCase().includes(search.toLowerCase()) ||
-        d.location.toLowerCase().includes(search.toLowerCase())),
-  )
+  const now = Date.now()
 
-  const countAll = baseDemands.length
-  const countVenda = baseDemands.filter((d) => d.type === 'Venda').length
-  const countAluguel = baseDemands.filter((d) => d.type === 'Aluguel').length
+  const filtered = demands.filter((d) => {
+    // Status Filter
+    if (activeFilters.status === 'open') {
+      if (d.status === 'Perdida') return false
+      if (d.isPrioritized) return false
+    } else if (activeFilters.status === 'prioritized') {
+      if (!d.isPrioritized || d.status === 'Perdida') return false
+    } else if (activeFilters.status === 'lost') {
+      if (d.status !== 'Perdida') return false
+    } else if (activeFilters.status === 'all') {
+      // Show all
+    }
 
-  const filtered = baseDemands.filter((d) => (activeTab === 'all' ? true : d.type === activeTab))
+    // Type Filter
+    if (activeFilters.type !== 'all' && d.type !== activeFilters.type) return false
+
+    // Period Filter
+    const createdAt = new Date(d.createdAt).getTime()
+    const diffDays = (now - createdAt) / 86400000
+    if (activeFilters.period === '7days' && diffDays > 7) return false
+    if (activeFilters.period === '30days' && diffDays > 30) return false
+
+    return true
+  })
 
   const sorted = [...filtered].sort((a, b) => {
-    if (activeTab === 'all') {
-      if (a.type === 'Venda' && b.type !== 'Venda') return -1
-      if (a.type !== 'Venda' && b.type === 'Venda') return 1
-    }
+    // 1. Prioritized demands at the very top
+    if (a.isPrioritized && !b.isPrioritized) return -1
+    if (!a.isPrioritized && b.isPrioritized) return 1
+
+    // 2. Lost demands at the bottom
+    if (a.status === 'Perdida' && b.status !== 'Perdida') return 1
+    if (a.status !== 'Perdida' && b.status === 'Perdida') return -1
+
+    // 3. Descending by creation date
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   })
 
   return (
-    <div className="space-y-6 animate-fade-in-up">
-      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Todas as Demandas</h1>
-          <p className="text-muted-foreground text-sm">Lista completa do sistema.</p>
+    <div className="space-y-[16px] md:space-y-[24px] animate-fade-in-up">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">Painel de Demandas</h1>
+        <p className="text-muted-foreground text-sm">
+          Gerencie os requisitos dos clientes e priorize tarefas.
+        </p>
+      </div>
+
+      <div className="bg-card border rounded-xl p-[16px] md:p-[24px] space-y-[16px]">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-[16px]">
+          <div className="space-y-2">
+            <Label className="text-xs text-muted-foreground">Status</Label>
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger className="h-[44px]">
+                <SelectValue placeholder="Todos" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas</SelectItem>
+                <SelectItem value="open">Abertas</SelectItem>
+                <SelectItem value="prioritized">Priorizadas</SelectItem>
+                <SelectItem value="lost">Perdidas</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label className="text-xs text-muted-foreground">Tipo</Label>
+            <Select value={filterType} onValueChange={setFilterType}>
+              <SelectTrigger className="h-[44px]">
+                <SelectValue placeholder="Ambas" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Ambas</SelectItem>
+                <SelectItem value="Venda">Venda</SelectItem>
+                <SelectItem value="Aluguel">Aluguel</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label className="text-xs text-muted-foreground">Período</Label>
+            <Select value={filterPeriod} onValueChange={setFilterPeriod}>
+              <SelectTrigger className="h-[44px]">
+                <SelectValue placeholder="Todas" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="7days">Últimos 7 dias</SelectItem>
+                <SelectItem value="30days">30 dias</SelectItem>
+                <SelectItem value="all">Todas</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button
-                variant="outline"
-                className="gap-2 border-primary/30 text-primary bg-primary/5 hover:bg-primary/10 min-h-[44px]"
-              >
-                <Activity className="w-4 h-4" /> Automação & Logs
-              </Button>
-            </SheetTrigger>
-            <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
-              <SheetHeader>
-                <SheetTitle>Console de Automação</SheetTitle>
-              </SheetHeader>
-              <div className="mt-6 space-y-6">
-                <Button onClick={triggerCron} className="w-full min-h-[44px]">
-                  Forçar Auditoria Cron
-                </Button>
-                <div>
-                  <h3 className="text-sm font-semibold mb-3">Fila de Notificações (WhatsApp)</h3>
-                  <div className="space-y-2">
-                    {webhookQueue.length === 0 && (
-                      <p className="text-xs text-muted-foreground">Fila vazia.</p>
-                    )}
-                    {webhookQueue.map((q) => (
-                      <div
-                        key={q.id}
-                        className="text-xs p-3 rounded border bg-muted/50 flex justify-between items-center"
-                      >
-                        <div className="flex-1 pr-4">
-                          <p className="font-bold">{q.event_type}</p>
-                          <p className="text-muted-foreground line-clamp-2">
-                            {JSON.stringify(q.payload.data)}
-                          </p>
-                        </div>
-                        <Badge
-                          variant={
-                            q.status === 'enviado'
-                              ? 'default'
-                              : q.status === 'falha'
-                                ? 'destructive'
-                                : 'secondary'
-                          }
-                        >
-                          {q.status}
-                        </Badge>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <h3 className="text-sm font-semibold mb-3">Logs de Auditoria</h3>
-                  <div className="bg-black text-green-400 p-3 rounded-lg font-mono text-[11px] space-y-1 h-72 overflow-y-auto">
-                    {auditLogs.length === 0 && (
-                      <p className="text-muted-foreground">Nenhum evento registrado.</p>
-                    )}
-                    {auditLogs.map((l, i) => (
-                      <div key={i} className="border-b border-green-900/30 pb-1">
-                        {l}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </SheetContent>
-          </Sheet>
-          <Input
-            placeholder="Buscar bairro ou cliente..."
-            className="max-w-[200px] bg-background min-h-[44px]"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          <Button variant="outline" size="icon" className="min-h-[44px] min-w-[44px]">
-            <Filter className="w-4 h-4" />
+        <div className="flex justify-end">
+          <Button onClick={applyFilters} className="w-full sm:w-auto h-[44px] gap-2">
+            <RefreshCw className="w-4 h-4" />
+            Aplicar Filtros
           </Button>
         </div>
       </div>
 
-      <div className="flex overflow-x-auto gap-4 lg:gap-6 border-b border-border/50 pb-px [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-        <button
-          onClick={() => handleTabChange('all')}
-          className={cn(
-            'h-[48px] lg:h-[44px] px-1 flex items-center justify-center gap-2 font-semibold whitespace-nowrap min-w-[44px] transition-colors',
-            activeTab === 'all'
-              ? 'text-primary border-b-2 border-primary'
-              : 'text-muted-foreground hover:text-foreground border-b-2 border-transparent',
-          )}
-        >
-          📊 Todas ({countAll})
-        </button>
-        <button
-          onClick={() => handleTabChange('Venda')}
-          className={cn(
-            'h-[48px] lg:h-[44px] px-1 flex items-center justify-center gap-2 font-semibold whitespace-nowrap min-w-[44px] transition-colors',
-            activeTab === 'Venda'
-              ? 'text-[#FF4444] border-b-2 border-[#FF4444]'
-              : 'text-muted-foreground hover:text-foreground border-b-2 border-transparent',
-          )}
-        >
-          🏢 Venda ({countVenda})
-        </button>
-        <button
-          onClick={() => handleTabChange('Aluguel')}
-          className={cn(
-            'h-[48px] lg:h-[44px] px-1 flex items-center justify-center gap-2 font-semibold whitespace-nowrap min-w-[44px] transition-colors',
-            activeTab === 'Aluguel'
-              ? 'text-[#4444FF] border-b-2 border-[#4444FF]'
-              : 'text-muted-foreground hover:text-foreground border-b-2 border-transparent',
-          )}
-        >
-          🏠 Aluguel ({countAluguel})
-        </button>
-      </div>
-
-      <div className={cn('grid gap-4 grid-cols-1 lg:grid-cols-2', isPending && 'opacity-50')}>
+      <div
+        className={cn(
+          'grid gap-[16px] md:gap-[24px] grid-cols-1 md:grid-cols-2',
+          isPending && 'opacity-50',
+        )}
+      >
         {sorted.map((demand) => (
           <DemandCard key={demand.id} demand={demand} />
         ))}
         {sorted.length === 0 && (
           <div className="col-span-full flex flex-col items-center justify-center py-16 text-center bg-muted/10 border border-dashed rounded-xl">
-            <div className="text-4xl mb-4">
-              {activeTab === 'Venda' ? '🏢' : activeTab === 'Aluguel' ? '🏠' : '📊'}
-            </div>
-            <p className="text-muted-foreground font-medium">
-              {activeTab === 'all'
-                ? 'Nenhuma demanda encontrada no momento.'
-                : `Nenhuma demanda de ${activeTab} no momento.`}
-            </p>
+            <div className="text-4xl mb-4">📭</div>
+            <p className="text-muted-foreground font-medium">Nenhuma demanda no momento</p>
           </div>
         )}
       </div>

@@ -43,10 +43,10 @@ export function LostModal({ open, onOpenChange, onConfirm }: Props) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[400px]">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">❌ Marcar como Perdido</DialogTitle>
-          <DialogDescription>
-            Informe o motivo da perda desta demanda para os registros.
-          </DialogDescription>
+          <DialogTitle className="flex items-center gap-2">
+            ❌ Marcar Demanda como Perdida
+          </DialogTitle>
+          <DialogDescription>Por que esta demanda foi perdida?</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div className="space-y-2">
@@ -63,9 +63,10 @@ export function LostModal({ open, onOpenChange, onConfirm }: Props) {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="Cliente desistiu">Cliente desistiu</SelectItem>
-                <SelectItem value="Cliente alugou">Cliente alugou</SelectItem>
-                <SelectItem value="Cliente comprou">Cliente comprou</SelectItem>
-                <SelectItem value="Imóvel fora de mercado">Imóvel fora de mercado</SelectItem>
+                <SelectItem value="Cliente já alugou">Cliente já alugou</SelectItem>
+                <SelectItem value="Cliente já comprou">Cliente já comprou</SelectItem>
+                <SelectItem value="Imóvel fora do mercado">Imóvel fora do mercado</SelectItem>
+                <SelectItem value="Cliente mudou de ideia">Cliente mudou de ideia</SelectItem>
                 <SelectItem value="Outro">Outro</SelectItem>
               </SelectContent>
             </Select>
@@ -87,7 +88,7 @@ export function LostModal({ open, onOpenChange, onConfirm }: Props) {
             Cancelar
           </Button>
           <Button onClick={handleConfirm} variant="destructive">
-            Confirmar Perda
+            ✅ Confirmar Perda
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -1,24 +1,27 @@
-import { X, CheckCircle2, XCircle } from 'lucide-react'
+import { X } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogClose,
+  DialogFooter,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Demand } from '@/types'
-import { useTimeElapsed } from '@/hooks/useTimeElapsed'
+import useAppStore from '@/stores/useAppStore'
 
 interface Props {
   open: boolean
   onOpenChange: (open: boolean) => void
   demand?: Demand
-  onAction?: (action: 'encontrei' | 'nao_encontrei') => void
+  onPrioritize?: () => void
+  onLost?: () => void
 }
 
-export function DemandDetailsModal({ open, onOpenChange, demand, onAction }: Props) {
-  const timeElapsed = useTimeElapsed(demand?.createdAt)
+export function DemandDetailsModal({ open, onOpenChange, demand, onPrioritize, onLost }: Props) {
+  const { getSimilarDemands } = useAppStore()
 
   if (!demand) {
     return (
@@ -33,19 +36,23 @@ export function DemandDetailsModal({ open, onOpenChange, demand, onAction }: Pro
     )
   }
 
-  const { text } = timeElapsed
+  const similarDemands = getSimilarDemands(demand.id)
 
   const formatPrice = (val?: number) => {
     if (!val) return '0'
     return new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 }).format(val)
   }
 
+  let statusLabel = 'Aberta'
+  if (demand.status === 'Perdida') statusLabel = 'Perdida'
+  else if (demand.isPrioritized) statusLabel = 'Priorizada'
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-full h-[100dvh] sm:h-[85vh] sm:max-w-[700px] p-0 flex flex-col rounded-none sm:rounded-[12px] border-0 sm:border gap-0 overflow-hidden bg-background">
         <DialogHeader className="p-[16px] border-b shrink-0 flex flex-row items-center justify-between bg-muted/10 text-left relative">
-          <DialogTitle className="text-[16px] font-bold leading-[24px] m-0 p-0">
-            Detalhes da Demanda
+          <DialogTitle className="text-[16px] font-bold leading-[24px] m-0 p-0 pr-[32px] truncate">
+            Detalhes da Demanda - {demand.clientName}
           </DialogTitle>
           <DialogClose className="absolute right-[16px] top-[12px] w-[32px] h-[32px] flex items-center justify-center rounded-full bg-muted/50 hover:bg-muted transition-colors">
             <X className="w-5 h-5" />
@@ -56,9 +63,9 @@ export function DemandDetailsModal({ open, onOpenChange, demand, onAction }: Pro
           <div className="space-y-[24px] pb-[24px]">
             <section className="space-y-[12px]">
               <h4 className="text-[16px] font-bold leading-[24px] border-b pb-[8px]">
-                Informações do Cliente
+                👤 Informações do Cliente
               </h4>
-              <div className="flex flex-col gap-[8px]">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-[12px]">
                 <div>
                   <span className="text-[12px] leading-[16px] text-muted-foreground block">
                     Nome
@@ -73,15 +80,21 @@ export function DemandDetailsModal({ open, onOpenChange, demand, onAction }: Pro
                     {demand.clientEmail || 'Não informado'}
                   </span>
                 </div>
+                <div className="col-span-1 sm:col-span-2">
+                  <span className="text-[12px] leading-[16px] text-muted-foreground block">
+                    Telefone
+                  </span>
+                  <span className="text-[14px] leading-[20px] font-bold">Não informado</span>
+                </div>
               </div>
             </section>
 
             <section className="space-y-[12px]">
               <h4 className="text-[16px] font-bold leading-[24px] border-b pb-[8px]">
-                Detalhes da Demanda
+                📍 Detalhes da Demanda
               </h4>
-              <div className="grid grid-cols-2 gap-[12px]">
-                <div className="col-span-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-[12px]">
+                <div className="col-span-1 sm:col-span-2">
                   <span className="text-[12px] leading-[16px] text-muted-foreground block">
                     Localização
                   </span>
@@ -89,32 +102,19 @@ export function DemandDetailsModal({ open, onOpenChange, demand, onAction }: Pro
                 </div>
                 <div>
                   <span className="text-[12px] leading-[16px] text-muted-foreground block">
-                    Orçamento Mín.
+                    💰 Orçamento
                   </span>
                   <span className="text-[14px] leading-[20px] font-bold">
-                    R$ {formatPrice(demand.minBudget)}
+                    R$ {formatPrice(demand.minBudget)} - R$ {formatPrice(demand.maxBudget)}
                   </span>
                 </div>
                 <div>
                   <span className="text-[12px] leading-[16px] text-muted-foreground block">
-                    Orçamento Máx.
+                    🏠 Perfil
                   </span>
                   <span className="text-[14px] leading-[20px] font-bold">
-                    R$ {formatPrice(demand.maxBudget)}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-[12px] leading-[16px] text-muted-foreground block">
-                    Dormitórios
-                  </span>
-                  <span className="text-[14px] leading-[20px] font-bold">{demand.bedrooms}</span>
-                </div>
-                <div>
-                  <span className="text-[12px] leading-[16px] text-muted-foreground block">
-                    Vagas
-                  </span>
-                  <span className="text-[14px] leading-[20px] font-bold">
-                    {demand.parkingSpots}
+                    {demand.bedrooms || 0} dorm, {demand.bathrooms || 0} banh,{' '}
+                    {demand.parkingSpots || 0} vagas
                   </span>
                 </div>
               </div>
@@ -122,9 +122,18 @@ export function DemandDetailsModal({ open, onOpenChange, demand, onAction }: Pro
 
             <section className="space-y-[12px]">
               <h4 className="text-[16px] font-bold leading-[24px] border-b pb-[8px]">
-                Urgência e Tempo
+                📝 Necessidades
               </h4>
-              <div className="flex flex-col gap-[8px]">
+              <p className="text-[14px] leading-[20px]">
+                {demand.description || 'Nenhuma descrição detalhada.'}
+              </p>
+            </section>
+
+            <section className="space-y-[12px]">
+              <h4 className="text-[16px] font-bold leading-[24px] border-b pb-[8px]">
+                ⏰ Informações Adicionais
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-[12px]">
                 <div>
                   <span className="text-[12px] leading-[16px] text-muted-foreground block">
                     Urgência
@@ -135,32 +144,88 @@ export function DemandDetailsModal({ open, onOpenChange, demand, onAction }: Pro
                 </div>
                 <div>
                   <span className="text-[12px] leading-[16px] text-muted-foreground block">
-                    Criado há
+                    📊 Status
                   </span>
-                  <span className="text-[14px] leading-[20px] font-bold">{text}</span>
+                  <Badge variant="outline" className="mt-1">
+                    {statusLabel}
+                  </Badge>
+                </div>
+                <div>
+                  <span className="text-[12px] leading-[16px] text-muted-foreground block">
+                    📅 Data de Criação
+                  </span>
+                  <span className="text-[14px] leading-[20px] font-bold">
+                    {new Date(demand.createdAt).toLocaleDateString('pt-BR')}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[12px] leading-[16px] text-muted-foreground block">
+                    📅 Data de Finalização
+                  </span>
+                  <span className="text-[14px] leading-[20px] font-bold">
+                    {demand.status === 'Negócio' &&
+                    demand.capturedProperties?.find((p) => p.fechamentoDate)
+                      ? new Date(
+                          demand.capturedProperties.find((p) => p.fechamentoDate)!.fechamentoDate!,
+                        ).toLocaleDateString('pt-BR')
+                      : '-'}
+                  </span>
                 </div>
               </div>
+            </section>
+
+            <section className="space-y-[12px]">
+              <h4 className="text-[16px] font-bold leading-[24px] border-b pb-[8px]">
+                👥 Clientes Similares
+              </h4>
+              {similarDemands.length > 0 ? (
+                <ul className="list-disc pl-[20px] text-[14px] leading-[20px]">
+                  {similarDemands.map((d) => (
+                    <li key={d.id}>
+                      {d.clientName} ({d.location})
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-[14px] leading-[20px] text-muted-foreground">
+                  Nenhum cliente similar encontrado.
+                </p>
+              )}
             </section>
           </div>
         </div>
 
-        {onAction && (
-          <div className="p-[16px] border-t shrink-0 flex flex-col sm:flex-row gap-[8px] bg-background">
+        <DialogFooter className="p-[16px] border-t shrink-0 flex flex-col sm:flex-row gap-[8px] bg-background">
+          {onPrioritize && (
             <Button
-              className="h-[44px] w-full text-[14px] leading-[20px] bg-emerald-600 hover:bg-emerald-700 text-white"
-              onClick={() => onAction('encontrei')}
+              className="h-[44px] md:h-[40px] w-full text-[14px] leading-[20px] bg-red-600 hover:bg-red-700 text-white"
+              onClick={() => {
+                onOpenChange(false)
+                onPrioritize()
+              }}
             >
-              <CheckCircle2 className="w-5 h-5 mr-2" /> Encontrei Imóvel
+              🔴 PRIORIZAR
             </Button>
+          )}
+          {onLost && (
             <Button
-              className="h-[44px] w-full text-[14px] leading-[20px]"
-              variant="outline"
-              onClick={() => onAction('nao_encontrei')}
+              className="h-[44px] md:h-[40px] w-full text-[14px] leading-[20px] bg-gray-200 text-gray-800 hover:bg-gray-300"
+              onClick={() => {
+                onOpenChange(false)
+                onLost()
+              }}
             >
-              <XCircle className="w-5 h-5 mr-2 text-destructive" /> Não Encontrei
+              ❌ PERDIDO
             </Button>
-          </div>
-        )}
+          )}
+          <Button
+            variant="outline"
+            className="h-[44px] md:h-[40px] w-full text-[14px] leading-[20px]"
+            onClick={() => onOpenChange(false)}
+          >
+            Fechar
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

@@ -8,27 +8,33 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
 
 interface Props {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onConfirm: (count: number) => void
+  onConfirm: (reason: string) => void
+  similarCount: number
 }
 
-export function PrioritizeModal({ open, onOpenChange, onConfirm }: Props) {
-  const [count, setCount] = useState('')
+export function PrioritizeModal({ open, onOpenChange, onConfirm, similarCount }: Props) {
+  const [reason, setReason] = useState('')
   const [error, setError] = useState('')
 
   const handleConfirm = () => {
-    const num = parseInt(count, 10)
-    if (isNaN(num) || num <= 0) {
-      setError('Número deve ser positivo')
+    if (!reason) {
+      setError('Selecione um motivo para a priorização')
       return
     }
     setError('')
-    onConfirm(num)
+    onConfirm(reason)
     onOpenChange(false)
   }
 
@@ -38,23 +44,32 @@ export function PrioritizeModal({ open, onOpenChange, onConfirm }: Props) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">🔴 Priorizar Demanda</DialogTitle>
           <DialogDescription>
-            Informe o número de clientes interessados para priorizar esta demanda.
+            Esta demanda será destacada para os captadores com {similarCount} clientes interessados
+            no mesmo perfil.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label htmlFor="interested-count">Clientes Interessados</Label>
-            <Input
-              id="interested-count"
-              type="number"
-              min="1"
-              value={count}
-              onChange={(e) => {
-                setCount(e.target.value)
+            <Label>Motivo da Priorização</Label>
+            <Select
+              value={reason}
+              onValueChange={(val) => {
+                setReason(val)
                 setError('')
               }}
-              placeholder="Ex: 3"
-            />
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione um motivo..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Múltiplos clientes interessados">
+                  Múltiplos clientes interessados
+                </SelectItem>
+                <SelectItem value="Cliente com urgência alta">Cliente com urgência alta</SelectItem>
+                <SelectItem value="Perfil de alto valor">Perfil de alto valor</SelectItem>
+                <SelectItem value="Outro">Outro</SelectItem>
+              </SelectContent>
+            </Select>
             {error && <p className="text-sm font-medium text-destructive">{error}</p>}
           </div>
         </div>
@@ -62,8 +77,8 @@ export function PrioritizeModal({ open, onOpenChange, onConfirm }: Props) {
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
-          <Button onClick={handleConfirm} className="bg-pink-600 hover:bg-pink-700 text-white">
-            Confirmar Prioridade
+          <Button onClick={handleConfirm} className="bg-red-600 hover:bg-red-700 text-white">
+            ✅ Confirmar Priorização
           </Button>
         </DialogFooter>
       </DialogContent>

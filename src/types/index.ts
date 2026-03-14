@@ -87,6 +87,7 @@ export type PropertyActionType =
   | 'negocio'
   | 'perdido'
   | 'contato_captador'
+  | 'priorizado'
 
 export interface PropertyAction {
   id: string
@@ -167,6 +168,7 @@ export interface Demand {
   capturedProperties?: CapturedProperty[]
   isPrioritized?: boolean
   interestedClientsCount?: number
+  prioritizeReason?: string
   lostReason?: string
   lostObs?: string
   lastContactedSolicitorAt?: string

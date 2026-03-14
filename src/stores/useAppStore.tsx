@@ -55,7 +55,7 @@ interface AppState {
   scheduleVisitByCode: (code: string, payload: any) => void
   submitProposalByCode: (code: string, payload: any) => void
   closeDealByCode: (code: string, payload: any) => void
-  prioritizeDemand: (id: string, count: number) => void
+  prioritizeDemand: (id: string, reason: string, count: number) => void
   markDemandLost: (id: string, reason: string, obs?: string) => void
   markPropertyLost: (code: string, demandId: string, reason: string, obs?: string) => void
   logContactAttempt: (
@@ -1222,32 +1222,61 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   )
 
   const prioritizeDemand = useCallback(
-    (id: string, count: number) => {
+    (id: string, reason: string, count: number) => {
       const demand = allDemands.find((d) => d.id === id)
-      if (!checkDemandAccess(demand)) return
+      if (!demand || !checkDemandAccess(demand)) return
+
+      const action = createAction('priorizado', `Demanda priorizada: ${reason}`)
 
       setAllDemands((prev) => {
         const next = prev.map((d) =>
-          d.id === id ? { ...d, isPrioritized: true, interestedClientsCount: count } : d,
+          d.id === id
+            ? { ...d, isPrioritized: true, interestedClientsCount: count, prioritizeReason: reason }
+            : d,
         )
         broadcastState(next, users, 'Demanda priorizada')
         return next
       })
-      enqueueWebhook('demanda_priorizada', id, { count })
+
+      const drafts: Partial<AppNotification>[] = []
+      usersRef.current.forEach((u) => {
+        if (u.role === 'captador' && u.status === 'ativo') {
+          drafts.push({
+            usuario_id: u.id,
+            tipo_notificacao: 'novo_imovel',
+            titulo: '🔴 DEMANDA PRIORIZADA',
+            corpo: `Demanda priorizada: ${demand.clientName} em ${demand.location}`,
+            urgencia: 'alta',
+            canais: ['in_app', 'push'],
+          })
+        }
+      })
+      if (drafts.length > 0) dispatchNotifications(drafts)
+
+      enqueueWebhook('demanda_priorizada', id, { count, reason })
       addLog(`Demanda priorizada (ID: ${id})`)
       toast({
         title: 'Demanda priorizada!',
-        description: 'Notificação enviada.',
+        description: 'Notificação enviada aos captadores.',
         className: 'bg-pink-600 text-white',
       })
     },
-    [allDemands, currentUser, users, enqueueWebhook, addLog, broadcastState],
+    [
+      allDemands,
+      currentUser,
+      users,
+      enqueueWebhook,
+      addLog,
+      broadcastState,
+      createAction,
+      dispatchNotifications,
+    ],
   )
 
   const markDemandLost = useCallback(
     (id: string, reason: string, obs?: string) => {
       const demand = allDemands.find((d) => d.id === id)
-      if (!checkDemandAccess(demand)) return
+      if (!demand || !checkDemandAccess(demand)) return
 
       const action = createAction('perdido', `Demanda perdida: ${reason}`, obs)
 
@@ -1273,11 +1302,36 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         broadcastState(next, users, 'Demanda perdida')
         return next
       })
+
+      const drafts: Partial<AppNotification>[] = []
+      usersRef.current.forEach((u) => {
+        if (u.role === 'captador' && u.status === 'ativo') {
+          drafts.push({
+            usuario_id: u.id,
+            tipo_notificacao: 'perdido',
+            titulo: '❌ DEMANDA PERDIDA',
+            corpo: `Demanda de ${demand.clientName} marcada como perdida.`,
+            urgencia: 'baixa',
+            canais: ['in_app'],
+          })
+        }
+      })
+      if (drafts.length > 0) dispatchNotifications(drafts)
+
       enqueueWebhook('demanda_perdida', id, { reason, obs })
       addLog(`Demanda perdida (ID: ${id})`)
       toast({ title: 'Demanda perdida', description: 'Status atualizado.' })
     },
-    [allDemands, currentUser, users, enqueueWebhook, addLog, broadcastState, createAction],
+    [
+      allDemands,
+      currentUser,
+      users,
+      enqueueWebhook,
+      addLog,
+      broadcastState,
+      createAction,
+      dispatchNotifications,
+    ],
   )
 
   const markPropertyLost = useCallback(
