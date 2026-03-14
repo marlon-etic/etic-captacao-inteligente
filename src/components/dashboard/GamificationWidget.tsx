@@ -77,71 +77,82 @@ export function GamificationWidget({ currentUser }: { currentUser: User }) {
   }
 
   return (
-    <Card className="bg-gradient-to-r from-[#4444FF] to-[#00AA00] text-[#FFFFFF] border-0 shadow-md p-[16px] md:p-[24px] rounded-[12px] overflow-hidden relative">
+    <Card className="bg-gradient-to-r from-[#4444FF] to-[#00AA00] text-[#FFFFFF] border-0 shadow-md p-4 md:p-5 lg:p-6 rounded-xl overflow-hidden relative">
       <div className="absolute right-0 top-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none" />
-      <CardContent className="p-0 relative z-10 flex flex-col md:flex-row gap-[24px] justify-between">
+      <CardContent className="p-0 relative z-10 flex flex-col lg:flex-row gap-4 lg:gap-6 justify-between">
         <div className="flex flex-col flex-1">
-          <p className="text-[14px] font-bold uppercase tracking-wider mb-[8px] text-white/90">
+          <p className="text-[12px] md:text-[13px] lg:text-[14px] font-bold uppercase tracking-wider mb-2 text-white/90 leading-[16px] md:leading-[18px] lg:leading-[20px]">
             Pontos Totais
           </p>
-          <div className="flex items-baseline gap-[8px]">
-            <span className="text-[36px] md:text-[48px] font-black leading-none tracking-tight">
+          <div className="flex items-baseline gap-2">
+            <span className="text-[28px] md:text-[32px] lg:text-[36px] font-black leading-[32px] md:leading-[36px] lg:leading-[40px] tracking-tight">
               {currentUser.points.toLocaleString('pt-BR')}
             </span>
-            <span className="text-[16px] font-bold uppercase text-white/80">pts</span>
+            <span className="text-[14px] md:text-[16px] font-bold uppercase text-white/80 leading-[20px] md:leading-[24px]">
+              pts
+            </span>
           </div>
-          <div className="mt-[16px] inline-flex items-center bg-white/20 px-[12px] py-[6px] rounded-full w-fit">
-            <Trophy className="w-[16px] h-[16px] mr-[8px]" />
-            <span className="text-[14px] font-bold">
-              Posição no Ranking: {position}º de {totalCap}
+          <div className="mt-4 inline-flex items-center bg-white/20 px-3 py-1.5 rounded-full w-fit min-h-[32px]">
+            <Trophy className="w-4 h-4 mr-2" />
+            <span className="text-[12px] md:text-[13px] lg:text-[14px] font-bold leading-[16px] md:leading-[18px] lg:leading-[20px]">
+              Posição: {position}º de {totalCap}
             </span>
           </div>
         </div>
 
-        <div className="flex flex-col flex-1 bg-black/20 p-[16px] rounded-[12px] backdrop-blur-sm">
-          <p className="text-[14px] font-bold uppercase mb-[12px] text-white/90">Próximo Badge</p>
+        <div className="flex flex-col flex-1 bg-black/20 p-4 rounded-xl backdrop-blur-sm min-h-[100px]">
+          <p className="text-[12px] md:text-[13px] lg:text-[14px] font-bold uppercase mb-3 text-white/90 leading-[16px] md:leading-[18px] lg:leading-[20px]">
+            Próximo Badge
+          </p>
           {nextBadge ? (
-            <div className="flex flex-col gap-[12px]">
-              <div className="flex items-center gap-[12px]">
-                <div className="w-[40px] h-[40px] bg-white/20 rounded-full flex items-center justify-center">
-                  <nextBadge.icon className="w-[20px] h-[20px] text-white" />
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-[44px] h-[44px] md:w-[48px] md:h-[48px] bg-white/20 rounded-full flex items-center justify-center shrink-0">
+                  <nextBadge.icon className="w-5 h-5 text-white" />
                 </div>
-                <div className="flex-1">
-                  <p className="text-[16px] font-bold leading-tight">{nextBadge.label}</p>
-                  <p className="text-[12px] text-white/80">
-                    {Math.floor(nextBadge.val)} / {nextBadge.target} concluído
+                <div className="flex-1 min-w-0">
+                  <p className="text-[14px] md:text-[16px] lg:text-[18px] font-bold leading-[20px] md:leading-[24px] lg:leading-[28px] truncate">
+                    {nextBadge.label}
+                  </p>
+                  <p className="text-[12px] md:text-[13px] lg:text-[14px] text-white/80 leading-[16px] md:leading-[18px] lg:leading-[20px] mt-0.5">
+                    {Math.floor(nextBadge.val)} / {nextBadge.target}
                   </p>
                 </div>
               </div>
               <Progress
                 value={nextBadge.progress}
-                className="h-[8px] bg-white/20"
+                className="h-2 bg-white/20"
                 indicatorClassName="bg-[#FFD700]"
               />
             </div>
           ) : (
-            <div className="flex items-center justify-center h-full text-white/80 font-bold">
+            <div className="flex items-center justify-center h-full text-white/80 font-bold text-[14px] md:text-[16px] leading-[20px] md:leading-[24px]">
               Todos os badges conquistados! 🎉
             </div>
           )}
         </div>
 
-        <div className="flex flex-col md:w-auto w-full">
-          <p className="text-[12px] font-bold uppercase text-white/90 mb-[8px]">Minhas Insígnias</p>
-          <div className="flex gap-[12px] flex-wrap md:flex-nowrap">
+        <div className="flex flex-col w-full lg:w-auto mt-2 lg:mt-0">
+          <p className="text-[12px] md:text-[13px] lg:text-[14px] font-bold uppercase text-white/90 mb-3 leading-[16px] md:leading-[18px] lg:leading-[20px]">
+            Minhas Insígnias
+          </p>
+          <div className="flex gap-2.5 flex-wrap">
             {BADGES_CONFIG.slice(0, 5).map((b) => {
               const earned = currentBadges.includes(b.id)
               return (
                 <div
                   key={b.id}
                   className={cn(
-                    'w-[44px] h-[44px] rounded-full flex items-center justify-center transition-all',
+                    'w-[44px] h-[44px] md:w-[48px] md:h-[48px] rounded-full flex items-center justify-center transition-all shrink-0',
                     earned ? 'bg-white shadow-lg' : 'bg-white/10 opacity-50 grayscale',
                   )}
                   title={b.label}
                 >
                   <b.icon
-                    className={cn('w-[24px] h-[24px]', earned ? 'text-[#4444FF]' : 'text-white/50')}
+                    className={cn(
+                      'w-5 h-5 md:w-6 md:h-6',
+                      earned ? 'text-[#4444FF]' : 'text-white/50',
+                    )}
                   />
                 </div>
               )

@@ -1,4 +1,3 @@
-/* Button Component primitives - A component that displays a button - from shadcn/ui (exposes Button, buttonVariants) */
 import * as React from 'react'
 import { Slot } from '@radix-ui/react-slot'
 import { cva, type VariantProps } from 'class-variance-authority'
@@ -19,10 +18,10 @@ const buttonVariants = cva(
         link: 'text-foreground underline-offset-4 hover:underline',
       },
       size: {
-        default: 'h-10 px-4 py-2',
-        sm: 'h-9 rounded-md px-3',
-        lg: 'h-11 rounded-md px-8',
-        icon: 'h-10 w-10',
+        default: 'h-[48px] md:h-[44px] lg:h-[40px] px-4 py-2',
+        sm: 'h-10 md:h-9 rounded-md px-3',
+        lg: 'h-[52px] md:h-12 rounded-md px-8',
+        icon: 'h-[48px] w-[48px] md:h-[44px] md:w-[44px] lg:h-[40px] lg:w-[40px]',
       },
     },
     defaultVariants: {

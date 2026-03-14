@@ -86,7 +86,7 @@ export function MetricsGrid({ current, previous }: MetricsGridProps) {
   ]
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 w-full">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 md:gap-5 lg:gap-6 w-full">
       {metrics.map((m, i) => {
         const diff = m.value - m.prev
         const diffText = diff >= 0 ? `+${diff} vs anterior` : `${diff} vs anterior`
@@ -104,25 +104,32 @@ export function MetricsGrid({ current, previous }: MetricsGridProps) {
         return (
           <Card
             key={i}
-            className={`w-full min-h-[110px] p-4 sm:p-5 border-l-[6px] ${m.border} shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow`}
+            className={`w-full min-h-[100px] md:min-h-[120px] lg:min-h-[140px] p-4 md:p-5 lg:p-6 border-l-[6px] ${m.border} shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow`}
           >
             <div className="flex items-start justify-between w-full">
               <div className="flex flex-col min-w-0 pr-2">
                 <h3
-                  className="text-xs sm:text-[13px] text-muted-foreground font-bold uppercase tracking-wider truncate mb-1"
+                  className="text-[12px] md:text-[13px] lg:text-[14px] leading-[16px] md:leading-[18px] lg:leading-[20px] text-muted-foreground font-bold uppercase tracking-wider truncate mb-1"
                   title={m.title}
                 >
                   {m.title}
                 </h3>
-                <div className="text-2xl sm:text-3xl font-black leading-none text-foreground">
+                <div className="text-[28px] md:text-[32px] lg:text-[36px] font-black leading-[32px] md:leading-[36px] lg:leading-[40px] text-foreground">
                   {m.value}
                 </div>
               </div>
-              <div className={`p-2 rounded-full ${m.bg} shrink-0`} aria-hidden="true">
-                <m.icon className={`w-5 h-5 sm:w-6 sm:h-6 ${m.color}`} />
+              <div
+                className={`p-2 w-[44px] h-[44px] md:w-[48px] md:h-[48px] lg:w-[56px] lg:h-[56px] flex items-center justify-center rounded-xl ${m.bg} shrink-0`}
+                aria-hidden="true"
+              >
+                <m.icon className={`w-5 h-5 md:w-6 md:h-6 lg:w-7 lg:h-7 ${m.color}`} />
               </div>
             </div>
-            <p className={`text-[11px] sm:text-xs font-semibold mt-2 ${diffColor}`}>{diffText}</p>
+            <p
+              className={`text-[12px] md:text-[13px] lg:text-[14px] leading-[16px] md:leading-[18px] lg:leading-[20px] font-semibold mt-2 ${diffColor}`}
+            >
+              {diffText}
+            </p>
           </Card>
         )
       })}

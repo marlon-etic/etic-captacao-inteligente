@@ -38,9 +38,9 @@ export default function Layout() {
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset className="flex flex-col min-h-screen overflow-hidden bg-muted/20">
+      <SidebarInset className="flex flex-col min-h-[100dvh] overflow-hidden bg-muted/20">
         <AppHeader />
-        <main className="flex-1 overflow-y-auto w-full max-w-[1200px] mx-auto px-4 md:px-6 lg:px-8 py-4 md:py-6 lg:py-8 pb-[72px] md:pb-6 animate-fade-in-up">
+        <main className="flex-1 overflow-y-auto w-full max-w-[1200px] mx-auto px-4 md:px-6 lg:px-8 py-4 md:py-5 lg:py-6 animate-fade-in-up pb-safe-offset-4">
           <Outlet />
         </main>
         <BottomNav />

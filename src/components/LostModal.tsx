@@ -51,16 +51,20 @@ export function LostModal({ open, onOpenChange, onConfirm }: Props) {
         }
       }}
     >
-      <DialogContent className="sm:max-w-[400px]">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            ❌ Marcar Demanda como Perdida
+      <DialogContent className="w-full max-w-[calc(100%-32px)] sm:max-w-[400px] p-4 md:p-6 rounded-xl">
+        <DialogHeader className="space-y-3">
+          <DialogTitle className="flex items-center gap-2 text-[16px] md:text-[18px] lg:text-[20px] font-bold leading-[24px] md:leading-[28px] lg:leading-[30px]">
+            ❌ Marcar como Perdida
           </DialogTitle>
-          <DialogDescription>Por que esta demanda foi perdida?</DialogDescription>
+          <DialogDescription className="text-[14px] md:text-[14px] lg:text-[14px] leading-[20px] text-[#333333]">
+            Por que esta demanda foi perdida?
+          </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4 py-4">
+        <div className="space-y-4 py-4 md:py-6">
           <div className="space-y-2">
-            <Label>Motivo da Perda</Label>
+            <Label className="text-[12px] md:text-[13px] lg:text-[14px] leading-[16px] md:leading-[18px] lg:leading-[20px] font-bold">
+              Motivo da Perda
+            </Label>
             <Select
               value={reason}
               onValueChange={(val) => {
@@ -68,37 +72,62 @@ export function LostModal({ open, onOpenChange, onConfirm }: Props) {
                 setError('')
               }}
             >
-              <SelectTrigger>
+              <SelectTrigger className="min-h-[48px] md:min-h-[44px] lg:min-h-[40px] text-[14px] leading-[20px]">
                 <SelectValue placeholder="Selecione um motivo..." />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="desistiu">Cliente desistiu</SelectItem>
-                <SelectItem value="alugou">Cliente já alugou</SelectItem>
-                <SelectItem value="comprou">Cliente já comprou</SelectItem>
-                <SelectItem value="fora_mercado">Imóvel fora do mercado</SelectItem>
-                <SelectItem value="mudou_ideia">Cliente mudou de ideia</SelectItem>
-                <SelectItem value="outro">Outro</SelectItem>
+                <SelectItem value="desistiu" className="min-h-[44px] text-[14px] leading-[20px]">
+                  Cliente desistiu
+                </SelectItem>
+                <SelectItem value="alugou" className="min-h-[44px] text-[14px] leading-[20px]">
+                  Cliente já alugou
+                </SelectItem>
+                <SelectItem value="comprou" className="min-h-[44px] text-[14px] leading-[20px]">
+                  Cliente já comprou
+                </SelectItem>
+                <SelectItem
+                  value="fora_mercado"
+                  className="min-h-[44px] text-[14px] leading-[20px]"
+                >
+                  Imóvel fora do mercado
+                </SelectItem>
+                <SelectItem value="mudou_ideia" className="min-h-[44px] text-[14px] leading-[20px]">
+                  Cliente mudou de ideia
+                </SelectItem>
+                <SelectItem value="outro" className="min-h-[44px] text-[14px] leading-[20px]">
+                  Outro
+                </SelectItem>
               </SelectContent>
             </Select>
-            {error && <p className="text-sm font-medium text-destructive">{error}</p>}
+            {error && <p className="text-[12px] font-medium text-destructive mt-1">{error}</p>}
           </div>
           <div className="space-y-2">
-            <Label>Observações (Opcional)</Label>
+            <Label className="text-[12px] md:text-[13px] lg:text-[14px] leading-[16px] md:leading-[18px] lg:leading-[20px] font-bold">
+              Observações (Opcional)
+            </Label>
             <Textarea
               value={obs}
               onChange={(e) => setObs(e.target.value)}
               placeholder="Detalhes adicionais..."
-              className="resize-none"
+              className="resize-none min-h-[88px] text-[14px] leading-[20px]"
               rows={3}
             />
           </div>
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+        <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            className="w-full sm:w-[48%] min-h-[48px] md:min-h-[44px] lg:min-h-[40px] text-[14px] font-bold leading-[20px]"
+          >
             Cancelar
           </Button>
-          <Button onClick={handleConfirm} variant="destructive">
-            ✅ Confirmar Perda
+          <Button
+            onClick={handleConfirm}
+            variant="destructive"
+            className="w-full sm:w-[48%] min-h-[48px] md:min-h-[44px] lg:min-h-[40px] text-[14px] font-bold leading-[20px]"
+          >
+            ✅ Confirmar
           </Button>
         </DialogFooter>
       </DialogContent>

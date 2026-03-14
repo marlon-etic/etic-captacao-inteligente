@@ -69,23 +69,23 @@ export function DemandCard({ demand, isNewDemand, showActions, onAction }: Deman
     <>
       <Card
         className={cn(
-          'w-full min-h-[140px] md:min-h-[160px] rounded-[12px] mb-[16px] border border-[#E5E5E5] transition-all duration-200 hover:bg-black/[0.02] hover:shadow-md flex flex-col overflow-hidden',
+          'w-full min-h-[140px] md:min-h-[160px] lg:min-h-[180px] rounded-[12px] border border-[#E5E5E5] transition-all duration-200 hover:bg-black/[0.02] hover:shadow-md flex flex-col overflow-hidden',
           demand.status === 'Perdida' ? 'opacity-70 bg-[#F9F9F9]' : 'bg-[#FFFFFF]',
         )}
       >
         {showCountdown && (
-          <div className="bg-[#00AA00]/10 px-[16px] py-[12px] border-b border-[#00AA00]/20 flex flex-col gap-[8px]">
+          <div className="bg-[#00AA00]/10 px-4 py-3 border-b border-[#00AA00]/20 flex flex-col gap-2">
             <div className="flex justify-between items-center">
-              <Badge className="bg-[#00AA00] text-white font-bold text-[10px] hover:bg-[#00AA00]">
+              <Badge className="bg-[#00AA00] text-white font-bold text-[12px] md:text-[13px] lg:text-[14px] hover:bg-[#00AA00]">
                 🆕 NOVA
               </Badge>
-              <span className="text-[#00AA00] font-bold text-[12px] flex items-center gap-1">
-                <Clock className="w-3 h-3" /> {slaText} para responder
+              <span className="text-[#00AA00] font-bold text-[12px] md:text-[13px] lg:text-[14px] flex items-center gap-1.5 leading-[16px] md:leading-[18px] lg:leading-[20px]">
+                <Clock className="w-4 h-4" /> {slaText}
               </span>
             </div>
             <Progress
               value={slaProgress}
-              className="h-[6px] bg-[#00AA00]/20"
+              className="h-1.5 md:h-2 bg-[#00AA00]/20"
               indicatorClassName={
                 slaLevel === 'red'
                   ? 'bg-[#FF4444]'
@@ -97,49 +97,60 @@ export function DemandCard({ demand, isNewDemand, showActions, onAction }: Deman
           </div>
         )}
 
-        <CardContent className="p-[16px] flex flex-col flex-1">
-          <div className="flex justify-between items-start mb-[12px]">
-            <Badge className={cn('font-bold text-[10px] text-white px-2 py-1', typeColor)}>
+        <CardContent className="p-4 md:p-4 lg:p-5 flex flex-col flex-1">
+          <div className="flex justify-between items-start mb-3">
+            <Badge
+              className={cn(
+                'font-bold text-[12px] md:text-[13px] lg:text-[14px] leading-[16px] md:leading-[18px] lg:leading-[20px] text-white px-2.5 py-1',
+                typeColor,
+              )}
+            >
               {isAluguel ? '🏠 ALUGUEL' : '🏢 VENDA'}
             </Badge>
-            <Badge variant="outline" className={cn('text-[10px] font-bold', statusBadge.class)}>
+            <Badge
+              variant="outline"
+              className={cn(
+                'text-[12px] md:text-[13px] lg:text-[14px] leading-[16px] md:leading-[18px] lg:leading-[20px] font-bold px-2.5 py-1',
+                statusBadge.class,
+              )}
+            >
               {statusBadge.label}
             </Badge>
           </div>
 
-          <div className="flex flex-col gap-[4px] flex-grow">
-            <h3 className="text-[14px] font-bold text-[#333333] leading-tight">
+          <div className="flex flex-col gap-1 flex-grow">
+            <h3 className="text-[16px] md:text-[18px] lg:text-[20px] font-bold text-[#333333] leading-[24px] md:leading-[28px] lg:leading-[30px]">
               👤 Cliente: {demand.clientName}
             </h3>
-            <p className="text-[12px] text-[#999999] leading-tight">
+            <p className="text-[12px] md:text-[13px] lg:text-[14px] text-[#999999] leading-[16px] md:leading-[18px] lg:leading-[20px]">
               📍 Localização: <span className="text-[#333333]">{demand.location}</span>
             </p>
-            <p className="text-[14px] font-bold text-[#333333] mt-[4px]">
+            <p className="text-[14px] md:text-[16px] lg:text-[18px] font-bold text-[#333333] mt-1 leading-[20px] md:leading-[24px] lg:leading-[28px]">
               💰 Orçamento: R$ {formatPrice(demand.minBudget)} - R$ {formatPrice(demand.maxBudget)}
             </p>
-            <p className="text-[12px] text-[#333333] mt-[2px]">
+            <p className="text-[12px] md:text-[13px] lg:text-[14px] text-[#333333] mt-0.5 leading-[16px] md:leading-[18px] lg:leading-[20px]">
               🏠 Perfil: {demand.bedrooms || 0} dorm, {demand.bathrooms || 0} banh,{' '}
               {demand.parkingSpots || 0} vagas
             </p>
 
             {similar.length > 0 && (
-              <div className="mt-[8px] bg-[#00AA00]/10 text-[#00AA00] font-bold text-[12px] p-[8px] rounded-[6px] w-fit border border-[#00AA00]/20">
+              <div className="mt-2 bg-[#00AA00]/10 text-[#00AA00] font-bold text-[12px] md:text-[13px] lg:text-[14px] p-2 rounded-md w-fit border border-[#00AA00]/20 leading-[16px] md:leading-[18px] lg:leading-[20px]">
                 👥 {totalClients} clientes com este perfil
               </div>
             )}
           </div>
 
-          <div className="flex flex-row gap-[8px] mt-[16px] w-full">
+          <div className="flex flex-wrap gap-2 mt-auto pt-4 w-full">
             <Button
-              className="flex-1 h-[44px] min-w-0 bg-[#4444FF] hover:bg-[#4444FF]/90 text-white text-[14px] font-bold px-1"
+              className="w-full xl:w-auto flex-1 h-[48px] md:h-[44px] lg:h-[40px] min-w-[48px] bg-[#4444FF] hover:bg-[#4444FF]/90 text-white text-[14px] font-bold px-2 leading-[20px]"
               onClick={() => setShowDetails(true)}
             >
-              <BookOpen className="w-[16px] h-[16px] sm:mr-[6px]" />
-              <span className="hidden sm:inline">Detalhes</span>
+              <BookOpen className="w-4 h-4 mr-1.5" />
+              <span>Detalhes</span>
             </Button>
             <Button
               className={cn(
-                'flex-1 h-[44px] min-w-0 text-[14px] font-bold px-1',
+                'w-[calc(50%-4px)] xl:w-auto flex-1 h-[48px] md:h-[44px] lg:h-[40px] min-w-[48px] text-[14px] font-bold px-2 leading-[20px]',
                 canPrioritize && !demand.isPrioritized
                   ? 'bg-[#FF4444] hover:bg-[#FF4444]/90 text-white'
                   : 'bg-[#E5E5E5] text-[#999999] cursor-not-allowed',
@@ -147,15 +158,17 @@ export function DemandCard({ demand, isNewDemand, showActions, onAction }: Deman
               disabled={!canPrioritize || demand.isPrioritized}
               onClick={() => setShowPrioritize(true)}
             >
-              <AlertCircle className="w-[16px] h-[16px] sm:mr-[6px]" />
-              <span className="hidden sm:inline">Priorizar</span>
+              <AlertCircle className="w-4 h-4 mr-1.5 xl:hidden" />
+              <span className="hidden xl:inline">Priorizar</span>
+              <span className="xl:hidden">Prio.</span>
             </Button>
             <Button
-              className="flex-1 h-[44px] min-w-0 bg-[#999999] hover:bg-[#333333] text-white text-[14px] font-bold px-1"
+              className="w-[calc(50%-4px)] xl:w-auto flex-1 h-[48px] md:h-[44px] lg:h-[40px] min-w-[48px] bg-[#999999] hover:bg-[#333333] text-white text-[14px] font-bold px-2 leading-[20px]"
               onClick={() => setShowLost(true)}
             >
-              <X className="w-[16px] h-[16px] sm:mr-[6px]" />
-              <span className="hidden sm:inline">Perdido</span>
+              <X className="w-4 h-4 mr-1.5 xl:hidden" />
+              <span className="hidden xl:inline">Perdido</span>
+              <span className="xl:hidden">Perd.</span>
             </Button>
           </div>
         </CardContent>

@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
-import { FileText, Home, Handshake, Search, Filter, RefreshCw, XCircle } from 'lucide-react'
+import { FileText, Home, Handshake, Search, Filter, RefreshCw } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { DemandCard } from '@/components/DemandCard'
 import { GroupedDemandCard } from '@/components/GroupedDemandCard'
@@ -24,7 +24,7 @@ export function CaptadorDashboard() {
     setSearchParams(tab === 'demandas' ? {} : { tab })
   }
 
-  // Calculate Header Metrics (Weekly data representation)
+  // Calculate Header Metrics
   const headerMetrics = useMemo(() => {
     const userDemands = demands.filter(
       (d) =>
@@ -38,11 +38,10 @@ export function CaptadorDashboard() {
     return { recebidas, captados, fechados }
   }, [demands, currentUser])
 
-  // Filter demands based on selected tabs and quick filters
+  // Filter demands
   const filteredDemands = useMemo(() => {
     let result = demands
 
-    // Main type filter
     if (demandFilter === 'venda') result = result.filter((d) => d.type === 'Venda')
     if (demandFilter === 'aluguel') result = result.filter((d) => d.type === 'Aluguel')
     if (demandFilter === 'novas') {
@@ -54,7 +53,6 @@ export function CaptadorDashboard() {
       })
     }
 
-    // Quick filters
     if (periodFilter === '24h') {
       const now = Date.now()
       result = result.filter((d) => (now - new Date(d.createdAt).getTime()) / 3600000 <= 24)
@@ -75,7 +73,6 @@ export function CaptadorDashboard() {
       )
     }
 
-    // Always sort prioritized to top, then newest
     return result.sort((a, b) => {
       if (a.isPrioritized && !b.isPrioritized) return -1
       if (!a.isPrioritized && b.isPrioritized) return 1
@@ -83,7 +80,7 @@ export function CaptadorDashboard() {
     })
   }, [demands, demandFilter, periodFilter, priorityFilter])
 
-  // Group similar demands (simplified version for UI)
+  // Group similar demands
   const groupedDemands = useMemo(() => {
     const groups: any[] = []
     const ungrouped: any[] = []
@@ -131,9 +128,9 @@ export function CaptadorDashboard() {
   if (!currentUser) return null
 
   return (
-    <div className="space-y-[24px] pb-[80px] md:pb-0 animate-fade-in">
+    <div className="space-y-4 md:space-y-5 lg:space-y-6 animate-fade-in">
       {/* 1. Header Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-[16px] md:gap-[24px]">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5 lg:gap-6">
         <MetricCard
           title="Demandas Recebidas"
           value={headerMetrics.recebidas}
@@ -161,11 +158,11 @@ export function CaptadorDashboard() {
       <GamificationWidget currentUser={currentUser} />
 
       {/* Main Tabs */}
-      <div className="flex gap-[16px] border-b border-[#E5E5E5] sticky top-[60px] md:top-0 z-40 bg-background pt-[16px]">
+      <div className="flex gap-4 border-b border-[#E5E5E5] sticky top-[56px] md:top-0 z-40 bg-background pt-4 md:pt-0 overflow-x-auto scrollbar-hide">
         <button
           onClick={() => setMainTab('demandas')}
           className={cn(
-            'pb-[12px] px-[8px] text-[16px] font-bold border-b-[3px] transition-colors',
+            'pb-3 px-2 text-[16px] md:text-[18px] lg:text-[20px] font-bold border-b-[3px] transition-colors whitespace-nowrap min-h-[48px] md:min-h-[44px] lg:min-h-[40px]',
             mainTab === 'demandas'
               ? 'border-[#4444FF] text-[#4444FF]'
               : 'border-transparent text-[#999999] hover:text-[#333333]',
@@ -176,7 +173,7 @@ export function CaptadorDashboard() {
         <button
           onClick={() => setMainTab('captados')}
           className={cn(
-            'pb-[12px] px-[8px] text-[16px] font-bold border-b-[3px] transition-colors',
+            'pb-3 px-2 text-[16px] md:text-[18px] lg:text-[20px] font-bold border-b-[3px] transition-colors whitespace-nowrap min-h-[48px] md:min-h-[44px] lg:min-h-[40px]',
             mainTab === 'captados'
               ? 'border-[#00AA00] text-[#00AA00]'
               : 'border-transparent text-[#999999] hover:text-[#333333]',
@@ -187,10 +184,10 @@ export function CaptadorDashboard() {
       </div>
 
       {mainTab === 'demandas' ? (
-        <div className="space-y-[24px] animate-fade-in-up">
+        <div className="space-y-4 md:space-y-5 lg:space-y-6 animate-fade-in-up">
           {/* 3. Sticky Navigation Tabs for Demands */}
-          <div className="sticky top-[110px] md:top-[60px] z-30 bg-background/95 backdrop-blur py-[12px] -mx-[16px] px-[16px] md:mx-0 md:px-0">
-            <div className="flex gap-[8px] overflow-x-auto scrollbar-hide">
+          <div className="sticky top-[104px] md:top-[48px] lg:top-[44px] z-30 bg-background/95 backdrop-blur py-3 md:py-4 -mx-4 px-4 md:mx-0 md:px-0">
+            <div className="flex gap-2 md:gap-3 overflow-x-auto scrollbar-hide pb-1">
               <FilterTab
                 label="📊 Todas"
                 active={demandFilter === 'todas'}
@@ -229,10 +226,10 @@ export function CaptadorDashboard() {
             </div>
           </div>
 
-          {/* 8. Quick Filters */}
-          <div className="flex items-center gap-[12px] bg-[#F9F9F9] p-[12px] rounded-[12px] border border-[#E5E5E5] overflow-x-auto scrollbar-hide">
-            <Filter className="w-[16px] h-[16px] text-[#999999] shrink-0" />
-            <span className="text-[12px] font-bold text-[#999999] uppercase shrink-0">
+          {/* Quick Filters */}
+          <div className="flex items-center gap-3 bg-[#F9F9F9] p-3 rounded-xl border border-[#E5E5E5] overflow-x-auto scrollbar-hide">
+            <Filter className="w-4 h-4 text-[#999999] shrink-0" />
+            <span className="text-[12px] md:text-[13px] lg:text-[14px] leading-[16px] md:leading-[18px] lg:leading-[20px] font-bold text-[#999999] uppercase shrink-0">
               Período:
             </span>
             {['todas', '24h', '7d', '30d'].map((p) => (
@@ -240,7 +237,7 @@ export function CaptadorDashboard() {
                 key={p}
                 onClick={() => setPeriodFilter(p)}
                 className={cn(
-                  'cursor-pointer shrink-0',
+                  'cursor-pointer shrink-0 min-h-[48px] md:min-h-[44px] lg:min-h-[40px] px-3',
                   periodFilter === p
                     ? 'bg-[#333333] text-white'
                     : 'bg-white text-[#333333] border border-[#E5E5E5] hover:bg-[#E5E5E5]',
@@ -249,8 +246,8 @@ export function CaptadorDashboard() {
                 {p === 'todas' ? 'Todos' : p}
               </Badge>
             ))}
-            <div className="w-[1px] h-[20px] bg-[#E5E5E5] mx-[8px] shrink-0" />
-            <span className="text-[12px] font-bold text-[#999999] uppercase shrink-0">
+            <div className="w-[1px] h-5 bg-[#E5E5E5] mx-2 shrink-0" />
+            <span className="text-[12px] md:text-[13px] lg:text-[14px] leading-[16px] md:leading-[18px] lg:leading-[20px] font-bold text-[#999999] uppercase shrink-0">
               Prioridade:
             </span>
             {['todas', 'priorizadas', 'novas'].map((p) => (
@@ -258,7 +255,7 @@ export function CaptadorDashboard() {
                 key={p}
                 onClick={() => setPriorityFilter(p)}
                 className={cn(
-                  'cursor-pointer shrink-0 capitalize',
+                  'cursor-pointer shrink-0 capitalize min-h-[48px] md:min-h-[44px] lg:min-h-[40px] px-3',
                   priorityFilter === p
                     ? 'bg-[#333333] text-white'
                     : 'bg-white text-[#333333] border border-[#E5E5E5] hover:bg-[#E5E5E5]',
@@ -275,22 +272,22 @@ export function CaptadorDashboard() {
                 setPeriodFilter('todas')
                 setPriorityFilter('todas')
               }}
-              className="text-[#4444FF] font-bold text-[12px] h-[28px] shrink-0 hover:bg-[#4444FF]/10"
+              className="text-[#4444FF] font-bold text-[14px] leading-[20px] h-[48px] md:h-[44px] lg:h-[40px] shrink-0 min-w-[48px] hover:bg-[#4444FF]/10"
             >
-              <RefreshCw className="w-[14px] h-[14px] mr-[4px]" /> Limpar
+              <RefreshCw className="w-4 h-4 mr-1.5" /> Limpar
             </Button>
           </div>
 
           {/* Demands List */}
           {filteredDemands.length === 0 ? (
-            <div className="text-center py-[48px] bg-[#F9F9F9] border rounded-[12px] border-dashed border-[#E5E5E5]">
+            <div className="text-center py-12 bg-[#F9F9F9] border rounded-xl border-dashed border-[#E5E5E5]">
               <Search className="w-12 h-12 text-[#999999]/50 mx-auto mb-3" />
-              <p className="text-[14px] text-[#999999] font-medium">
+              <p className="text-[14px] md:text-[14px] lg:text-[14px] leading-[20px] text-[#999999] font-medium">
                 Nenhuma demanda encontrada com estes filtros.
               </p>
             </div>
           ) : (
-            <div className="grid gap-[16px] grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
+            <div className="grid gap-4 md:gap-5 lg:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {groupedDemands.groups.map((g) => (
                 <GroupedDemandCard key={g.id} group={g} onAction={() => {}} />
               ))}
@@ -311,24 +308,33 @@ export function CaptadorDashboard() {
 
 function MetricCard({ title, value, icon: Icon, color, trend }: any) {
   return (
-    <Card className="rounded-[12px] border border-[#E5E5E5] shadow-sm bg-[#FFFFFF] overflow-hidden">
-      <CardContent className="p-[24px] flex items-center justify-between">
+    <Card className="rounded-[12px] border border-[#E5E5E5] shadow-sm bg-[#FFFFFF] overflow-hidden min-h-[100px] md:min-h-[120px] lg:min-h-[140px] flex flex-col justify-center">
+      <CardContent className="p-4 md:p-5 lg:p-6 flex items-center justify-between w-full">
         <div className="flex flex-col">
-          <p className="text-[12px] font-bold text-[#999999] uppercase tracking-wider mb-[4px]">
+          <p className="text-[12px] md:text-[13px] lg:text-[14px] font-bold text-[#999999] uppercase tracking-wider mb-1 leading-[16px] md:leading-[18px] lg:leading-[20px]">
             {title}
           </p>
-          <div className="flex items-baseline gap-[8px]">
-            <span className="text-[36px] font-black text-[#333333] leading-none">{value}</span>
-            <span className={cn('text-[12px] font-bold', color)}>{trend}</span>
+          <div className="flex items-baseline gap-2">
+            <span className="text-[28px] md:text-[32px] lg:text-[36px] font-black text-[#333333] leading-[32px] md:leading-[36px] lg:leading-[40px]">
+              {value}
+            </span>
+            <span
+              className={cn(
+                'text-[12px] md:text-[13px] lg:text-[14px] leading-[16px] md:leading-[18px] lg:leading-[20px] font-bold',
+                color,
+              )}
+            >
+              {trend}
+            </span>
           </div>
         </div>
         <div
           className={cn(
-            'w-[48px] h-[48px] rounded-[12px] bg-[#F9F9F9] flex items-center justify-center border border-[#E5E5E5]',
+            'w-[44px] h-[44px] md:w-[48px] md:h-[48px] lg:w-[56px] lg:h-[56px] rounded-xl bg-[#F9F9F9] flex items-center justify-center border border-[#E5E5E5] shrink-0 ml-2',
             color,
           )}
         >
-          <Icon className="w-[24px] h-[24px] currentColor" />
+          <Icon className="w-5 h-5 md:w-6 md:h-6 lg:w-7 lg:h-7 currentColor" />
         </div>
       </CardContent>
     </Card>
@@ -347,16 +353,18 @@ function FilterTab({
     <button
       onClick={onClick}
       className={cn(
-        'flex items-center gap-[8px] h-[44px] md:h-[48px] px-[16px] rounded-full border-2 transition-all whitespace-nowrap',
+        'flex items-center justify-center gap-2 h-[48px] md:h-[44px] lg:h-[40px] px-4 rounded-full border-2 transition-all whitespace-nowrap min-w-[48px]',
         active
           ? cn('text-white shadow-sm', activeBg, color)
           : 'bg-white text-[#999999] border-[#E5E5E5] hover:border-[#333333] hover:text-[#333333]',
       )}
     >
-      <span className="text-[14px] font-bold">{label}</span>
+      <span className="text-[14px] md:text-[14px] lg:text-[14px] font-bold leading-[20px]">
+        {label}
+      </span>
       <span
         className={cn(
-          'text-[10px] font-bold px-[6px] py-[2px] rounded-full',
+          'text-[12px] md:text-[13px] lg:text-[14px] font-bold px-1.5 py-0.5 rounded-full leading-[16px]',
           active ? 'bg-white/20 text-white' : 'bg-[#E5E5E5] text-[#333333]',
         )}
       >

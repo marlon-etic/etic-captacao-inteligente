@@ -1,5 +1,5 @@
 import { Link, useLocation, useSearchParams } from 'react-router-dom'
-import { LayoutDashboard, Users, PlusCircle, UserCircle, Trophy, Bell, Home } from 'lucide-react'
+import { LayoutDashboard, Users, PlusCircle, UserCircle, Trophy, Home } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import useAppStore from '@/stores/useAppStore'
 import { AppNotification } from '@/types'
@@ -35,56 +35,64 @@ export function BottomNav() {
   ]
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 h-[56px] bg-[#FFFFFF] border-t border-[#E5E5E5] flex items-center justify-around px-[4px] py-[8px] z-50 md:hidden shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
-      {links.map((link) => {
-        let isActive = false
-        if (link.url.includes('?tab=')) {
-          const targetTab = link.url.split('?tab=')[1]
-          isActive = location.pathname === link.url.split('?')[0] && currentTab === targetTab
-        } else {
-          isActive =
-            location.pathname === link.url &&
-            (!link.url.includes('/app/demandas') || !currentTab || currentTab === 'demandas')
-        }
+    <>
+      {/*
+        Spacer for fixed bottom nav in mobile. 
+        It has h-[56px] which combined with main padding ensures content isn't hidden.
+      */}
+      <div className="h-[56px] w-full block md:hidden bg-transparent" />
 
-        if (link.isFab) {
+      <div className="fixed bottom-0 left-0 right-0 h-[56px] bg-[#FFFFFF] border-t border-[#E5E5E5] flex items-center justify-around px-1 py-1 z-50 md:hidden shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] pb-safe">
+        {links.map((link) => {
+          let isActive = false
+          if (link.url.includes('?tab=')) {
+            const targetTab = link.url.split('?tab=')[1]
+            isActive = location.pathname === link.url.split('?')[0] && currentTab === targetTab
+          } else {
+            isActive =
+              location.pathname === link.url &&
+              (!link.url.includes('/app/demandas') || !currentTab || currentTab === 'demandas')
+          }
+
+          if (link.isFab) {
+            return (
+              <Link
+                key={link.url}
+                to={link.url}
+                className="relative -top-5 flex items-center justify-center w-[56px] h-[56px]"
+              >
+                <div className="w-[56px] h-[56px] rounded-full bg-[#4444FF] flex items-center justify-center shadow-lg text-white transform active:scale-95 transition-transform">
+                  <link.icon className="w-7 h-7" />
+                </div>
+              </Link>
+            )
+          }
+
           return (
             <Link
               key={link.url}
               to={link.url}
-              className="relative -top-5 flex items-center justify-center w-[44px] h-[44px]"
+              className={cn(
+                'relative flex flex-col items-center justify-center min-h-[48px] min-w-[48px] transition-colors flex-1',
+                isActive ? 'text-[#4444FF]' : 'text-[#999999] hover:text-[#333333]',
+              )}
             >
-              <div className="w-[44px] h-[44px] rounded-full bg-[#4444FF] flex items-center justify-center shadow-lg text-white transform active:scale-95 transition-transform">
-                <link.icon className="w-[24px] h-[24px]" />
+              <div className="relative">
+                <link.icon className={cn('w-6 h-6')} />
+                {link.badge !== undefined && link.badge > 0 && (
+                  <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-[#FF4444] text-white flex items-center justify-center rounded-full text-[9px] font-bold border-[1.5px] border-white">
+                    {link.badge > 9 ? '9+' : link.badge}
+                  </span>
+                )}
               </div>
+              <span className="text-[11px] font-semibold tracking-tight mt-1 leading-none">
+                {titleCase(link.title)}
+              </span>
             </Link>
           )
-        }
-
-        return (
-          <Link
-            key={link.url}
-            to={link.url}
-            className={cn(
-              'relative flex flex-col items-center justify-center min-h-[44px] min-w-[44px] transition-colors px-1',
-              isActive ? 'text-[#4444FF]' : 'text-[#999999] hover:text-[#333333]',
-            )}
-          >
-            <div className="relative">
-              <link.icon className={cn('w-[24px] h-[24px]')} />
-              {link.badge !== undefined && link.badge > 0 && (
-                <span className="absolute -top-1 -right-1 w-3 h-3 bg-[#FF4444] text-white flex items-center justify-center rounded-full text-[8px] font-bold border-[1.5px] border-white">
-                  {link.badge > 9 ? '9+' : link.badge}
-                </span>
-              )}
-            </div>
-            <span className="text-[10px] font-medium tracking-tight mt-[4px] leading-none">
-              {titleCase(link.title)}
-            </span>
-          </Link>
-        )
-      })}
-    </div>
+        })}
+      </div>
+    </>
   )
 }
 
