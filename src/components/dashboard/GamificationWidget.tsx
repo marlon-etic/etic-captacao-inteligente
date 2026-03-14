@@ -4,6 +4,7 @@ import { Progress } from '@/components/ui/progress'
 import { User, BadgeType } from '@/types'
 import { cn } from '@/lib/utils'
 import useAppStore from '@/stores/useAppStore'
+import { useEffect, useRef, useState } from 'react'
 
 const BADGES_CONFIG: {
   id: BadgeType
@@ -55,6 +56,19 @@ export function GamificationWidget({ currentUser }: { currentUser: User }) {
   const { users } = useAppStore()
   const currentBadges = currentUser.badges || []
 
+  const prevPoints = useRef(currentUser.points)
+  const [floatPoints, setFloatPoints] = useState<{ id: number; val: number }[]>([])
+
+  useEffect(() => {
+    if (currentUser.points > prevPoints.current) {
+      const diff = currentUser.points - prevPoints.current
+      const newId = Date.now()
+      setFloatPoints((p) => [...p, { id: newId, val: diff }])
+      setTimeout(() => setFloatPoints((p) => p.filter((x) => x.id !== newId)), 500)
+    }
+    prevPoints.current = currentUser.points
+  }, [currentUser.points])
+
   const captadores = users.filter((u) => u.role === 'captador').sort((a, b) => b.points - a.points)
   const position = captadores.findIndex((u) => u.id === currentUser.id) + 1 || 1
   const totalCap = captadores.length || 1
@@ -77,30 +91,38 @@ export function GamificationWidget({ currentUser }: { currentUser: User }) {
   }
 
   return (
-    <Card className="bg-gradient-to-r from-[#4444FF] to-[#00AA00] text-[#FFFFFF] border-0 shadow-md p-4 md:p-5 lg:p-6 rounded-xl overflow-hidden relative">
+    <Card className="bg-gradient-to-r from-[#4444FF] to-[#00AA00] text-[#FFFFFF] border-0 shadow-md p-4 md:p-5 lg:p-6 rounded-xl overflow-hidden relative transition-transform duration-150 hover:shadow-lg">
       <div className="absolute right-0 top-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none" />
       <CardContent className="p-0 relative z-10 flex flex-col lg:flex-row gap-4 lg:gap-6 justify-between">
         <div className="flex flex-col flex-1">
           <p className="text-[12px] md:text-[13px] lg:text-[14px] font-bold uppercase tracking-wider mb-2 text-white/90 leading-[16px] md:leading-[18px] lg:leading-[20px]">
             Pontos Totais
           </p>
-          <div className="flex items-baseline gap-2">
-            <span className="text-[28px] md:text-[32px] lg:text-[36px] font-black leading-[32px] md:leading-[36px] lg:leading-[40px] tracking-tight">
+          <div className="flex items-baseline gap-2 relative">
+            <span className="text-[28px] md:text-[32px] lg:text-[36px] font-black leading-[32px] md:leading-[36px] lg:leading-[40px] tracking-tight transition-all duration-300">
               {currentUser.points.toLocaleString('pt-BR')}
             </span>
             <span className="text-[14px] md:text-[16px] font-bold uppercase text-white/80 leading-[20px] md:leading-[24px]">
               pts
             </span>
+            {floatPoints.map((fp) => (
+              <span
+                key={fp.id}
+                className="absolute left-full ml-2 bottom-2 text-[#FFD700] font-black text-xl animate-float-up pointer-events-none drop-shadow-md whitespace-nowrap"
+              >
+                +{fp.val}
+              </span>
+            ))}
           </div>
-          <div className="mt-4 inline-flex items-center bg-white/20 px-3 py-1.5 rounded-full w-fit min-h-[32px]">
-            <Trophy className="w-4 h-4 mr-2" />
+          <div className="mt-4 inline-flex items-center bg-white/20 px-3 py-1.5 rounded-full w-fit min-h-[32px] hover:bg-white/30 transition-colors">
+            <Trophy className="w-4 h-4 mr-2 text-[#FFD700]" />
             <span className="text-[12px] md:text-[13px] lg:text-[14px] font-bold leading-[16px] md:leading-[18px] lg:leading-[20px]">
               Posição: {position}º de {totalCap}
             </span>
           </div>
         </div>
 
-        <div className="flex flex-col flex-1 bg-black/20 p-4 rounded-xl backdrop-blur-sm min-h-[100px]">
+        <div className="flex flex-col flex-1 bg-black/20 p-4 rounded-xl backdrop-blur-sm min-h-[100px] hover:bg-black/30 transition-colors">
           <p className="text-[12px] md:text-[13px] lg:text-[14px] font-bold uppercase mb-3 text-white/90 leading-[16px] md:leading-[18px] lg:leading-[20px]">
             Próximo Badge
           </p>
@@ -126,7 +148,7 @@ export function GamificationWidget({ currentUser }: { currentUser: User }) {
               />
             </div>
           ) : (
-            <div className="flex items-center justify-center h-full text-white/80 font-bold text-[14px] md:text-[16px] leading-[20px] md:leading-[24px]">
+            <div className="flex items-center justify-center h-full text-white/80 font-bold text-[14px] md:text-[16px] leading-[20px] md:leading-[24px] animate-pulse">
               Todos os badges conquistados! 🎉
             </div>
           )}
@@ -137,15 +159,18 @@ export function GamificationWidget({ currentUser }: { currentUser: User }) {
             Minhas Insígnias
           </p>
           <div className="flex gap-2.5 flex-wrap">
-            {BADGES_CONFIG.slice(0, 5).map((b) => {
+            {BADGES_CONFIG.slice(0, 5).map((b, i) => {
               const earned = currentBadges.includes(b.id)
               return (
                 <div
                   key={b.id}
                   className={cn(
-                    'w-[44px] h-[44px] md:w-[48px] md:h-[48px] rounded-full flex items-center justify-center transition-all shrink-0',
-                    earned ? 'bg-white shadow-lg' : 'bg-white/10 opacity-50 grayscale',
+                    'w-[44px] h-[44px] md:w-[48px] md:h-[48px] rounded-full flex items-center justify-center transition-all shrink-0 hover:scale-110',
+                    earned
+                      ? 'bg-white shadow-lg animate-bounce-badge'
+                      : 'bg-white/10 opacity-50 grayscale',
                   )}
+                  style={{ animationDelay: `${i * 100}ms` }}
                   title={b.label}
                 >
                   <b.icon

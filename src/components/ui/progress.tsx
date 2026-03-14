@@ -1,4 +1,3 @@
-/* Progress Component - A component that displays a progress bar - from shadcn/ui (exposes Progress) */
 import * as React from 'react'
 import * as ProgressPrimitive from '@radix-ui/react-progress'
 
@@ -18,7 +17,11 @@ const Progress = React.forwardRef<React.ElementRef<typeof ProgressPrimitive.Root
       {...props}
     >
       <ProgressPrimitive.Indicator
-        className={cn('h-full w-full flex-1 bg-primary transition-all', indicatorClassName)}
+        className={cn(
+          'h-full w-full flex-1 bg-primary transition-all duration-1000 ease-linear',
+          indicatorClassName,
+          'transition-colors duration-200',
+        )}
         style={{ transform: `translateX(-${100 - (value || 0)}%)` }}
       />
     </ProgressPrimitive.Root>

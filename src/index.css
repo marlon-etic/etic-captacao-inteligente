@@ -91,6 +91,18 @@
   .pb-safe-offset-4 {
     padding-bottom: calc(1rem + env(safe-area-inset-bottom));
   }
+
+  /* Accessibility: Prefers Reduced Motion override */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
 }
 
 @layer utilities {

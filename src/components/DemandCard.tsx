@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -14,16 +14,35 @@ import { Progress } from '@/components/ui/progress'
 
 interface DemandCardProps {
   demand: Demand
+  index?: number
   isNewDemand?: boolean
   showActions?: boolean
   onAction?: (id: string, type: 'encontrei' | 'nao_encontrei') => void
 }
 
-export function DemandCard({ demand, isNewDemand, showActions, onAction }: DemandCardProps) {
+export function DemandCard({ demand, index, isNewDemand, showActions, onAction }: DemandCardProps) {
   const { currentUser, getSimilarDemands, prioritizeDemand, markDemandLost } = useAppStore()
   const [showDetails, setShowDetails] = useState(false)
   const [showPrioritize, setShowPrioritize] = useState(false)
   const [showLost, setShowLost] = useState(false)
+
+  const prevStatus = useRef(demand.status)
+  const prevPrioritized = useRef(demand.isPrioritized)
+  const [isLostAnimating, setIsLostAnimating] = useState(false)
+  const [isPrioAnimating, setIsPrioAnimating] = useState(false)
+
+  useEffect(() => {
+    if (demand.status === 'Perdida' && prevStatus.current !== 'Perdida') {
+      setIsLostAnimating(true)
+      setTimeout(() => setIsLostAnimating(false), 700)
+    }
+    if (demand.isPrioritized && !prevPrioritized.current) {
+      setIsPrioAnimating(true)
+      setTimeout(() => setIsPrioAnimating(false), 500)
+    }
+    prevStatus.current = demand.status
+    prevPrioritized.current = demand.isPrioritized
+  }, [demand.status, demand.isPrioritized])
 
   const similar = getSimilarDemands(demand.id)
   const totalClients = similar.length + 1
@@ -66,11 +85,37 @@ export function DemandCard({ demand, isNewDemand, showActions, onAction }: Deman
   const showCountdown = isNewDemand && demand.status === 'Pendente' && !demand.isExtension48h
 
   return (
-    <>
+    <div
+      className={cn(
+        'opacity-0 animate-cascade-fade w-full h-full flex relative',
+        isLostAnimating && 'animate-fade-out duration-200',
+      )}
+      style={{ animationDelay: `${(index || 0) * 50}ms` }}
+    >
+      {isLostAnimating && (
+        <div className="absolute inset-0 z-50 pointer-events-none flex items-center justify-center overflow-hidden rounded-[12px]">
+          {Array.from({ length: 24 }).map((_, i) => (
+            <div
+              key={i}
+              className="absolute w-2 h-2 rounded-full animate-confetti-burst"
+              style={
+                {
+                  '--tx': `${(Math.random() - 0.5) * 250}px`,
+                  '--ty': `${(Math.random() - 0.5) * 250}px`,
+                  backgroundColor: ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6'][
+                    Math.floor(Math.random() * 5)
+                  ],
+                } as any
+              }
+            />
+          ))}
+        </div>
+      )}
       <Card
         className={cn(
-          'w-full min-h-[140px] md:min-h-[160px] lg:min-h-[180px] rounded-[12px] border border-[#E5E5E5] transition-all duration-200 hover:bg-black/[0.02] hover:shadow-md flex flex-col overflow-hidden',
+          'w-full min-h-[140px] md:min-h-[160px] lg:min-h-[180px] rounded-[12px] border border-[#E5E5E5] transition-all duration-150 ease-in-out hover:bg-black/[0.05] hover:shadow-lg flex flex-col overflow-hidden',
           demand.status === 'Perdida' ? 'opacity-70 bg-[#F9F9F9]' : 'bg-[#FFFFFF]',
+          isPrioAnimating && 'animate-glow-pulse border-[#FF4444]',
         )}
       >
         {showCountdown && (
@@ -114,12 +159,21 @@ export function DemandCard({ demand, isNewDemand, showActions, onAction }: Deman
                 statusBadge.class,
               )}
             >
-              {statusBadge.label}
+              {isPrioAnimating ? (
+                <span
+                  className="flex items-center gap-1 animate-bounce-scale origin-center"
+                  style={{ animationDuration: '300ms' }}
+                >
+                  {statusBadge.label}
+                </span>
+              ) : (
+                statusBadge.label
+              )}
             </Badge>
           </div>
 
           <div className="flex flex-col gap-1 flex-grow">
-            <h3 className="text-[16px] md:text-[18px] lg:text-[20px] font-bold text-[#333333] leading-[24px] md:leading-[28px] lg:leading-[30px]">
+            <h3 className="text-[16px] md:text-[18px] lg:text-[20px] font-bold text-[#333333] leading-[24px] md:leading-[28px] lg:leading-[30px] transition-colors">
               👤 Cliente: {demand.clientName}
             </h3>
             <p className="text-[12px] md:text-[13px] lg:text-[14px] text-[#999999] leading-[16px] md:leading-[18px] lg:leading-[20px]">
@@ -142,7 +196,7 @@ export function DemandCard({ demand, isNewDemand, showActions, onAction }: Deman
 
           <div className="flex flex-wrap gap-2 mt-auto pt-4 w-full">
             <Button
-              className="w-full xl:w-auto flex-1 h-[48px] md:h-[44px] lg:h-[40px] min-w-[48px] bg-[#4444FF] hover:bg-[#4444FF]/90 text-white text-[14px] font-bold px-2 leading-[20px]"
+              className="w-full xl:w-auto flex-1 h-[48px] md:h-[44px] lg:h-[40px] min-w-[48px] bg-[#4444FF] text-white text-[14px] font-bold px-2 leading-[20px]"
               onClick={() => setShowDetails(true)}
             >
               <BookOpen className="w-4 h-4 mr-1.5" />
@@ -152,8 +206,8 @@ export function DemandCard({ demand, isNewDemand, showActions, onAction }: Deman
               className={cn(
                 'w-[calc(50%-4px)] xl:w-auto flex-1 h-[48px] md:h-[44px] lg:h-[40px] min-w-[48px] text-[14px] font-bold px-2 leading-[20px]',
                 canPrioritize && !demand.isPrioritized
-                  ? 'bg-[#FF4444] hover:bg-[#FF4444]/90 text-white'
-                  : 'bg-[#E5E5E5] text-[#999999] cursor-not-allowed',
+                  ? 'bg-[#FF4444] text-white'
+                  : 'bg-[#E5E5E5] text-[#999999] cursor-not-allowed hover:scale-100 active:scale-100',
               )}
               disabled={!canPrioritize || demand.isPrioritized}
               onClick={() => setShowPrioritize(true)}
@@ -163,7 +217,7 @@ export function DemandCard({ demand, isNewDemand, showActions, onAction }: Deman
               <span className="xl:hidden">Prio.</span>
             </Button>
             <Button
-              className="w-[calc(50%-4px)] xl:w-auto flex-1 h-[48px] md:h-[44px] lg:h-[40px] min-w-[48px] bg-[#999999] hover:bg-[#333333] text-white text-[14px] font-bold px-2 leading-[20px]"
+              className="w-[calc(50%-4px)] xl:w-auto flex-1 h-[48px] md:h-[44px] lg:h-[40px] min-w-[48px] bg-[#999999] text-white text-[14px] font-bold px-2 leading-[20px] hover:bg-[#333333]"
               onClick={() => setShowLost(true)}
             >
               <X className="w-4 h-4 mr-1.5 xl:hidden" />
@@ -182,6 +236,6 @@ export function DemandCard({ demand, isNewDemand, showActions, onAction }: Deman
         similarCount={totalClients}
       />
       <LostModal open={showLost} onOpenChange={setShowLost} onConfirm={handleLost} />
-    </>
+    </div>
   )
 }
