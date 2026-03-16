@@ -1,16 +1,13 @@
-import { useState, useEffect, useRef } from 'react'
-import { Card, CardContent } from '@/components/ui/card'
+import { useState } from 'react'
+import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Progress } from '@/components/ui/progress'
 import { Demand } from '@/types'
 import { cn } from '@/lib/utils'
 import useAppStore from '@/stores/useAppStore'
 import { DemandDetailsModal } from '@/components/DemandDetailsModal'
-import { PrioritizeModal } from '@/components/PrioritizeModal'
-import { LostModal } from '@/components/LostModal'
-import { BookOpen, AlertCircle, X, Clock } from 'lucide-react'
-import { useSlaCountdown } from '@/hooks/useTimeElapsed'
-import { Progress } from '@/components/ui/progress'
+import { useSlaCountdown, useTimeElapsed } from '@/hooks/useTimeElapsed'
 
 interface DemandCardProps {
   demand: Demand
@@ -20,61 +17,28 @@ interface DemandCardProps {
   onAction?: (id: string, type: 'encontrei' | 'nao_encontrei') => void
 }
 
-export function DemandCard({ demand, index, isNewDemand, showActions, onAction }: DemandCardProps) {
-  const { currentUser, getSimilarDemands, prioritizeDemand, markDemandLost } = useAppStore()
+const InfoItem = ({ label, value }: { label: string; value: React.ReactNode }) => (
+  <div className="flex flex-col gap-1">
+    <span className="text-[12px] text-[#999999] leading-tight font-medium">{label}</span>
+    <span className="text-[14px] font-bold text-[#333333] break-words whitespace-normal leading-tight">
+      {value}
+    </span>
+  </div>
+)
+
+export function DemandCard({ demand, index, onAction }: DemandCardProps) {
+  const { users, logSolicitorContactAttempt } = useAppStore()
   const [showDetails, setShowDetails] = useState(false)
-  const [showPrioritize, setShowPrioritize] = useState(false)
-  const [showLost, setShowLost] = useState(false)
 
-  const prevStatus = useRef(demand.status)
-  const prevPrioritized = useRef(demand.isPrioritized)
-  const [isLostAnimating, setIsLostAnimating] = useState(false)
-  const [isPrioAnimating, setIsPrioAnimating] = useState(false)
+  const creator = users.find((u) => u.id === demand.createdBy)
+  const creatorName = creator?.name || 'Desconhecido'
 
-  useEffect(() => {
-    if (demand.status === 'Perdida' && prevStatus.current !== 'Perdida') {
-      setIsLostAnimating(true)
-      setTimeout(() => setIsLostAnimating(false), 700)
-    }
-    if (demand.isPrioritized && !prevPrioritized.current) {
-      setIsPrioAnimating(true)
-      setTimeout(() => setIsPrioAnimating(false), 500)
-    }
-    prevStatus.current = demand.status
-    prevPrioritized.current = demand.isPrioritized
-  }, [demand.status, demand.isPrioritized])
-
-  const similar = getSimilarDemands(demand.id)
-  const totalClients = similar.length + 1
-  const canPrioritize = totalClients >= 2
-
-  const handlePrioritize = (reason: string) => {
-    prioritizeDemand(demand.id, reason, totalClients)
-  }
-
-  const handleLost = (reason: string, obs: string) => {
-    markDemandLost(demand.id, reason, obs)
-  }
-
-  const formatPrice = (val?: number) => {
-    if (!val) return '0'
-    return new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 }).format(val)
-  }
-
-  const isAluguel = demand.type === 'Aluguel'
-  const typeColor = isAluguel ? 'bg-[#4444FF]' : 'bg-[#FF4444]'
-
-  let statusBadge = { label: '🟢 Aberta', class: 'text-[#00AA00] bg-[#00AA00]/10 border-none' }
-  if (demand.status === 'Perdida') {
-    statusBadge = { label: '⚫ Perdida', class: 'text-[#333333] bg-[#E5E5E5] border-none' }
-  } else if (demand.isPrioritized) {
-    statusBadge = { label: '🔴 Priorizada', class: 'text-[#FF4444] bg-[#FF4444]/10 border-none' }
-  }
-
+  const { text: timeElapsedText } = useTimeElapsed(demand.createdAt)
   const {
     text: slaText,
     progress: slaProgress,
     level: slaLevel,
+    badgeText,
   } = useSlaCountdown(
     demand.createdAt,
     demand.isExtension48h,
@@ -82,160 +46,125 @@ export function DemandCard({ demand, index, isNewDemand, showActions, onAction }
     demand.status,
   )
 
-  const showCountdown = isNewDemand && demand.status === 'Pendente' && !demand.isExtension48h
+  const formatPrice = (val?: number) => {
+    if (!val) return '0'
+    return new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 }).format(val)
+  }
+
+  const isPending = demand.status === 'Pendente'
 
   return (
     <div
-      className={cn(
-        'opacity-0 animate-cascade-fade w-full h-full flex relative',
-        isLostAnimating && 'animate-fade-out duration-200',
-      )}
+      className="opacity-0 animate-cascade-fade w-full relative"
       style={{ animationDelay: `${(index || 0) * 50}ms` }}
     >
-      {isLostAnimating && (
-        <div className="absolute inset-0 z-50 pointer-events-none flex items-center justify-center overflow-hidden rounded-[12px]">
-          {Array.from({ length: 24 }).map((_, i) => (
-            <div
-              key={i}
-              className="absolute w-2 h-2 rounded-full animate-confetti-burst"
-              style={
-                {
-                  '--tx': `${(Math.random() - 0.5) * 250}px`,
-                  '--ty': `${(Math.random() - 0.5) * 250}px`,
-                  backgroundColor: ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6'][
-                    Math.floor(Math.random() * 5)
-                  ],
-                } as any
-              }
-            />
-          ))}
-        </div>
-      )}
       <Card
         className={cn(
-          'w-full min-h-[140px] md:min-h-[160px] lg:min-h-[180px] rounded-[12px] border border-[#E5E5E5] transition-all duration-150 ease-in-out hover:bg-black/[0.05] hover:shadow-lg flex flex-col overflow-hidden',
-          demand.status === 'Perdida' ? 'opacity-70 bg-[#F9F9F9]' : 'bg-[#FFFFFF]',
-          isPrioAnimating && 'animate-glow-pulse border-[#FF4444]',
+          'w-full bg-[#FFFFFF] p-4 flex flex-col border-[3px] border-[#86efac] rounded-[12px] transition-shadow hover:shadow-lg',
+          'min-[768px]:min-w-[400px] min-[768px]:min-h-[200px]',
+          'min-[480px]:max-[767px]:min-w-[350px] min-[480px]:max-[767px]:min-h-[180px]',
         )}
       >
-        {showCountdown && (
-          <div className="bg-[#00AA00]/10 px-4 py-3 border-b border-[#00AA00]/20 flex flex-col gap-2">
-            <div className="flex justify-between items-center">
-              <Badge className="bg-[#00AA00] text-white font-bold text-[12px] md:text-[13px] lg:text-[14px] hover:bg-[#00AA00]">
-                🆕 NOVA
-              </Badge>
-              <span className="text-[#00AA00] font-bold text-[12px] md:text-[13px] lg:text-[14px] flex items-center gap-1.5 leading-[16px] md:leading-[18px] lg:leading-[20px]">
-                <Clock className="w-4 h-4" /> {slaText}
-              </span>
-            </div>
+        {/* Section 1: Status Badges */}
+        <div className="flex justify-between items-center mb-2 flex-wrap gap-2">
+          <Badge className="bg-[#dcfce7] text-[#166534] hover:bg-[#dcfce7] border-none text-[12px] font-bold whitespace-normal text-center min-h-[24px]">
+            {isPending && badgeText ? badgeText : '🟢 Ativa'}
+          </Badge>
+          <Badge
+            className={cn(
+              'border-none text-[12px] font-bold min-h-[24px]',
+              isPending
+                ? 'bg-[#ffedd5] text-[#9a3412] hover:bg-[#ffedd5]'
+                : 'bg-gray-100 text-gray-800',
+            )}
+          >
+            {isPending ? '⏳ Pendente' : demand.status}
+          </Badge>
+        </div>
+
+        {/* Section 2: Title & Countdown */}
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start py-4">
+          <h3 className="text-[18px] font-bold text-[#333333] break-words whitespace-normal leading-tight m-0 pr-2">
+            {demand.clientName}
+          </h3>
+          {isPending && (
+            <span className="text-[16px] font-bold text-[#16a34a] whitespace-nowrap mt-2 sm:mt-0">
+              {slaText} restantes
+            </span>
+          )}
+        </div>
+
+        {/* Section 3: Progress Bar */}
+        {isPending && (
+          <div className="pb-4">
             <Progress
               value={slaProgress}
-              className="h-1.5 md:h-2 bg-[#00AA00]/20"
-              indicatorClassName={
+              className="h-2 bg-gray-200"
+              indicatorClassName={cn(
+                'transition-colors duration-300',
                 slaLevel === 'red'
-                  ? 'bg-[#FF4444]'
+                  ? 'bg-[#ef4444]'
                   : slaLevel === 'yellow'
-                    ? 'bg-[#FFD700]'
-                    : 'bg-[#00AA00]'
-              }
+                    ? 'bg-[#eab308]'
+                    : 'bg-[#22c55e]',
+              )}
             />
           </div>
         )}
 
-        <CardContent className="p-4 md:p-4 lg:p-5 flex flex-col flex-1">
-          <div className="flex justify-between items-start mb-3">
-            <Badge
-              className={cn(
-                'font-bold text-[12px] md:text-[13px] lg:text-[14px] leading-[16px] md:leading-[18px] lg:leading-[20px] text-white px-2.5 py-1',
-                typeColor,
-              )}
-            >
-              {isAluguel ? '🏠 ALUGUEL' : '🏢 VENDA'}
-            </Badge>
-            <Badge
-              variant="outline"
-              className={cn(
-                'text-[12px] md:text-[13px] lg:text-[14px] leading-[16px] md:leading-[18px] lg:leading-[20px] font-bold px-2.5 py-1',
-                statusBadge.class,
-              )}
-            >
-              {isPrioAnimating ? (
-                <span
-                  className="flex items-center gap-1 animate-bounce-scale origin-center"
-                  style={{ animationDuration: '300ms' }}
-                >
-                  {statusBadge.label}
-                </span>
-              ) : (
-                statusBadge.label
-              )}
-            </Badge>
-          </div>
+        {/* Section 4: Primary Information Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-[12px] py-4 border-t border-gray-100">
+          <InfoItem label="👤 Cliente" value={demand.clientName} />
+          <InfoItem label="👤 Solicitado por" value={creatorName} />
+          <InfoItem label="📍 Localização" value={demand.location} />
+          <InfoItem
+            label="💰 Orçamento"
+            value={`R$ ${formatPrice(demand.minBudget)} - R$ ${formatPrice(demand.maxBudget)}`}
+          />
+          <InfoItem
+            label="🏠 Perfil"
+            value={`${demand.bedrooms || 0} dorm, ${demand.bathrooms || 0} banh, ${demand.parkingSpots || 0} vagas`}
+          />
+          <InfoItem label="⚡ Urgência" value={demand.timeframe} />
+          <InfoItem label="📅 Criado há" value={timeElapsedText} />
+        </div>
 
-          <div className="flex flex-col gap-1 flex-grow">
-            <h3 className="text-[16px] md:text-[18px] lg:text-[20px] font-bold text-[#333333] leading-[24px] md:leading-[28px] lg:leading-[30px] transition-colors">
-              👤 Cliente: {demand.clientName}
-            </h3>
-            <p className="text-[12px] md:text-[13px] lg:text-[14px] text-[#999999] leading-[16px] md:leading-[18px] lg:leading-[20px]">
-              📍 Localização: <span className="text-[#333333]">{demand.location}</span>
-            </p>
-            <p className="text-[14px] md:text-[16px] lg:text-[18px] font-bold text-[#333333] mt-1 leading-[20px] md:leading-[24px] lg:leading-[28px]">
-              💰 Orçamento: R$ {formatPrice(demand.minBudget)} - R$ {formatPrice(demand.maxBudget)}
-            </p>
-            <p className="text-[12px] md:text-[13px] lg:text-[14px] text-[#333333] mt-0.5 leading-[16px] md:leading-[18px] lg:leading-[20px]">
-              🏠 Perfil: {demand.bedrooms || 0} dorm, {demand.bathrooms || 0} banh,{' '}
-              {demand.parkingSpots || 0} vagas
-            </p>
-
-            {similar.length > 0 && (
-              <div className="mt-2 bg-[#00AA00]/10 text-[#00AA00] font-bold text-[12px] md:text-[13px] lg:text-[14px] p-2 rounded-md w-fit border border-[#00AA00]/20 leading-[16px] md:leading-[18px] lg:leading-[20px]">
-                👥 {totalClients} clientes com este perfil
-              </div>
-            )}
-          </div>
-
-          <div className="flex flex-wrap gap-2 mt-auto pt-4 w-full">
-            <Button
-              className="w-full xl:w-auto flex-1 h-[48px] md:h-[44px] lg:h-[40px] min-w-[48px] bg-[#4444FF] text-white text-[14px] font-bold px-2 leading-[20px]"
-              onClick={() => setShowDetails(true)}
-            >
-              <BookOpen className="w-4 h-4 mr-1.5" />
-              <span>Detalhes</span>
-            </Button>
-            <Button
-              className={cn(
-                'w-[calc(50%-4px)] xl:w-auto flex-1 h-[48px] md:h-[44px] lg:h-[40px] min-w-[48px] text-[14px] font-bold px-2 leading-[20px]',
-                canPrioritize && !demand.isPrioritized
-                  ? 'bg-[#FF4444] text-white'
-                  : 'bg-[#E5E5E5] text-[#999999] cursor-not-allowed hover:scale-100 active:scale-100',
-              )}
-              disabled={!canPrioritize || demand.isPrioritized}
-              onClick={() => setShowPrioritize(true)}
-            >
-              <AlertCircle className="w-4 h-4 mr-1.5 xl:hidden" />
-              <span className="hidden xl:inline">Priorizar</span>
-              <span className="xl:hidden">Prio.</span>
-            </Button>
-            <Button
-              className="w-[calc(50%-4px)] xl:w-auto flex-1 h-[48px] md:h-[44px] lg:h-[40px] min-w-[48px] bg-[#999999] text-white text-[14px] font-bold px-2 leading-[20px] hover:bg-[#333333]"
-              onClick={() => setShowLost(true)}
-            >
-              <X className="w-4 h-4 mr-1.5 xl:hidden" />
-              <span className="hidden xl:inline">Perdido</span>
-              <span className="xl:hidden">Perd.</span>
-            </Button>
-          </div>
-        </CardContent>
+        {/* Section 5: Action Buttons Command Center */}
+        <div className="flex flex-col min-[480px]:flex-row flex-wrap gap-2 pt-4 mt-auto border-t border-gray-100">
+          <Button
+            className="h-[44px] min-[480px]:min-w-[100px] flex-1 bg-[#3b82f6] hover:bg-[#2563eb] text-white font-bold transition-transform active:scale-95 duration-100"
+            onClick={() => setShowDetails(true)}
+          >
+            Ver Detalhes
+          </Button>
+          <Button
+            className="h-[44px] min-[480px]:min-w-[100px] flex-1 bg-[#22c55e] hover:bg-[#16a34a] text-white font-bold transition-transform active:scale-95 duration-100"
+            onClick={() => onAction?.(demand.id, 'encontrei')}
+          >
+            Encontrei
+          </Button>
+          <Button
+            className="h-[44px] min-[480px]:min-w-[100px] flex-1 bg-[#f97316] hover:bg-[#ea580c] text-white font-bold transition-transform active:scale-95 duration-100"
+            onClick={() => onAction?.(demand.id, 'nao_encontrei')}
+          >
+            Não Encontrei
+          </Button>
+          <Button
+            className="h-[44px] min-[480px]:min-w-[100px] flex-1 bg-[#6b7280] hover:bg-[#4b5563] text-white font-bold transition-transform active:scale-95 duration-100"
+            onClick={() =>
+              logSolicitorContactAttempt(
+                demand.id,
+                'interno',
+                'Olá, gostaria de falar sobre esta demanda.',
+              )
+            }
+          >
+            Contato
+          </Button>
+        </div>
       </Card>
 
       <DemandDetailsModal open={showDetails} onOpenChange={setShowDetails} demand={demand} />
-      <PrioritizeModal
-        open={showPrioritize}
-        onOpenChange={setShowPrioritize}
-        onConfirm={handlePrioritize}
-        similarCount={totalClients}
-      />
-      <LostModal open={showLost} onOpenChange={setShowLost} onConfirm={handleLost} />
     </div>
   )
 }
