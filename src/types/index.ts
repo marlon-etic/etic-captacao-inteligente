@@ -132,6 +132,8 @@ export interface CapturedProperty {
   captador_name?: string
   propertyType?: 'Venda' | 'Aluguel'
   bedrooms?: number
+  bathrooms?: number
+  parkingSpots?: number
   discarded?: boolean
   discardReason?: string
 }

@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import useAppStore from '@/stores/useAppStore'
 import { cn } from '@/lib/utils'
-import { Eye, Handshake, BookOpen } from 'lucide-react'
+import { Eye, Handshake, BookOpen, Edit2, MessageCircle } from 'lucide-react'
+import { useToast } from '@/hooks/use-toast'
 
 export function CapturedPropertyCard({
   demand,
@@ -14,70 +15,116 @@ export function CapturedPropertyCard({
   demand?: Demand
   property: CapturedProperty
   onAction?: (
-    t: 'visita' | 'proposta' | 'negocio' | 'lost' | 'history' | 'details',
+    t: 'visita' | 'proposta' | 'negocio' | 'lost' | 'history' | 'details' | 'edit',
     d: Demand,
     p: CapturedProperty,
   ) => void
 }) {
-  const { users } = useAppStore()
+  const { users, currentUser } = useAppStore()
+  const { toast } = useToast()
 
   const capturer = users.find((u) => u.id === property.captador_id)
   const capturerName = capturer?.name || property.captador_name || 'Não informado'
+  const solicitanteUser = users.find((u) => u.id === demand?.createdBy)
+  const solicitanteName = solicitanteUser?.name || 'Não informado'
 
   const formatPrice = (val?: number) => {
     if (!val) return '0'
     return new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 }).format(val)
   }
 
-  const handleAction = (type: 'visita' | 'negocio' | 'details') => {
+  const handleAction = (type: 'visita' | 'negocio' | 'details' | 'edit') => {
     if (onAction && demand) {
       onAction(type, demand, property)
+    }
+  }
+
+  const handleWhatsApp = () => {
+    if (solicitanteUser?.phone) {
+      const phone = solicitanteUser.phone.replace(/\D/g, '')
+      const msg = encodeURIComponent(
+        `Olá ${solicitanteUser.name}, sobre o imóvel ${property.code} para a demanda de ${demand?.clientName}...`,
+      )
+      window.open(`https://wa.me/${phone}?text=${msg}`, '_blank')
+    } else {
+      toast({
+        title: 'Telefone indisponível',
+        description: 'O solicitante não possui número cadastrado.',
+        variant: 'destructive',
+      })
     }
   }
 
   const isClosed = !!property.fechamentoDate
   const isVisita = !!property.visitaDate && !isClosed
 
-  const status = isClosed ? 'Negócio' : isVisita ? 'Visita' : 'Captado'
+  const status = isClosed ? 'Fechado' : isVisita ? 'Visita' : 'Captado'
   const badgeClass = isClosed
-    ? 'bg-[#00AA00]/10 text-[#00AA00] border-none'
+    ? 'bg-[#4CAF50] text-white border-none'
     : isVisita
-      ? 'bg-[#FFD700]/20 text-[#B8860B] border-none'
-      : 'bg-[#4444FF]/10 text-[#4444FF] border-none'
+      ? 'bg-[#FF9800] text-white border-none'
+      : 'bg-[#FF9800] text-white border-none'
   const badgeIcon = isClosed ? '🟢' : isVisita ? '🟠' : '🟡'
 
   const propType = property.propertyType || demand?.type || 'Venda'
   const isAluguel = propType === 'Aluguel'
-  const typeColor = isAluguel ? 'bg-[#4444FF]' : 'bg-[#FF4444]'
+
+  const isCaptador = currentUser?.role === 'captador'
+  const isSDRCorretorAdmin =
+    currentUser?.role === 'sdr' ||
+    currentUser?.role === 'corretor' ||
+    currentUser?.role === 'admin' ||
+    currentUser?.role === 'gestor'
+
+  const interactiveClass = isCaptador
+    ? 'text-[#1A3A52] cursor-pointer hover:underline transition-colors'
+    : 'text-[#333333]'
 
   return (
-    <Card className="w-full min-h-[140px] md:min-h-[160px] rounded-[12px] mb-[16px] border border-[#E5E5E5] hover:shadow-md flex flex-col bg-[#FFFFFF] transition-all duration-200">
-      <CardContent className="p-[16px] flex flex-col flex-1">
+    <Card className="w-full min-h-[160px] rounded-[12px] mb-[12px] border-[2px] border-[#2E5F8A] hover:shadow-[0_8px_16px_rgba(26,58,82,0.15)] flex flex-col bg-[#FFFFFF] transition-all duration-200 p-[16px]">
+      <CardContent className="p-0 flex flex-col flex-1">
         <div className="flex justify-between items-start mb-[12px] gap-[8px]">
-          <Badge className={cn('font-bold text-[10px] text-white px-2 py-1', typeColor)}>
+          <Badge className="font-bold text-[10px] text-white px-2 py-1 bg-[#1A3A52]">
             {isAluguel ? '🏠 ALUGUEL' : '🏢 VENDA'}
           </Badge>
-          <Badge variant="outline" className={cn('font-bold text-[10px]', badgeClass)}>
-            {badgeIcon} {status}
-          </Badge>
+          <div
+            className={cn(
+              'px-2 py-1 rounded-full font-bold text-[12px] flex items-center gap-1 shadow-sm',
+              badgeClass,
+            )}
+          >
+            <span>{badgeIcon}</span> {status}
+          </div>
         </div>
 
-        <div className="flex flex-col gap-[4px] flex-grow">
-          <h3 className="text-[14px] font-bold text-[#333333] leading-tight">
-            🏠 Cód: {property.code}
+        <div className="flex flex-col gap-[6px] flex-grow">
+          <h3
+            className={cn('text-[14px] font-bold leading-tight', interactiveClass)}
+            onClick={() => isCaptador && handleAction('edit')}
+          >
+            🏷️ Código do Imóvel: {property.code}
           </h3>
-          <p className="text-[12px] text-[#999999] leading-tight">
-            📍 Localização: <span className="text-[#333333]">{property.neighborhood}</span>
+          <p
+            className={cn('text-[12px] leading-tight', interactiveClass)}
+            onClick={() => isCaptador && handleAction('edit')}
+          >
+            📍 Localização: {property.neighborhood}
           </p>
-          <p className="text-[14px] font-bold text-[#333333] mt-[4px]">
+          <p
+            className={cn('text-[14px] font-bold mt-[2px]', interactiveClass)}
+            onClick={() => isCaptador && handleAction('edit')}
+          >
             💰 Valor: R$ {formatPrice(property.value)}
           </p>
-          <p className="text-[12px] text-[#333333] mt-[2px]">
+          <p
+            className={cn('text-[12px] mt-[2px]', interactiveClass)}
+            onClick={() => isCaptador && handleAction('edit')}
+          >
             🏠 Perfil: {property.bedrooms || 0} dorm, {property.bathrooms || 0} banh,{' '}
             {property.parkingSpots || 0} vagas
           </p>
-          <p className="text-[12px] text-[#999999] mt-[4px]">
-            👤 Captador: <span className="text-[#333333] font-medium">{capturerName}</span>
+          <p className="text-[12px] text-[#999999] mt-[2px]">
+            👤 Solicitado por: <span className="text-[#333333] font-medium">{solicitanteName}</span>
           </p>
           <p className="text-[12px] text-[#999999]">
             📅 Data de Captação:{' '}
@@ -86,41 +133,79 @@ export function CapturedPropertyCard({
             </span>
           </p>
 
-          {demand && (
-            <div className="mt-[12px] pt-[12px] border-t border-[#E5E5E5] text-[12px] text-[#999999]">
-              Demanda: <strong className="text-[#333333]">{demand.clientName}</strong> em{' '}
-              {demand.location}
-            </div>
-          )}
+          <div
+            className={cn(
+              'mt-[8px] pt-[8px] border-t border-[#E5E5E5] text-[12px]',
+              isCaptador ? interactiveClass : 'text-[#333333]',
+            )}
+            onClick={() => isCaptador && handleAction('edit')}
+          >
+            📝 Observações: <span className="italic">{property.obs || 'Nenhuma observação'}</span>
+          </div>
         </div>
 
-        <div className="flex flex-row flex-wrap sm:flex-nowrap gap-[8px] mt-[16px] w-full">
-          {!isClosed && !isVisita && (
-            <Button
-              className="flex-1 h-[44px] min-w-[100px] bg-[#FFD700] hover:bg-[#E6C200] text-[#333333] font-bold text-[14px] px-2 shadow-sm"
-              onClick={() => handleAction('visita')}
-            >
-              <Eye className="w-[16px] h-[16px] sm:mr-[6px]" />
-              <span className="hidden sm:inline">Visita</span>
-            </Button>
+        <div className="flex flex-row flex-wrap gap-[8px] mt-[16px] w-full">
+          {isCaptador && (
+            <>
+              <Button
+                variant="outline"
+                className="flex-1 h-[40px] border-[#2E5F8A] text-[#1A3A52] hover:bg-[#F5F5F5] font-bold text-[12px] px-2"
+                onClick={() => handleAction('edit')}
+              >
+                <Edit2 className="w-[14px] h-[14px] mr-[4px]" />
+                Editar
+              </Button>
+              <Button
+                variant="outline"
+                className="flex-1 h-[40px] border-[#2E5F8A] text-[#1A3A52] hover:bg-[#F5F5F5] font-bold text-[12px] px-2"
+                onClick={() => handleAction('details')}
+              >
+                <BookOpen className="w-[14px] h-[14px] mr-[4px]" />
+                Ver Detalhes
+              </Button>
+              <Button
+                className="w-full h-[40px] bg-[#25D366] hover:bg-[#128C7E] text-white font-bold text-[12px] px-2"
+                onClick={handleWhatsApp}
+              >
+                <MessageCircle className="w-[14px] h-[14px] mr-[4px]" />
+                Contatar Solicitante
+              </Button>
+            </>
           )}
-          {isVisita && (
-            <Button
-              className="flex-1 h-[44px] min-w-[100px] bg-[#00AA00] hover:bg-[#009000] text-white font-bold text-[14px] px-2 shadow-sm"
-              onClick={() => handleAction('negocio')}
-            >
-              <Handshake className="w-[16px] h-[16px] sm:mr-[6px]" />
-              <span className="hidden sm:inline">Negócio</span>
-            </Button>
+
+          {isSDRCorretorAdmin && (
+            <>
+              {!isClosed && !isVisita && (
+                <Button
+                  className="flex-1 h-[40px] bg-[#FF9800] hover:bg-[#F57C00] text-white font-bold text-[12px] px-2 shadow-sm"
+                  onClick={() => handleAction('visita')}
+                >
+                  <Eye className="w-[14px] h-[14px] sm:mr-[4px]" />
+                  <span className="hidden sm:inline">VISITA AGENDADA</span>
+                  <span className="sm:hidden">Visita</span>
+                </Button>
+              )}
+              {isVisita && (
+                <Button
+                  className="flex-1 h-[40px] bg-[#4CAF50] hover:bg-[#388E3C] text-white font-bold text-[12px] px-2 shadow-sm"
+                  onClick={() => handleAction('negocio')}
+                >
+                  <Handshake className="w-[14px] h-[14px] sm:mr-[4px]" />
+                  <span className="hidden sm:inline">NEGÓCIO FECHADO</span>
+                  <span className="sm:hidden">Fechado</span>
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                className="flex-1 h-[40px] border-[#2E5F8A] text-[#1A3A52] hover:bg-[#F5F5F5] font-bold text-[12px] px-2"
+                onClick={() => handleAction('details')}
+              >
+                <BookOpen className="w-[14px] h-[14px] sm:mr-[4px]" />
+                <span className="hidden sm:inline">Ver Detalhes</span>
+                <span className="sm:hidden">Detalhes</span>
+              </Button>
+            </>
           )}
-          <Button
-            variant="outline"
-            className="flex-1 h-[44px] min-w-[100px] border-[#4444FF] text-[#4444FF] hover:bg-[#4444FF] hover:text-white font-bold text-[14px] px-2"
-            onClick={() => handleAction('details')}
-          >
-            <BookOpen className="w-[16px] h-[16px] sm:mr-[6px]" />
-            <span className="hidden sm:inline">Detalhes</span>
-          </Button>
         </div>
       </CardContent>
     </Card>

@@ -30,6 +30,9 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Demand, CapturedProperty } from '@/types'
+import { PropertyTimeline } from '@/components/PropertyTimeline'
+import { useToast } from '@/hooks/use-toast'
+import useAppStore from '@/stores/useAppStore'
 
 const visitaSchema = z.object({
   date: z
@@ -71,11 +74,34 @@ const lostSchema = z.object({
   obs: z.string().optional(),
 })
 
+const editSchema = z.object({
+  code: z.string().min(1, 'Código é obrigatório'),
+  neighborhood: z.string().min(1, 'Bairro é obrigatório'),
+  value: z.coerce.number().positive('O valor deve ser maior que zero'),
+  bedrooms: z.coerce.number().min(0, 'Inválido'),
+  bathrooms: z.coerce.number().min(0, 'Inválido'),
+  parkingSpots: z.coerce.number().min(0, 'Inválido'),
+  obs: z.string().optional(),
+})
+
 const LOST_REASONS = [
   'Cliente não gostou',
   'Fora do orçamento',
   'Já alugado/vendido',
   'Proprietário não atende',
+  'Outro',
+]
+
+const BAIRROS = [
+  'Mooca',
+  'Tatuapé',
+  'Carrão',
+  'Vila Prudente',
+  'Ipiranga',
+  'Vila Ema',
+  'Jardins',
+  'Pinheiros',
+  'Centro',
   'Outro',
 ]
 
@@ -91,18 +117,22 @@ export function CapturedPropertyModals({
 }: {
   demand: Demand | null
   property: CapturedProperty | null
-  actionType: 'visita' | 'proposta' | 'negocio' | 'lost' | 'details' | null
+  actionType: 'visita' | 'proposta' | 'negocio' | 'lost' | 'details' | 'edit' | null
   onClose: () => void
   onSubmitVisita: (data: any) => void
   onSubmitProposta: (data: any) => void
   onSubmitNegocio: (data: any) => void
   onSubmitLost?: (data: any) => void
 }) {
+  const { updatePropertyDetails } = useAppStore()
+  const { toast } = useToast()
+
   const isVisita = actionType === 'visita'
   const isProposta = actionType === 'proposta'
   const isNegocio = actionType === 'negocio'
   const isLost = actionType === 'lost'
   const isDetails = actionType === 'details'
+  const isEdit = actionType === 'edit'
   const isOpen = !!demand && !!property && !!actionType
 
   const formVisita = useForm({
@@ -125,6 +155,19 @@ export function CapturedPropertyModals({
     defaultValues: { reason: '', obs: '' },
   })
 
+  const formEdit = useForm({
+    resolver: zodResolver(editSchema),
+    defaultValues: {
+      code: '',
+      neighborhood: '',
+      value: 0,
+      bedrooms: 0,
+      bathrooms: 0,
+      parkingSpots: 0,
+      obs: '',
+    },
+  })
+
   useEffect(() => {
     if (demand && property) {
       if (isNegocio) {
@@ -142,21 +185,51 @@ export function CapturedPropertyModals({
           obs: '',
         })
       }
+      if (isEdit) {
+        formEdit.reset({
+          code: property.code || '',
+          neighborhood: property.neighborhood || '',
+          value: property.value || 0,
+          bedrooms: property.bedrooms || 0,
+          bathrooms: property.bathrooms || 0,
+          parkingSpots: property.parkingSpots || 0,
+          obs: property.obs || '',
+        })
+      }
     }
-  }, [demand, property, isNegocio, isProposta, formNegocio, formProposta])
+  }, [demand, property, isNegocio, isProposta, isEdit, formNegocio, formProposta, formEdit])
+
+  const handleEditSubmit = (data: z.infer<typeof editSchema>) => {
+    try {
+      updatePropertyDetails(demand!.id, property!.code, data)
+      toast({
+        title: 'Sucesso',
+        description: 'Imóvel atualizado com sucesso.',
+        className: 'bg-[#4CAF50] text-white border-none',
+      })
+      onClose()
+    } catch (e) {
+      toast({
+        title: 'Erro',
+        description: 'Erro ao salvar. Tente novamente',
+        variant: 'destructive',
+      })
+    }
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>
+          <DialogTitle className="text-[18px] font-bold text-[#1A3A52]">
             {isVisita && 'Agendar Visita'}
             {isProposta && 'Registrar Proposta'}
             {isNegocio && 'Registrar Negócio Fechado'}
             {isLost && 'Dispensar Imóvel'}
             {isDetails && 'Detalhes do Imóvel'}
+            {isEdit && `Editar Imóvel ${property?.code}`}
           </DialogTitle>
-          {demand && property && !isDetails && (
+          {demand && property && !isDetails && !isEdit && (
             <DialogDescription>
               Cliente: <strong>{demand.clientName}</strong> • Cód: {property.code}
             </DialogDescription>
@@ -223,60 +296,136 @@ export function CapturedPropertyModals({
             </Form>
           )}
 
-          {isProposta && (
-            <Form {...formProposta}>
-              <form
-                onSubmit={formProposta.handleSubmit((d) => {
-                  onSubmitProposta(d)
-                  formProposta.reset()
-                })}
-                className="space-y-4"
-              >
+          {isEdit && (
+            <Form {...formEdit}>
+              <form onSubmit={formEdit.handleSubmit(handleEditSubmit)} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={formEdit.control}
+                    name="code"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-[12px] text-gray-500">
+                          Código do Imóvel
+                        </FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={formEdit.control}
+                    name="neighborhood"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-[12px] text-gray-500">Localização</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                          value={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione o bairro" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {BAIRROS.map((r) => (
+                              <SelectItem key={r} value={r}>
+                                {r}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
                 <FormField
-                  control={formProposta.control}
-                  name="date"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Data da Proposta</FormLabel>
-                      <FormControl>
-                        <Input type="date" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={formProposta.control}
+                  control={formEdit.control}
                   name="value"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Valor Proposto (R$)</FormLabel>
+                      <FormLabel className="text-[12px] text-gray-500">Valor (R$)</FormLabel>
                       <FormControl>
-                        <Input type="number" step="0.01" {...field} />
+                        <Input
+                          type="number"
+                          step="0.01"
+                          {...field}
+                          className="text-[#1A3A52] font-bold"
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+
+                <div className="grid grid-cols-3 gap-4">
+                  <FormField
+                    control={formEdit.control}
+                    name="bedrooms"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-[12px] text-gray-500">Dorms</FormLabel>
+                        <FormControl>
+                          <Input type="number" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={formEdit.control}
+                    name="bathrooms"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-[12px] text-gray-500">Banheiros</FormLabel>
+                        <FormControl>
+                          <Input type="number" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={formEdit.control}
+                    name="parkingSpots"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-[12px] text-gray-500">Vagas</FormLabel>
+                        <FormControl>
+                          <Input type="number" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
                 <FormField
-                  control={formProposta.control}
+                  control={formEdit.control}
                   name="obs"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Detalhes da Proposta</FormLabel>
+                      <FormLabel className="text-[12px] text-gray-500">Observações</FormLabel>
                       <FormControl>
-                        <Textarea {...field} placeholder="Descreva as condições da proposta..." />
+                        <Textarea {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+
                 <DialogFooter>
                   <Button type="button" variant="outline" onClick={onClose}>
                     Cancelar
                   </Button>
-                  <Button type="submit" className="bg-purple-600 hover:bg-purple-700 text-white">
-                    Registrar Proposta
+                  <Button type="submit" className="bg-[#1A3A52] text-white hover:bg-[#1A3A52]/90">
+                    Salvar
                   </Button>
                 </DialogFooter>
               </form>
@@ -365,7 +514,7 @@ export function CapturedPropertyModals({
                   <Button type="button" variant="outline" onClick={onClose}>
                     Cancelar
                   </Button>
-                  <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700 text-white">
+                  <Button type="submit" className="bg-[#4CAF50] hover:bg-[#388E3C] text-white">
                     ✅ Confirmar Negócio
                   </Button>
                 </DialogFooter>
@@ -433,78 +582,54 @@ export function CapturedPropertyModals({
 
           {isDetails && demand && property && (
             <div className="space-y-4 text-sm mt-2">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-4 bg-[#F5F5F5] p-4 rounded-[8px]">
                 <div>
-                  <p className="text-muted-foreground text-xs">Imóvel</p>
-                  <p className="font-medium">{property.code}</p>
+                  <p className="text-[#999999] text-[12px]">Imóvel</p>
+                  <p className="font-bold text-[#1A3A52]">{property.code}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground text-xs">Captador</p>
-                  <p className="font-medium">{property.captador_name || 'Não informado'}</p>
+                  <p className="text-[#999999] text-[12px]">Captador</p>
+                  <p className="font-bold text-[#1A3A52]">
+                    {property.captador_name || 'Não informado'}
+                  </p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground text-xs">Valor</p>
-                  <p className="font-medium">R$ {property.value?.toLocaleString('pt-BR')}</p>
+                  <p className="text-[#999999] text-[12px]">Valor</p>
+                  <p className="font-bold text-[#1A3A52]">
+                    R$ {property.value?.toLocaleString('pt-BR')}
+                  </p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground text-xs">Data de Captação</p>
-                  <p className="font-medium">
+                  <p className="text-[#999999] text-[12px]">Data de Captação</p>
+                  <p className="font-bold text-[#1A3A52]">
                     {new Date(property.capturedAt || '').toLocaleDateString('pt-BR')}
                   </p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground text-xs">Tipo</p>
-                  <p className="font-medium">{property.propertyType || demand.type}</p>
+                  <p className="text-[#999999] text-[12px]">Tipo</p>
+                  <p className="font-bold text-[#1A3A52]">{property.propertyType || demand.type}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground text-xs">Perfil</p>
-                  <p className="font-medium">
+                  <p className="text-[#999999] text-[12px]">Perfil</p>
+                  <p className="font-bold text-[#1A3A52]">
                     {property.bedrooms || 0} dorm, {property.bathrooms || 0} banh,{' '}
                     {property.parkingSpots || 0} vagas
                   </p>
                 </div>
               </div>
 
-              {property.visitaDate && (
-                <div className="bg-orange-50 p-3 rounded-md border border-orange-100">
-                  <p className="font-bold text-xs text-orange-800 mb-1 flex items-center gap-1">
-                    <span>🟠</span> Visita Agendada
-                  </p>
-                  <p className="text-orange-900">
-                    Data: {new Date(property.visitaDate + 'T00:00:00').toLocaleDateString('pt-BR')}{' '}
-                    às {property.visitaTime}
-                  </p>
-                  {property.visitaObs && (
-                    <p className="mt-1 text-orange-800/80 italic text-xs">"{property.visitaObs}"</p>
-                  )}
-                </div>
-              )}
-
-              {property.fechamentoDate && (
-                <div className="bg-emerald-50 p-3 rounded-md border border-emerald-100">
-                  <p className="font-bold text-xs text-emerald-800 mb-1 flex items-center gap-1">
-                    <span>🟢</span> Negócio Fechado ({property.fechamentoType})
-                  </p>
-                  <p className="text-emerald-900">
-                    Data:{' '}
-                    {new Date(property.fechamentoDate + 'T00:00:00').toLocaleDateString('pt-BR')}
-                  </p>
-                  <p className="text-emerald-900">
-                    Valor: R$ {property.fechamentoValue?.toLocaleString('pt-BR')}
-                  </p>
-                  {property.fechamentoObs && (
-                    <p className="mt-1 text-emerald-800/80 italic text-xs">
-                      "{property.fechamentoObs}"
-                    </p>
-                  )}
-                </div>
-              )}
+              <div className="mt-4">
+                <h4 className="text-[14px] font-bold text-[#1A3A52] mb-3">
+                  Histórico de Alterações
+                </h4>
+                <PropertyTimeline history={property.history || []} />
+              </div>
 
               <DialogFooter className="mt-6">
                 <Button
                   type="button"
                   variant="outline"
-                  className="w-full sm:w-auto"
+                  className="w-full sm:w-auto border-[#2E5F8A] text-[#1A3A52]"
                   onClick={onClose}
                 >
                   Fechar

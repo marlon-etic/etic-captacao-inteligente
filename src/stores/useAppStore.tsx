@@ -59,6 +59,7 @@ interface AppState {
   prioritizeDemand: (id: string, reason: string, count: number) => void
   markDemandLost: (id: string, reason: string, obs?: string) => void
   markPropertyLost: (code: string, demandId: string, reason: string, obs?: string) => void
+  updatePropertyDetails: (demandId: string, propertyCode: string, payload: any) => void
   logContactAttempt: (
     demandId: string,
     code: string,
@@ -250,6 +251,8 @@ const initialDemands: Demand[] = [
         captador_name: 'Ana Silva',
         propertyType: 'Venda',
         bedrooms: 3,
+        bathrooms: 2,
+        parkingSpots: 2,
       },
     ],
   },
@@ -283,6 +286,8 @@ const initialDemands: Demand[] = [
         captador_name: 'Ana Silva',
         propertyType: 'Venda',
         bedrooms: 4,
+        bathrooms: 3,
+        parkingSpots: 3,
       },
     ],
   },
@@ -311,6 +316,8 @@ const initialLooseProperties: CapturedProperty[] = [
     captador_name: 'Ana Silva',
     propertyType: 'Venda',
     bedrooms: 3,
+    bathrooms: 2,
+    parkingSpots: 2,
     history: [createHistoryItem('captacao', 'Imóvel captado como disponível para todos', 24)],
   },
 ]
@@ -1532,6 +1539,56 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     ],
   )
 
+  const updatePropertyDetails = useCallback(
+    (demandId: string, propertyCode: string, payload: any) => {
+      if (
+        currentUser?.role !== 'captador' &&
+        currentUser?.role !== 'admin' &&
+        currentUser?.role !== 'gestor'
+      ) {
+        toast({
+          title: 'Erro',
+          description: 'Você não tem permissão para esta ação',
+          variant: 'destructive',
+        })
+        return
+      }
+
+      setAllDemands((prev) => {
+        const next = prev.map((d) => {
+          if (d.id === demandId) {
+            const updatedProps = d.capturedProperties?.map((p) => {
+              if (p.code === propertyCode) {
+                const action = createAction(
+                  'captacao',
+                  `Detalhes do imóvel atualizados por ${currentUser?.name}`,
+                )
+                return {
+                  ...p,
+                  code: payload.code || p.code,
+                  neighborhood: payload.neighborhood || p.neighborhood,
+                  value: payload.value !== undefined ? payload.value : p.value,
+                  bedrooms: payload.bedrooms !== undefined ? payload.bedrooms : p.bedrooms,
+                  bathrooms: payload.bathrooms !== undefined ? payload.bathrooms : p.bathrooms,
+                  parkingSpots:
+                    payload.parkingSpots !== undefined ? payload.parkingSpots : p.parkingSpots,
+                  obs: payload.obs !== undefined ? payload.obs : p.obs,
+                  history: action ? [action, ...(p.history || [])] : p.history,
+                }
+              }
+              return p
+            })
+            return { ...d, capturedProperties: updatedProps }
+          }
+          return d
+        })
+        broadcastState(next, users, `Imóvel ${propertyCode} atualizado`)
+        return next
+      })
+    },
+    [currentUser, users, createAction, broadcastState],
+  )
+
   const logContactAttempt = useCallback(
     (demandId: string, code: string, method: 'whatsapp' | 'interno', message?: string) => {
       let demand = allDemands.find((d) => d.id === demandId)
@@ -1851,6 +1908,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
               captador_name: currentUser?.name,
               propertyType: demand.type,
               bedrooms: payload?.bedrooms,
+              bathrooms: payload?.bathrooms,
+              parkingSpots: payload?.parkingSpots,
             }
 
             const updatedDemand = {
@@ -1948,6 +2007,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
             captador_name: currentUser?.name,
             propertyType: payload.propertyType,
             bedrooms: payload.bedrooms,
+            bathrooms: payload.bathrooms,
+            parkingSpots: payload.parkingSpots,
           }
 
           const eligibleUsers = users.filter((u) => {
@@ -2110,6 +2171,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         prioritizeDemand,
         markDemandLost,
         markPropertyLost,
+        updatePropertyDetails,
         logContactAttempt,
         logSolicitorContactAttempt,
         addPoints,
