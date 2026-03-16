@@ -1,5 +1,5 @@
 import { useState, useMemo, useTransition } from 'react'
-import { Search, RefreshCw, Home, Eye, Handshake } from 'lucide-react'
+import { Search, RefreshCw } from 'lucide-react'
 import useAppStore from '@/stores/useAppStore'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -15,7 +15,7 @@ interface Props {
 
 export function CapturedPropertiesView({
   filterType,
-  emptyStateText = 'Nenhum imóvel captado para suas demandas',
+  emptyStateText = 'Nenhum imóvel captado no momento.',
 }: Props) {
   const {
     demands,
@@ -58,19 +58,6 @@ export function CapturedPropertiesView({
       return []
     })
   }, [demands, currentUser, filterType])
-
-  const stats = useMemo(() => {
-    let captados = 0
-    let visitas = 0
-    let negocios = 0
-    allCaptured.forEach(({ property }) => {
-      if (property.discarded) return
-      if (property.fechamentoDate) negocios++
-      else if (property.visitaDate) visitas++
-      else captados++
-    })
-    return { captados, visitas, negocios }
-  }, [allCaptured])
 
   const filteredAndSorted = useMemo(() => {
     let result = allCaptured.filter(({ demand: d, property: p }) => {
@@ -121,65 +108,19 @@ export function CapturedPropertiesView({
   }
 
   return (
-    <div className="flex flex-col gap-[16px] md:gap-[20px] animate-fade-in-up">
-      {/* Counters styled to match the responsive metrics */}
-      <div className="grid grid-cols-1 min-[480px]:grid-cols-3 gap-[12px] min-[480px]:gap-[16px] md:gap-[20px]">
-        <div className="bg-[#FFFFFF] border border-[#E5E5E5] rounded-[12px] p-[16px] flex items-center justify-between shadow-sm min-h-[100px] w-full">
-          <div className="flex flex-col break-words whitespace-normal flex-1 mr-2">
-            <p className="text-[12px] min-[480px]:text-[13px] md:text-[14px] font-bold text-[#999999] uppercase tracking-wider mb-1 leading-tight break-words whitespace-normal">
-              Imóveis Captados
-            </p>
-            <p className="text-[28px] min-[480px]:text-[32px] md:text-[36px] font-black text-[#333333] leading-none">
-              {stats.captados}
-            </p>
-          </div>
-          <div className="w-[44px] h-[44px] min-[480px]:w-[48px] min-[480px]:h-[48px] md:w-[56px] md:h-[56px] rounded-xl bg-[#4444FF]/10 flex items-center justify-center shrink-0">
-            <Home className="w-5 h-5 md:w-6 md:h-6 text-[#4444FF]" />
-          </div>
-        </div>
-        <div className="bg-[#FFFFFF] border border-[#E5E5E5] rounded-[12px] p-[16px] flex items-center justify-between shadow-sm min-h-[100px] w-full">
-          <div className="flex flex-col break-words whitespace-normal flex-1 mr-2">
-            <p className="text-[12px] min-[480px]:text-[13px] md:text-[14px] font-bold text-[#999999] uppercase tracking-wider mb-1 leading-tight break-words whitespace-normal">
-              Visitas Agendadas
-            </p>
-            <p className="text-[28px] min-[480px]:text-[32px] md:text-[36px] font-black text-[#333333] leading-none">
-              {stats.visitas}
-            </p>
-          </div>
-          <div className="w-[44px] h-[44px] min-[480px]:w-[48px] min-[480px]:h-[48px] md:w-[56px] md:h-[56px] rounded-xl bg-[#FFD700]/20 flex items-center justify-center shrink-0">
-            <Eye className="w-5 h-5 md:w-6 md:h-6 text-[#B8860B]" />
-          </div>
-        </div>
-        <div className="bg-[#FFFFFF] border border-[#E5E5E5] rounded-[12px] p-[16px] flex items-center justify-between shadow-sm min-h-[100px] w-full">
-          <div className="flex flex-col break-words whitespace-normal flex-1 mr-2">
-            <p className="text-[12px] min-[480px]:text-[13px] md:text-[14px] font-bold text-[#999999] uppercase tracking-wider mb-1 leading-tight break-words whitespace-normal">
-              Negócios Fechados
-            </p>
-            <p className="text-[28px] min-[480px]:text-[32px] md:text-[36px] font-black text-[#333333] leading-none">
-              {stats.negocios}
-            </p>
-          </div>
-          <div className="w-[44px] h-[44px] min-[480px]:w-[48px] min-[480px]:h-[48px] md:w-[56px] md:h-[56px] rounded-xl bg-[#00AA00]/10 flex items-center justify-center shrink-0">
-            <Handshake className="w-5 h-5 md:w-6 md:h-6 text-[#00AA00]" />
-          </div>
-        </div>
-      </div>
-
-      {/* Quick Filters */}
-      <div className="flex flex-col min-[480px]:flex-row min-[480px]:items-center gap-3 bg-[#F9F9F9] md:bg-transparent p-3 md:p-0 rounded-xl md:rounded-none border border-[#E5E5E5] md:border-transparent overflow-x-auto scrollbar-hide">
+    <div className="flex flex-col gap-[16px] md:gap-[20px] animate-fade-in">
+      <div className="flex flex-col min-[480px]:flex-row min-[480px]:items-center gap-3 bg-[#FFFFFF] p-3 rounded-xl border border-[#E5E5E5] overflow-x-auto scrollbar-hide">
         <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide shrink-0 w-full min-[480px]:w-auto">
-          <span className="text-[12px] min-[480px]:text-[13px] md:text-[14px] leading-tight font-bold text-[#999999] uppercase shrink-0">
-            Status:
-          </span>
+          <span className="text-[12px] font-bold text-[#999999] uppercase shrink-0">Status:</span>
           {['Todas', 'Captados', 'Visitas', 'Negócios'].map((p) => (
             <Badge
               key={p}
               onClick={() => startTransition(() => setFilterStatus(p))}
               className={cn(
-                'cursor-pointer shrink-0 min-h-[40px] px-3',
+                'cursor-pointer shrink-0 min-h-[32px] px-3 transition-colors',
                 filterStatus === p
                   ? 'bg-[#333333] text-white'
-                  : 'bg-white text-[#333333] border border-[#E5E5E5] hover:bg-[#E5E5E5]',
+                  : 'bg-[#F5F5F5] text-[#333333] hover:bg-[#E5E5E5] border-transparent',
               )}
             >
               {p}
@@ -188,18 +129,16 @@ export function CapturedPropertiesView({
         </div>
         <div className="hidden min-[480px]:block w-[1px] h-5 bg-[#E5E5E5] shrink-0" />
         <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide shrink-0 w-full min-[480px]:w-auto">
-          <span className="text-[12px] min-[480px]:text-[13px] md:text-[14px] leading-tight font-bold text-[#999999] uppercase shrink-0">
-            Período:
-          </span>
+          <span className="text-[12px] font-bold text-[#999999] uppercase shrink-0">Período:</span>
           {['Todas', '7d', '30d'].map((p) => (
             <Badge
               key={p}
               onClick={() => startTransition(() => setFilterPeriod(p))}
               className={cn(
-                'cursor-pointer shrink-0 min-h-[40px] px-3',
+                'cursor-pointer shrink-0 min-h-[32px] px-3 transition-colors',
                 filterPeriod === p
                   ? 'bg-[#333333] text-white'
-                  : 'bg-white text-[#333333] border border-[#E5E5E5] hover:bg-[#E5E5E5]',
+                  : 'bg-[#F5F5F5] text-[#333333] hover:bg-[#E5E5E5] border-transparent',
               )}
             >
               {p === 'Todas' ? 'Tudo' : p}
@@ -216,30 +155,28 @@ export function CapturedPropertiesView({
               setFilterPeriod('Todas')
             })
           }}
-          className="text-[#4444FF] font-bold text-[14px] w-full min-[480px]:w-auto h-[40px] hover:bg-[#4444FF]/10 shrink-0"
+          className="text-[#4444FF] font-bold text-[14px] w-full min-[480px]:w-auto h-[32px] shrink-0"
         >
           <RefreshCw className="w-4 h-4 mr-1.5" /> Limpar
         </Button>
       </div>
 
-      {/* Grid */}
       <div className={cn('transition-opacity duration-200 w-full', isPending && 'opacity-50')}>
         {filteredAndSorted.length === 0 ? (
-          <div className="text-center py-12 bg-[#F9F9F9] border rounded-xl border-dashed border-[#E5E5E5] w-full">
+          <div className="text-center py-16 bg-[#FFFFFF] border rounded-xl border-dashed border-[#E5E5E5] w-full">
             <Search className="w-12 h-12 text-[#999999]/30 mx-auto mb-3" />
-            <p className="text-[14px] min-[480px]:text-[16px] md:text-[18px] leading-tight text-[#999999] font-medium break-words whitespace-normal">
-              {emptyStateText}
-            </p>
+            <p className="text-[16px] font-medium text-[#999999]">{emptyStateText}</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 min-[480px]:grid-cols-2 md:grid-cols-3 min-[1440px]:grid-cols-4 gap-[12px] min-[480px]:gap-[16px] md:gap-[20px] w-full">
-            {filteredAndSorted.map(({ demand, property }) => (
-              <CapturedPropertyCard
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-[16px] md:gap-[20px] w-full">
+            {filteredAndSorted.map(({ demand, property }, index) => (
+              <div
                 key={`${demand.id}-${property.code}`}
-                demand={demand}
-                property={property}
-                onAction={handleAction}
-              />
+                className="opacity-0 animate-cascade-fade"
+                style={{ animationDelay: `${index * 50}ms` }}
+              >
+                <CapturedPropertyCard demand={demand} property={property} onAction={handleAction} />
+              </div>
             ))}
           </div>
         )}
