@@ -86,7 +86,8 @@ export function useSlaCountdown(
 
   useEffect(() => {
     if (status !== 'Pendente') return
-    const i = setInterval(() => setNow(Date.now()), 60000)
+    // Update more frequently for smooth progress bar transition (1 second real time visually)
+    const i = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(i)
   }, [status])
 
@@ -114,6 +115,7 @@ export function useSlaCountdown(
   const mins = Math.floor((remainingMs % 3600000) / 60000)
 
   const progress = Math.min(100, (elapsedMs / totalSlaMs) * 100)
+  const elapsedHrs = elapsedMs / 3600000
 
   let level: 'green' | 'yellow' | 'red' | 'orange' | 'none' = 'green'
   let badgeText = ''
@@ -122,10 +124,11 @@ export function useSlaCountdown(
     level = 'orange'
     badgeText = '🟠 Continua em busca - 48h'
   } else {
-    if (elapsedMs >= 24 * 3600000) {
+    // 0-12h elapsed: Green. 12-24h elapsed: Yellow. 24h+ elapsed: Red
+    if (elapsedHrs >= 24) {
       level = 'red'
       badgeText = '🔴 0h para responder'
-    } else if (elapsedMs >= 12 * 3600000) {
+    } else if (elapsedHrs >= 12) {
       level = 'yellow'
       badgeText = '🟡 12h para responder'
     } else {

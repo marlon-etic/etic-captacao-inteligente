@@ -126,6 +126,10 @@ export default {
           '0%, 100%': { opacity: '1' },
           '50%': { opacity: '0.4' },
         },
+        'tab-fade': {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
       },
       animation: {
         'cascade-fade': 'cascade-fade 200ms ease-out forwards',
@@ -138,6 +142,7 @@ export default {
         'float-up': 'float-up 500ms ease-out forwards',
         'fast-pulse': 'fast-pulse 200ms cubic-bezier(0.4, 0, 0.6, 1) infinite',
         'spin-slow': 'spin 2s linear infinite',
+        'tab-fade': 'tab-fade 150ms ease-out forwards',
       },
     },
   },

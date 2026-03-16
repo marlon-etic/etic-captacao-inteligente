@@ -24,7 +24,6 @@ export function CaptadorDashboard() {
     setSearchParams(tab === 'demandas' ? {} : { tab })
   }
 
-  // Calculate Header Metrics
   const headerMetrics = useMemo(() => {
     const userDemands = demands.filter(
       (d) =>
@@ -38,7 +37,6 @@ export function CaptadorDashboard() {
     return { recebidas, captados, fechados }
   }, [demands, currentUser])
 
-  // Filter demands
   const filteredDemands = useMemo(() => {
     let result = demands
 
@@ -74,13 +72,28 @@ export function CaptadorDashboard() {
     }
 
     return result.sort((a, b) => {
+      const now = Date.now()
+      const aAge = (now - new Date(a.createdAt).getTime()) / 3600000
+      const bAge = (now - new Date(b.createdAt).getTime()) / 3600000
+
+      const aIsNew =
+        aAge <= 24 && a.status === 'Pendente' && !a.isPrioritized && a.status !== 'Perdida'
+      const bIsNew =
+        bAge <= 24 && b.status === 'Pendente' && !b.isPrioritized && b.status !== 'Perdida'
+
+      if (aIsNew && !bIsNew) return -1
+      if (!aIsNew && bIsNew) return 1
+
       if (a.isPrioritized && !b.isPrioritized) return -1
       if (!a.isPrioritized && b.isPrioritized) return 1
+
+      if (a.status === 'Perdida' && b.status !== 'Perdida') return 1
+      if (a.status !== 'Perdida' && b.status === 'Perdida') return -1
+
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     })
   }, [demands, demandFilter, periodFilter, priorityFilter])
 
-  // Group similar demands
   const groupedDemands = useMemo(() => {
     const groups: any[] = []
     const ungrouped: any[] = []
@@ -119,9 +132,27 @@ export function CaptadorDashboard() {
 
     return {
       groups,
-      ungrouped: [...ungrouped, ...others].sort(
-        (a, b) => (b.isPrioritized ? 1 : 0) - (a.isPrioritized ? 1 : 0),
-      ),
+      ungrouped: [...ungrouped, ...others].sort((a, b) => {
+        const now = Date.now()
+        const aAge = (now - new Date(a.createdAt).getTime()) / 3600000
+        const bAge = (now - new Date(b.createdAt).getTime()) / 3600000
+
+        const aIsNew =
+          aAge <= 24 && a.status === 'Pendente' && !a.isPrioritized && a.status !== 'Perdida'
+        const bIsNew =
+          bAge <= 24 && b.status === 'Pendente' && !b.isPrioritized && b.status !== 'Perdida'
+
+        if (aIsNew && !bIsNew) return -1
+        if (!aIsNew && bIsNew) return 1
+
+        if (a.isPrioritized && !b.isPrioritized) return -1
+        if (!a.isPrioritized && b.isPrioritized) return 1
+
+        if (a.status === 'Perdida' && b.status !== 'Perdida') return 1
+        if (a.status !== 'Perdida' && b.status === 'Perdida') return -1
+
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      }),
     }
   }, [filteredDemands])
 
@@ -183,137 +214,157 @@ export function CaptadorDashboard() {
         </button>
       </div>
 
-      {mainTab === 'demandas' ? (
-        <div className="flex flex-col gap-[16px] md:gap-[20px] animate-fade-in-up">
-          {/* 3. Sticky Navigation Tabs and Quick Filters */}
-          <div className="sticky top-[104px] md:top-[48px] lg:top-[44px] z-30 bg-background/95 backdrop-blur py-3 md:py-4 -mx-[16px] min-[480px]:-mx-[24px] md:mx-0 px-[16px] min-[480px]:px-[24px] md:px-0 flex flex-col md:flex-row md:items-center gap-3 md:gap-4">
-            {/* Navigation Tabs */}
-            <div className="flex gap-2 md:gap-3 overflow-x-auto scrollbar-hide pb-1 md:pb-0 shrink-0">
-              <FilterTab
-                label="📊 Todas"
-                active={demandFilter === 'todas'}
-                onClick={() => setDemandFilter('todas')}
-                count={demands.length}
-              />
-              <FilterTab
-                label="🏢 Venda"
-                active={demandFilter === 'venda'}
-                onClick={() => setDemandFilter('venda')}
-                count={demands.filter((d) => d.type === 'Venda').length}
-                color="border-[#FF4444]"
-                activeBg="bg-[#FF4444]"
-              />
-              <FilterTab
-                label="🏠 Aluguel"
-                active={demandFilter === 'aluguel'}
-                onClick={() => setDemandFilter('aluguel')}
-                count={demands.filter((d) => d.type === 'Aluguel').length}
-                color="border-[#4444FF]"
-                activeBg="bg-[#4444FF]"
-              />
-              <FilterTab
-                label="🆕 Novas"
-                active={demandFilter === 'novas'}
-                onClick={() => setDemandFilter('novas')}
-                count={
-                  demands.filter((d) => {
-                    const age = (Date.now() - new Date(d.createdAt).getTime()) / 3600000
-                    return age <= 24 && d.status === 'Pendente'
-                  }).length
-                }
-                color="border-[#00AA00]"
-                activeBg="bg-[#00AA00]"
-              />
+      <div key={mainTab} className="animate-tab-fade flex flex-col gap-[16px] md:gap-[20px]">
+        {mainTab === 'demandas' ? (
+          <>
+            {/* 3. Sticky Navigation Tabs and Quick Filters */}
+            <div className="sticky top-[104px] md:top-[48px] lg:top-[44px] z-30 bg-background/95 backdrop-blur py-3 md:py-4 -mx-[16px] min-[480px]:-mx-[24px] md:mx-0 px-[16px] min-[480px]:px-[24px] md:px-0 flex flex-col md:flex-row md:items-center gap-3 md:gap-4">
+              {/* Navigation Tabs */}
+              <div className="flex gap-2 md:gap-3 overflow-x-auto scrollbar-hide pb-1 md:pb-0 shrink-0">
+                <FilterTab
+                  label="📊 Todas"
+                  active={demandFilter === 'todas'}
+                  onClick={() => setDemandFilter('todas')}
+                  count={demands.length}
+                />
+                <FilterTab
+                  label="🏢 Venda"
+                  active={demandFilter === 'venda'}
+                  onClick={() => setDemandFilter('venda')}
+                  count={demands.filter((d) => d.type === 'Venda').length}
+                  color="border-[#FF4444]"
+                  activeBg="bg-[#FF4444]"
+                />
+                <FilterTab
+                  label="🏠 Aluguel"
+                  active={demandFilter === 'aluguel'}
+                  onClick={() => setDemandFilter('aluguel')}
+                  count={demands.filter((d) => d.type === 'Aluguel').length}
+                  color="border-[#4444FF]"
+                  activeBg="bg-[#4444FF]"
+                />
+                <FilterTab
+                  label="🆕 Novas"
+                  active={demandFilter === 'novas'}
+                  onClick={() => setDemandFilter('novas')}
+                  count={
+                    demands.filter((d) => {
+                      const age = (Date.now() - new Date(d.createdAt).getTime()) / 3600000
+                      return age <= 24 && d.status === 'Pendente'
+                    }).length
+                  }
+                  color="border-[#00AA00]"
+                  activeBg="bg-[#00AA00]"
+                />
+              </div>
+
+              {/* Quick Filters */}
+              <div className="flex flex-col min-[480px]:flex-row min-[480px]:items-center gap-3 bg-[#F9F9F9] md:bg-transparent p-3 md:p-0 rounded-xl md:rounded-none border border-[#E5E5E5] md:border-transparent overflow-x-auto scrollbar-hide flex-1 w-full">
+                <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide shrink-0 w-full min-[480px]:w-auto">
+                  <Filter className="w-4 h-4 text-[#999999] shrink-0" />
+                  <span className="text-[12px] min-[480px]:text-[13px] md:text-[14px] leading-tight font-bold text-[#999999] uppercase shrink-0">
+                    Período:
+                  </span>
+                  {['todas', '24h', '7d', '30d'].map((p) => (
+                    <Badge
+                      key={p}
+                      onClick={() => setPeriodFilter(p)}
+                      className={cn(
+                        'cursor-pointer shrink-0 min-h-[40px] px-3 transition-colors',
+                        periodFilter === p
+                          ? 'bg-[#333333] text-white'
+                          : 'bg-white text-[#333333] border border-[#E5E5E5] hover:bg-[#E5E5E5]',
+                      )}
+                    >
+                      {p === 'todas' ? 'Todos' : p}
+                    </Badge>
+                  ))}
+                </div>
+                <div className="hidden min-[480px]:block w-[1px] h-5 bg-[#E5E5E5] shrink-0" />
+                <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide shrink-0 w-full min-[480px]:w-auto">
+                  <span className="text-[12px] min-[480px]:text-[13px] md:text-[14px] leading-tight font-bold text-[#999999] uppercase shrink-0">
+                    Prioridade:
+                  </span>
+                  {['todas', 'priorizadas', 'novas'].map((p) => (
+                    <Badge
+                      key={p}
+                      onClick={() => setPriorityFilter(p)}
+                      className={cn(
+                        'cursor-pointer shrink-0 capitalize min-h-[40px] px-3 transition-colors',
+                        priorityFilter === p
+                          ? 'bg-[#333333] text-white'
+                          : 'bg-white text-[#333333] border border-[#E5E5E5] hover:bg-[#E5E5E5]',
+                      )}
+                    >
+                      {p}
+                    </Badge>
+                  ))}
+                </div>
+                <div className="flex-1 min-w-0 min-[480px]:min-w-[20px]"></div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setPeriodFilter('todas')
+                    setPriorityFilter('todas')
+                  }}
+                  className="text-[#4444FF] font-bold text-[14px] w-full min-[480px]:w-auto h-[40px] hover:bg-[#4444FF]/10 shrink-0"
+                >
+                  <RefreshCw className="w-4 h-4 mr-1.5" /> Limpar
+                </Button>
+              </div>
             </div>
 
-            {/* Quick Filters */}
-            <div className="flex flex-col min-[480px]:flex-row min-[480px]:items-center gap-3 bg-[#F9F9F9] md:bg-transparent p-3 md:p-0 rounded-xl md:rounded-none border border-[#E5E5E5] md:border-transparent overflow-x-auto scrollbar-hide flex-1 w-full">
-              <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide shrink-0 w-full min-[480px]:w-auto">
-                <Filter className="w-4 h-4 text-[#999999] shrink-0" />
-                <span className="text-[12px] min-[480px]:text-[13px] md:text-[14px] leading-tight font-bold text-[#999999] uppercase shrink-0">
-                  Período:
-                </span>
-                {['todas', '24h', '7d', '30d'].map((p) => (
-                  <Badge
-                    key={p}
-                    onClick={() => setPeriodFilter(p)}
-                    className={cn(
-                      'cursor-pointer shrink-0 min-h-[40px] px-3',
-                      periodFilter === p
-                        ? 'bg-[#333333] text-white'
-                        : 'bg-white text-[#333333] border border-[#E5E5E5] hover:bg-[#E5E5E5]',
-                    )}
-                  >
-                    {p === 'todas' ? 'Todos' : p}
-                  </Badge>
-                ))}
-              </div>
-              <div className="hidden min-[480px]:block w-[1px] h-5 bg-[#E5E5E5] shrink-0" />
-              <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide shrink-0 w-full min-[480px]:w-auto">
-                <span className="text-[12px] min-[480px]:text-[13px] md:text-[14px] leading-tight font-bold text-[#999999] uppercase shrink-0">
-                  Prioridade:
-                </span>
-                {['todas', 'priorizadas', 'novas'].map((p) => (
-                  <Badge
-                    key={p}
-                    onClick={() => setPriorityFilter(p)}
-                    className={cn(
-                      'cursor-pointer shrink-0 capitalize min-h-[40px] px-3',
-                      priorityFilter === p
-                        ? 'bg-[#333333] text-white'
-                        : 'bg-white text-[#333333] border border-[#E5E5E5] hover:bg-[#E5E5E5]',
-                    )}
-                  >
-                    {p}
-                  </Badge>
-                ))}
-              </div>
-              <div className="flex-1 min-w-0 min-[480px]:min-w-[20px]"></div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setPeriodFilter('todas')
-                  setPriorityFilter('todas')
-                }}
-                className="text-[#4444FF] font-bold text-[14px] w-full min-[480px]:w-auto h-[40px] hover:bg-[#4444FF]/10 shrink-0"
-              >
-                <RefreshCw className="w-4 h-4 mr-1.5" /> Limpar
-              </Button>
+            {/* Demands List */}
+            <div
+              key={`${demandFilter}-${periodFilter}-${priorityFilter}`}
+              className="animate-slide-in-filters"
+            >
+              {filteredDemands.length === 0 ? (
+                <div className="text-center py-12 bg-[#F9F9F9] border rounded-xl border-dashed border-[#E5E5E5]">
+                  <Search className="w-12 h-12 text-[#999999]/50 mx-auto mb-3" />
+                  <p className="text-[14px] md:text-[16px] leading-tight text-[#999999] font-medium break-words whitespace-normal">
+                    Nenhuma demanda encontrada com estes filtros.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 min-[480px]:grid-cols-2 md:grid-cols-3 min-[1440px]:grid-cols-4 gap-[12px] min-[480px]:gap-[16px] md:gap-[20px]">
+                  {groupedDemands.groups.map((g, i) => (
+                    <div
+                      key={g.id}
+                      className="opacity-0 animate-cascade-fade w-full h-full flex"
+                      style={{ animationDelay: `${i * 50}ms` }}
+                    >
+                      <GroupedDemandCard group={g} onAction={() => {}} />
+                    </div>
+                  ))}
+                  {groupedDemands.ungrouped.map((d, i) => {
+                    const ageHours = (Date.now() - new Date(d.createdAt).getTime()) / 3600000
+                    const isNew = ageHours <= 24 && d.status === 'Pendente'
+                    return (
+                      <DemandCard
+                        key={d.id}
+                        demand={d}
+                        isNewDemand={isNew}
+                        index={i + groupedDemands.groups.length}
+                      />
+                    )
+                  })}
+                </div>
+              )}
             </div>
-          </div>
-
-          {/* Demands List */}
-          {filteredDemands.length === 0 ? (
-            <div className="text-center py-12 bg-[#F9F9F9] border rounded-xl border-dashed border-[#E5E5E5]">
-              <Search className="w-12 h-12 text-[#999999]/50 mx-auto mb-3" />
-              <p className="text-[14px] md:text-[16px] leading-tight text-[#999999] font-medium break-words whitespace-normal">
-                Nenhuma demanda encontrada com estes filtros.
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 min-[480px]:grid-cols-2 md:grid-cols-3 min-[1440px]:grid-cols-4 gap-[12px] min-[480px]:gap-[16px] md:gap-[20px]">
-              {groupedDemands.groups.map((g) => (
-                <GroupedDemandCard key={g.id} group={g} onAction={() => {}} />
-              ))}
-              {groupedDemands.ungrouped.map((d) => {
-                const ageHours = (Date.now() - new Date(d.createdAt).getTime()) / 3600000
-                const isNew = ageHours <= 24 && d.status === 'Pendente'
-                return <DemandCard key={d.id} demand={d} isNewDemand={isNew} />
-              })}
-            </div>
-          )}
-        </div>
-      ) : (
-        <CapturedPropertiesView />
-      )}
+          </>
+        ) : (
+          <CapturedPropertiesView />
+        )}
+      </div>
     </div>
   )
 }
 
 function MetricCard({ title, value, icon: Icon, color, trend }: any) {
   return (
-    <Card className="rounded-[12px] border border-[#E5E5E5] shadow-sm bg-[#FFFFFF] overflow-hidden min-h-[100px] flex flex-col justify-center w-full">
+    <Card className="rounded-[12px] border border-[#E5E5E5] shadow-sm bg-[#FFFFFF] overflow-hidden min-h-[100px] flex flex-col justify-center w-full transition-all duration-150 ease-in-out hover:brightness-95 hover:shadow-lg">
       <CardContent className="p-[16px] flex items-center justify-between w-full">
         <div className="flex flex-col break-words whitespace-normal flex-1 mr-2">
           <p className="text-[12px] min-[480px]:text-[13px] md:text-[14px] font-bold text-[#999999] uppercase tracking-wider mb-1 leading-tight break-words whitespace-normal">
@@ -358,7 +409,7 @@ function FilterTab({
     <button
       onClick={onClick}
       className={cn(
-        'flex items-center justify-center gap-2 h-[48px] md:h-[44px] lg:h-[40px] px-4 rounded-full border-2 transition-all whitespace-nowrap min-w-[48px]',
+        'flex items-center justify-center gap-2 h-[48px] md:h-[44px] lg:h-[40px] px-4 rounded-full border-2 transition-all duration-100 ease-in-out whitespace-nowrap min-w-[48px] hover:scale-[1.05] active:scale-[0.95]',
         active
           ? cn('text-white shadow-sm', activeBg, color)
           : 'bg-white text-[#999999] border-[#E5E5E5] hover:border-[#333333] hover:text-[#333333]',
