@@ -27,29 +27,9 @@ export function PontuacaoTab({
   userDemands: Demand[]
   users: User[]
 }) {
-  if (!currentUser) {
-    return (
-      <div className="flex h-[300px] items-center justify-center text-[#333333] font-medium text-[16px]">
-        Nenhuma métrica disponível
-      </div>
-    )
-  }
-
-  // Calculations
-  const monthlyCaptures = currentUser.stats.imoveisCaptadosSemana * 4 || 12
-  const monthlyVisits = 8
-  const monthlyDeals = currentUser.stats.negociosFechados || 3
-  const conversionRate = Math.round((monthlyDeals / monthlyVisits) * 100) || 37
-
-  const ranking = [...users]
-    .filter((u) => u.role === 'captador')
-    .sort((a, b) => b.points - a.points)
-
-  const position = ranking.findIndex((u) => u.id === currentUser.id) + 1 || 1
-  const totalCaptadores = ranking.length || 1
-
   // Chart Data
   const chartData = useMemo(() => {
+    if (!currentUser) return []
     const data = []
     const daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate()
     let currentPts = currentUser.points > 300 ? currentUser.points - 300 : 0
@@ -65,7 +45,28 @@ export function PontuacaoTab({
       })
     }
     return data
-  }, [currentUser.points])
+  }, [currentUser?.points])
+
+  if (!currentUser) {
+    return (
+      <div className="flex h-[300px] items-center justify-center text-[#333333] font-medium text-[16px]">
+        Nenhuma métrica disponível
+      </div>
+    )
+  }
+
+  // Calculations
+  const monthlyCaptures = currentUser.stats?.imoveisCaptadosSemana * 4 || 12
+  const monthlyVisits = 8
+  const monthlyDeals = currentUser.stats?.negociosFechados || 3
+  const conversionRate = Math.round((monthlyDeals / monthlyVisits) * 100) || 37
+
+  const ranking = [...users]
+    .filter((u) => u.role === 'captador')
+    .sort((a, b) => b.points - a.points)
+
+  const position = ranking.findIndex((u) => u.id === currentUser.id) + 1 || 1
+  const totalCaptadores = ranking.length || 1
 
   const top3 = ranking.slice(0, 3)
 
