@@ -90,7 +90,7 @@ export default function Demandas() {
       </div>
 
       <div className="bg-card border rounded-xl p-[16px] md:p-[24px] space-y-[16px] animate-fade-in-up delay-75">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-[16px]">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-[16px] items-end">
           <div className="space-y-2">
             <Label className="text-xs text-muted-foreground">Status</Label>
             <Select value={filterStatus} onValueChange={setFilterStatus}>
@@ -105,19 +105,46 @@ export default function Demandas() {
               </SelectContent>
             </Select>
           </div>
+
           <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground">Tipo</Label>
-            <Select value={filterType} onValueChange={setFilterType}>
-              <SelectTrigger className="h-[44px]">
-                <SelectValue placeholder="Ambas" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Ambas</SelectItem>
-                <SelectItem value="Venda">Venda</SelectItem>
-                <SelectItem value="Aluguel">Aluguel</SelectItem>
-              </SelectContent>
-            </Select>
+            <Label className="text-xs text-muted-foreground">Tipo de Demanda</Label>
+            <div className="flex bg-muted/40 p-1 rounded-md border h-[44px]">
+              <button
+                onClick={() => setFilterType('all')}
+                className={cn(
+                  'flex-1 rounded-sm text-sm font-bold transition-all',
+                  filterType === 'all'
+                    ? 'bg-[#999999] text-white shadow-md'
+                    : 'text-muted-foreground hover:bg-muted',
+                )}
+              >
+                Todas
+              </button>
+              <button
+                onClick={() => setFilterType('Venda')}
+                className={cn(
+                  'flex-1 rounded-sm text-sm font-bold transition-all',
+                  filterType === 'Venda'
+                    ? 'bg-[#FF4444] text-white shadow-md'
+                    : 'text-muted-foreground hover:bg-[#FF4444]/10 hover:text-[#FF4444]',
+                )}
+              >
+                Venda
+              </button>
+              <button
+                onClick={() => setFilterType('Aluguel')}
+                className={cn(
+                  'flex-1 rounded-sm text-sm font-bold transition-all',
+                  filterType === 'Aluguel'
+                    ? 'bg-[#4444FF] text-white shadow-md'
+                    : 'text-muted-foreground hover:bg-[#4444FF]/10 hover:text-[#4444FF]',
+                )}
+              >
+                Aluguel
+              </button>
+            </div>
           </div>
+
           <div className="space-y-2">
             <Label className="text-xs text-muted-foreground">Período</Label>
             <Select value={filterPeriod} onValueChange={setFilterPeriod}>
@@ -132,7 +159,7 @@ export default function Demandas() {
             </Select>
           </div>
         </div>
-        <div className="flex justify-end">
+        <div className="flex justify-end pt-2">
           <Button
             onClick={applyFilters}
             className="w-full sm:w-auto h-[44px] gap-2 transition-[transform,background-color,color] duration-100 ease-in-out"
