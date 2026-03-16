@@ -36,13 +36,9 @@ export function BottomNav() {
 
   return (
     <>
-      {/*
-        Spacer for fixed bottom nav in mobile. 
-        It has h-[56px] which combined with main padding ensures content isn't hidden.
-      */}
       <div className="h-[56px] w-full block md:hidden bg-transparent" />
 
-      <div className="fixed bottom-0 left-0 right-0 h-[56px] bg-[#FFFFFF] border-t border-[#E5E5E5] flex items-center justify-around px-1 py-1 z-50 md:hidden shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] pb-safe">
+      <div className="fixed bottom-0 left-0 right-0 h-[56px] bg-[#FFFFFF] border-t-[2px] border-[#2E5F8A]/20 flex items-center justify-around px-[4px] py-[4px] z-50 md:hidden shadow-[0_-4px_12px_rgba(26,58,82,0.1)] pb-safe transition-all duration-200 ease-in-out">
         {links.map((link) => {
           let isActive = false
           if (link.url.includes('?tab=')) {
@@ -61,7 +57,7 @@ export function BottomNav() {
                 to={link.url}
                 className="relative -top-5 flex items-center justify-center w-[56px] h-[56px]"
               >
-                <div className="w-[56px] h-[56px] rounded-full bg-[#4444FF] flex items-center justify-center shadow-lg text-white transform active:scale-95 transition-transform">
+                <div className="w-[56px] h-[56px] rounded-full bg-[#1A3A52] flex items-center justify-center shadow-[0_4px_12px_rgba(26,58,82,0.2)] text-white transform active:scale-95 transition-all duration-200 ease-in-out hover:bg-[#1f4866]">
                   <link.icon className="w-7 h-7" />
                 </div>
               </Link>
@@ -73,19 +69,21 @@ export function BottomNav() {
               key={link.url}
               to={link.url}
               className={cn(
-                'relative flex flex-col items-center justify-center min-h-[48px] min-w-[48px] transition-colors flex-1',
-                isActive ? 'text-[#4444FF]' : 'text-[#999999] hover:text-[#333333]',
+                'relative flex flex-col items-center justify-center min-h-[48px] min-w-[48px] transition-all duration-200 ease-in-out flex-1 rounded-[8px]',
+                isActive
+                  ? 'text-[#1A3A52] bg-[#F5F5F5]'
+                  : 'text-[#999999] hover:text-[#1A3A52] hover:bg-[#F5F5F5]/50',
               )}
             >
               <div className="relative">
                 <link.icon className={cn('w-6 h-6')} />
                 {link.badge !== undefined && link.badge > 0 && (
-                  <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-[#FF4444] text-white flex items-center justify-center rounded-full text-[9px] font-bold border-[1.5px] border-white">
+                  <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-[#F44336] text-white flex items-center justify-center rounded-full text-[9px] font-bold border-[1.5px] border-[#FFFFFF]">
                     {link.badge > 9 ? '9+' : link.badge}
                   </span>
                 )}
               </div>
-              <span className="text-[11px] font-semibold tracking-tight mt-1 leading-none">
+              <span className="text-[11px] font-bold tracking-tight mt-[4px] leading-none">
                 {titleCase(link.title)}
               </span>
             </Link>

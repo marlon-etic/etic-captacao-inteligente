@@ -19,11 +19,9 @@ interface DemandCardProps {
 }
 
 const InfoItem = ({ label, value }: { label: string; value: React.ReactNode }) => (
-  <div className="flex flex-col gap-1">
-    <span className="text-[12px] min-[480px]:text-[13px] md:text-[14px] text-[#999999] leading-tight font-medium">
-      {label}
-    </span>
-    <span className="text-[13px] min-[480px]:text-[14px] md:text-[15px] font-bold text-[#333333] break-words whitespace-normal leading-tight">
+  <div className="flex flex-col gap-[4px]">
+    <span className="text-[12px] text-[#333333] leading-tight font-medium">{label}</span>
+    <span className="text-[16px] font-bold text-[#1A3A52] break-words whitespace-normal leading-tight">
       {value}
     </span>
   </div>
@@ -78,14 +76,15 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
   const isNew = hoursElapsed <= 24 && isPending && !isLost && !isPrioritized
 
   let cardBg = 'bg-[#FFFFFF]'
-  if (isLost) cardBg = 'bg-gray-100'
-  else if (isPrioritized) cardBg = 'bg-red-50'
-  else if (isNew) cardBg = 'bg-green-50'
+  if (isLost) cardBg = 'bg-[#F5F5F5] opacity-80'
+  else if (isPrioritized)
+    cardBg = 'bg-[#ffebee]' // very light red for priority
+  else if (isNew) cardBg = 'bg-[#e8f5e9]' // very light green for new
 
   let statusBadge = null
   if (isLost) {
     statusBadge = (
-      <Badge className="bg-gray-200 text-gray-800 border-none font-bold text-[12px] min-h-[24px]">
+      <Badge className="bg-[#999999] text-[#FFFFFF] border-none font-bold text-[12px] min-h-[24px]">
         ⚫ PERDIDA
       </Badge>
     )
@@ -93,7 +92,7 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
     statusBadge = (
       <Badge
         className={cn(
-          'bg-red-100 text-red-800 border-none font-bold text-[12px] min-h-[24px]',
+          'bg-[#F44336] text-[#FFFFFF] border-none font-bold text-[12px] min-h-[24px]',
           isJustPrioritized && 'animate-bounce-scale',
         )}
       >
@@ -102,36 +101,42 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
     )
   } else if (isNew) {
     statusBadge = (
-      <Badge className="bg-green-100 text-green-800 border-none font-bold text-[12px] min-h-[24px]">
+      <Badge className="bg-[#4CAF50] text-[#FFFFFF] border-none font-bold text-[12px] min-h-[24px]">
         🆕 NOVA - Responda em 24h
       </Badge>
     )
   } else {
+    // Dynamic status badge mapping
+    let bgCol = 'bg-[#2E5F8A]'
+    let textCol = 'text-[#FFFFFF]'
+
+    if (demand.status === 'Captado sob demanda' || demand.status === 'Em Captação') {
+      bgCol = 'bg-[#4CAF50]'
+    } else if (demand.status === 'Visita') {
+      bgCol = 'bg-[#FF9800]'
+    } else if (demand.status === 'Negócio') {
+      bgCol = 'bg-[#388E3C]'
+    } else if (isPending) {
+      if (slaLevel === 'red') bgCol = 'bg-[#F44336]'
+      else if (slaLevel === 'yellow') bgCol = 'bg-[#FF9800]'
+      else bgCol = 'bg-[#4CAF50]'
+    }
+
     statusBadge = (
-      <Badge
-        className={cn(
-          'border-none text-[12px] font-bold min-h-[24px]',
-          isPending ? 'bg-[#ffedd5] text-[#9a3412]' : 'bg-gray-100 text-gray-800',
-        )}
-      >
+      <Badge className={cn('border-none text-[12px] font-bold min-h-[24px]', bgCol, textCol)}>
         {isPending ? slaBadgeText || '⏳ Pendente' : demand.status}
       </Badge>
     )
   }
 
-  const btnSolid = isSale
-    ? 'bg-[#FF4444] hover:bg-[#e03e3e] text-white'
-    : 'bg-[#4444FF] hover:bg-[#3b3be0] text-white'
-  const btnSoft = isSale ? 'bg-[#ffe5e5] text-[#FF4444]' : 'bg-[#e5e5ff] text-[#4444FF]'
-  const btnOutline = isSale
-    ? 'border border-[#FF4444] text-[#FF4444] bg-transparent'
-    : 'border border-[#4444FF] text-[#4444FF] bg-transparent'
-  const btnGhost = isSale ? 'bg-transparent text-[#FF4444]' : 'bg-transparent text-[#4444FF]'
+  const btnSolid = 'bg-[#1A3A52] hover:bg-[#2E5F8A] text-white border-none'
+  const btnSoft = 'bg-[#F5F5F5] text-[#333333] hover:bg-[#FFFFFF] border-[2px] border-[#2E5F8A]'
+  const btnOutline = 'bg-[#FFFFFF] text-[#333333] hover:bg-[#F5F5F5] border-[2px] border-[#2E5F8A]'
 
-  let indicatorColor = 'bg-[#00AA00]'
-  if (slaLevel === 'yellow') indicatorColor = 'bg-[#FF9900]'
-  else if (slaLevel === 'red') indicatorColor = 'bg-[#FF4444]'
-  else if (slaLevel === 'orange') indicatorColor = 'bg-[#FF8C00]'
+  let indicatorColor = 'bg-[#4CAF50]'
+  if (slaLevel === 'yellow') indicatorColor = 'bg-[#FF9800]'
+  else if (slaLevel === 'red') indicatorColor = 'bg-[#F44336]'
+  else if (slaLevel === 'orange') indicatorColor = 'bg-[#FF9800]'
 
   return (
     <div
@@ -140,12 +145,11 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
     >
       <Card
         className={cn(
-          'w-full h-full p-[16px] flex flex-col rounded-[12px] transition-all duration-150 ease-in-out hover:brightness-95 hover:shadow-lg relative overflow-hidden',
+          'w-full h-full p-[16px] flex flex-col rounded-[12px] transition-all duration-200 ease-in-out shadow-[0_4px_12px_rgba(26,58,82,0.1)] hover:shadow-[0_8px_24px_rgba(26,58,82,0.15)] relative overflow-hidden',
           cardBg,
           isJustPrioritized && 'animate-glow-pulse',
           isJustLost && 'animate-fade-out opacity-0',
-          'border border-gray-200 border-l-[3px]',
-          isSale ? 'border-l-[#FF4444]' : 'border-l-[#4444FF]',
+          'border-[2px] border-[#2E5F8A]',
           'min-h-[auto] min-[480px]:min-h-[200px] md:min-h-[220px] min-[1440px]:min-h-[240px]',
         )}
       >
@@ -154,7 +158,7 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
             {[...Array(8)].map((_, i) => (
               <div
                 key={i}
-                className="w-2 h-2 bg-gray-400 absolute animate-confetti-burst"
+                className="w-2 h-2 bg-[#999999] absolute animate-confetti-burst"
                 style={
                   {
                     '--tx': `${(Math.random() - 0.5) * 150}px`,
@@ -171,24 +175,24 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
         <div className="flex justify-between items-start mb-4 gap-2 z-0 relative">
           <div
             className={cn(
-              'flex items-center justify-start px-1 gap-0.5 rounded shadow-sm shrink-0 overflow-hidden',
-              isSale ? 'bg-[#FF4444]' : 'bg-[#4444FF]',
+              'flex items-center justify-start px-2 py-1 gap-[4px] rounded-[6px] shadow-[0_2px_4px_rgba(26,58,82,0.1)] shrink-0 overflow-hidden',
+              isSale ? 'bg-[#FF9800]' : 'bg-[#1A3A52]',
             )}
-            style={{ width: '80px', height: '32px' }}
+            style={{ minWidth: '80px', height: '28px' }}
           >
             {isSale ? (
-              <Building2 className="w-[24px] h-[24px] text-white shrink-0" />
+              <Building2 className="w-[16px] h-[16px] text-white shrink-0" />
             ) : (
-              <Home className="w-[24px] h-[24px] text-white shrink-0" />
+              <Home className="w-[16px] h-[16px] text-white shrink-0" />
             )}
-            <span className="text-[12px] font-bold text-white leading-none tracking-tighter whitespace-normal break-words">
+            <span className="text-[12px] font-bold text-white leading-none tracking-tight whitespace-normal break-words">
               {isSale ? 'VENDA' : 'ALUGUEL'}
             </span>
           </div>
 
           <div className="flex items-center justify-end flex-wrap gap-2">
             {!isLost && !isPrioritized && !isNew && isPending && (
-              <Badge className="bg-[#dcfce7] text-[#166534] hover:bg-[#dcfce7] border-none text-[12px] font-bold whitespace-normal break-words text-center min-h-[24px]">
+              <Badge className="bg-[#4CAF50] text-[#FFFFFF] hover:bg-[#388E3C] border-none text-[12px] font-bold whitespace-normal break-words text-center min-h-[24px]">
                 🟢 Ativa
               </Badge>
             )}
@@ -198,7 +202,7 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
 
         {/* Section 2: Title & Countdown */}
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start pb-4 z-0 relative">
-          <h3 className="text-[16px] min-[480px]:text-[18px] md:text-[20px] font-bold text-[#333333] break-words whitespace-normal leading-tight m-0 pr-2">
+          <h3 className="text-[20px] font-bold text-[#1A3A52] break-words whitespace-normal leading-tight m-0 pr-2">
             {demand.clientName}
           </h3>
           {isPending && !isLost && (
@@ -206,10 +210,10 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
               className={cn(
                 'text-[16px] font-bold whitespace-normal mt-2 sm:mt-0 break-words transition-colors duration-200',
                 slaLevel === 'red'
-                  ? 'text-[#FF4444]'
+                  ? 'text-[#F44336]'
                   : slaLevel === 'yellow'
-                    ? 'text-[#FF9900]'
-                    : 'text-[#00AA00]',
+                    ? 'text-[#FF9800]'
+                    : 'text-[#4CAF50]',
               )}
             >
               {slaText} restantes
@@ -222,7 +226,7 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
           <div className="pb-4 z-0 relative">
             <Progress
               value={slaProgress}
-              className="h-2 bg-gray-200"
+              className="h-[8px] bg-[#F5F5F5] shadow-[inset_0_1px_2px_rgba(26,58,82,0.1)]"
               indicatorClassName={indicatorColor}
             />
           </div>
@@ -231,8 +235,8 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
         {/* Section 4: Primary Information Grid */}
         <div
           className={cn(
-            'grid grid-cols-1 min-[480px]:grid-cols-2 gap-[12px] py-4 border-t flex-1 z-0 relative',
-            isLost ? 'border-gray-300' : 'border-gray-100',
+            'grid grid-cols-1 min-[480px]:grid-cols-2 gap-[16px] py-4 border-t flex-1 z-0 relative',
+            isLost ? 'border-[#999999]/30' : 'border-[#2E5F8A]/20',
           )}
         >
           <InfoItem label="👤 Cliente" value={demand.clientName} />
@@ -253,13 +257,13 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
         {/* Section 5: Action Buttons Command Center */}
         <div
           className={cn(
-            'flex flex-col min-[480px]:flex-row flex-wrap gap-2 pt-4 mt-auto border-t shrink-0 z-0 relative',
-            isLost ? 'border-gray-300 opacity-70 grayscale' : 'border-gray-100',
+            'flex flex-col min-[480px]:flex-row flex-wrap gap-[8px] pt-4 mt-auto border-t shrink-0 z-0 relative',
+            isLost ? 'border-[#999999]/30 opacity-80 grayscale' : 'border-[#2E5F8A]/20',
           )}
         >
           <Button
             className={cn(
-              'h-auto min-h-[44px] py-2 w-full min-[480px]:flex-1 font-bold whitespace-normal break-words',
+              'h-auto min-h-[44px] px-[12px] py-[8px] w-full min-[480px]:flex-1 font-bold whitespace-normal break-words text-[14px]',
               btnSoft,
             )}
             onClick={() => setShowDetails(true)}
@@ -268,7 +272,7 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
           </Button>
           <Button
             className={cn(
-              'h-auto min-h-[44px] py-2 w-full min-[480px]:flex-1 font-bold whitespace-normal break-words',
+              'h-auto min-h-[44px] px-[12px] py-[8px] w-full min-[480px]:flex-1 font-bold whitespace-normal break-words text-[14px]',
               btnSolid,
             )}
             onClick={() => onAction?.(demand.id, 'encontrei')}
@@ -278,7 +282,7 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
           </Button>
           <Button
             className={cn(
-              'h-auto min-h-[44px] py-2 w-full min-[480px]:flex-1 font-bold whitespace-normal break-words',
+              'h-auto min-h-[44px] px-[12px] py-[8px] w-full min-[480px]:flex-1 font-bold whitespace-normal break-words text-[14px]',
               btnOutline,
             )}
             onClick={() => onAction?.(demand.id, 'nao_encontrei')}
@@ -288,8 +292,8 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
           </Button>
           <Button
             className={cn(
-              'h-auto min-h-[44px] py-2 w-full min-[480px]:flex-1 font-bold whitespace-normal break-words',
-              btnGhost,
+              'h-auto min-h-[44px] px-[12px] py-[8px] w-full min-[480px]:flex-1 font-bold whitespace-normal break-words text-[14px]',
+              'bg-transparent text-[#1A3A52] hover:bg-[#F5F5F5] border-none shadow-none',
             )}
             onClick={() =>
               logSolicitorContactAttempt(

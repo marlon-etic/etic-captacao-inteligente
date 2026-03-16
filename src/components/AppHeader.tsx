@@ -23,21 +23,21 @@ import { AppNotification } from '@/types'
 const getNotifIcon = (type: string) => {
   switch (type) {
     case 'novo_imovel':
-      return <Home className="w-5 h-5 text-blue-500" />
+      return <Home className="w-5 h-5 text-[#1A3A52]" />
     case 'reivindicado':
-      return <CheckCircle2 className="w-5 h-5 text-green-500" />
+      return <CheckCircle2 className="w-5 h-5 text-[#4CAF50]" />
     case 'ja_reivindicado':
-      return <XCircle className="w-5 h-5 text-red-500" />
+      return <XCircle className="w-5 h-5 text-[#F44336]" />
     case 'demanda_respondida':
-      return <FileText className="w-5 h-5 text-purple-500" />
+      return <FileText className="w-5 h-5 text-[#2E5F8A]" />
     case 'perdido':
-      return <X className="w-5 h-5 text-orange-500" />
+      return <X className="w-5 h-5 text-[#999999]" />
     case 'visita':
-      return <Calendar className="w-5 h-5 text-indigo-500" />
+      return <Calendar className="w-5 h-5 text-[#FF9800]" />
     case 'negocio':
-      return <DollarSign className="w-5 h-5 text-emerald-500" />
+      return <DollarSign className="w-5 h-5 text-[#388E3C]" />
     default:
-      return <Bell className="w-5 h-5 text-muted-foreground" />
+      return <Bell className="w-5 h-5 text-[#999999]" />
   }
 }
 
@@ -65,21 +65,21 @@ export function AppHeader() {
   }
 
   return (
-    <header className="h-[56px] md:h-[64px] lg:h-[72px] border-b bg-background flex items-center justify-between px-[16px] md:px-[24px] lg:px-[32px] sticky top-0 z-40">
+    <header className="h-[56px] md:h-[64px] lg:h-[72px] bg-[#1A3A52] text-white border-b border-[#2E5F8A] flex items-center justify-between px-[16px] md:px-[24px] lg:px-[32px] sticky top-0 z-40 shadow-[0_4px_12px_rgba(26,58,82,0.15)] transition-all duration-200 ease-in-out">
       <div className="flex items-center gap-[16px]">
         {isMobile ? (
           <Button
             variant="ghost"
             size="icon"
-            className="w-[44px] h-[44px] p-0"
+            className="w-[44px] h-[44px] p-0 text-white hover:bg-[#2E5F8A] hover:text-white"
             onClick={() => setOpenMobile(true)}
           >
             <Menu className="w-6 h-6" />
           </Button>
         ) : (
-          <SidebarTrigger className="w-[44px] h-[44px] p-0" />
+          <SidebarTrigger className="w-[44px] h-[44px] p-0 text-white hover:bg-[#2E5F8A] hover:text-white" />
         )}
-        <h1 className="text-[16px] md:text-[18px] lg:text-[20px] font-bold leading-[24px] md:leading-[28px] lg:leading-[30px] truncate max-w-[200px] md:max-w-none">
+        <h1 className="text-[20px] font-bold leading-[30px] truncate max-w-[200px] md:max-w-none text-white">
           {getTitle()}
         </h1>
       </div>
@@ -87,34 +87,42 @@ export function AppHeader() {
       <div className="flex items-center gap-3 md:gap-4">
         <Badge
           variant="secondary"
-          className="flex items-center gap-1.5 px-3 py-1 bg-primary/10 text-primary border-primary/20 cursor-pointer hover:bg-primary/20 transition-colors min-h-[44px] md:min-h-[40px]"
+          className="flex items-center gap-1.5 px-[12px] py-[6px] bg-[#2E5F8A] text-white border-none cursor-pointer hover:bg-[#2E5F8A]/80 transition-colors min-h-[44px] md:min-h-[40px] shadow-[0_2px_4px_rgba(26,58,82,0.2)]"
           onClick={() => navigate('/app/ranking')}
         >
-          <Star className="w-4 h-4 fill-primary" />
-          <span className="font-bold text-[14px] leading-[20px]">{currentUser.points} pts</span>
+          <Star className="w-4 h-4 fill-white" />
+          <span className="font-bold text-[14px] leading-[20px] text-white">
+            {currentUser.points} pts
+          </span>
         </Badge>
 
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="ghost" size="icon" className="relative w-[44px] h-[44px]">
-              <Bell className="w-6 h-6 text-muted-foreground" />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="relative w-[44px] h-[44px] text-white hover:bg-[#2E5F8A] hover:text-white"
+            >
+              <Bell className="w-6 h-6" />
               {unreadCount > 0 && (
-                <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-destructive rounded-full border-2 border-background animate-pulse" />
+                <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-[#F44336] rounded-full border-2 border-[#1A3A52] animate-pulse" />
               )}
             </Button>
           </PopoverTrigger>
           <PopoverContent
             align="end"
-            className="w-[320px] sm:w-[380px] p-0 overflow-hidden shadow-xl border-border"
+            className="w-[320px] sm:w-[380px] p-0 overflow-hidden shadow-[0_8px_24px_rgba(26,58,82,0.15)] border-[#2E5F8A] bg-[#FFFFFF]"
           >
             <div className="flex flex-col max-h-[80vh]">
-              <div className="flex items-center justify-between p-4 border-b bg-muted/20">
-                <h4 className="font-bold text-[16px] leading-[24px]">Notificações</h4>
+              <div className="flex items-center justify-between p-4 border-b border-[#2E5F8A]/20 bg-[#F5F5F5]">
+                <h4 className="font-bold text-[20px] leading-[24px] text-[#1A3A52]">
+                  Notificações
+                </h4>
                 {unreadCount > 0 && (
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-[44px] px-3 text-[12px] md:text-[14px] leading-[16px] md:leading-[20px] text-muted-foreground hover:text-foreground"
+                    className="h-auto px-[12px] py-[6px] text-[14px] font-bold text-[#2E5F8A] hover:bg-[#FFFFFF] hover:text-[#1A3A52]"
                     onClick={() => markAllNotificationsAsRead()}
                   >
                     <Check className="w-4 h-4 mr-1.5" /> Marcar lidas
@@ -123,45 +131,47 @@ export function AppHeader() {
               </div>
               <div className="overflow-y-auto p-3 flex flex-col gap-3">
                 {notifications.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
+                  <div className="text-center py-8 text-[#999999]">
                     <Bell className="w-10 h-10 mx-auto mb-3 opacity-20" />
-                    <p className="text-[14px] leading-[20px] font-medium">Nenhuma notificação</p>
+                    <p className="text-[14px] leading-[20px] font-medium text-[#333333]">
+                      Nenhuma notificação
+                    </p>
                   </div>
                 ) : (
                   notifications.slice(0, 10).map((n: AppNotification) => (
                     <div
                       key={n.id}
                       className={cn(
-                        'p-4 rounded-xl border transition-colors flex items-start gap-3',
+                        'p-4 rounded-[8px] border-[2px] transition-all duration-200 ease-in-out flex items-start gap-3',
                         n.lida
-                          ? 'bg-background border-transparent hover:bg-muted/50'
-                          : 'bg-primary/5 border-primary/20 shadow-sm cursor-pointer',
+                          ? 'bg-[#FFFFFF] border-transparent hover:bg-[#F5F5F5]'
+                          : 'bg-[#F5F5F5] border-[#2E5F8A]/20 shadow-[0_2px_4px_rgba(26,58,82,0.1)] cursor-pointer hover:border-[#2E5F8A]/40',
                       )}
                       onClick={() => {
                         if (!n.lida) markNotificationAsRead(n.id)
                         if (n.acao_url && !n.acao_botao) navigate(n.acao_url)
                       }}
                     >
-                      <div className="mt-0.5 shrink-0 bg-background rounded-full p-2 shadow-sm border w-[40px] h-[40px] flex items-center justify-center">
+                      <div className="mt-0.5 shrink-0 bg-[#FFFFFF] rounded-full p-2 shadow-[0_2px_4px_rgba(26,58,82,0.1)] border border-[#2E5F8A]/20 w-[40px] h-[40px] flex items-center justify-center">
                         {getNotifIcon(n.tipo_notificacao)}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-bold text-[14px] md:text-[14px] lg:text-[14px] leading-[20px] text-foreground">
+                        <p className="font-bold text-[14px] md:text-[16px] leading-[20px] text-[#1A3A52]">
                           {n.titulo}
                         </p>
-                        <p className="text-[12px] md:text-[13px] lg:text-[14px] leading-[16px] md:leading-[18px] lg:leading-[20px] mt-1 opacity-90 text-muted-foreground">
+                        <p className="text-[12px] md:text-[14px] leading-[16px] md:leading-[20px] mt-1 text-[#333333]">
                           {n.corpo}
                         </p>
 
                         {n.detalhes && (
-                          <div className="bg-background/50 rounded-lg p-2.5 mt-2 flex flex-wrap gap-x-2 gap-y-1.5 border border-border/50">
+                          <div className="bg-[#FFFFFF] rounded-[8px] p-2.5 mt-2 flex flex-wrap gap-x-2 gap-y-1.5 border border-[#2E5F8A]/20 shadow-[inset_0_1px_2px_rgba(26,58,82,0.05)]">
                             {Object.entries(n.detalhes).map(([k, v]) => (
                               <span
                                 key={k}
-                                className="text-[12px] md:text-[13px] lg:text-[14px] leading-[16px] md:leading-[18px] lg:leading-[20px] font-semibold text-muted-foreground block w-full truncate"
+                                className="text-[12px] leading-[16px] font-bold text-[#999999] block w-full truncate"
                               >
                                 {String(k).replace('_', ' ').toUpperCase()}:{' '}
-                                <span className="text-foreground">{String(v)}</span>
+                                <span className="text-[#1A3A52]">{String(v)}</span>
                               </span>
                             ))}
                           </div>
@@ -170,7 +180,7 @@ export function AppHeader() {
                         {n.acao_botao && (
                           <Button
                             variant={n.urgencia === 'alta' ? 'default' : 'secondary'}
-                            className="mt-3 w-full h-[48px] md:h-[44px] text-[14px] font-bold leading-[20px]"
+                            className="mt-3 w-full"
                             onClick={(e) => {
                               e.stopPropagation()
                               if (!n.lida) markNotificationAsRead(n.id)
@@ -180,7 +190,7 @@ export function AppHeader() {
                             {n.acao_botao}
                           </Button>
                         )}
-                        <div className="text-[11px] md:text-[12px] leading-[16px] opacity-60 mt-2 font-medium text-right w-full">
+                        <div className="text-[12px] leading-[16px] text-[#999999] mt-2 font-bold text-right w-full">
                           {new Date(n.data_criacao).toLocaleString('pt-BR', {
                             hour: '2-digit',
                             minute: '2-digit',
@@ -193,10 +203,10 @@ export function AppHeader() {
                   ))
                 )}
               </div>
-              <div className="p-3 border-t bg-muted/10">
+              <div className="p-3 border-t border-[#2E5F8A]/20 bg-[#F5F5F5]">
                 <Button
                   variant="outline"
-                  className="w-full text-[14px] font-bold leading-[20px] h-[48px] md:h-[44px]"
+                  className="w-full text-[14px] font-bold"
                   onClick={() => navigate('/app/notificacoes')}
                 >
                   Ver todas as notificações

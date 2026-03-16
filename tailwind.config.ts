@@ -34,6 +34,17 @@ export default {
         ring: 'hsl(var(--ring))',
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
+        etic: {
+          blue: '#1A3A52',
+          'light-blue': '#2E5F8A',
+          orange: '#FF9800',
+          green: '#4CAF50',
+          'dark-green': '#388E3C',
+          gray: '#999999',
+          red: '#F44336',
+          'dark-gray': '#333333',
+          'light-gray': '#F5F5F5',
+        },
         primary: {
           DEFAULT: 'hsl(var(--primary))',
           foreground: 'hsl(var(--primary-foreground))',
@@ -89,7 +100,7 @@ export default {
         },
         'bounce-scale': {
           '0%, 100%': { transform: 'scale(1)' },
-          '50%': { transform: 'scale(1.2)' },
+          '50%': { transform: 'scale(1.1)' },
         },
         'bounce-badge': {
           '0%, 100%': { transform: 'translateY(0) scale(1)' },
@@ -97,12 +108,12 @@ export default {
         },
         'glow-pulse': {
           '0%, 100%': {
-            boxShadow: '0 0 0px 0px rgba(255, 68, 68, 0.2)',
-            borderColor: 'hsl(var(--border))',
+            boxShadow: '0 0 0px 0px rgba(244, 67, 54, 0.2)',
+            borderColor: '#2E5F8A',
           },
           '50%': {
-            boxShadow: '0 0 15px 5px rgba(255, 68, 68, 0.6)',
-            borderColor: 'rgba(255, 68, 68, 1)',
+            boxShadow: '0 0 15px 5px rgba(244, 67, 54, 0.4)',
+            borderColor: '#F44336',
           },
         },
         'confetti-burst': {
@@ -132,17 +143,17 @@ export default {
         },
       },
       animation: {
-        'cascade-fade': 'cascade-fade 200ms ease-out forwards',
+        'cascade-fade': 'cascade-fade 200ms ease-in-out forwards',
         'bounce-scale': 'bounce-scale 300ms ease-in-out',
         'bounce-badge': 'bounce-badge 600ms ease-in-out',
-        'glow-pulse': 'glow-pulse 200ms ease-in-out',
-        'confetti-burst': 'confetti-burst 500ms ease-out forwards',
-        'flip-in': 'flip-in 400ms ease-out forwards',
-        'slide-in-filters': 'slide-in-filters 200ms ease-out forwards',
-        'float-up': 'float-up 500ms ease-out forwards',
+        'glow-pulse': 'glow-pulse 800ms ease-in-out infinite',
+        'confetti-burst': 'confetti-burst 500ms ease-in-out forwards',
+        'flip-in': 'flip-in 400ms ease-in-out forwards',
+        'slide-in-filters': 'slide-in-filters 200ms ease-in-out forwards',
+        'float-up': 'float-up 500ms ease-in-out forwards',
         'fast-pulse': 'fast-pulse 200ms cubic-bezier(0.4, 0, 0.6, 1) infinite',
         'spin-slow': 'spin 2s linear infinite',
-        'tab-fade': 'tab-fade 150ms ease-out forwards',
+        'tab-fade': 'tab-fade 150ms ease-in-out forwards',
       },
     },
   },

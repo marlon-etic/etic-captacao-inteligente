@@ -29,7 +29,7 @@ export default function Layout() {
 
   if (!currentUser) {
     return (
-      <main className="min-h-screen bg-muted/30">
+      <main className="min-h-screen bg-[#F5F5F5]">
         <Outlet />
       </main>
     )
@@ -38,9 +38,9 @@ export default function Layout() {
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset className="flex flex-col min-h-[100dvh] overflow-hidden bg-muted/20">
+      <SidebarInset className="flex flex-col min-h-[100dvh] overflow-hidden bg-[#F5F5F5]">
         <AppHeader />
-        <main className="flex-1 overflow-y-auto w-full max-w-[1400px] mx-auto px-[16px] min-[480px]:px-[24px] md:px-[32px] py-[16px] md:py-[20px] animate-fade-in-up pb-safe-offset-4">
+        <main className="flex-1 overflow-y-auto w-full max-w-[1400px] mx-auto px-[16px] min-[480px]:px-[24px] md:px-[32px] py-[16px] md:py-[24px] animate-fade-in-up pb-safe-offset-4">
           <Outlet />
         </main>
         <BottomNav />

@@ -43,7 +43,7 @@ export default function Index() {
       toast({
         title: 'Erro de Autenticação',
         description: err.message,
-        className: 'bg-[#E59235] text-white border-0 [&>button]:text-white',
+        className: 'bg-[#F44336] text-white border-none',
       })
     } finally {
       setIsLoading(false)
@@ -62,6 +62,7 @@ export default function Index() {
         title: 'Email enviado',
         description:
           'Verifique sua caixa de entrada com o link de recuperação (válido por 1 hora).',
+        className: 'bg-[#4CAF50] text-white border-none',
       })
       setIsResetting(false)
     } catch (err: any) {
@@ -81,7 +82,7 @@ export default function Index() {
       toast({
         title: 'Erro de Autenticação',
         description: err.message,
-        className: 'bg-[#E59235] text-white border-0 [&>button]:text-white',
+        className: 'bg-[#F44336] text-white border-none',
       })
     } finally {
       setIsLoading(false)
@@ -91,53 +92,67 @@ export default function Index() {
   if (currentUser) return null // Prevents flashing the login screen while redirecting
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      <Card className="w-full max-w-md shadow-xl border-0 ring-1 ring-border/50 animate-fade-in-up">
-        <CardHeader className="space-y-3 text-center">
-          <div className="mx-auto w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mb-2">
-            <Building2 className="w-8 h-8 text-primary" />
+    <div className="min-h-screen flex items-center justify-center p-[16px] bg-[#F5F5F5]">
+      <Card className="w-full max-w-md shadow-[0_8px_32px_rgba(26,58,82,0.15)] border-[2px] border-[#2E5F8A] animate-fade-in-up bg-[#FFFFFF]">
+        <CardHeader className="space-y-[12px] text-center pb-[24px]">
+          <div className="mx-auto w-[64px] h-[64px] bg-[#1A3A52] rounded-[16px] flex items-center justify-center mb-[8px] shadow-[0_4px_12px_rgba(26,58,82,0.2)]">
+            <Building2 className="w-[32px] h-[32px] text-white" />
           </div>
-          <CardTitle className="text-2xl font-bold tracking-tight">Étic Imóveis</CardTitle>
-          <CardDescription>Gestão Inteligente de Captação</CardDescription>
+          <CardTitle className="text-[24px] font-bold tracking-tight text-[#1A3A52]">
+            Étic Imóveis
+          </CardTitle>
+          <CardDescription className="text-[#333333] text-[14px]">
+            Gestão Inteligente de Captação
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {!isResetting ? (
             <>
-              <form onSubmit={handleLogin} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
+              <form onSubmit={handleLogin} className="space-y-[16px]">
+                <div className="space-y-[8px]">
+                  <Label
+                    htmlFor="email"
+                    className="text-[#333333] text-[12px] font-bold uppercase tracking-wider"
+                  >
+                    Email
+                  </Label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Mail className="absolute left-[12px] top-[12px] h-[20px] w-[20px] text-[#999999]" />
                     <Input
                       id="email"
                       type="email"
                       placeholder="seu@email.com"
-                      className="pl-9"
+                      className="pl-[40px]"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       disabled={isLoading}
                     />
                   </div>
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-[8px]">
                   <div className="flex justify-between items-center">
-                    <Label htmlFor="password">Senha</Label>
+                    <Label
+                      htmlFor="password"
+                      className="text-[#333333] text-[12px] font-bold uppercase tracking-wider"
+                    >
+                      Senha
+                    </Label>
                     <button
                       type="button"
                       onClick={() => setIsResetting(true)}
-                      className="text-xs text-primary hover:underline font-medium"
+                      className="text-[12px] text-[#2E5F8A] hover:text-[#1A3A52] hover:underline font-bold"
                       disabled={isLoading}
                     >
                       Esqueceu a senha?
                     </button>
                   </div>
                   <div className="relative">
-                    <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Lock className="absolute left-[12px] top-[12px] h-[20px] w-[20px] text-[#999999]" />
                     <Input
                       id="password"
                       type="password"
                       placeholder="••••••••"
-                      className="pl-9"
+                      className="pl-[40px]"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       disabled={isLoading}
@@ -146,55 +161,51 @@ export default function Index() {
                 </div>
                 <Button
                   type="submit"
-                  className="w-full py-6 text-base font-semibold"
+                  className="w-full h-[48px] text-[14px] font-bold mt-[8px]"
                   disabled={isLoading}
                 >
                   {isLoading ? (
-                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                    <Loader2 className="w-[20px] h-[20px] mr-[8px] animate-spin" />
                   ) : (
-                    <LogIn className="w-5 h-5 mr-2" />
+                    <LogIn className="w-[20px] h-[20px] mr-[8px]" />
                   )}
-                  {isLoading ? 'Entrando...' : 'Entrar'}
+                  {isLoading ? 'Entrando...' : 'Entrar no Sistema'}
                 </Button>
               </form>
 
-              <div className="mt-8 pt-6 border-t space-y-3">
-                <p className="text-xs text-center text-muted-foreground mb-4">
+              <div className="mt-[32px] pt-[24px] border-t border-[#2E5F8A]/20 space-y-[12px]">
+                <p className="text-[12px] font-bold uppercase tracking-wider text-center text-[#999999] mb-[16px]">
                   Ambiente de Teste (Atalhos)
                 </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-[8px]">
                   <Button
-                    variant="outline"
-                    size="sm"
+                    variant="secondary"
                     onClick={() => quickLogin('captador@etic.com')}
-                    className="text-xs"
+                    className="text-[12px]"
                     disabled={isLoading}
                   >
                     Captador
                   </Button>
                   <Button
-                    variant="outline"
-                    size="sm"
+                    variant="secondary"
                     onClick={() => quickLogin('sdr@etic.com')}
-                    className="text-xs"
+                    className="text-[12px]"
                     disabled={isLoading}
                   >
                     SDR
                   </Button>
                   <Button
-                    variant="outline"
-                    size="sm"
+                    variant="secondary"
                     onClick={() => quickLogin('corretor@etic.com')}
-                    className="text-xs"
+                    className="text-[12px]"
                     disabled={isLoading}
                   >
                     Corretor
                   </Button>
                   <Button
-                    variant="outline"
-                    size="sm"
+                    variant="secondary"
                     onClick={() => quickLogin('gestor@etic.com')}
-                    className="text-xs"
+                    className="text-[12px]"
                     disabled={isLoading}
                   >
                     Gestor / Admin
@@ -203,34 +214,39 @@ export default function Index() {
               </div>
             </>
           ) : (
-            <form onSubmit={handleReset} className="space-y-4 animate-fade-in">
-              <div className="space-y-2">
-                <Label htmlFor="reset-email">Email para recuperação</Label>
+            <form onSubmit={handleReset} className="space-y-[16px] animate-fade-in">
+              <div className="space-y-[8px]">
+                <Label
+                  htmlFor="reset-email"
+                  className="text-[#333333] text-[12px] font-bold uppercase tracking-wider"
+                >
+                  Email para recuperação
+                </Label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Mail className="absolute left-[12px] top-[12px] h-[20px] w-[20px] text-[#999999]" />
                   <Input
                     id="reset-email"
                     type="email"
                     placeholder="seu@email.com"
-                    className="pl-9"
+                    className="pl-[40px]"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                   />
                 </div>
-                <p className="text-xs text-muted-foreground pt-1">
+                <p className="text-[12px] text-[#333333] pt-[4px] font-medium">
                   Um link com validade de 1 hora será enviado.
                 </p>
               </div>
-              <Button type="submit" className="w-full py-6 text-base font-semibold">
-                <KeyRound className="w-5 h-5 mr-2" /> Recuperar Senha
+              <Button type="submit" className="w-full h-[48px] text-[14px] font-bold mt-[8px]">
+                <KeyRound className="w-[20px] h-[20px] mr-[8px]" /> Recuperar Senha
               </Button>
               <Button
                 type="button"
                 variant="ghost"
-                className="w-full"
+                className="w-full h-[44px]"
                 onClick={() => setIsResetting(false)}
               >
-                <ArrowLeft className="w-4 h-4 mr-2" /> Voltar ao Login
+                <ArrowLeft className="w-[16px] h-[16px] mr-[8px]" /> Voltar ao Login
               </Button>
             </form>
           )}

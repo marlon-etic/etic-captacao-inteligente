@@ -19,6 +19,7 @@ import {
   SidebarMenuItem,
 } from '@/components/ui/sidebar'
 import useAppStore from '@/stores/useAppStore'
+import { cn } from '@/lib/utils'
 
 export function AppSidebar() {
   const { currentUser } = useAppStore()
@@ -41,26 +42,37 @@ export function AppSidebar() {
   ]
 
   return (
-    <Sidebar className="border-r border-border hidden md:flex">
-      <SidebarContent>
-        <div className="p-6">
-          <h1 className="text-2xl font-bold text-primary tracking-tight flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-white">
+    <Sidebar className="border-r-[2px] border-[#2E5F8A]/20 hidden md:flex bg-[#F5F5F5]">
+      <SidebarContent className="bg-[#F5F5F5]">
+        <div className="p-[24px]">
+          <h1 className="text-[20px] font-bold text-[#1A3A52] tracking-tight flex items-center gap-[8px]">
+            <div className="w-[32px] h-[32px] rounded-[8px] bg-[#1A3A52] flex items-center justify-center text-white shadow-[0_2px_4px_rgba(26,58,82,0.2)]">
               É
             </div>
             Étic
           </h1>
         </div>
         <SidebarGroup>
-          <SidebarGroupLabel>Menu Principal</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-[12px] font-bold text-[#999999] uppercase tracking-wider mb-[8px]">
+            Menu Principal
+          </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {navItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={location.pathname === item.url}>
-                    <Link to={item.url} className="flex items-center gap-3">
-                      <item.icon className="w-5 h-5" />
-                      <span className="font-medium">{item.title}</span>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={location.pathname === item.url}
+                    className={cn(
+                      'transition-all duration-200 ease-in-out font-bold text-[14px] px-[12px] py-[8px] rounded-[8px] h-auto border border-transparent',
+                      location.pathname === item.url
+                        ? 'bg-[#1A3A52] text-white shadow-[0_2px_4px_rgba(26,58,82,0.15)] hover:bg-[#1f4866]'
+                        : 'bg-transparent text-[#333333] hover:bg-[#FFFFFF] hover:border-[#2E5F8A]/20 shadow-none hover:text-[#1A3A52]',
+                    )}
+                  >
+                    <Link to={item.url} className="flex items-center gap-[12px]">
+                      <item.icon className="w-[20px] h-[20px]" />
+                      <span>{item.title}</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
