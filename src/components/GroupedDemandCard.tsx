@@ -50,17 +50,17 @@ export function GroupedDemandCard({
     <>
       <Card
         className={cn(
-          'w-full min-h-[140px] md:min-h-[160px] lg:min-h-[180px] rounded-[12px] border transition-all hover:shadow-md flex flex-col relative overflow-hidden',
+          'w-full h-full min-h-[auto] min-[480px]:min-h-[200px] md:min-h-[220px] min-[1440px]:min-h-[240px] rounded-[12px] border transition-all hover:shadow-md flex flex-col relative overflow-hidden',
           lightBgClass,
           lightBorderClass,
         )}
       >
         <div className={cn('absolute left-0 top-0 bottom-0 w-[3px]', mainColorClass)} />
-        <CardContent className="p-4 pl-5 lg:p-5 lg:pl-6 flex flex-col flex-1">
-          <div className="flex justify-between items-start mb-3">
+        <CardContent className="p-[16px] flex flex-col flex-1 h-full">
+          <div className="flex justify-between items-start mb-3 gap-2">
             <Badge
               className={cn(
-                'text-white font-bold text-[12px] md:text-[13px] lg:text-[14px] leading-[16px] md:leading-[18px] lg:leading-[20px] px-2.5 py-1',
+                'text-white font-bold text-[12px] min-[480px]:text-[13px] md:text-[14px] leading-tight px-2.5 py-1 whitespace-normal break-words',
                 mainColorClass,
                 mainHoverBgClass,
               )}
@@ -69,7 +69,7 @@ export function GroupedDemandCard({
             </Badge>
             <Badge
               variant="outline"
-              className="bg-white text-[#333333] border-[#E5E5E5] font-bold text-[12px] md:text-[13px] lg:text-[14px] leading-[16px] md:leading-[18px] lg:leading-[20px] px-2.5 py-1"
+              className="bg-white text-[#333333] border-[#E5E5E5] font-bold text-[12px] min-[480px]:text-[13px] md:text-[14px] leading-tight px-2.5 py-1 whitespace-normal break-words shrink-0"
             >
               {group.type}
             </Badge>
@@ -78,23 +78,24 @@ export function GroupedDemandCard({
           <div className="flex flex-col gap-1 flex-grow">
             <h3
               className={cn(
-                'text-[16px] md:text-[18px] lg:text-[20px] font-bold leading-[24px] md:leading-[28px] lg:leading-[30px] flex items-center gap-2',
+                'text-[16px] min-[480px]:text-[18px] md:text-[20px] font-bold leading-tight flex items-start gap-2 break-words whitespace-normal',
                 mainTextClass,
               )}
             >
-              👥 {group.demands.length} clientes interessados
+              <span className="shrink-0 mt-0.5">👥</span>
+              <span>{group.demands.length} clientes interessados</span>
             </h3>
 
             <div
               className={cn('bg-white/80 p-3 rounded-lg border mt-2 space-y-1', lightBorderClass)}
             >
-              <p className="text-[12px] md:text-[13px] lg:text-[14px] text-[#333333] leading-[16px] md:leading-[18px] lg:leading-[20px]">
+              <p className="text-[12px] min-[480px]:text-[13px] md:text-[14px] text-[#333333] leading-tight break-words whitespace-normal">
                 📍 <span className="font-bold">{group.location}</span>
               </p>
-              <p className="text-[14px] md:text-[16px] lg:text-[18px] font-bold text-[#333333] leading-[20px] md:leading-[24px] lg:leading-[28px]">
+              <p className="text-[13px] min-[480px]:text-[14px] md:text-[16px] font-bold text-[#333333] leading-tight break-words whitespace-normal">
                 💰 R$ {formatCurrency(group.minBudget)} - R$ {formatCurrency(group.maxBudget)}
               </p>
-              <p className="text-[12px] md:text-[13px] lg:text-[14px] text-[#333333] leading-[16px] md:leading-[18px] lg:leading-[20px]">
+              <p className="text-[12px] min-[480px]:text-[13px] md:text-[14px] text-[#333333] leading-tight break-words whitespace-normal">
                 🏠 {group.bedrooms} dorm, {group.bathrooms} banh, {group.parkingSpots} vagas
               </p>
             </div>
@@ -102,14 +103,14 @@ export function GroupedDemandCard({
 
           <Button
             className={cn(
-              'w-full h-[48px] md:h-[44px] lg:h-[40px] min-w-[48px] mt-auto pt-4 bg-white border font-bold text-[14px] leading-[20px] transition-colors hover:text-white',
+              'w-full h-auto min-h-[44px] py-2 mt-4 bg-white border font-bold text-[14px] leading-tight transition-colors hover:text-white break-words whitespace-normal',
               mainBorderClass,
               mainTextClass,
               mainHoverBgClass,
             )}
             onClick={() => setShowModal(true)}
           >
-            <BookOpen className="w-4 h-4 mr-2" />
+            <BookOpen className="w-4 h-4 mr-2 shrink-0" />
             Ver Todos os {group.demands.length} Clientes
           </Button>
         </CardContent>
@@ -120,13 +121,14 @@ export function GroupedDemandCard({
           <DialogHeader className={cn('p-4 md:p-6 border-b shrink-0', lightBgClass)}>
             <DialogTitle
               className={cn(
-                'text-[18px] md:text-[20px] font-bold flex items-center gap-2 leading-[28px] md:leading-[30px]',
+                'text-[18px] md:text-[20px] font-bold flex items-start gap-2 leading-tight break-words whitespace-normal',
                 mainTextClass,
               )}
             >
-              👥 Clientes Agrupados
+              <span className="shrink-0 mt-0.5">👥</span>
+              <span>Clientes Agrupados</span>
             </DialogTitle>
-            <DialogDescription className="text-[#333333] text-[13px] md:text-[14px] leading-[18px] md:leading-[20px]">
+            <DialogDescription className="text-[#333333] text-[13px] md:text-[14px] leading-tight break-words whitespace-normal">
               Demandas similares para o perfil selecionado
             </DialogDescription>
           </DialogHeader>
@@ -135,20 +137,20 @@ export function GroupedDemandCard({
               {group.demands.map((d) => (
                 <div
                   key={d.id}
-                  className="p-4 border border-[#E5E5E5] rounded-xl bg-white shadow-sm"
+                  className="p-4 border border-[#E5E5E5] rounded-xl bg-white shadow-sm flex flex-col gap-2"
                 >
                   <div className="flex justify-between items-start gap-2">
-                    <div className="min-w-0">
-                      <p className="font-bold text-[14px] md:text-[16px] lg:text-[18px] leading-[20px] md:leading-[24px] lg:leading-[28px] text-[#333333] truncate">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-bold text-[14px] min-[480px]:text-[16px] md:text-[18px] leading-tight text-[#333333] break-words whitespace-normal">
                         {d.clientName}
                       </p>
-                      <p className="text-[12px] md:text-[13px] lg:text-[14px] leading-[16px] md:leading-[18px] lg:leading-[20px] text-[#999999] mt-1">
+                      <p className="text-[12px] min-[480px]:text-[13px] md:text-[14px] leading-tight text-[#999999] mt-1 break-words whitespace-normal">
                         Orçamento: R$ {formatCurrency(d.maxBudget || 0)}
                       </p>
                     </div>
                     <Badge
                       variant="outline"
-                      className="text-[#999999] border-[#999999]/20 bg-[#999999]/5 shrink-0 whitespace-nowrap text-[12px] leading-[16px] px-2 py-1"
+                      className="text-[#999999] border-[#999999]/20 bg-[#999999]/5 shrink-0 whitespace-normal break-words text-[12px] leading-tight px-2 py-1 text-center"
                     >
                       {d.status}
                     </Badge>

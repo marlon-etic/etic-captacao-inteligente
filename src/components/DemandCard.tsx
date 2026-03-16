@@ -20,8 +20,10 @@ interface DemandCardProps {
 
 const InfoItem = ({ label, value }: { label: string; value: React.ReactNode }) => (
   <div className="flex flex-col gap-1">
-    <span className="text-[12px] text-[#999999] leading-tight font-medium">{label}</span>
-    <span className="text-[14px] font-bold text-[#333333] break-words whitespace-normal leading-tight">
+    <span className="text-[12px] min-[480px]:text-[13px] md:text-[14px] text-[#999999] leading-tight font-medium">
+      {label}
+    </span>
+    <span className="text-[13px] min-[480px]:text-[14px] md:text-[15px] font-bold text-[#333333] break-words whitespace-normal leading-tight">
       {value}
     </span>
   </div>
@@ -78,16 +80,15 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
 
   return (
     <div
-      className="opacity-0 animate-cascade-fade w-full relative"
+      className="opacity-0 animate-cascade-fade w-full relative h-full flex"
       style={{ animationDelay: `${(index || 0) * 50}ms` }}
     >
       <Card
         className={cn(
-          'w-full bg-[#FFFFFF] p-4 flex flex-col rounded-[12px] transition-shadow hover:shadow-lg',
+          'w-full h-full bg-[#FFFFFF] p-[16px] flex flex-col rounded-[12px] transition-shadow hover:shadow-lg',
           'border border-gray-200 border-l-[3px]',
           isSale ? 'border-l-[#FF4444]' : 'border-l-[#4444FF]',
-          'min-[768px]:min-w-[400px] min-[768px]:min-h-[200px]',
-          'min-[480px]:max-[767px]:min-w-[350px] min-[480px]:max-[767px]:min-h-[180px]',
+          'min-h-[auto] min-[480px]:min-h-[200px] md:min-h-[220px] min-[1440px]:min-h-[240px]',
         )}
       >
         {/* Section 1: Type & Status Badges */}
@@ -104,18 +105,18 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
             ) : (
               <Home className="w-[24px] h-[24px] text-white shrink-0" />
             )}
-            <span className="text-[12px] font-bold text-white leading-none tracking-tighter truncate">
+            <span className="text-[12px] font-bold text-white leading-none tracking-tighter whitespace-normal break-words">
               {isSale ? 'VENDA' : 'ALUGUEL'}
             </span>
           </div>
 
           <div className="flex items-center justify-end flex-wrap gap-2">
-            <Badge className="bg-[#dcfce7] text-[#166534] hover:bg-[#dcfce7] border-none text-[12px] font-bold whitespace-normal text-center min-h-[24px]">
+            <Badge className="bg-[#dcfce7] text-[#166534] hover:bg-[#dcfce7] border-none text-[12px] font-bold whitespace-normal break-words text-center min-h-[24px]">
               {isPending && badgeText ? badgeText : '🟢 Ativa'}
             </Badge>
             <Badge
               className={cn(
-                'border-none text-[12px] font-bold min-h-[24px]',
+                'border-none text-[12px] font-bold min-h-[24px] whitespace-normal break-words',
                 isPending
                   ? 'bg-[#ffedd5] text-[#9a3412] hover:bg-[#ffedd5]'
                   : 'bg-gray-100 text-gray-800',
@@ -128,13 +129,13 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
 
         {/* Section 2: Title & Countdown */}
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start pb-4">
-          <h3 className="text-[18px] font-bold text-[#333333] break-words whitespace-normal leading-tight m-0 pr-2">
+          <h3 className="text-[16px] min-[480px]:text-[18px] md:text-[20px] font-bold text-[#333333] break-words whitespace-normal leading-tight m-0 pr-2">
             {demand.clientName}
           </h3>
           {isPending && (
             <span
               className={cn(
-                'text-[16px] font-bold whitespace-nowrap mt-2 sm:mt-0',
+                'text-[16px] font-bold whitespace-normal mt-2 sm:mt-0 break-words',
                 isSale ? 'text-[#FF4444]' : 'text-[#4444FF]',
               )}
             >
@@ -155,7 +156,7 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
         )}
 
         {/* Section 4: Primary Information Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-[12px] py-4 border-t border-gray-100">
+        <div className="grid grid-cols-1 min-[480px]:grid-cols-2 gap-[12px] py-4 border-t border-gray-100 flex-1">
           <InfoItem label="👤 Cliente" value={demand.clientName} />
           <InfoItem label="👤 Solicitado por" value={creatorName} />
           <InfoItem label="📍 Localização" value={demand.location} />
@@ -172,10 +173,10 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
         </div>
 
         {/* Section 5: Action Buttons Command Center */}
-        <div className="flex flex-col min-[480px]:flex-row flex-wrap gap-2 pt-4 mt-auto border-t border-gray-100">
+        <div className="flex flex-col min-[480px]:flex-row flex-wrap gap-2 pt-4 mt-auto border-t border-gray-100 shrink-0">
           <Button
             className={cn(
-              'h-[44px] min-[480px]:min-w-[100px] flex-1 font-bold transition-transform active:scale-95 duration-100',
+              'h-auto min-h-[44px] py-2 w-full min-[480px]:flex-1 font-bold transition-transform active:scale-95 duration-100 whitespace-normal break-words',
               btnSoft,
             )}
             onClick={() => setShowDetails(true)}
@@ -184,7 +185,7 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
           </Button>
           <Button
             className={cn(
-              'h-[44px] min-[480px]:min-w-[100px] flex-1 font-bold transition-transform active:scale-95 duration-100',
+              'h-auto min-h-[44px] py-2 w-full min-[480px]:flex-1 font-bold transition-transform active:scale-95 duration-100 whitespace-normal break-words',
               btnSolid,
             )}
             onClick={() => onAction?.(demand.id, 'encontrei')}
@@ -193,7 +194,7 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
           </Button>
           <Button
             className={cn(
-              'h-[44px] min-[480px]:min-w-[100px] flex-1 font-bold transition-transform active:scale-95 duration-100',
+              'h-auto min-h-[44px] py-2 w-full min-[480px]:flex-1 font-bold transition-transform active:scale-95 duration-100 whitespace-normal break-words',
               btnOutline,
             )}
             onClick={() => onAction?.(demand.id, 'nao_encontrei')}
@@ -202,7 +203,7 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
           </Button>
           <Button
             className={cn(
-              'h-[44px] min-[480px]:min-w-[100px] flex-1 font-bold transition-transform active:scale-95 duration-100',
+              'h-auto min-h-[44px] py-2 w-full min-[480px]:flex-1 font-bold transition-transform active:scale-95 duration-100 whitespace-normal break-words',
               btnGhost,
             )}
             onClick={() =>

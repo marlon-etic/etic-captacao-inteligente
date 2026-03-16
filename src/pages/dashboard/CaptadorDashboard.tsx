@@ -128,9 +128,9 @@ export function CaptadorDashboard() {
   if (!currentUser) return null
 
   return (
-    <div className="space-y-4 md:space-y-5 lg:space-y-6 animate-fade-in">
+    <div className="flex flex-col gap-[16px] md:gap-[20px] animate-fade-in">
       {/* 1. Header Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5 lg:gap-6">
+      <div className="grid grid-cols-1 min-[480px]:grid-cols-3 gap-[12px] min-[480px]:gap-[16px] md:gap-[20px]">
         <MetricCard
           title="Demandas Recebidas"
           value={headerMetrics.recebidas}
@@ -162,7 +162,7 @@ export function CaptadorDashboard() {
         <button
           onClick={() => setMainTab('demandas')}
           className={cn(
-            'pb-3 px-2 text-[16px] md:text-[18px] lg:text-[20px] font-bold border-b-[3px] transition-colors whitespace-nowrap min-h-[48px] md:min-h-[44px] lg:min-h-[40px]',
+            'pb-3 px-2 text-[16px] min-[480px]:text-[18px] md:text-[20px] font-bold border-b-[3px] transition-colors whitespace-nowrap min-h-[48px] md:min-h-[44px] lg:min-h-[40px]',
             mainTab === 'demandas'
               ? 'border-[#4444FF] text-[#4444FF]'
               : 'border-transparent text-[#999999] hover:text-[#333333]',
@@ -173,7 +173,7 @@ export function CaptadorDashboard() {
         <button
           onClick={() => setMainTab('captados')}
           className={cn(
-            'pb-3 px-2 text-[16px] md:text-[18px] lg:text-[20px] font-bold border-b-[3px] transition-colors whitespace-nowrap min-h-[48px] md:min-h-[44px] lg:min-h-[40px]',
+            'pb-3 px-2 text-[16px] min-[480px]:text-[18px] md:text-[20px] font-bold border-b-[3px] transition-colors whitespace-nowrap min-h-[48px] md:min-h-[44px] lg:min-h-[40px]',
             mainTab === 'captados'
               ? 'border-[#00AA00] text-[#00AA00]'
               : 'border-transparent text-[#999999] hover:text-[#333333]',
@@ -184,10 +184,11 @@ export function CaptadorDashboard() {
       </div>
 
       {mainTab === 'demandas' ? (
-        <div className="space-y-4 md:space-y-5 lg:space-y-6 animate-fade-in-up">
-          {/* 3. Sticky Navigation Tabs for Demands */}
-          <div className="sticky top-[104px] md:top-[48px] lg:top-[44px] z-30 bg-background/95 backdrop-blur py-3 md:py-4 -mx-4 px-4 md:mx-0 md:px-0">
-            <div className="flex gap-2 md:gap-3 overflow-x-auto scrollbar-hide pb-1">
+        <div className="flex flex-col gap-[16px] md:gap-[20px] animate-fade-in-up">
+          {/* 3. Sticky Navigation Tabs and Quick Filters */}
+          <div className="sticky top-[104px] md:top-[48px] lg:top-[44px] z-30 bg-background/95 backdrop-blur py-3 md:py-4 -mx-[16px] min-[480px]:-mx-[24px] md:mx-0 px-[16px] min-[480px]:px-[24px] md:px-0 flex flex-col md:flex-row md:items-center gap-3 md:gap-4">
+            {/* Navigation Tabs */}
+            <div className="flex gap-2 md:gap-3 overflow-x-auto scrollbar-hide pb-1 md:pb-0 shrink-0">
               <FilterTab
                 label="📊 Todas"
                 active={demandFilter === 'todas'}
@@ -224,70 +225,74 @@ export function CaptadorDashboard() {
                 activeBg="bg-[#00AA00]"
               />
             </div>
-          </div>
 
-          {/* Quick Filters */}
-          <div className="flex items-center gap-3 bg-[#F9F9F9] p-3 rounded-xl border border-[#E5E5E5] overflow-x-auto scrollbar-hide">
-            <Filter className="w-4 h-4 text-[#999999] shrink-0" />
-            <span className="text-[12px] md:text-[13px] lg:text-[14px] leading-[16px] md:leading-[18px] lg:leading-[20px] font-bold text-[#999999] uppercase shrink-0">
-              Período:
-            </span>
-            {['todas', '24h', '7d', '30d'].map((p) => (
-              <Badge
-                key={p}
-                onClick={() => setPeriodFilter(p)}
-                className={cn(
-                  'cursor-pointer shrink-0 min-h-[48px] md:min-h-[44px] lg:min-h-[40px] px-3',
-                  periodFilter === p
-                    ? 'bg-[#333333] text-white'
-                    : 'bg-white text-[#333333] border border-[#E5E5E5] hover:bg-[#E5E5E5]',
-                )}
+            {/* Quick Filters */}
+            <div className="flex flex-col min-[480px]:flex-row min-[480px]:items-center gap-3 bg-[#F9F9F9] md:bg-transparent p-3 md:p-0 rounded-xl md:rounded-none border border-[#E5E5E5] md:border-transparent overflow-x-auto scrollbar-hide flex-1 w-full">
+              <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide shrink-0 w-full min-[480px]:w-auto">
+                <Filter className="w-4 h-4 text-[#999999] shrink-0" />
+                <span className="text-[12px] min-[480px]:text-[13px] md:text-[14px] leading-tight font-bold text-[#999999] uppercase shrink-0">
+                  Período:
+                </span>
+                {['todas', '24h', '7d', '30d'].map((p) => (
+                  <Badge
+                    key={p}
+                    onClick={() => setPeriodFilter(p)}
+                    className={cn(
+                      'cursor-pointer shrink-0 min-h-[40px] px-3',
+                      periodFilter === p
+                        ? 'bg-[#333333] text-white'
+                        : 'bg-white text-[#333333] border border-[#E5E5E5] hover:bg-[#E5E5E5]',
+                    )}
+                  >
+                    {p === 'todas' ? 'Todos' : p}
+                  </Badge>
+                ))}
+              </div>
+              <div className="hidden min-[480px]:block w-[1px] h-5 bg-[#E5E5E5] shrink-0" />
+              <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide shrink-0 w-full min-[480px]:w-auto">
+                <span className="text-[12px] min-[480px]:text-[13px] md:text-[14px] leading-tight font-bold text-[#999999] uppercase shrink-0">
+                  Prioridade:
+                </span>
+                {['todas', 'priorizadas', 'novas'].map((p) => (
+                  <Badge
+                    key={p}
+                    onClick={() => setPriorityFilter(p)}
+                    className={cn(
+                      'cursor-pointer shrink-0 capitalize min-h-[40px] px-3',
+                      priorityFilter === p
+                        ? 'bg-[#333333] text-white'
+                        : 'bg-white text-[#333333] border border-[#E5E5E5] hover:bg-[#E5E5E5]',
+                    )}
+                  >
+                    {p}
+                  </Badge>
+                ))}
+              </div>
+              <div className="flex-1 min-w-0 min-[480px]:min-w-[20px]"></div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setPeriodFilter('todas')
+                  setPriorityFilter('todas')
+                }}
+                className="text-[#4444FF] font-bold text-[14px] w-full min-[480px]:w-auto h-[40px] hover:bg-[#4444FF]/10 shrink-0"
               >
-                {p === 'todas' ? 'Todos' : p}
-              </Badge>
-            ))}
-            <div className="w-[1px] h-5 bg-[#E5E5E5] mx-2 shrink-0" />
-            <span className="text-[12px] md:text-[13px] lg:text-[14px] leading-[16px] md:leading-[18px] lg:leading-[20px] font-bold text-[#999999] uppercase shrink-0">
-              Prioridade:
-            </span>
-            {['todas', 'priorizadas', 'novas'].map((p) => (
-              <Badge
-                key={p}
-                onClick={() => setPriorityFilter(p)}
-                className={cn(
-                  'cursor-pointer shrink-0 capitalize min-h-[48px] md:min-h-[44px] lg:min-h-[40px] px-3',
-                  priorityFilter === p
-                    ? 'bg-[#333333] text-white'
-                    : 'bg-white text-[#333333] border border-[#E5E5E5] hover:bg-[#E5E5E5]',
-                )}
-              >
-                {p}
-              </Badge>
-            ))}
-            <div className="flex-1 min-w-[20px]"></div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setPeriodFilter('todas')
-                setPriorityFilter('todas')
-              }}
-              className="text-[#4444FF] font-bold text-[14px] leading-[20px] h-[48px] md:h-[44px] lg:h-[40px] shrink-0 min-w-[48px] hover:bg-[#4444FF]/10"
-            >
-              <RefreshCw className="w-4 h-4 mr-1.5" /> Limpar
-            </Button>
+                <RefreshCw className="w-4 h-4 mr-1.5" /> Limpar
+              </Button>
+            </div>
           </div>
 
           {/* Demands List */}
           {filteredDemands.length === 0 ? (
             <div className="text-center py-12 bg-[#F9F9F9] border rounded-xl border-dashed border-[#E5E5E5]">
               <Search className="w-12 h-12 text-[#999999]/50 mx-auto mb-3" />
-              <p className="text-[14px] md:text-[14px] lg:text-[14px] leading-[20px] text-[#999999] font-medium">
+              <p className="text-[14px] md:text-[16px] leading-tight text-[#999999] font-medium break-words whitespace-normal">
                 Nenhuma demanda encontrada com estes filtros.
               </p>
             </div>
           ) : (
-            <div className="grid gap-4 md:gap-5 lg:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid grid-cols-1 min-[480px]:grid-cols-2 md:grid-cols-3 min-[1440px]:grid-cols-4 gap-[12px] min-[480px]:gap-[16px] md:gap-[20px]">
               {groupedDemands.groups.map((g) => (
                 <GroupedDemandCard key={g.id} group={g} onAction={() => {}} />
               ))}
@@ -308,19 +313,19 @@ export function CaptadorDashboard() {
 
 function MetricCard({ title, value, icon: Icon, color, trend }: any) {
   return (
-    <Card className="rounded-[12px] border border-[#E5E5E5] shadow-sm bg-[#FFFFFF] overflow-hidden min-h-[100px] md:min-h-[120px] lg:min-h-[140px] flex flex-col justify-center">
-      <CardContent className="p-4 md:p-5 lg:p-6 flex items-center justify-between w-full">
-        <div className="flex flex-col">
-          <p className="text-[12px] md:text-[13px] lg:text-[14px] font-bold text-[#999999] uppercase tracking-wider mb-1 leading-[16px] md:leading-[18px] lg:leading-[20px]">
+    <Card className="rounded-[12px] border border-[#E5E5E5] shadow-sm bg-[#FFFFFF] overflow-hidden min-h-[100px] flex flex-col justify-center w-full">
+      <CardContent className="p-[16px] flex items-center justify-between w-full">
+        <div className="flex flex-col break-words whitespace-normal flex-1 mr-2">
+          <p className="text-[12px] min-[480px]:text-[13px] md:text-[14px] font-bold text-[#999999] uppercase tracking-wider mb-1 leading-tight break-words whitespace-normal">
             {title}
           </p>
-          <div className="flex items-baseline gap-2">
-            <span className="text-[28px] md:text-[32px] lg:text-[36px] font-black text-[#333333] leading-[32px] md:leading-[36px] lg:leading-[40px]">
+          <div className="flex items-baseline gap-2 flex-wrap">
+            <span className="text-[28px] min-[480px]:text-[32px] md:text-[36px] font-black text-[#333333] leading-none">
               {value}
             </span>
             <span
               className={cn(
-                'text-[12px] md:text-[13px] lg:text-[14px] leading-[16px] md:leading-[18px] lg:leading-[20px] font-bold',
+                'text-[12px] min-[480px]:text-[13px] md:text-[14px] leading-tight font-bold break-words whitespace-normal',
                 color,
               )}
             >
@@ -330,11 +335,11 @@ function MetricCard({ title, value, icon: Icon, color, trend }: any) {
         </div>
         <div
           className={cn(
-            'w-[44px] h-[44px] md:w-[48px] md:h-[48px] lg:w-[56px] lg:h-[56px] rounded-xl bg-[#F9F9F9] flex items-center justify-center border border-[#E5E5E5] shrink-0 ml-2',
+            'w-[44px] h-[44px] min-[480px]:w-[48px] min-[480px]:h-[48px] md:w-[56px] md:h-[56px] rounded-xl bg-[#F9F9F9] flex items-center justify-center border border-[#E5E5E5] shrink-0',
             color,
           )}
         >
-          <Icon className="w-5 h-5 md:w-6 md:h-6 lg:w-7 lg:h-7 currentColor" />
+          <Icon className="w-5 h-5 md:w-6 md:h-6 currentColor" />
         </div>
       </CardContent>
     </Card>
@@ -359,12 +364,10 @@ function FilterTab({
           : 'bg-white text-[#999999] border-[#E5E5E5] hover:border-[#333333] hover:text-[#333333]',
       )}
     >
-      <span className="text-[14px] md:text-[14px] lg:text-[14px] font-bold leading-[20px]">
-        {label}
-      </span>
+      <span className="text-[14px] min-[480px]:text-[14px] font-bold leading-tight">{label}</span>
       <span
         className={cn(
-          'text-[12px] md:text-[13px] lg:text-[14px] font-bold px-1.5 py-0.5 rounded-full leading-[16px]',
+          'text-[12px] min-[480px]:text-[13px] font-bold px-1.5 py-0.5 rounded-full leading-none',
           active ? 'bg-white/20 text-white' : 'bg-[#E5E5E5] text-[#333333]',
         )}
       >

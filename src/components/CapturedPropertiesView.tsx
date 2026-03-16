@@ -121,88 +121,92 @@ export function CapturedPropertiesView({
   }
 
   return (
-    <div className="space-y-4 md:space-y-5 lg:space-y-6 animate-fade-in-up">
-      {/* Counters styled to match the new UI */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5 lg:gap-6">
-        <div className="bg-[#FFFFFF] border border-[#E5E5E5] rounded-[12px] p-4 md:p-5 lg:p-6 flex items-center justify-between shadow-sm min-h-[100px] md:min-h-[120px] lg:min-h-[140px]">
-          <div className="flex flex-col">
-            <p className="text-[12px] md:text-[13px] lg:text-[14px] font-bold text-[#999999] uppercase tracking-wider mb-1 leading-[16px] md:leading-[18px] lg:leading-[20px]">
+    <div className="flex flex-col gap-[16px] md:gap-[20px] animate-fade-in-up">
+      {/* Counters styled to match the responsive metrics */}
+      <div className="grid grid-cols-1 min-[480px]:grid-cols-3 gap-[12px] min-[480px]:gap-[16px] md:gap-[20px]">
+        <div className="bg-[#FFFFFF] border border-[#E5E5E5] rounded-[12px] p-[16px] flex items-center justify-between shadow-sm min-h-[100px] w-full">
+          <div className="flex flex-col break-words whitespace-normal flex-1 mr-2">
+            <p className="text-[12px] min-[480px]:text-[13px] md:text-[14px] font-bold text-[#999999] uppercase tracking-wider mb-1 leading-tight break-words whitespace-normal">
               Imóveis Captados
             </p>
-            <p className="text-[28px] md:text-[32px] lg:text-[36px] font-black text-[#333333] leading-[32px] md:leading-[36px] lg:leading-[40px]">
+            <p className="text-[28px] min-[480px]:text-[32px] md:text-[36px] font-black text-[#333333] leading-none">
               {stats.captados}
             </p>
           </div>
-          <div className="w-[44px] h-[44px] md:w-[48px] md:h-[48px] lg:w-[56px] lg:h-[56px] rounded-xl bg-[#4444FF]/10 flex items-center justify-center shrink-0 ml-2">
-            <Home className="w-5 h-5 md:w-6 md:h-6 lg:w-7 lg:h-7 text-[#4444FF]" />
+          <div className="w-[44px] h-[44px] min-[480px]:w-[48px] min-[480px]:h-[48px] md:w-[56px] md:h-[56px] rounded-xl bg-[#4444FF]/10 flex items-center justify-center shrink-0">
+            <Home className="w-5 h-5 md:w-6 md:h-6 text-[#4444FF]" />
           </div>
         </div>
-        <div className="bg-[#FFFFFF] border border-[#E5E5E5] rounded-[12px] p-4 md:p-5 lg:p-6 flex items-center justify-between shadow-sm min-h-[100px] md:min-h-[120px] lg:min-h-[140px]">
-          <div className="flex flex-col">
-            <p className="text-[12px] md:text-[13px] lg:text-[14px] font-bold text-[#999999] uppercase tracking-wider mb-1 leading-[16px] md:leading-[18px] lg:leading-[20px]">
+        <div className="bg-[#FFFFFF] border border-[#E5E5E5] rounded-[12px] p-[16px] flex items-center justify-between shadow-sm min-h-[100px] w-full">
+          <div className="flex flex-col break-words whitespace-normal flex-1 mr-2">
+            <p className="text-[12px] min-[480px]:text-[13px] md:text-[14px] font-bold text-[#999999] uppercase tracking-wider mb-1 leading-tight break-words whitespace-normal">
               Visitas Agendadas
             </p>
-            <p className="text-[28px] md:text-[32px] lg:text-[36px] font-black text-[#333333] leading-[32px] md:leading-[36px] lg:leading-[40px]">
+            <p className="text-[28px] min-[480px]:text-[32px] md:text-[36px] font-black text-[#333333] leading-none">
               {stats.visitas}
             </p>
           </div>
-          <div className="w-[44px] h-[44px] md:w-[48px] md:h-[48px] lg:w-[56px] lg:h-[56px] rounded-xl bg-[#FFD700]/20 flex items-center justify-center shrink-0 ml-2">
-            <Eye className="w-5 h-5 md:w-6 md:h-6 lg:w-7 lg:h-7 text-[#B8860B]" />
+          <div className="w-[44px] h-[44px] min-[480px]:w-[48px] min-[480px]:h-[48px] md:w-[56px] md:h-[56px] rounded-xl bg-[#FFD700]/20 flex items-center justify-center shrink-0">
+            <Eye className="w-5 h-5 md:w-6 md:h-6 text-[#B8860B]" />
           </div>
         </div>
-        <div className="bg-[#FFFFFF] border border-[#E5E5E5] rounded-[12px] p-4 md:p-5 lg:p-6 flex items-center justify-between shadow-sm min-h-[100px] md:min-h-[120px] lg:min-h-[140px]">
-          <div className="flex flex-col">
-            <p className="text-[12px] md:text-[13px] lg:text-[14px] font-bold text-[#999999] uppercase tracking-wider mb-1 leading-[16px] md:leading-[18px] lg:leading-[20px]">
+        <div className="bg-[#FFFFFF] border border-[#E5E5E5] rounded-[12px] p-[16px] flex items-center justify-between shadow-sm min-h-[100px] w-full">
+          <div className="flex flex-col break-words whitespace-normal flex-1 mr-2">
+            <p className="text-[12px] min-[480px]:text-[13px] md:text-[14px] font-bold text-[#999999] uppercase tracking-wider mb-1 leading-tight break-words whitespace-normal">
               Negócios Fechados
             </p>
-            <p className="text-[28px] md:text-[32px] lg:text-[36px] font-black text-[#333333] leading-[32px] md:leading-[36px] lg:leading-[40px]">
+            <p className="text-[28px] min-[480px]:text-[32px] md:text-[36px] font-black text-[#333333] leading-none">
               {stats.negocios}
             </p>
           </div>
-          <div className="w-[44px] h-[44px] md:w-[48px] md:h-[48px] lg:w-[56px] lg:h-[56px] rounded-xl bg-[#00AA00]/10 flex items-center justify-center shrink-0 ml-2">
-            <Handshake className="w-5 h-5 md:w-6 md:h-6 lg:w-7 lg:h-7 text-[#00AA00]" />
+          <div className="w-[44px] h-[44px] min-[480px]:w-[48px] min-[480px]:h-[48px] md:w-[56px] md:h-[56px] rounded-xl bg-[#00AA00]/10 flex items-center justify-center shrink-0">
+            <Handshake className="w-5 h-5 md:w-6 md:h-6 text-[#00AA00]" />
           </div>
         </div>
       </div>
 
       {/* Quick Filters */}
-      <div className="flex items-center gap-3 bg-[#F9F9F9] p-3 rounded-xl border border-[#E5E5E5] overflow-x-auto scrollbar-hide">
-        <span className="text-[12px] md:text-[13px] lg:text-[14px] leading-[16px] md:leading-[18px] lg:leading-[20px] font-bold text-[#999999] uppercase shrink-0">
-          Status:
-        </span>
-        {['Todas', 'Captados', 'Visitas', 'Negócios'].map((p) => (
-          <Badge
-            key={p}
-            onClick={() => startTransition(() => setFilterStatus(p))}
-            className={cn(
-              'cursor-pointer shrink-0 min-h-[48px] md:min-h-[44px] lg:min-h-[40px] px-3',
-              filterStatus === p
-                ? 'bg-[#333333] text-white'
-                : 'bg-white text-[#333333] border border-[#E5E5E5] hover:bg-[#E5E5E5]',
-            )}
-          >
-            {p}
-          </Badge>
-        ))}
-        <div className="w-[1px] h-5 bg-[#E5E5E5] mx-2 shrink-0" />
-        <span className="text-[12px] md:text-[13px] lg:text-[14px] leading-[16px] md:leading-[18px] lg:leading-[20px] font-bold text-[#999999] uppercase shrink-0">
-          Período:
-        </span>
-        {['Todas', '7d', '30d'].map((p) => (
-          <Badge
-            key={p}
-            onClick={() => startTransition(() => setFilterPeriod(p))}
-            className={cn(
-              'cursor-pointer shrink-0 min-h-[48px] md:min-h-[44px] lg:min-h-[40px] px-3',
-              filterPeriod === p
-                ? 'bg-[#333333] text-white'
-                : 'bg-white text-[#333333] border border-[#E5E5E5] hover:bg-[#E5E5E5]',
-            )}
-          >
-            {p === 'Todas' ? 'Tudo' : p}
-          </Badge>
-        ))}
-        <div className="flex-1 min-w-[20px]"></div>
+      <div className="flex flex-col min-[480px]:flex-row min-[480px]:items-center gap-3 bg-[#F9F9F9] md:bg-transparent p-3 md:p-0 rounded-xl md:rounded-none border border-[#E5E5E5] md:border-transparent overflow-x-auto scrollbar-hide">
+        <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide shrink-0 w-full min-[480px]:w-auto">
+          <span className="text-[12px] min-[480px]:text-[13px] md:text-[14px] leading-tight font-bold text-[#999999] uppercase shrink-0">
+            Status:
+          </span>
+          {['Todas', 'Captados', 'Visitas', 'Negócios'].map((p) => (
+            <Badge
+              key={p}
+              onClick={() => startTransition(() => setFilterStatus(p))}
+              className={cn(
+                'cursor-pointer shrink-0 min-h-[40px] px-3',
+                filterStatus === p
+                  ? 'bg-[#333333] text-white'
+                  : 'bg-white text-[#333333] border border-[#E5E5E5] hover:bg-[#E5E5E5]',
+              )}
+            >
+              {p}
+            </Badge>
+          ))}
+        </div>
+        <div className="hidden min-[480px]:block w-[1px] h-5 bg-[#E5E5E5] shrink-0" />
+        <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide shrink-0 w-full min-[480px]:w-auto">
+          <span className="text-[12px] min-[480px]:text-[13px] md:text-[14px] leading-tight font-bold text-[#999999] uppercase shrink-0">
+            Período:
+          </span>
+          {['Todas', '7d', '30d'].map((p) => (
+            <Badge
+              key={p}
+              onClick={() => startTransition(() => setFilterPeriod(p))}
+              className={cn(
+                'cursor-pointer shrink-0 min-h-[40px] px-3',
+                filterPeriod === p
+                  ? 'bg-[#333333] text-white'
+                  : 'bg-white text-[#333333] border border-[#E5E5E5] hover:bg-[#E5E5E5]',
+              )}
+            >
+              {p === 'Todas' ? 'Tudo' : p}
+            </Badge>
+          ))}
+        </div>
+        <div className="flex-1 min-w-0 min-[480px]:min-w-[20px]"></div>
         <Button
           variant="ghost"
           size="sm"
@@ -212,23 +216,23 @@ export function CapturedPropertiesView({
               setFilterPeriod('Todas')
             })
           }}
-          className="text-[#4444FF] font-bold text-[14px] leading-[20px] h-[48px] md:h-[44px] lg:h-[40px] shrink-0 min-w-[48px] hover:bg-[#4444FF]/10"
+          className="text-[#4444FF] font-bold text-[14px] w-full min-[480px]:w-auto h-[40px] hover:bg-[#4444FF]/10 shrink-0"
         >
           <RefreshCw className="w-4 h-4 mr-1.5" /> Limpar
         </Button>
       </div>
 
       {/* Grid */}
-      <div className={cn('transition-opacity duration-200', isPending && 'opacity-50')}>
+      <div className={cn('transition-opacity duration-200 w-full', isPending && 'opacity-50')}>
         {filteredAndSorted.length === 0 ? (
-          <div className="text-center py-12 bg-[#F9F9F9] border rounded-xl border-dashed border-[#E5E5E5]">
+          <div className="text-center py-12 bg-[#F9F9F9] border rounded-xl border-dashed border-[#E5E5E5] w-full">
             <Search className="w-12 h-12 text-[#999999]/30 mx-auto mb-3" />
-            <p className="text-[14px] md:text-[16px] lg:text-[18px] leading-[20px] md:leading-[24px] lg:leading-[28px] text-[#999999] font-medium">
+            <p className="text-[14px] min-[480px]:text-[16px] md:text-[18px] leading-tight text-[#999999] font-medium break-words whitespace-normal">
               {emptyStateText}
             </p>
           </div>
         ) : (
-          <div className="grid gap-4 md:gap-5 lg:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="grid grid-cols-1 min-[480px]:grid-cols-2 md:grid-cols-3 min-[1440px]:grid-cols-4 gap-[12px] min-[480px]:gap-[16px] md:gap-[20px] w-full">
             {filteredAndSorted.map(({ demand, property }) => (
               <CapturedPropertyCard
                 key={`${demand.id}-${property.code}`}
