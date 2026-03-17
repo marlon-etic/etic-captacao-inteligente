@@ -55,6 +55,7 @@ export interface User {
   tipo_demanda?: 'locacao' | 'vendas'
   tipos_demanda_solicitados?: ('locacao' | 'vendas' | 'ambos')[]
   phone?: string
+  whatsapp?: string
   points: number
   dailyPoints: number
   weeklyPoints: number
@@ -204,6 +205,19 @@ export interface WebhookEvent {
   target_url: string
   data_criacao: string
   data_envio?: string
+}
+
+export interface WhatsAppQueueItem {
+  id: string
+  destinatario_id: string
+  destinatario_telefone: string
+  template_id: string
+  variaveis: Record<string, any>
+  status: 'pendente' | 'enviado' | 'falhou'
+  tentativas: number
+  data_criacao: string
+  data_envio?: string
+  erro?: string
 }
 
 export interface AppNotification {

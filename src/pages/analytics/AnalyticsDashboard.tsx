@@ -1,7 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
 import { Navigate } from 'react-router-dom'
 import useAppStore from '@/stores/useAppStore'
-import { useToast } from '@/hooks/use-toast'
 import { Loader2, AlertTriangle, Inbox, Settings2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
@@ -14,26 +13,44 @@ import {
   SheetDescription,
   SheetTrigger,
 } from '@/components/ui/sheet'
-import {
-  enhanceDemands,
-  generateAnalyticsMockDemands,
-  AnalyticsFiltersState,
-} from '@/lib/analytics-utils'
+import { enhanceDemands, generateAnalyticsMockDemands } from '@/lib/analytics-utils'
 
-import { DashboardFilters } from '@/components/analytics/DashboardFilters'
 import { SummaryCards } from '@/components/analytics/SummaryCards'
 import { NeighborhoodsChart } from '@/components/analytics/NeighborhoodsChart'
 import { TypologyBarChart } from '@/components/analytics/TypologyBarChart'
 import { PriceDonutChart } from '@/components/analytics/PriceDonutChart'
 import { ProfileTable } from '@/components/analytics/ProfileTable'
+import { StickyFilterBar, FilterDef } from '@/components/StickyFilterBar'
+import { useViewFilters } from '@/hooks/useViewFilters'
+
+const FILTERS: FilterDef[] = [
+  {
+    id: 'tipo',
+    label: 'Tipo',
+    options: [
+      { value: 'Ambos', label: 'Ambos' },
+      { value: 'Venda', label: 'Venda', icon: '🏢' },
+      { value: 'Aluguel', label: 'Aluguel', icon: '🏠' },
+    ],
+  },
+  {
+    id: 'periodo',
+    label: 'Período',
+    options: [
+      { value: 'Todas', label: 'Desde o início', icon: '📅' },
+      { value: 'Hoje', label: 'Hoje', icon: '📅' },
+      { value: '7 dias', label: 'Últimos 7 dias', icon: '📅' },
+      { value: 'Mês Atual', label: 'Mês Atual', icon: '📅' },
+    ],
+  },
+]
 
 export function AnalyticsDashboard() {
   const { currentUser, demands, logAuthEvent, updateDashboardPrefs } = useAppStore()
-  const { toast } = useToast()
 
-  const [activeFilters, setActiveFilters] = useState<AnalyticsFiltersState>({
-    period: 'month',
-    type: 'Ambos',
+  const [filters, setFilters] = useViewFilters('analytics_view', {
+    tipo: 'Ambos',
+    periodo: 'Mês Atual',
   })
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(false)
@@ -51,50 +68,37 @@ export function AnalyticsDashboard() {
     return enhanceDemands(combined)
   }, [demands])
 
-  const filteredDemands = useMemo(() => {
-    const now = new Date()
-    const weekStart = new Date(now.setDate(now.getDate() - now.getDay())).setHours(0, 0, 0, 0)
-    const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime()
-
-    return enhancedAllDemands.filter((d) => {
-      if (activeFilters.type !== 'Ambos' && d.type !== activeFilters.type) return false
-
-      const dDate = new Date(d.createdAt).getTime()
-
-      if (activeFilters.period === 'week') {
-        if (dDate < weekStart) return false
-      } else if (activeFilters.period === 'month') {
-        if (dDate < monthStart) return false
-      } else if (activeFilters.period === 'custom') {
-        if (activeFilters.startDate && dDate < activeFilters.startDate.getTime()) return false
-        if (activeFilters.endDate && dDate > activeFilters.endDate.getTime() + 86399999)
-          return false
-      }
-      return true
-    })
-  }, [enhancedAllDemands, activeFilters])
-
-  const handleApply = (newFilters: AnalyticsFiltersState) => {
-    if (newFilters.period === 'custom' && newFilters.startDate && newFilters.endDate) {
-      if (new Date(newFilters.endDate) < new Date(newFilters.startDate)) {
-        toast({ title: 'Período inválido', variant: 'destructive' })
-        return
-      }
-    }
+  const handleFilterChange = (newF: Record<string, string>) => {
     setIsLoading(true)
     setError(false)
+    setFilters(newF)
     setTimeout(() => {
       if (Math.random() < 0.05) {
         setError(true)
       } else {
-        setActiveFilters(newFilters)
         setSelectedNeighborhood(null)
       }
       setIsLoading(false)
     }, 600)
   }
 
-  // Access validation as per Acceptance Criteria
+  const filteredDemands = useMemo(() => {
+    return enhancedAllDemands.filter((d) => {
+      if (filters.tipo !== 'Ambos' && d.type !== filters.tipo) return false
+
+      const dDate = new Date(d.createdAt).getTime()
+      const now = Date.now()
+
+      if (filters.periodo === 'Hoje' && now - dDate > 24 * 3600000) return false
+      if (filters.periodo === '7 dias' && now - dDate > 7 * 86400000) return false
+      if (filters.periodo === 'Mês Atual') {
+        const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime()
+        if (dDate < monthStart) return false
+      }
+      return true
+    })
+  }, [enhancedAllDemands, filters])
+
   if (currentUser?.role !== 'admin' && currentUser?.role !== 'gestor') {
     return <Navigate to="/app" replace />
   }
@@ -179,7 +183,12 @@ export function AnalyticsDashboard() {
         </Sheet>
       </div>
 
-      <DashboardFilters initialFilters={activeFilters} onApply={handleApply} />
+      <StickyFilterBar
+        filters={FILTERS}
+        values={filters}
+        onChange={handleFilterChange}
+        resultsCount={filteredDemands.length}
+      />
 
       {error ? (
         <div className="flex flex-col h-[400px] items-center justify-center text-center bg-white rounded-xl border-[2px] border-[#F44336]/20">
@@ -227,7 +236,7 @@ export function AnalyticsDashboard() {
             </div>
           )}
 
-          {prefs.price && <PriceDonutChart demands={filteredDemands} type={activeFilters.type} />}
+          {prefs.price && <PriceDonutChart demands={filteredDemands} type={filters.tipo as any} />}
 
           {prefs.profile && (
             <ProfileTable

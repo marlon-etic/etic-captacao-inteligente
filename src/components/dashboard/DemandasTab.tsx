@@ -1,34 +1,86 @@
 import { useState, useMemo } from 'react'
 import { LayoutGrid } from 'lucide-react'
 import { Demand } from '@/types'
-import { cn } from '@/lib/utils'
 import useAppStore from '@/stores/useAppStore'
 import { EncontreiGrupoModal } from '@/components/EncontreiGrupoModal'
 import { NaoEncontreiModal } from '@/components/NaoEncontreiModal'
 import { GroupedCard, IndividualCard, LooseCard } from './NewCapturesCards'
+import { StickyFilterBar, FilterDef } from '@/components/StickyFilterBar'
+import { useViewFilters } from '@/hooks/useViewFilters'
+import { Skeleton } from '@/components/ui/skeleton'
+
+const FILTERS: FilterDef[] = [
+  {
+    id: 'tipo',
+    label: 'Tipo',
+    options: [
+      { value: 'Ambas', label: 'Ambas' },
+      { value: 'Venda', label: 'Venda', icon: '🏢' },
+      { value: 'Aluguel', label: 'Aluguel', icon: '🏠' },
+    ],
+  },
+  {
+    id: 'status',
+    label: 'Status (Captador)',
+    options: [
+      { value: 'Todas', label: 'Todas', icon: '⚪' },
+      { value: 'Novas', label: 'Novas', icon: '🆕' },
+      { value: 'Priorizadas', label: 'Priorizadas', icon: '🔥' },
+      { value: 'Agrupadas', label: 'Agrupadas', icon: '👥' },
+    ],
+  },
+  {
+    id: 'periodo',
+    label: 'Período',
+    options: [
+      { value: 'Todas', label: 'Todas', icon: '📅' },
+      { value: 'Hoje', label: 'Hoje', icon: '📅' },
+      { value: '7 dias', label: '7 dias', icon: '📅' },
+      { value: '30 dias', label: '30 dias', icon: '📅' },
+    ],
+  },
+  { id: 'bairro', label: 'Bairro', isSearch: true, options: [] },
+]
 
 export function DemandasTab({ demands }: { demands: Demand[] }) {
   const { users, submitDemandResponse } = useAppStore()
 
-  const [filterTipo, setFilterTipo] = useState<'Ambas' | 'Venda' | 'Aluguel'>('Ambas')
-  const [filterPeriodo, setFilterPeriodo] = useState<'Todas' | 'Últimas 24h' | '7 dias'>('Todas')
+  const [filters, setFilters] = useViewFilters('demandas_tab', {
+    tipo: 'Ambas',
+    status: 'Todas',
+    periodo: 'Todas',
+    bairro: '',
+  })
+  const [isFiltering, setIsFiltering] = useState(false)
 
   const [showCaptureModal, setShowCaptureModal] = useState(false)
   const [showNaoEncontreiModal, setShowNaoEncontreiModal] = useState(false)
   const [selectedDemandIds, setSelectedDemandIds] = useState<string[]>([])
+
+  const handleFilterChange = (newF: Record<string, string>) => {
+    setIsFiltering(true)
+    setFilters(newF)
+    setTimeout(() => setIsFiltering(false), 250)
+  }
 
   const filteredDemands = useMemo(() => {
     if (!demands) return []
     const now = Date.now()
     return demands.filter((d) => {
       if (d.status !== 'Pendente') return false
-      if (filterTipo !== 'Ambas' && d.type !== filterTipo) return false
+      if (filters.tipo !== 'Ambas' && d.type !== filters.tipo) return false
+
       const ageMs = now - new Date(d.createdAt).getTime()
-      if (filterPeriodo === 'Últimas 24h' && ageMs > 24 * 3600000) return false
-      if (filterPeriodo === '7 dias' && ageMs > 7 * 86400000) return false
+      if (filters.periodo === 'Hoje' && ageMs > 24 * 3600000) return false
+      if (filters.periodo === '7 dias' && ageMs > 7 * 86400000) return false
+      if (filters.periodo === '30 dias' && ageMs > 30 * 86400000) return false
+
+      if (filters.bairro && !d.location.toLowerCase().includes(filters.bairro.toLowerCase()))
+        return false
+
       return true
     })
-  }, [demands, filterTipo, filterPeriodo])
+  }, [demands, filters])
 
   const allCards = useMemo(() => {
     const toProcess = [...filteredDemands]
@@ -38,7 +90,7 @@ export function DemandasTab({ demands }: { demands: Demand[] }) {
     const hasLoose = filteredDemands.some(
       (d) => !d.clientName || d.clientName.toLowerCase() === 'geral',
     )
-    if (!hasLoose && filterTipo !== 'Aluguel') {
+    if (!hasLoose && filters.tipo !== 'Aluguel') {
       toProcess.push({
         id: 'mock-loose-1',
         clientName: '',
@@ -127,7 +179,23 @@ export function DemandasTab({ demands }: { demands: Demand[] }) {
     })
 
     return combined
-  }, [filteredDemands, filterTipo])
+  }, [filteredDemands, filters.tipo])
+
+  const finalCards = useMemo(() => {
+    return allCards.filter((c) => {
+      if (filters.status === 'Novas') {
+        return c.priority === 4 && Date.now() - c.date <= 24 * 3600000 && !c.data.isPrioritized
+      }
+      if (filters.status === 'Priorizadas') {
+        return (
+          c.data.isPrioritized ||
+          (c.type === 'grouped' && c.data.demands.some((d: Demand) => d.isPrioritized))
+        )
+      }
+      if (filters.status === 'Agrupadas') return c.type === 'grouped'
+      return true
+    })
+  }, [allCards, filters.status])
 
   const handleEncontrei = (ids: string[]) => {
     setSelectedDemandIds(ids)
@@ -165,71 +233,30 @@ export function DemandasTab({ demands }: { demands: Demand[] }) {
 
   return (
     <div className="flex flex-col gap-6 animate-fade-in w-full">
-      <div className="flex flex-col gap-4 bg-white p-4 md:p-6 rounded-xl border-2 border-[#1A3A52] shadow-sm">
-        <h2 className="text-[20px] md:text-[24px] font-black text-[#1A3A52] flex items-center gap-2 m-0 leading-none">
-          🎯 NOVAS CAPTAÇÕES DISPONÍVEIS
-        </h2>
-        <p className="text-[14px] md:text-[16px] text-[#333333] font-medium m-0">
-          <strong className="text-[#1A3A52]">{filteredDemands.length}</strong> demandas aguardando
-          captação
-        </p>
+      <StickyFilterBar
+        filters={FILTERS}
+        values={filters}
+        onChange={handleFilterChange}
+        resultsCount={finalCards.length}
+      />
 
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 bg-[#F5F5F5] p-2 rounded-lg border border-[#E5E5E5] mt-2">
-          <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto scrollbar-hide">
-            <span className="text-[12px] font-bold text-[#999999] uppercase shrink-0 px-2">
-              Tipo:
-            </span>
-            {['Ambas', 'Venda', 'Aluguel'].map((t) => (
-              <button
-                key={t}
-                onClick={() => setFilterTipo(t as any)}
-                className={cn(
-                  'px-4 py-1.5 rounded-md text-[13px] font-bold transition-all shrink-0',
-                  filterTipo === t
-                    ? 'bg-[#1A3A52] text-white shadow-sm'
-                    : 'text-[#333333] hover:bg-[#E5E5E5]',
-                )}
-              >
-                {t}
-              </button>
-            ))}
-          </div>
-
-          <div className="hidden sm:block w-[1px] h-6 bg-[#D4D4D4]" />
-
-          <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto scrollbar-hide">
-            <span className="text-[12px] font-bold text-[#999999] uppercase shrink-0 px-2">
-              Período:
-            </span>
-            {['Todas', 'Últimas 24h', '7 dias'].map((p) => (
-              <button
-                key={p}
-                onClick={() => setFilterPeriodo(p as any)}
-                className={cn(
-                  'px-4 py-1.5 rounded-md text-[13px] font-bold transition-all shrink-0',
-                  filterPeriodo === p
-                    ? 'bg-[#1A3A52] text-white shadow-sm'
-                    : 'text-[#333333] hover:bg-[#E5E5E5]',
-                )}
-              >
-                {p}
-              </button>
-            ))}
-          </div>
+      {isFiltering ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-[220px] w-full rounded-[12px]" />
+          ))}
         </div>
-      </div>
-
-      {allCards.length === 0 ? (
+      ) : finalCards.length === 0 ? (
         <div className="text-center py-16 bg-[#FFFFFF] border-2 rounded-xl border-dashed border-[#E5E5E5]">
           <LayoutGrid className="w-12 h-12 text-[#999999]/50 mx-auto mb-3" />
-          <p className="text-[16px] font-bold text-[#333333]">Nenhuma demanda no momento.</p>
-          <p className="text-[14px] text-[#999999]">Volte mais tarde!</p>
+          <p className="text-[16px] font-bold text-[#333333]">Nenhuma demanda com estes filtros.</p>
+          <p className="text-[14px] text-[#999999]">Tente alterar os parâmetros de busca!</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-          {allCards.map((card) => {
+          {finalCards.map((card) => {
             if (card.type === 'grouped') {
-              const ids = card.data.demands.map((d) => d.id)
+              const ids = card.data.demands.map((d: Demand) => d.id)
               return (
                 <GroupedCard
                   key={card.data.demands[0].id}

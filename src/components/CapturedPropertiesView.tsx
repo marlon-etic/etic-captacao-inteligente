@@ -1,12 +1,12 @@
-import { useState, useMemo, useTransition } from 'react'
-import { Search, RefreshCw } from 'lucide-react'
+import { useState, useMemo } from 'react'
+import { Search } from 'lucide-react'
 import useAppStore from '@/stores/useAppStore'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { CapturedPropertyCard } from './CapturedPropertyCard'
 import { CapturedPropertyModals } from './CapturedPropertyModals'
 import { Demand, CapturedProperty } from '@/types'
-import { cn } from '@/lib/utils'
+import { StickyFilterBar, FilterDef } from '@/components/StickyFilterBar'
+import { useViewFilters } from '@/hooks/useViewFilters'
+import { Skeleton } from '@/components/ui/skeleton'
 
 interface Props {
   filterType?: 'Venda' | 'Aluguel'
@@ -26,16 +26,60 @@ export function CapturedPropertiesView({
     markPropertyLost,
   } = useAppStore()
 
-  const [filterStatus, setFilterStatus] = useState('Todos')
-  const [filterPeriod, setFilterPeriod] = useState('Todos')
-
-  const [isPending, startTransition] = useTransition()
+  const [filters, setFilters] = useViewFilters('captados_view', {
+    status: 'Todos',
+    periodo: 'Todos',
+    tipo: 'Todos',
+    bairro: '',
+  })
+  const [isFiltering, setIsFiltering] = useState(false)
 
   const [actionDemand, setActionDemand] = useState<Demand | null>(null)
   const [actionProperty, setActionProperty] = useState<CapturedProperty | null>(null)
   const [actionType, setActionType] = useState<
     'visita' | 'proposta' | 'negocio' | 'lost' | 'history' | 'details' | 'edit' | null
   >(null)
+
+  const FILTERS: FilterDef[] = [
+    {
+      id: 'status',
+      label: 'Status',
+      options: [
+        { value: 'Todos', label: 'Todos' },
+        { value: 'Captado', label: 'Captado' },
+        { value: 'Visita', label: 'Visita' },
+        { value: 'Fechado', label: 'Fechado' },
+      ],
+    },
+    {
+      id: 'periodo',
+      label: 'Período',
+      options: [
+        { value: 'Todos', label: 'Todos', icon: '📅' },
+        { value: 'Últimos 7 dias', label: '7 dias', icon: '📅' },
+        { value: '30 dias', label: '30 dias', icon: '📅' },
+      ],
+    },
+    { id: 'bairro', label: 'Bairro', isSearch: true, options: [] },
+  ]
+
+  if (!filterType) {
+    FILTERS.unshift({
+      id: 'tipo',
+      label: 'Tipo',
+      options: [
+        { value: 'Todos', label: 'Todos' },
+        { value: 'Venda', label: 'Venda', icon: '🏢' },
+        { value: 'Aluguel', label: 'Aluguel', icon: '🏠' },
+      ],
+    })
+  }
+
+  const handleFilterChange = (newF: Record<string, string>) => {
+    setIsFiltering(true)
+    setFilters(newF)
+    setTimeout(() => setIsFiltering(false), 250)
+  }
 
   const allCaptured = useMemo(() => {
     return demands.flatMap((d) => {
@@ -70,14 +114,18 @@ export function CapturedPropertiesView({
       if (isClosed) propStatus = 'Fechado'
       else if (isVisita) propStatus = 'Visita'
 
-      if (filterStatus !== 'Todos' && propStatus !== filterStatus) return false
+      if (filters.status !== 'Todos' && propStatus !== filters.status) return false
+
+      if (!filterType && filters.tipo !== 'Todos' && p.propertyType !== filters.tipo) return false
+      if (filters.bairro && !p.neighborhood?.toLowerCase().includes(filters.bairro.toLowerCase()))
+        return false
 
       const capDate = new Date(p.capturedAt || '')
       const now = new Date()
       const diffDays = (now.getTime() - capDate.getTime()) / (1000 * 3600 * 24)
 
-      if (filterPeriod === 'Últimos 7 dias' && diffDays > 7) return false
-      if (filterPeriod === '30 dias' && diffDays > 30) return false
+      if (filters.periodo === 'Últimos 7 dias' && diffDays > 7) return false
+      if (filters.periodo === '30 dias' && diffDays > 30) return false
 
       return true
     })
@@ -89,7 +137,7 @@ export function CapturedPropertiesView({
     )
 
     return result
-  }, [allCaptured, filterStatus, filterPeriod])
+  }, [allCaptured, filters, filterType])
 
   const handleAction = (
     type: 'visita' | 'proposta' | 'negocio' | 'lost' | 'history' | 'details' | 'edit',
@@ -117,89 +165,40 @@ export function CapturedPropertiesView({
 
   return (
     <div className="flex flex-col gap-[16px] animate-fade-in w-full">
-      {/* Sticky Filters Header inside TabsContent */}
-      <div className="sticky top-[116px] md:top-[124px] z-10 bg-[#F5F5F5] pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
-        <div className="flex flex-col md:flex-row md:items-center gap-[16px] bg-[#FFFFFF] p-[16px] rounded-[12px] border border-[#E5E5E5] shadow-[0_4px_12px_rgba(26,58,82,0.05)]">
-          <div className="flex items-center gap-[12px] overflow-x-auto scrollbar-hide shrink-0 w-full md:w-auto">
-            <span className="text-[12px] font-bold text-[#999999] uppercase shrink-0">Status:</span>
-            {['Todos', 'Captado', 'Visita', 'Fechado'].map((p) => (
-              <Badge
-                key={p}
-                onClick={() => startTransition(() => setFilterStatus(p))}
-                className={cn(
-                  'cursor-pointer shrink-0 min-h-[32px] px-[12px] transition-colors duration-200',
-                  filterStatus === p
-                    ? 'bg-[#1A3A52] text-white border-transparent'
-                    : 'bg-[#F5F5F5] text-[#333333] hover:bg-[#E5E5E5] border-transparent',
-                )}
-              >
-                {p}
-              </Badge>
-            ))}
-          </div>
+      <StickyFilterBar
+        filters={FILTERS}
+        values={filters}
+        onChange={handleFilterChange}
+        resultsCount={filteredAndSorted.length}
+      />
 
-          <div className="hidden md:block w-[1px] h-[32px] bg-[#E5E5E5] shrink-0" />
-
-          <div className="flex items-center gap-[12px] overflow-x-auto scrollbar-hide shrink-0 w-full md:w-auto">
-            <span className="text-[12px] font-bold text-[#999999] uppercase shrink-0">
-              Período:
-            </span>
-            {['Todos', 'Últimos 7 dias', '30 dias'].map((p) => (
-              <Badge
-                key={p}
-                onClick={() => startTransition(() => setFilterPeriod(p))}
-                className={cn(
-                  'cursor-pointer shrink-0 min-h-[32px] px-[12px] transition-colors duration-200',
-                  filterPeriod === p
-                    ? 'bg-[#1A3A52] text-white border-transparent'
-                    : 'bg-[#F5F5F5] text-[#333333] hover:bg-[#E5E5E5] border-transparent',
-                )}
-              >
-                {p}
-              </Badge>
-            ))}
-          </div>
-
-          <div className="flex-1" />
-
-          <Button
-            variant="ghost"
-            onClick={() => {
-              startTransition(() => {
-                setFilterStatus('Todos')
-                setFilterPeriod('Todos')
-              })
-            }}
-            className="text-[#1A3A52] font-bold text-[14px] w-full md:w-auto shrink-0 border border-transparent hover:bg-[#F5F5F5]"
-          >
-            <RefreshCw className="w-[16px] h-[16px] mr-[8px]" /> Limpar Filtros
-          </Button>
+      {isFiltering ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-[16px] w-full">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-[250px] w-full rounded-[12px]" />
+          ))}
         </div>
-      </div>
-
-      <div className={cn('transition-opacity duration-200 w-full pt-2', isPending && 'opacity-50')}>
-        {filteredAndSorted.length === 0 ? (
-          <div className="text-center py-16 bg-[#FFFFFF] border rounded-xl border-dashed border-[#E5E5E5] w-full">
-            <Search className="w-12 h-12 text-[#999999]/30 mx-auto mb-3" />
-            <p className="text-[16px] font-bold text-[#333333]">Nenhum imóvel captado</p>
-            <p className="text-[14px] text-[#999999] mt-1">
-              Tente ajustar os filtros ou registre novos imóveis.
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-[16px] w-full">
-            {filteredAndSorted.map(({ demand, property }, index) => (
-              <div
-                key={`${demand.id}-${property.code}`}
-                className="opacity-0 animate-cascade-fade"
-                style={{ animationDelay: `${index * 50}ms` }}
-              >
-                <CapturedPropertyCard demand={demand} property={property} onAction={handleAction} />
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      ) : filteredAndSorted.length === 0 ? (
+        <div className="text-center py-16 bg-[#FFFFFF] border rounded-xl border-dashed border-[#E5E5E5] w-full">
+          <Search className="w-12 h-12 text-[#999999]/30 mx-auto mb-3" />
+          <p className="text-[16px] font-bold text-[#333333]">Nenhum imóvel encontrado</p>
+          <p className="text-[14px] text-[#999999] mt-1">
+            Tente ajustar os filtros ou registre novos imóveis.
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-[16px] w-full">
+          {filteredAndSorted.map(({ demand, property }, index) => (
+            <div
+              key={`${demand.id}-${property.code}`}
+              className="opacity-0 animate-cascade-fade"
+              style={{ animationDelay: `${index * 50}ms` }}
+            >
+              <CapturedPropertyCard demand={demand} property={property} onAction={handleAction} />
+            </div>
+          ))}
+        </div>
+      )}
 
       <CapturedPropertyModals
         demand={actionDemand}
