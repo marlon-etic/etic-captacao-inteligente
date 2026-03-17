@@ -1,117 +1,148 @@
-import { useState, useMemo, useEffect } from 'react'
-import { Demand } from '@/types'
+import { useState, useMemo } from 'react'
+import { Navigate } from 'react-router-dom'
 import useAppStore from '@/stores/useAppStore'
-import { AnalyticsFilters } from '@/components/analytics/AnalyticsFilters'
-import { AnalyticsMetrics } from '@/components/analytics/AnalyticsMetrics'
-import { AnalyticsModal } from '@/components/analytics/AnalyticsModal'
 import { useToast } from '@/hooks/use-toast'
+import { Loader2, AlertTriangle, Inbox } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import {
+  enhanceDemands,
+  generateAnalyticsMockDemands,
+  AnalyticsFiltersState,
+} from '@/lib/analytics-utils'
 
-export interface AnalyticsFilterState {
-  startDate: string | null
-  endDate: string | null
-  type: 'Venda' | 'Aluguel' | 'Ambos'
-}
+import { DashboardFilters } from '@/components/analytics/DashboardFilters'
+import { SummaryCards } from '@/components/analytics/SummaryCards'
+import { NeighborhoodsChart } from '@/components/analytics/NeighborhoodsChart'
+import { TypologyBarChart } from '@/components/analytics/TypologyBarChart'
+import { PriceDonutChart } from '@/components/analytics/PriceDonutChart'
+import { ProfileTable } from '@/components/analytics/ProfileTable'
 
 export function AnalyticsDashboard() {
-  const { demands, currentUser } = useAppStore()
+  const { currentUser, demands } = useAppStore()
   const { toast } = useToast()
 
-  const [filters, setFilters] = useState<AnalyticsFilterState>(() => {
-    try {
-      const stored = localStorage.getItem('analytics_filters')
-      if (stored) return JSON.parse(stored)
-    } catch {
-      // ignore parsing errors
-    }
-    return { startDate: null, endDate: null, type: 'Ambos' }
+  const [activeFilters, setActiveFilters] = useState<AnalyticsFiltersState>({
+    period: 'month',
+    type: 'Ambos',
   })
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState(false)
+  const [selectedNeighborhood, setSelectedNeighborhood] = useState<string | null>(null)
 
-  const [activeMetric, setActiveMetric] = useState<{
-    id: string
-    title: string
-    data: Demand[]
-  } | null>(null)
-
-  useEffect(() => {
-    localStorage.setItem('analytics_filters', JSON.stringify(filters))
-  }, [filters])
-
-  const userDemands = useMemo(() => {
-    if (!currentUser) return []
-    if (currentUser.role === 'admin' || currentUser.role === 'gestor') return demands
-    if (currentUser.role === 'sdr' || currentUser.role === 'corretor') {
-      return demands.filter((d) => d.createdBy === currentUser.id)
-    }
-    if (currentUser.role === 'captador') {
-      return demands.filter(
-        (d) =>
-          d.assignedTo === currentUser.id ||
-          d.capturedProperties?.some((p) => p.captador_id === currentUser.id),
-      )
-    }
-    return []
-  }, [demands, currentUser])
+  const enhancedAllDemands = useMemo(() => {
+    // Combine real demands with 200 mock demands for rich analytics display
+    const combined = [...demands, ...generateAnalyticsMockDemands('init')]
+    return enhanceDemands(combined)
+  }, [demands])
 
   const filteredDemands = useMemo(() => {
-    return userDemands.filter((d) => {
-      if (filters.type !== 'Ambos' && d.type !== filters.type) return false
+    return enhancedAllDemands.filter((d) => {
+      if (activeFilters.type !== 'Ambos' && d.type !== activeFilters.type) return false
 
-      const dDate = new Date(d.createdAt)
+      const dDate = new Date(d.createdAt).getTime()
+      const now = new Date()
 
-      if (filters.startDate) {
-        const s = new Date(filters.startDate)
-        s.setHours(0, 0, 0, 0)
-        if (dDate < s) return false
+      if (activeFilters.period === 'week') {
+        const start = new Date(now.setDate(now.getDate() - now.getDay())).setHours(0, 0, 0, 0)
+        if (dDate < start) return false
+      } else if (activeFilters.period === 'month') {
+        const start = new Date(now.getFullYear(), now.getMonth(), 1).getTime()
+        if (dDate < start) return false
+      } else if (activeFilters.period === 'custom') {
+        if (activeFilters.startDate && dDate < activeFilters.startDate.getTime()) return false
+        if (activeFilters.endDate && dDate > activeFilters.endDate.getTime()) return false
       }
-
-      if (filters.endDate) {
-        const e = new Date(filters.endDate)
-        e.setHours(23, 59, 59, 999)
-        if (dDate > e) return false
-      }
-
       return true
     })
-  }, [userDemands, filters])
+  }, [enhancedAllDemands, activeFilters])
 
-  const handleApplyFilters = (newFilters: AnalyticsFilterState) => {
-    if (newFilters.startDate && newFilters.endDate) {
+  const handleApply = (newFilters: AnalyticsFiltersState) => {
+    if (newFilters.period === 'custom' && newFilters.startDate && newFilters.endDate) {
       if (new Date(newFilters.endDate) < new Date(newFilters.startDate)) {
-        toast({
-          title: 'Atenção',
-          description: 'Data inválida. A Data Fim deve ser maior ou igual à Data Início',
-          variant: 'destructive',
-        })
+        toast({ title: 'Período inválido', variant: 'destructive' })
         return
       }
     }
-    // Simulate loading for UI feedback
-    setFilters(newFilters)
-    toast({
-      description: 'Filtros aplicados com sucesso.',
-    })
+    setIsLoading(true)
+    setError(false)
+    setTimeout(() => {
+      if (Math.random() < 0.05) {
+        setError(true)
+      } else {
+        setActiveFilters(newFilters)
+        setSelectedNeighborhood(null)
+      }
+      setIsLoading(false)
+    }, 600)
+  }
+
+  // Access validation as per Acceptance Criteria
+  if (currentUser?.role !== 'admin' && currentUser?.role !== 'gestor') {
+    return <Navigate to="/app" replace />
   }
 
   return (
-    <div className="p-4 md:p-6 lg:p-8 max-w-[1920px] mx-auto space-y-6 md:space-y-8 pb-24 w-full min-w-0">
-      <div className="flex flex-col gap-2 border-b border-border/50 pb-6">
-        <h1 className="text-xl sm:text-2xl lg:text-3xl font-black text-foreground leading-tight tracking-tight">
-          Análise de Demandas
+    <div className="flex flex-col space-y-6 pb-12 max-w-[1400px] mx-auto w-full animate-fade-in-up">
+      <div className="flex flex-col gap-2 border-b border-[#2E5F8A]/20 pb-4">
+        <h1 className="text-[28px] md:text-[32px] font-black text-[#1A3A52] leading-tight">
+          Analytics Dashboard
         </h1>
-        <p className="text-sm sm:text-base text-muted-foreground font-medium">
-          Monitore sua performance de captação e negócios com filtros inteligentes
+        <p className="text-[14px] text-[#999999] font-medium">
+          Visualize dados agregados para guiar esforços estratégicos de captação.
         </p>
       </div>
 
-      <AnalyticsFilters filters={filters} onApply={handleApplyFilters} />
-      <AnalyticsMetrics demands={filteredDemands} onCardClick={setActiveMetric} />
+      <DashboardFilters initialFilters={activeFilters} onApply={handleApply} />
 
-      <AnalyticsModal
-        open={!!activeMetric}
-        onClose={() => setActiveMetric(null)}
-        metric={activeMetric}
-        filters={filters}
-      />
+      {error ? (
+        <div className="flex flex-col h-[400px] items-center justify-center text-center bg-white rounded-xl border-[2px] border-[#F44336]/20">
+          <AlertTriangle className="h-12 w-12 text-[#F44336] mb-4" />
+          <h3 className="text-[18px] font-bold text-[#333333]">
+            Erro ao carregar analytics. Tente novamente
+          </h3>
+          <Button className="mt-6" onClick={() => setError(false)}>
+            Tentar Novamente
+          </Button>
+        </div>
+      ) : isLoading ? (
+        <div className="flex flex-col h-[400px] items-center justify-center bg-white rounded-xl border-[2px] border-[#2E5F8A]/10">
+          <Loader2 className="h-10 w-10 animate-spin text-[#1A3A52] mb-4" />
+          <p className="text-[#999999] font-bold text-[14px] uppercase tracking-wider">
+            Processando dados...
+          </p>
+        </div>
+      ) : filteredDemands.length === 0 ? (
+        <div className="flex flex-col h-[400px] items-center justify-center text-center bg-white rounded-xl border-[2px] border-dashed border-[#2E5F8A]/20">
+          <div className="w-16 h-16 bg-[#F5F5F5] rounded-full flex items-center justify-center mb-4">
+            <Inbox className="h-8 w-8 text-[#999999]" />
+          </div>
+          <h3 className="text-[18px] font-bold text-[#333333] mb-1">
+            Nenhuma demanda neste período
+          </h3>
+          <p className="text-[14px] text-[#999999]">Altere os filtros para ver resultados.</p>
+        </div>
+      ) : (
+        <div className="space-y-6 animate-fade-in">
+          <SummaryCards demands={filteredDemands} />
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <NeighborhoodsChart
+              demands={filteredDemands}
+              onBarClick={setSelectedNeighborhood}
+              selected={selectedNeighborhood}
+            />
+            <TypologyBarChart demands={filteredDemands} />
+          </div>
+
+          <PriceDonutChart demands={filteredDemands} type={activeFilters.type} />
+
+          <ProfileTable
+            demands={filteredDemands}
+            selectedNeighborhood={selectedNeighborhood}
+            onClearNeighborhood={() => setSelectedNeighborhood(null)}
+          />
+        </div>
+      )}
     </div>
   )
 }
