@@ -6,6 +6,8 @@ import useAppStore from '@/stores/useAppStore'
 import { cn } from '@/lib/utils'
 import { Eye, Handshake, BookOpen, Edit2, MessageCircle } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { getPropertyPublicUrl } from '@/lib/propertyUrl'
 
 export function CapturedPropertyCard({
   demand,
@@ -55,6 +57,26 @@ export function CapturedPropertyCard({
     }
   }
 
+  const publicUrl = getPropertyPublicUrl(property.code)
+
+  const handleCopyLink = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!publicUrl) return
+    try {
+      await navigator.clipboard.writeText(publicUrl)
+      toast({
+        title: 'Link copiado!',
+        description: 'A URL do imóvel foi copiada para a área de transferência.',
+      })
+    } catch (err) {
+      toast({
+        title: 'Erro ao copiar link',
+        description: 'Não foi possível copiar a URL.',
+        variant: 'destructive',
+      })
+    }
+  }
+
   const isClosed = !!property.fechamentoDate
   const isVisita = !!property.visitaDate && !isClosed
 
@@ -98,12 +120,29 @@ export function CapturedPropertyCard({
         </div>
 
         <div className="flex flex-col gap-[6px] flex-grow">
-          <h3
-            className={cn('text-[14px] font-bold leading-tight', interactiveClass)}
-            onClick={() => isCaptador && handleAction('edit')}
-          >
-            🏷️ Código do Imóvel: {property.code}
-          </h3>
+          <div className="text-[14px] leading-tight flex items-center gap-1">
+            <span
+              className={cn(interactiveClass, 'font-bold')}
+              onClick={() => isCaptador && handleAction('edit')}
+            >
+              🏷️ Código:
+            </span>
+            <a
+              href={publicUrl || '#'}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={cn(
+                'font-bold text-[#1A3A52] hover:underline',
+                !publicUrl && 'pointer-events-none text-gray-400',
+              )}
+              onClick={(e) => {
+                if (!publicUrl) e.preventDefault()
+                e.stopPropagation()
+              }}
+            >
+              {property.code || 'Não informado'}
+            </a>
+          </div>
           <p
             className={cn('text-[12px] leading-tight', interactiveClass)}
             onClick={() => isCaptador && handleAction('edit')}
@@ -144,68 +183,115 @@ export function CapturedPropertyCard({
           </div>
         </div>
 
-        <div className="flex flex-row flex-wrap gap-[8px] mt-[16px] w-full">
-          {isCaptador && (
-            <>
-              <Button
-                variant="outline"
-                className="flex-1 h-[40px] border-[#2E5F8A] text-[#1A3A52] hover:bg-[#F5F5F5] font-bold text-[12px] px-2"
-                onClick={() => handleAction('edit')}
-              >
-                <Edit2 className="w-[14px] h-[14px] mr-[4px]" />
-                Editar
-              </Button>
-              <Button
-                variant="outline"
-                className="flex-1 h-[40px] border-[#2E5F8A] text-[#1A3A52] hover:bg-[#F5F5F5] font-bold text-[12px] px-2"
-                onClick={() => handleAction('details')}
-              >
-                <BookOpen className="w-[14px] h-[14px] mr-[4px]" />
-                Ver Detalhes
-              </Button>
-              <Button
-                className="w-full h-[40px] bg-[#25D366] hover:bg-[#128C7E] text-white font-bold text-[12px] px-2"
-                onClick={handleWhatsApp}
-              >
-                <MessageCircle className="w-[14px] h-[14px] mr-[4px]" />
-                Contatar Solicitante
-              </Button>
-            </>
-          )}
+        <div className="flex flex-col gap-[8px] mt-[16px] w-full">
+          <div className="flex flex-row gap-[8px] w-full">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  className={cn(
+                    'flex-1 font-bold h-[40px] md:h-[44px]',
+                    publicUrl
+                      ? 'bg-[#1A3A52] hover:bg-[#153045] text-white'
+                      : 'bg-[#E5E5E5] text-[#999999] hover:bg-[#E5E5E5] cursor-not-allowed',
+                  )}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    if (publicUrl) window.open(publicUrl, '_blank')
+                  }}
+                >
+                  👁️ Visualizar no Site
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>
+                  {publicUrl
+                    ? 'Visualizar imóvel em www.eticimoveis.com.br'
+                    : 'Código do imóvel não informado'}
+                </p>
+              </TooltipContent>
+            </Tooltip>
 
-          {isSDRCorretorAdmin && (
-            <>
-              {!isClosed && !isVisita && (
-                <Button
-                  className="flex-1 h-[40px] bg-[#FF9800] hover:bg-[#F57C00] text-white font-bold text-[12px] px-2 shadow-sm"
-                  onClick={() => handleAction('visita')}
-                >
-                  <Eye className="w-[14px] h-[14px] sm:mr-[4px]" />
-                  <span className="hidden sm:inline">VISITA AGENDADA</span>
-                  <span className="sm:hidden">Visita</span>
-                </Button>
+            <Button
+              variant="outline"
+              className={cn(
+                'w-[40px] md:w-[44px] h-[40px] md:h-[44px] p-0 shrink-0 border-[2px]',
+                publicUrl
+                  ? 'border-[#2E5F8A] text-[#1A3A52] hover:bg-[#F5F5F5]'
+                  : 'border-[#E5E5E5] text-[#999999] hover:bg-transparent cursor-not-allowed',
               )}
-              {isVisita && (
+              onClick={(e) => {
+                e.stopPropagation()
+                if (publicUrl) handleCopyLink(e)
+              }}
+              title="Copiar Link"
+            >
+              📋
+            </Button>
+          </div>
+
+          <div className="flex flex-row flex-wrap gap-[8px] w-full">
+            {isCaptador && (
+              <>
                 <Button
-                  className="flex-1 h-[40px] bg-[#4CAF50] hover:bg-[#388E3C] text-white font-bold text-[12px] px-2 shadow-sm"
-                  onClick={() => handleAction('negocio')}
+                  variant="outline"
+                  className="flex-1 h-[40px] border-[#2E5F8A] text-[#1A3A52] hover:bg-[#F5F5F5] font-bold text-[12px] px-2"
+                  onClick={() => handleAction('edit')}
                 >
-                  <Handshake className="w-[14px] h-[14px] sm:mr-[4px]" />
-                  <span className="hidden sm:inline">NEGÓCIO FECHADO</span>
-                  <span className="sm:hidden">Fechado</span>
+                  <Edit2 className="w-[14px] h-[14px] mr-[4px]" />
+                  Editar
                 </Button>
-              )}
-              <Button
-                variant="outline"
-                className="flex-1 h-[40px] border-[#2E5F8A] text-[#1A3A52] hover:bg-[#F5F5F5] font-bold text-[12px] px-2"
-                onClick={() => handleAction('details')}
-              >
-                <BookOpen className="w-[14px] h-[14px] sm:mr-[4px]" />
-                <span className="hidden sm:inline">Ver Detalhes</span>
-                <span className="sm:hidden">Detalhes</span>
-              </Button>
-            </>
-          )}
+                <Button
+                  variant="outline"
+                  className="flex-1 h-[40px] border-[#2E5F8A] text-[#1A3A52] hover:bg-[#F5F5F5] font-bold text-[12px] px-2"
+                  onClick={() => handleAction('details')}
+                >
+                  <BookOpen className="w-[14px] h-[14px] mr-[4px]" />
+                  Ver Detalhes
+                </Button>
+                <Button
+                  className="w-full h-[40px] bg-[#25D366] hover:bg-[#128C7E] text-white font-bold text-[12px] px-2"
+                  onClick={handleWhatsApp}
+                >
+                  <MessageCircle className="w-[14px] h-[14px] mr-[4px]" />
+                  Contatar Solicitante
+                </Button>
+              </>
+            )}
+
+            {isSDRCorretorAdmin && (
+              <>
+                {!isClosed && !isVisita && (
+                  <Button
+                    className="flex-1 h-[40px] bg-[#FF9800] hover:bg-[#F57C00] text-white font-bold text-[12px] px-2 shadow-sm"
+                    onClick={() => handleAction('visita')}
+                  >
+                    <Eye className="w-[14px] h-[14px] sm:mr-[4px]" />
+                    <span className="hidden sm:inline">VISITA AGENDADA</span>
+                    <span className="sm:hidden">Visita</span>
+                  </Button>
+                )}
+                {isVisita && (
+                  <Button
+                    className="flex-1 h-[40px] bg-[#4CAF50] hover:bg-[#388E3C] text-white font-bold text-[12px] px-2 shadow-sm"
+                    onClick={() => handleAction('negocio')}
+                  >
+                    <Handshake className="w-[14px] h-[14px] sm:mr-[4px]" />
+                    <span className="hidden sm:inline">NEGÓCIO FECHADO</span>
+                    <span className="sm:hidden">Fechado</span>
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  className="flex-1 h-[40px] border-[#2E5F8A] text-[#1A3A52] hover:bg-[#F5F5F5] font-bold text-[12px] px-2"
+                  onClick={() => handleAction('details')}
+                >
+                  <BookOpen className="w-[14px] h-[14px] sm:mr-[4px]" />
+                  <span className="hidden sm:inline">Ver Detalhes</span>
+                  <span className="sm:hidden">Detalhes</span>
+                </Button>
+              </>
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>

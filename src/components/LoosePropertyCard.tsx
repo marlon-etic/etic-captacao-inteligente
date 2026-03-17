@@ -1,8 +1,12 @@
-import { MapPin, Calendar, Bed, Car, Bath, UserCircle, Hand } from 'lucide-react'
+import { MapPin, Calendar, Bed, Car, Bath, UserCircle } from 'lucide-react'
 import { CapturedProperty } from '@/types'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { useToast } from '@/hooks/use-toast'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { getPropertyPublicUrl } from '@/lib/propertyUrl'
+import { cn } from '@/lib/utils'
 
 export function LoosePropertyCard({
   property,
@@ -15,6 +19,27 @@ export function LoosePropertyCard({
   onIgnore?: (code: string) => void
   onLink?: (p: CapturedProperty) => void
 }) {
+  const { toast } = useToast()
+  const publicUrl = getPropertyPublicUrl(property.code)
+
+  const handleCopyLink = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!publicUrl) return
+    try {
+      await navigator.clipboard.writeText(publicUrl)
+      toast({
+        title: 'Link copiado!',
+        description: 'A URL do imóvel foi copiada para a área de transferência.',
+      })
+    } catch (err) {
+      toast({
+        title: 'Erro ao copiar link',
+        description: 'Não foi possível copiar a URL.',
+        variant: 'destructive',
+      })
+    }
+  }
+
   return (
     <Card className="overflow-hidden flex flex-col h-full border-[2px] border-[#2E5F8A] hover:shadow-[0_8px_24px_rgba(26,58,82,0.15)] relative transition-all bg-[#FFFFFF] rounded-[12px]">
       <div className="relative h-48 w-full bg-[#F5F5F5]">
@@ -34,14 +59,6 @@ export function LoosePropertyCard({
             🔓 Disponível
           </Badge>
         </div>
-        <div className="absolute bottom-2 left-3.5 flex flex-col gap-1">
-          <Badge
-            variant="secondary"
-            className="bg-[#1A3A52]/90 text-white border-none shadow-sm self-start font-bold"
-          >
-            Cód: {property.code}
-          </Badge>
-        </div>
       </div>
       <CardContent className="p-[16px] flex-grow flex flex-col gap-2">
         <div className="flex justify-between items-start gap-2">
@@ -56,7 +73,27 @@ export function LoosePropertyCard({
             }).format(property.value)}
           </span>
         </div>
-        <p className="text-[14px] text-[#333333] font-medium flex items-center gap-1.5">
+
+        <p className="text-[14px] text-[#333333] font-medium flex items-center gap-1.5 mt-1">
+          <span>🏷️ Código:</span>
+          <a
+            href={publicUrl || '#'}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(
+              'font-bold text-[#1A3A52] hover:underline',
+              !publicUrl && 'pointer-events-none text-gray-400',
+            )}
+            onClick={(e) => {
+              if (!publicUrl) e.preventDefault()
+              e.stopPropagation()
+            }}
+          >
+            {property.code || 'N/A'}
+          </a>
+        </p>
+
+        <p className="text-[14px] text-[#333333] font-medium flex items-center gap-1.5 mt-1">
           <MapPin className="w-4 h-4 shrink-0 text-[#1A3A52]" />
           <span className="truncate">
             {property.bairro_tipo === 'outro' && <span className="mr-1">🔹</span>}
@@ -102,6 +139,51 @@ export function LoosePropertyCard({
       </CardContent>
 
       <div className="p-[16px] pt-0 mt-auto flex flex-col gap-2">
+        <div className="flex flex-row gap-[8px] w-full mb-2">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                className={cn(
+                  'flex-1 font-bold h-[40px] md:h-[44px]',
+                  publicUrl
+                    ? 'bg-[#1A3A52] hover:bg-[#153045] text-white'
+                    : 'bg-[#E5E5E5] text-[#999999] hover:bg-[#E5E5E5] cursor-not-allowed',
+                )}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  if (publicUrl) window.open(publicUrl, '_blank')
+                }}
+              >
+                🔗 Ver Imóvel
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>
+                {publicUrl
+                  ? 'Visualizar imóvel em www.eticimoveis.com.br'
+                  : 'Código do imóvel não informado'}
+              </p>
+            </TooltipContent>
+          </Tooltip>
+
+          <Button
+            variant="outline"
+            className={cn(
+              'w-[40px] md:w-[44px] h-[40px] md:h-[44px] p-0 shrink-0 border-[2px]',
+              publicUrl
+                ? 'border-[#2E5F8A] text-[#1A3A52] hover:bg-[#F5F5F5]'
+                : 'border-[#E5E5E5] text-[#999999] hover:bg-transparent cursor-not-allowed',
+            )}
+            onClick={(e) => {
+              e.stopPropagation()
+              if (publicUrl) handleCopyLink(e)
+            }}
+            title="Copiar Link"
+          >
+            📋
+          </Button>
+        </div>
+
         {onLink ? (
           <Button
             size="sm"
