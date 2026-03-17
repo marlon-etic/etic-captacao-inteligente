@@ -252,3 +252,13 @@ export interface InactiveGroup {
   closedAt: string
   outcome: 'Atendido' | 'Perdido'
 }
+
+export interface SystemLog {
+  id: string
+  timestamp: string
+  userId?: string
+  userName?: string
+  message: string
+  context?: string
+  type: 'error' | 'info' | 'warning'
+}

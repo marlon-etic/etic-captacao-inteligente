@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { Demand } from '@/types'
 import { GroupedDemand } from '@/components/GroupedDemandCard'
+import useAppStore from '@/stores/useAppStore'
 
 interface GroupingOptions {
   demands: Demand[]
@@ -13,6 +14,8 @@ interface GroupingOptions {
 }
 
 export function useDemandGrouping({ demands, filters }: GroupingOptions) {
+  const { logSystemEvent } = useAppStore()
+
   return useMemo(() => {
     try {
       let filtered = demands
@@ -92,24 +95,30 @@ export function useDemandGrouping({ demands, filters }: GroupingOptions) {
 
         const budgetGroups: Demand[][] = []
         groupDemands.forEach((d) => {
-          const dMin = d.minBudget || d.budget || 0
-          const dMax = d.maxBudget || d.budget || 0
-
           let placed = false
-          for (const bg of budgetGroups) {
-            const bgMin = Math.min(...bg.map((x) => x.minBudget || x.budget || 0))
-            const bgMax = Math.max(...bg.map((x) => x.maxBudget || x.budget || 0))
+          try {
+            const dMin = d.minBudget || d.budget || 0
+            const dMax = d.maxBudget || d.budget || 0
 
-            // Value overlap condition (±10%)
-            const minAllowed = bgMin * 0.9
-            const maxAllowed = bgMax * 1.1
+            for (const bg of budgetGroups) {
+              const bgMin = Math.min(...bg.map((x) => x.minBudget || x.budget || 0))
+              const bgMax = Math.max(...bg.map((x) => x.maxBudget || x.budget || 0))
 
-            if (dMax >= minAllowed && dMin <= maxAllowed) {
-              bg.push(d)
-              placed = true
-              break
+              // Value overlap condition (±10%) strictly applied
+              if (dMax >= bgMin * 0.9 && dMin <= bgMax * 1.1) {
+                bg.push(d)
+                placed = true
+                break
+              }
             }
+          } catch (e) {
+            logSystemEvent?.(
+              `Erro no cálculo de overlap de valor: ${(e as Error).message}`,
+              'error',
+              `Demanda ${d.id}`,
+            )
           }
+
           if (!placed) budgetGroups.push([d])
         })
 
@@ -153,7 +162,12 @@ export function useDemandGrouping({ demands, filters }: GroupingOptions) {
         ungroupedDemands: finalUngrouped,
       }
     } catch (e) {
+      logSystemEvent?.(
+        `Erro fatal no agrupamento: ${(e as Error).message}`,
+        'error',
+        'useDemandGrouping',
+      )
       return { groupedDemands: [], ungroupedDemands: demands }
     }
-  }, [demands, filters])
+  }, [demands, filters, logSystemEvent])
 }

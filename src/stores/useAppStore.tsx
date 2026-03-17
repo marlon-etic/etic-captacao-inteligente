@@ -23,6 +23,7 @@ import {
   NotificationUrgency,
   GroupComment,
   InactiveGroup,
+  SystemLog,
 } from '@/types'
 import { toast } from '@/hooks/use-toast'
 import { ToastAction } from '@/components/ui/toast'
@@ -38,6 +39,8 @@ interface AppState {
   notifications: AppNotification[]
   groupComments: GroupComment[]
   inactiveGroups: InactiveGroup[]
+  systemLogs: SystemLog[]
+  logSystemEvent: (message: string, type?: 'error' | 'info' | 'warning', context?: string) => void
   markNotificationAsRead: (id: string) => void
   markAllNotificationsAsRead: () => void
   archiveNotification: (id: string) => void
@@ -48,7 +51,7 @@ interface AppState {
   addDemand: (demand: Partial<Demand>) => void
   updateDemandStatus: (id: string, status: DemandStatus) => void
   submitDemandResponse: (id: string, action: 'encontrei' | 'nao_encontrei', payload: any) => any
-  submitIndependentCapture: (payload: any) => void
+  submitIndependentCapture: (payload: any) => { success: boolean; message: string }
   submitGroupCapture: (demandIds: string[], payload: any) => { success: boolean; message: string }
   claimLooseProperty: (code: string, demandId: string) => { success: boolean; message: string }
   addPoints: (amount: number, userId?: string) => void
@@ -382,6 +385,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const [looseProperties, setLooseProperties] = useState<CapturedProperty[]>(initialLooseProperties)
   const [webhookQueue, setWebhookQueue] = useState<WebhookEvent[]>([])
   const [auditLogs, setAuditLogs] = useState<string[]>([])
+  const [systemLogs, setSystemLogs] = useState<SystemLog[]>([])
   const [notifications, setNotifications] = useState<AppNotification[]>(() => {
     try {
       const raw = localStorage.getItem('etic_state_sync')
@@ -505,6 +509,24 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     (msg: string) =>
       setAuditLogs((prev) => [`[${new Date().toLocaleTimeString()}] ${msg}`, ...prev]),
     [],
+  )
+
+  const logSystemEvent = useCallback(
+    (message: string, type: 'error' | 'info' | 'warning' = 'info', context?: string) => {
+      setSystemLogs((prev) => [
+        {
+          id: Math.random().toString(36).substring(2, 9),
+          timestamp: new Date().toISOString(),
+          userId: currentUser?.id,
+          userName: currentUser?.name,
+          message,
+          context,
+          type,
+        },
+        ...prev,
+      ])
+    },
+    [currentUser],
   )
 
   const broadcastState = useCallback(
@@ -698,6 +720,10 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
             setTimeout(() => {
               if (Math.random() < 0.05) {
                 addLog(`[Notificação] Falha no Push para ${user.name}. Retentando em 5 min...`)
+                logSystemEvent(`Falha ao enviar push para ${user.name}`, 'warning', 'Notificações')
+                setTimeout(() => {
+                  addLog(`[Notificação] Re-tentativa de Push para ${user.name} concluída.`)
+                }, 300000)
               }
             }, 1000)
           }
@@ -729,7 +755,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         return next
       })
     },
-    [addLog, broadcastState],
+    [addLog, broadcastState, logSystemEvent],
   )
 
   useEffect(() => {
@@ -775,6 +801,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
       if (!target_url.startsWith('http')) {
         addLog(`[Erro] Webhook URL inválida para evento ${event_type}`)
+        logSystemEvent(`Webhook URL inválida: ${target_url}`, 'error', event_type)
         return
       }
 
@@ -795,7 +822,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       setWebhookQueue((prev) => [...prev, newEvent])
       addLog(`[Webhook] Evento '${event_type}' enfileirado para envio a n8n.`)
     },
-    [addLog],
+    [addLog, logSystemEvent],
   )
 
   const processWebhookCron = useCallback(async () => {
@@ -1013,6 +1040,20 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
   const scheduleVisitByCode = useCallback(
     (code: string, payload: any) => {
+      if (currentUser?.role === 'captador') {
+        toast({
+          title: 'Erro',
+          description: 'Você não tem permissão para esta ação',
+          variant: 'destructive',
+        })
+        logSystemEvent(
+          'Acesso não autorizado',
+          'warning',
+          `Captador ${currentUser.name} tentou alterar status (Agendar Visita)`,
+        )
+        return
+      }
+
       let demand: Demand | undefined
       let propIndex = -1
       for (const d of allDemands) {
@@ -1097,6 +1138,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       users,
       enqueueWebhook,
       addLog,
+      logSystemEvent,
       broadcastState,
       createAction,
       dispatchNotifications,
@@ -1105,6 +1147,20 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
   const submitProposalByCode = useCallback(
     (code: string, payload: any) => {
+      if (currentUser?.role === 'captador') {
+        toast({
+          title: 'Erro',
+          description: 'Você não tem permissão para esta ação',
+          variant: 'destructive',
+        })
+        logSystemEvent(
+          'Acesso não autorizado',
+          'warning',
+          `Captador ${currentUser.name} tentou alterar status (Submeter Proposta)`,
+        )
+        return
+      }
+
       let demand: Demand | undefined
       let propIndex = -1
       for (const d of allDemands) {
@@ -1119,6 +1175,15 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       if (!demand) return
       const prop = demand.capturedProperties![propIndex]
       if (!checkDemandAccess(demand, prop)) return
+
+      const inputDate = new Date(payload.date + 'T00:00:00')
+      const today = new Date()
+      inputDate.setHours(0, 0, 0, 0)
+      today.setHours(0, 0, 0, 0)
+      if (inputDate > today) {
+        toast({ title: 'Erro', description: 'Data não pode ser no futuro', variant: 'destructive' })
+        return
+      }
 
       const formattedVal = new Intl.NumberFormat('pt-BR', {
         style: 'currency',
@@ -1171,6 +1236,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       users,
       enqueueWebhook,
       addLog,
+      logSystemEvent,
       broadcastState,
       createAction,
       dispatchNotifications,
@@ -1179,6 +1245,29 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
   const closeDealByCode = useCallback(
     (code: string, payload: any) => {
+      if (currentUser?.role === 'captador') {
+        toast({
+          title: 'Erro',
+          description: 'Você não tem permissão para esta ação',
+          variant: 'destructive',
+        })
+        logSystemEvent(
+          'Acesso não autorizado',
+          'warning',
+          `Captador ${currentUser.name} tentou alterar status (Fechar Negócio)`,
+        )
+        return
+      }
+
+      const inputDate = new Date(payload.date + 'T00:00:00')
+      const today = new Date()
+      inputDate.setHours(0, 0, 0, 0)
+      today.setHours(0, 0, 0, 0)
+      if (inputDate > today) {
+        toast({ title: 'Erro', description: 'Data não pode ser no futuro', variant: 'destructive' })
+        return
+      }
+
       let demand: Demand | undefined
       let propIndex = -1
       for (const d of allDemands) {
@@ -1294,6 +1383,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       users,
       enqueueWebhook,
       addLog,
+      logSystemEvent,
       broadcastState,
       createAction,
       dispatchNotifications,
@@ -1314,6 +1404,11 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           description: 'Você não tem permissão para esta ação',
           variant: 'destructive',
         })
+        logSystemEvent(
+          'Acesso não autorizado',
+          'warning',
+          `Usuário ${currentUser?.name} tentou priorizar demanda ${id}`,
+        )
         return
       }
 
@@ -1373,6 +1468,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       users,
       enqueueWebhook,
       addLog,
+      logSystemEvent,
       broadcastState,
       createAction,
       dispatchNotifications,
@@ -1391,6 +1487,15 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         toast({
           title: 'Erro',
           description: 'Você não tem permissão para esta ação',
+          variant: 'destructive',
+        })
+        return
+      }
+
+      if (!reason) {
+        toast({
+          title: 'Erro',
+          description: 'Selecione um motivo para marcar como perdido',
           variant: 'destructive',
         })
         return
@@ -1623,6 +1728,11 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           description: 'Você não tem permissão para esta ação',
           variant: 'destructive',
         })
+        logSystemEvent(
+          'Acesso não autorizado',
+          'warning',
+          `Usuário ${currentUser?.name} tentou editar imóvel`,
+        )
         return
       }
 
@@ -1658,7 +1768,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         return next
       })
     },
-    [currentUser, users, createAction, broadcastState],
+    [currentUser, users, createAction, logSystemEvent, broadcastState],
   )
 
   const logContactAttempt = useCallback(
@@ -1804,6 +1914,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         looseProperties,
         webhookQueue,
         auditLogs,
+        systemLogs,
+        logSystemEvent,
         notifications,
         groupComments,
         inactiveGroups,
@@ -1973,16 +2085,50 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         },
         submitGroupCapture: (demandIds, payload) => {
           const demandsToUpdate = allDemands.filter((d) => demandIds.includes(d.id))
-          if (demandsToUpdate.length === 0)
-            return { success: false, message: 'Nenhuma demanda ativa' }
+          const activeDemands = demandsToUpdate.filter(
+            (d) => !['Perdida', 'Impossível'].includes(d.status),
+          )
 
-          const groupSize = demandsToUpdate.length
-          let points = 50
-          if (groupSize >= 7) points = 150
-          else if (groupSize >= 4) points = 100
-          else if (groupSize >= 2) points = 75
+          if (activeDemands.length === 0) {
+            logSystemEvent(
+              'Tentativa de vínculo em grupo inativo',
+              'error',
+              `Demandas: ${demandIds.join(', ')}`,
+            )
+            toast({
+              title: 'Erro',
+              description: 'Este grupo não tem mais demandas ativas',
+              variant: 'destructive',
+            })
+            return { success: false, message: 'Este grupo não tem mais demandas ativas' }
+          }
 
           const code = payload.code || `IMV-${Math.floor(Math.random() * 1000)}`
+
+          const isDuplicate =
+            loosePropertiesRef.current.some((p) => p.code === code) ||
+            allDemands.some((d) => d.capturedProperties?.some((p) => p.code === code))
+          if (isDuplicate) {
+            logSystemEvent('Imóvel duplicado', 'warning', `Code: ${code}`)
+            toast({
+              title: 'Erro',
+              description: 'Este imóvel já foi cadastrado',
+              variant: 'destructive',
+            })
+            return { success: false, message: 'Este imóvel já foi cadastrado' }
+          }
+
+          const groupSize = activeDemands.length
+          let points = 50
+          try {
+            if (groupSize >= 7) points = 150
+            else if (groupSize >= 4) points = 100
+            else if (groupSize >= 2) points = 75
+          } catch (e) {
+            logSystemEvent('Erro no cálculo de pontos', 'error', (e as Error).message)
+            points = 50
+          }
+
           const hAction = createAction(
             'captacao',
             `Imóvel captado para grupo de ${groupSize} clientes`,
@@ -2026,7 +2172,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           if (currentUser) addPoints(points, currentUser.id)
 
           const sdrMap = new Map<string, string[]>()
-          demandsToUpdate.forEach((d) => {
+          activeDemands.forEach((d) => {
             if (!sdrMap.has(d.createdBy)) sdrMap.set(d.createdBy, [])
             sdrMap.get(d.createdBy)!.push(d.clientName)
           })
@@ -2064,6 +2210,15 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           if (action === 'encontrei') {
             const existingProps = demand.capturedProperties || []
             const code = payload?.code || `IMV-${Math.floor(Math.random() * 1000)}`
+
+            const isDuplicate =
+              loosePropertiesRef.current.some((p) => p.code === code) ||
+              allDemands.some((d) => d.capturedProperties?.some((p) => p.code === code))
+            if (isDuplicate) {
+              logSystemEvent('Imóvel duplicado detectado', 'warning', `Code: ${code}`)
+              return { success: false, message: 'Este imóvel já foi cadastrado' }
+            }
+
             const seq = existingProps.length + 1
             const hAction = createAction(
               'captacao',
@@ -2169,6 +2324,15 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         },
         submitIndependentCapture: (payload) => {
           const code = payload?.code || `IMV-${Math.floor(Math.random() * 1000)}`
+
+          const isDuplicate =
+            loosePropertiesRef.current.some((p) => p.code === code) ||
+            allDemands.some((d) => d.capturedProperties?.some((p) => p.code === code))
+          if (isDuplicate) {
+            logSystemEvent('Imóvel duplicado', 'warning', `Code: ${code}`)
+            return { success: false, message: 'Este imóvel já foi cadastrado' }
+          }
+
           const hAction = createAction('captacao', 'Imóvel captado como disponível para todos')
 
           const newProp: CapturedProperty = {
@@ -2240,6 +2404,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
             description: `+35 pontos ganhos.`,
             className: 'bg-emerald-600 text-white',
           })
+
+          return { success: true, message: '' }
         },
         claimLooseProperty: (code, demandId) => {
           let success = false

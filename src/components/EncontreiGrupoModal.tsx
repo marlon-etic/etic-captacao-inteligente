@@ -29,13 +29,14 @@ import {
 } from '@/components/ui/select'
 import { BAIRROS_ETIC } from '@/lib/bairros'
 import useAppStore from '@/stores/useAppStore'
+import { useToast } from '@/hooks/use-toast'
 
 const formSchema = z.object({
   code: z.string().min(1, 'Código é obrigatório'),
-  neighborhood: z.string().min(1, 'Bairro é obrigatório'),
-  value: z.coerce.number().positive('Valor deve ser positivo'),
-  bedrooms: z.coerce.number().min(0, 'Inválido'),
-  parkingSpots: z.coerce.number().min(0, 'Inválido'),
+  neighborhood: z.string().min(1, 'Este bairro não está na lista de atuação da Étic Imóveis'),
+  value: z.coerce.number().positive('Valor deve ser um número positivo'),
+  bedrooms: z.coerce.number().int().min(0, 'Valor deve ser um número positivo'),
+  parkingSpots: z.coerce.number().int().min(0, 'Valor deve ser um número positivo'),
   obs: z.string().optional(),
 })
 
@@ -49,6 +50,7 @@ export function EncontreiGrupoModal({
   demandIds: string[]
 }) {
   const { submitGroupCapture } = useAppStore()
+  const { toast } = useToast()
 
   const form = useForm({
     resolver: zodResolver(formSchema),
@@ -56,7 +58,11 @@ export function EncontreiGrupoModal({
   })
 
   const onSubmit = (data: z.infer<typeof formSchema>) => {
-    submitGroupCapture(demandIds, data)
+    const res = submitGroupCapture(demandIds, data)
+    if (!res.success) {
+      // Error is already toasted/logged in store
+      return
+    }
     form.reset()
     onClose()
   }

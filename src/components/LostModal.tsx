@@ -31,7 +31,7 @@ export function LostModal({ open, onOpenChange, onConfirm }: Props) {
 
   const handleConfirm = () => {
     if (!reason) {
-      setError('Selecione um motivo')
+      setError('Selecione um motivo para marcar como perdido')
       return
     }
     setError('')

@@ -38,10 +38,10 @@ const indepSchema = z
   .object({
     tipoVinculacao: z.enum(['vinculado', 'solto'], { required_error: 'Selecione uma opção' }),
     demandId: z.string().optional(),
-    neighborhood: z.string().min(1, 'Selecione um bairro'),
+    neighborhood: z.string().min(1, 'Este bairro não está na lista de atuação da Étic Imóveis'),
     neighborhoodOther: z.string().max(50, 'Máximo 50 caracteres').optional(),
     code: z.string().min(1, 'Obrigatório').max(20, 'Máximo 20 caracteres'),
-    value: z.coerce.number().positive('O valor deve ser positivo'),
+    value: z.coerce.number().positive('Valor deve ser um número positivo'),
     docCompleta: z.boolean().default(false),
   })
   .refine(
@@ -118,11 +118,15 @@ export function IndependentCaptureModal({
         return
       }
     } else {
-      submitIndependentCapture({
+      const res = submitIndependentCapture({
         ...data,
         neighborhood: finalNeighborhood,
         bairro_tipo,
       })
+      if (!res.success) {
+        toast({ title: 'Erro', description: res.message, variant: 'destructive' })
+        return
+      }
     }
     form.reset()
     onClose()

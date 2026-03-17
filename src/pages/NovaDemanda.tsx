@@ -31,16 +31,24 @@ const formSchema = z
     location: z.array(z.string()).min(1, 'Selecione pelo menos um bairro'),
     minBudget: z.coerce
       .number({ invalid_type_error: 'Informe um valor' })
-      .positive('Deve ser maior que zero'),
+      .positive('Valor deve ser um número positivo'),
     maxBudget: z.coerce
       .number({ invalid_type_error: 'Informe um valor' })
-      .positive('Deve ser maior que zero'),
+      .positive('Valor deve ser um número positivo'),
+    bedrooms: z.coerce
+      .number({ invalid_type_error: 'Informe um valor' })
+      .int()
+      .min(0, 'Valor deve ser um número positivo'),
+    parkingSpots: z.coerce
+      .number({ invalid_type_error: 'Informe um valor' })
+      .int()
+      .min(0, 'Valor deve ser um número positivo'),
     description: z
       .string()
       .min(10, 'Descrição deve ter no mínimo 10 caracteres')
       .max(500, 'Descrição no máximo 500 caracteres'),
     timeframe: z.string().min(1, 'Selecione um prazo de aquisição'),
-    type: z.enum(['Venda', 'Aluguel']),
+    type: z.enum(['Venda', 'Aluguel'], { required_error: 'Selecione um tipo' }),
   })
   .refine((data) => data.minBudget < data.maxBudget, {
     message: 'O orçamento máximo deve ser maior que o mínimo',
@@ -60,6 +68,8 @@ export default function NovaDemanda() {
       location: [],
       minBudget: '' as unknown as number,
       maxBudget: '' as unknown as number,
+      bedrooms: '' as unknown as number,
+      parkingSpots: '' as unknown as number,
       description: '',
       timeframe: '',
       type: 'Venda',
@@ -75,6 +85,8 @@ export default function NovaDemanda() {
       location: values.location.join(', '),
       minBudget: values.minBudget,
       maxBudget: values.maxBudget,
+      bedrooms: values.bedrooms,
+      parkingSpots: values.parkingSpots,
       description: values.description,
       timeframe: values.timeframe,
       type: values.type,
@@ -93,6 +105,8 @@ export default function NovaDemanda() {
       location: [],
       minBudget: '' as unknown as number,
       maxBudget: '' as unknown as number,
+      bedrooms: '' as unknown as number,
+      parkingSpots: '' as unknown as number,
       description: '',
       timeframe: '',
       type: 'Venda',
@@ -260,6 +274,34 @@ export default function NovaDemanda() {
                             {...field}
                           />
                         </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="bedrooms"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Dormitórios</FormLabel>
+                      <FormControl>
+                        <Input type="number" placeholder="Ex: 3" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="parkingSpots"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Vagas de Garagem</FormLabel>
+                      <FormControl>
+                        <Input type="number" placeholder="Ex: 2" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
