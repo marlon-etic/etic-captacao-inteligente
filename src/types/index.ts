@@ -228,3 +228,27 @@ export interface AppNotification {
   createdAt?: string
   read?: boolean
 }
+
+export interface GroupComment {
+  id: string
+  groupId: string
+  userId: string
+  userName: string
+  userRole: Role
+  content: string
+  createdAt: string
+}
+
+export interface InactiveGroup {
+  id: string
+  location: string
+  type: string
+  bedrooms: number
+  bathrooms: number
+  parkingSpots: number
+  minBudget: number
+  maxBudget: number
+  totalClients: number
+  closedAt: string
+  outcome: 'Atendido' | 'Perdido'
+}

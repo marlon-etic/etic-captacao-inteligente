@@ -21,6 +21,8 @@ import {
   UserPreferences,
   NotificationType,
   NotificationUrgency,
+  GroupComment,
+  InactiveGroup,
 } from '@/types'
 import { toast } from '@/hooks/use-toast'
 import { ToastAction } from '@/components/ui/toast'
@@ -34,6 +36,8 @@ interface AppState {
   webhookQueue: WebhookEvent[]
   auditLogs: string[]
   notifications: AppNotification[]
+  groupComments: GroupComment[]
+  inactiveGroups: InactiveGroup[]
   markNotificationAsRead: (id: string) => void
   markAllNotificationsAsRead: () => void
   archiveNotification: (id: string) => void
@@ -72,6 +76,7 @@ interface AppState {
     message?: string,
   ) => void
   getMatchesForProperty: (property: CapturedProperty) => { demand: Demand; score: number }[]
+  addGroupComment: (groupId: string, content: string) => void
 }
 
 const defaultStats: UserStats = {
@@ -405,6 +410,70 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     }
     return []
   })
+
+  const [groupComments, setGroupComments] = useState<GroupComment[]>(() => {
+    try {
+      const raw = localStorage.getItem('etic_group_comments')
+      if (raw) return JSON.parse(raw)
+    } catch {}
+    return [
+      {
+        id: 'c1',
+        groupId: 'Pinheiros-Venda-3',
+        userId: '1',
+        userName: 'Ana Silva',
+        userRole: 'captador',
+        content: 'Estou prospectando na região, mas os proprietários estão pedindo acima do valor.',
+        createdAt: new Date(Date.now() - 3600000).toISOString(),
+      },
+    ]
+  })
+
+  const [inactiveGroups] = useState<InactiveGroup[]>([
+    {
+      id: 'ig1',
+      location: 'Moema',
+      type: 'Venda',
+      bedrooms: 3,
+      bathrooms: 2,
+      parkingSpots: 2,
+      minBudget: 800000,
+      maxBudget: 1200000,
+      totalClients: 4,
+      closedAt: new Date(Date.now() - 5 * 86400000).toISOString(),
+      outcome: 'Atendido',
+    },
+    {
+      id: 'ig2',
+      location: 'Pinheiros',
+      type: 'Aluguel',
+      bedrooms: 2,
+      bathrooms: 1,
+      parkingSpots: 1,
+      minBudget: 3000,
+      maxBudget: 4500,
+      totalClients: 2,
+      closedAt: new Date(Date.now() - 15 * 86400000).toISOString(),
+      outcome: 'Perdido',
+    },
+    {
+      id: 'ig3',
+      location: 'Jardins',
+      type: 'Venda',
+      bedrooms: 4,
+      bathrooms: 4,
+      parkingSpots: 3,
+      minBudget: 2000000,
+      maxBudget: 3500000,
+      totalClients: 1,
+      closedAt: new Date(Date.now() - 40 * 86400000).toISOString(),
+      outcome: 'Perdido',
+    },
+  ])
+
+  useEffect(() => {
+    localStorage.setItem('etic_group_comments', JSON.stringify(groupComments))
+  }, [groupComments])
 
   const webhookQueueRef = useRef(webhookQueue)
   const loosePropertiesRef = useRef(looseProperties)
@@ -1697,6 +1766,24 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     [allDemands, currentUser],
   )
 
+  const addGroupComment = useCallback(
+    (groupId: string, content: string) => {
+      if (!currentUser) return
+      const newComment: GroupComment = {
+        id: Math.random().toString(36).substring(2, 9),
+        groupId,
+        userId: currentUser.id,
+        userName: currentUser.name,
+        userRole: currentUser.role,
+        content,
+        createdAt: new Date().toISOString(),
+      }
+      setGroupComments((prev) => [...prev, newComment])
+      addLog(`Novo comentário no grupo ${groupId}`)
+    },
+    [currentUser, addLog],
+  )
+
   const visibleDemands = useMemo(() => {
     if (currentUser?.role === 'corretor' || currentUser?.role === 'sdr') {
       return allDemands.filter((d) => d.createdBy === currentUser.id)
@@ -1715,6 +1802,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         webhookQueue,
         auditLogs,
         notifications,
+        groupComments,
+        inactiveGroups,
+        addGroupComment,
         triggerCron,
         markNotificationAsRead: (id: string) => {
           setNotifications((prev) => {

@@ -11,7 +11,9 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { BookOpen, MapPin, Bed, Check, X, Users, Calendar } from 'lucide-react'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { Textarea } from '@/components/ui/textarea'
+import { BookOpen, MapPin, Bed, Check, X, Users, Calendar, MessageSquare, Send } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { DemandDetailsModal } from './DemandDetailsModal'
 import useAppStore from '@/stores/useAppStore'
@@ -40,7 +42,12 @@ export function GroupedDemandCard({
 }) {
   const [showModal, setShowModal] = useState(false)
   const [selectedDemand, setSelectedDemand] = useState<Demand | null>(null)
-  const { users } = useAppStore()
+  const [newComment, setNewComment] = useState('')
+  const { users, groupComments, addGroupComment } = useAppStore()
+
+  const groupCommentsForThisGroup = groupComments
+    .filter((c) => c.groupId === group.id)
+    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
 
   const formatCurrency = (val: number) =>
     new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 }).format(val)
@@ -78,6 +85,12 @@ export function GroupedDemandCard({
       })
     }
     onAction?.(group.id, actionType)
+  }
+
+  const handleSendComment = () => {
+    if (!newComment.trim()) return
+    addGroupComment(group.id, newComment)
+    setNewComment('')
   }
 
   return (
@@ -154,60 +167,144 @@ export function GroupedDemandCard({
       </Card>
 
       <Dialog open={showModal} onOpenChange={setShowModal}>
-        <DialogContent className="w-full max-w-[calc(100%-32px)] sm:max-w-[700px] h-[85vh] flex flex-col p-0 rounded-[12px] bg-white border-[2px] border-[#1A3A52]">
-          <DialogHeader className="p-4 md:p-6 border-b border-[#E5E5E5] shrink-0 bg-[#F5F5F5] rounded-t-[10px]">
-            <DialogTitle className="text-[18px] md:text-[22px] font-bold flex items-center gap-2 text-[#1A3A52]">
-              <Users className="w-6 h-6 text-[#1A3A52]" />
-              Lista de Clientes do Grupo
+        <DialogContent className="w-full max-w-[calc(100%-32px)] sm:max-w-[700px] h-[85vh] flex flex-col p-0 rounded-[12px] bg-white border-[2px] border-[#1A3A52] overflow-hidden">
+          <DialogHeader className="p-4 md:p-6 border-b border-[#E5E5E5] shrink-0 bg-[#1A3A52] text-white rounded-t-[10px] relative">
+            <DialogTitle className="text-[18px] md:text-[22px] font-bold flex items-center gap-2 text-white">
+              <Users className="w-6 h-6" />
+              Detalhes do Grupo
             </DialogTitle>
-            <DialogDescription className="text-[#333333] text-[14px] mt-1 font-medium">
+            <DialogDescription className="text-white/80 text-[14px] mt-1 font-medium">
               {group.location} • {group.bedrooms} dorm • R$ {formatCurrency(group.minBudget)} a R${' '}
               {formatCurrency(group.maxBudget)}
             </DialogDescription>
           </DialogHeader>
-          <ScrollArea className="flex-1 p-4 md:p-6">
-            <div className="space-y-4">
-              {group.demands.map((d) => (
-                <div
-                  key={d.id}
-                  className="p-4 border-[2px] border-[#E5E5E5] rounded-xl bg-white flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between hover:border-[#1A3A52]/30 transition-colors"
+
+          <Tabs defaultValue="clientes" className="flex-1 flex flex-col min-h-0 bg-[#F5F5F5]">
+            <div className="px-4 pt-4 shrink-0 bg-[#F5F5F5]">
+              <TabsList className="w-full grid grid-cols-2 bg-[#E5E5E5] rounded-[8px] p-1">
+                <TabsTrigger
+                  value="clientes"
+                  className="font-bold data-[state=active]:bg-[#1A3A52] data-[state=active]:text-white rounded-[6px]"
                 >
-                  <div className="flex-1 min-w-0 space-y-1">
-                    <div className="flex items-center gap-2">
-                      <h4 className="font-bold text-[16px] text-[#1A3A52] truncate">
-                        {d.clientName}
-                      </h4>
-                      <Badge
+                  Lista de Clientes
+                </TabsTrigger>
+                <TabsTrigger
+                  value="chat"
+                  className="font-bold data-[state=active]:bg-[#1A3A52] data-[state=active]:text-white rounded-[6px] flex items-center gap-2"
+                >
+                  <MessageSquare className="w-4 h-4" />
+                  Chat da Demanda
+                </TabsTrigger>
+              </TabsList>
+            </div>
+
+            <TabsContent
+              value="clientes"
+              className="flex-1 overflow-hidden m-0 data-[state=active]:flex data-[state=active]:flex-col"
+            >
+              <ScrollArea className="flex-1 p-4 md:p-6">
+                <div className="space-y-4">
+                  {group.demands.map((d) => (
+                    <div
+                      key={d.id}
+                      className="p-4 border-[2px] border-[#E5E5E5] rounded-xl bg-white flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between hover:border-[#1A3A52]/30 transition-colors"
+                    >
+                      <div className="flex-1 min-w-0 space-y-1">
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-bold text-[16px] text-[#1A3A52] truncate">
+                            {d.clientName}
+                          </h4>
+                          <Badge
+                            variant="outline"
+                            className="text-[11px] h-[20px] bg-[#F5F5F5] text-[#333333] border-none px-2 shrink-0"
+                          >
+                            {d.status}
+                          </Badge>
+                        </div>
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-[#333333]">
+                          <span className="flex items-center gap-1.5">
+                            <Users className="w-3.5 h-3.5" /> SDR/Realtor:{' '}
+                            {getUserName(d.createdBy)}
+                          </span>
+                          <span className="flex items-center gap-1.5">
+                            <Calendar className="w-3.5 h-3.5" />{' '}
+                            {new Date(d.createdAt).toLocaleDateString('pt-BR')}
+                          </span>
+                          <span className="font-bold text-[#1A3A52]">
+                            💰 R$ {formatCurrency(d.maxBudget || d.budget || 0)}
+                          </span>
+                        </div>
+                      </div>
+                      <Button
                         variant="outline"
-                        className="text-[11px] h-[20px] bg-[#F5F5F5] text-[#333333] border-none px-2 shrink-0"
+                        className="w-full sm:w-auto border-[2px] border-[#1A3A52] text-[#1A3A52] hover:bg-[#F5F5F5] font-bold"
+                        onClick={() => setSelectedDemand(d)}
                       >
-                        {d.status}
-                      </Badge>
+                        Ver Detalhes
+                      </Button>
                     </div>
-                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-[#333333]">
-                      <span className="flex items-center gap-1.5">
-                        <Users className="w-3.5 h-3.5" /> SDR/Realtor: {getUserName(d.createdBy)}
-                      </span>
-                      <span className="flex items-center gap-1.5">
-                        <Calendar className="w-3.5 h-3.5" />{' '}
-                        {new Date(d.createdAt).toLocaleDateString('pt-BR')}
-                      </span>
-                      <span className="font-bold text-[#1A3A52]">
-                        💰 R$ {formatCurrency(d.maxBudget || d.budget || 0)}
-                      </span>
-                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            </TabsContent>
+
+            <TabsContent
+              value="chat"
+              className="flex-1 overflow-hidden m-0 data-[state=active]:flex data-[state=active]:flex-col"
+            >
+              <div className="flex-1 flex flex-col p-4 md:p-6 gap-4 overflow-hidden bg-white m-4 mt-0 rounded-[12px] border-[2px] border-[#E5E5E5] shadow-sm">
+                <ScrollArea className="flex-1 pr-4">
+                  <div className="space-y-4 pb-4">
+                    {groupCommentsForThisGroup.length === 0 && (
+                      <p className="text-center text-[#999999] text-[14px] font-medium py-8">
+                        Nenhum comentário ainda. Inicie a colaboração!
+                      </p>
+                    )}
+                    {groupCommentsForThisGroup.map((c) => (
+                      <div key={c.id} className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-[14px] text-[#1A3A52]">{c.userName}</span>
+                          <Badge
+                            variant="secondary"
+                            className="text-[10px] h-[20px] px-1.5 capitalize bg-[#E8F0F8] text-[#1A3A52] border-none"
+                          >
+                            {c.userRole}
+                          </Badge>
+                          <span className="text-[12px] text-[#999999] ml-auto">
+                            {new Date(c.createdAt).toLocaleString('pt-BR').slice(0, 16)}
+                          </span>
+                        </div>
+                        <div className="bg-[#F5F5F5] text-[#333333] text-[14px] p-3 rounded-[8px] rounded-tl-none border border-[#E5E5E5]">
+                          {c.content}
+                        </div>
+                      </div>
+                    ))}
                   </div>
+                </ScrollArea>
+                <div className="flex gap-2 pt-4 border-t border-[#E5E5E5] shrink-0">
+                  <Textarea
+                    placeholder="Digite sua mensagem..."
+                    className="min-h-[44px] h-[44px] resize-none border-[2px] border-[#E5E5E5] focus-visible:ring-[#1A3A52]"
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault()
+                        handleSendComment()
+                      }
+                    }}
+                  />
                   <Button
-                    variant="outline"
-                    className="w-full sm:w-auto border-[2px] border-[#1A3A52] text-[#1A3A52] hover:bg-[#F5F5F5] font-bold"
-                    onClick={() => setSelectedDemand(d)}
+                    onClick={handleSendComment}
+                    className="h-[44px] px-4 shrink-0 bg-[#FF9800] hover:bg-[#F57C00] text-white font-bold border-none"
                   >
-                    Ver Detalhes
+                    <Send className="w-4 h-4 mr-2" />
+                    Enviar
                   </Button>
                 </div>
-              ))}
-            </div>
-          </ScrollArea>
+              </div>
+            </TabsContent>
+          </Tabs>
         </DialogContent>
       </Dialog>
 

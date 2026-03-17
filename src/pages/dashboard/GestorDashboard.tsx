@@ -9,12 +9,14 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { useToast } from '@/hooks/use-toast'
 import useAppStore from '@/stores/useAppStore'
 import { MetricsGrid } from '@/components/dashboard/MetricsGrid'
 import { GestorCharts } from '@/components/dashboard/GestorCharts'
 import { PerformanceTable } from '@/components/dashboard/PerformanceTable'
 import { RankingCards } from '@/components/dashboard/RankingCards'
+import { InactiveGroupsTab } from '@/components/dashboard/InactiveGroupsTab'
 import { Demand } from '@/types'
 import { cn } from '@/lib/utils'
 
@@ -22,6 +24,7 @@ export function GestorDashboard() {
   const { currentUser, demands, users } = useAppStore()
   const { toast } = useToast()
 
+  const [activeTab, setActiveTab] = useState('geral')
   const [period, setPeriod] = useState('month')
   const [selectedUser, setSelectedUser] = useState('all')
 
@@ -109,7 +112,7 @@ export function GestorDashboard() {
     setFetchError(false)
     const timer = setTimeout(() => setIsLoading(false), 400)
     return () => clearTimeout(timer)
-  }, [period, selectedUser])
+  }, [period, selectedUser, activeTab])
 
   const handleRefresh = useCallback(() => {
     setIsRefreshing(true)
@@ -185,126 +188,151 @@ export function GestorDashboard() {
           <h1 className="text-xl sm:text-2xl font-black leading-tight">Dashboard Gerencial</h1>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-          <div className="flex flex-col gap-1 w-full sm:w-[150px]">
-            <label htmlFor="period" className="sr-only">
-              Período
-            </label>
-            <Select value={period} onValueChange={setPeriod}>
-              <SelectTrigger id="period" className="min-h-[44px] h-[44px] bg-background w-full">
-                <SelectValue placeholder="Período" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="week">Semana</SelectItem>
-                <SelectItem value="month">Mês</SelectItem>
-                <SelectItem value="year">Ano</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+        {activeTab === 'geral' && (
+          <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+            <div className="flex flex-col gap-1 w-full sm:w-[150px]">
+              <label htmlFor="period" className="sr-only">
+                Período
+              </label>
+              <Select value={period} onValueChange={setPeriod}>
+                <SelectTrigger id="period" className="min-h-[44px] h-[44px] bg-background w-full">
+                  <SelectValue placeholder="Período" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="week">Semana</SelectItem>
+                  <SelectItem value="month">Mês</SelectItem>
+                  <SelectItem value="year">Ano</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-          <div className="flex flex-col gap-1 w-full sm:w-[200px]">
-            <label htmlFor="user" className="sr-only">
-              Usuário
-            </label>
-            <Select value={selectedUser} onValueChange={setSelectedUser}>
-              <SelectTrigger id="user" className="min-h-[44px] h-[44px] bg-background w-full">
-                <SelectValue placeholder="SDR/Corretor" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos Equipe</SelectItem>
-                {users
-                  .filter((u) => u.role === 'sdr' || u.role === 'corretor')
-                  .map((u) => (
-                    <SelectItem key={u.id} value={u.id}>
-                      {u.name}
-                    </SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
-          </div>
+            <div className="flex flex-col gap-1 w-full sm:w-[200px]">
+              <label htmlFor="user" className="sr-only">
+                Usuário
+              </label>
+              <Select value={selectedUser} onValueChange={setSelectedUser}>
+                <SelectTrigger id="user" className="min-h-[44px] h-[44px] bg-background w-full">
+                  <SelectValue placeholder="SDR/Corretor" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos Equipe</SelectItem>
+                  {users
+                    .filter((u) => u.role === 'sdr' || u.role === 'corretor')
+                    .map((u) => (
+                      <SelectItem key={u.id} value={u.id}>
+                        {u.name}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-          <Button
-            variant="outline"
-            onClick={handleRefresh}
-            className="min-h-[44px] h-[44px] w-full sm:w-auto gap-2 font-bold shadow-sm shrink-0"
-            disabled={isRefreshing}
-            aria-label="Atualizar dados do dashboard"
-          >
-            <RefreshCw
-              className={cn('w-4 h-4', isRefreshing && 'animate-spin')}
-              aria-hidden="true"
-            />
-            Atualizar
-          </Button>
-        </div>
+            <Button
+              variant="outline"
+              onClick={handleRefresh}
+              className="min-h-[44px] h-[44px] w-full sm:w-auto gap-2 font-bold shadow-sm shrink-0"
+              disabled={isRefreshing}
+              aria-label="Atualizar dados do dashboard"
+            >
+              <RefreshCw
+                className={cn('w-4 h-4', isRefreshing && 'animate-spin')}
+                aria-hidden="true"
+              />
+              Atualizar
+            </Button>
+          </div>
+        )}
       </div>
 
-      {alerts.length > 0 && (
-        <div className="flex flex-col gap-3 w-full">
-          {alerts.map((alert, i) => (
-            <div
-              key={i}
-              className={cn(
-                'flex items-center min-h-[80px] p-4 rounded-xl border shadow-sm',
-                alert.type === 'critical'
-                  ? 'bg-red-50/80 border-red-200 text-red-900'
-                  : 'bg-yellow-50/80 border-yellow-200 text-yellow-900',
-              )}
-              role="alert"
-            >
-              <div className="mr-4 shrink-0">
-                {alert.type === 'critical' ? (
-                  <AlertCircle className="w-6 h-6 text-red-600" aria-hidden="true" />
-                ) : (
-                  <AlertTriangle className="w-6 h-6 text-yellow-600" aria-hidden="true" />
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold leading-tight truncate">{alert.title}</p>
-                <p className="text-xs md:text-sm opacity-90 mt-1">{alert.description}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="w-full md:w-auto grid grid-cols-2 bg-[#E5E5E5] rounded-[8px] p-1 mb-6">
+          <TabsTrigger value="geral" className="rounded-[6px]">
+            Visão Geral
+          </TabsTrigger>
+          <TabsTrigger value="historico" className="rounded-[6px]">
+            Histórico de Grupos
+          </TabsTrigger>
+        </TabsList>
 
-      {fetchError ? (
-        <Alert variant="destructive">
-          <AlertCircle className="h-5 w-5" aria-hidden="true" />
-          <AlertTitle className="text-sm font-bold">
-            Erro ao carregar dashboard. Tente novamente
-          </AlertTitle>
-        </Alert>
-      ) : isLoading || isRefreshing ? (
-        <div
-          className="min-h-[300px] flex flex-col items-center justify-center space-y-4 w-full"
-          aria-live="polite"
-          aria-busy="true"
+        <TabsContent value="geral" className="m-0 focus-visible:ring-0 focus-visible:outline-none">
+          {alerts.length > 0 && (
+            <div className="flex flex-col gap-3 w-full mb-6">
+              {alerts.map((alert, i) => (
+                <div
+                  key={i}
+                  className={cn(
+                    'flex items-center min-h-[80px] p-4 rounded-xl border shadow-sm',
+                    alert.type === 'critical'
+                      ? 'bg-red-50/80 border-red-200 text-red-900'
+                      : 'bg-yellow-50/80 border-yellow-200 text-yellow-900',
+                  )}
+                  role="alert"
+                >
+                  <div className="mr-4 shrink-0">
+                    {alert.type === 'critical' ? (
+                      <AlertCircle className="w-6 h-6 text-red-600" aria-hidden="true" />
+                    ) : (
+                      <AlertTriangle className="w-6 h-6 text-yellow-600" aria-hidden="true" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold leading-tight truncate">{alert.title}</p>
+                    <p className="text-xs md:text-sm opacity-90 mt-1">{alert.description}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {fetchError ? (
+            <Alert variant="destructive">
+              <AlertCircle className="h-5 w-5" aria-hidden="true" />
+              <AlertTitle className="text-sm font-bold">
+                Erro ao carregar dashboard. Tente novamente
+              </AlertTitle>
+            </Alert>
+          ) : isLoading || isRefreshing ? (
+            <div
+              className="min-h-[300px] flex flex-col items-center justify-center space-y-4 w-full"
+              aria-live="polite"
+              aria-busy="true"
+            >
+              <RefreshCw
+                className="w-10 h-10 animate-spin text-muted-foreground"
+                aria-hidden="true"
+              />
+              <p className="text-sm font-medium text-muted-foreground">Carregando métricas...</p>
+            </div>
+          ) : filteredDemands.length === 0 ? (
+            <div className="min-h-[300px] flex flex-col items-center justify-center border border-dashed rounded-xl bg-muted/10 p-6 w-full text-center">
+              <AlertCircle
+                className="w-12 h-12 mb-4 opacity-50 text-muted-foreground"
+                aria-hidden="true"
+              />
+              <p className="text-foreground text-lg font-bold">
+                Nenhum dado disponível para este período
+              </p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Altere os filtros de data ou usuário para visualizar resultados.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-6 lg:space-y-8 w-full min-w-0">
+              <MetricsGrid current={filteredDemands} previous={prevDemands} period={period} />
+              <GestorCharts demands={filteredDemands} />
+              <PerformanceTable demands={filteredDemands} users={users} />
+              <RankingCards users={users} />
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent
+          value="historico"
+          className="m-0 focus-visible:ring-0 focus-visible:outline-none"
         >
-          <RefreshCw className="w-10 h-10 animate-spin text-muted-foreground" aria-hidden="true" />
-          <p className="text-sm font-medium text-muted-foreground">Carregando métricas...</p>
-        </div>
-      ) : filteredDemands.length === 0 ? (
-        <div className="min-h-[300px] flex flex-col items-center justify-center border border-dashed rounded-xl bg-muted/10 p-6 w-full text-center">
-          <AlertCircle
-            className="w-12 h-12 mb-4 opacity-50 text-muted-foreground"
-            aria-hidden="true"
-          />
-          <p className="text-foreground text-lg font-bold">
-            Nenhum dado disponível para este período
-          </p>
-          <p className="text-sm text-muted-foreground mt-1">
-            Altere os filtros de data ou usuário para visualizar resultados.
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-6 lg:space-y-8 w-full min-w-0">
-          <MetricsGrid current={filteredDemands} previous={prevDemands} period={period} />
-          <GestorCharts demands={filteredDemands} />
-          <PerformanceTable demands={filteredDemands} users={users} />
-          <RankingCards users={users} />
-        </div>
-      )}
+          <InactiveGroupsTab />
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }
