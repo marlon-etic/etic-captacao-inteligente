@@ -56,7 +56,13 @@ export function GroupedDemandCard({
 
   const getUserName = (id?: string) => users.find((u) => u.id === id)?.name || 'Desconhecido'
 
-  const clientCount = group.demands.length
+  // Only count demands that are not lost or finished
+  const activeDemandsInGroup = group.demands.filter(
+    (d) => !['Perdida', 'Impossível', 'Negócio'].includes(d.status),
+  )
+  const clientCount = activeDemandsInGroup.length
+
+  if (clientCount === 0) return null // Hide card if group is empty/inactive
 
   let bgClass = 'bg-[#e3f2fd]'
   let badgeLabel = `🔵 ${clientCount} clientes`
@@ -163,7 +169,7 @@ export function GroupedDemandCard({
       <EncontreiGrupoModal
         isOpen={showCaptureModal}
         onClose={() => setShowCaptureModal(false)}
-        demandIds={group.demands.map((d) => d.id)}
+        demandIds={activeDemandsInGroup.map((d) => d.id)}
       />
 
       <Dialog open={showModal} onOpenChange={setShowModal}>
@@ -204,7 +210,7 @@ export function GroupedDemandCard({
             >
               <ScrollArea className="flex-1 p-4 md:p-6">
                 <div className="space-y-4">
-                  {group.demands.map((d) => (
+                  {activeDemandsInGroup.map((d) => (
                     <div
                       key={d.id}
                       className="p-4 border-[2px] border-[#E5E5E5] rounded-xl bg-white flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between hover:border-[#1A3A52]/30 transition-colors"

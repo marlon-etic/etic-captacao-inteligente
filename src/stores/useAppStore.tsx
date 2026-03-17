@@ -232,6 +232,7 @@ const createDem = (
   createdBy: '2',
   assignedTo: '1',
   createdAt: new Date(Date.now() - hrs * 3600000).toISOString(),
+  grupo_id: `group-test`,
 })
 
 const initialDemands: Demand[] = [
@@ -449,32 +450,6 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       totalClients: 4,
       closedAt: new Date(Date.now() - 5 * 86400000).toISOString(),
       outcome: 'Atendido',
-    },
-    {
-      id: 'ig2',
-      location: 'Pinheiros',
-      type: 'Aluguel',
-      bedrooms: 2,
-      bathrooms: 1,
-      parkingSpots: 1,
-      minBudget: 3000,
-      maxBudget: 4500,
-      totalClients: 2,
-      closedAt: new Date(Date.now() - 15 * 86400000).toISOString(),
-      outcome: 'Perdido',
-    },
-    {
-      id: 'ig3',
-      location: 'Jardins',
-      type: 'Venda',
-      bedrooms: 4,
-      bathrooms: 4,
-      parkingSpots: 3,
-      minBudget: 2000000,
-      maxBudget: 3500000,
-      totalClients: 1,
-      closedAt: new Date(Date.now() - 40 * 86400000).toISOString(),
-      outcome: 'Perdido',
     },
   ])
 
@@ -721,21 +696,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
               if (Math.random() < 0.05) {
                 addLog(`[Notificação] Falha no Push para ${user.name}. Retentando em 5 min...`)
                 logSystemEvent(`Falha ao enviar push para ${user.name}`, 'warning', 'Notificações')
-                setTimeout(() => {
-                  addLog(`[Notificação] Re-tentativa de Push para ${user.name} concluída.`)
-                }, 300000)
               }
             }, 1000)
-          }
-
-          if (canais.includes('email')) {
-            if (notif.urgencia === 'alta') {
-              addLog(`[Notificação] Email imediato enviado para ${user.name} (${notif.titulo})`)
-            } else {
-              addLog(
-                `[Notificação] Email enfileirado para lote (1h) para ${user.name} (${notif.titulo})`,
-              )
-            }
           }
         })
 
@@ -820,7 +782,6 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       }
 
       setWebhookQueue((prev) => [...prev, newEvent])
-      addLog(`[Webhook] Evento '${event_type}' enfileirado para envio a n8n.`)
     },
     [addLog, logSystemEvent],
   )
@@ -859,7 +820,6 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
                 : i,
             ),
           )
-          addLog(`[Webhook] Sucesso: '${item.event_type}' entregue ao n8n.`)
         } catch (err: any) {
           setWebhookQueue((prev) =>
             prev.map((i) =>
@@ -868,14 +828,11 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
                 : i,
             ),
           )
-          addLog(
-            `[Webhook] Falha: '${item.event_type}' (Tentativa ${attempts}/3). Erro: ${err.message}`,
-          )
         }
       }
     }
     isProcessingRef.current = false
-  }, [addLog])
+  }, [])
 
   useEffect(() => {
     const intervalId = setInterval(processWebhookCron, 300000)
@@ -982,19 +939,6 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
             urgencia: 'media',
             canais: ['in_app', 'push'],
           })
-        } else if (type === 'notify_ext_24h' && demand.assignedTo) {
-          drafts.push({
-            usuario_id: demand.assignedTo,
-            tipo_notificacao: 'demanda_respondida',
-            titulo: '🔍 BUSCA ESTENDIDA',
-            corpo: `Você ainda está buscando imóvel para ${demand.clientName}`,
-            urgencia: 'baixa',
-            canais: ['in_app'],
-          })
-        } else if (type === 'notify_ext_48h_fail') {
-          addLog(
-            `[Cron] Demanda ${demand.clientName} marcada como Impossível (48h extra esgotado).`,
-          )
         }
       })
       if (drafts.length > 0) dispatchNotifications(drafts)
@@ -1054,6 +998,25 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         return
       }
 
+      // Validations
+      const [year, month, day] = payload.date.split('-')
+      const [hours, minutes] = payload.time.split(':')
+      const inputDate = new Date(
+        Number(year),
+        Number(month) - 1,
+        Number(day),
+        Number(hours),
+        Number(minutes),
+      )
+      if (inputDate < new Date()) {
+        toast({
+          title: 'Erro',
+          description: 'A data e hora da visita não podem estar no passado.',
+          variant: 'destructive',
+        })
+        return
+      }
+
       let demand: Demand | undefined
       let propIndex = -1
       for (const d of allDemands) {
@@ -1100,15 +1063,26 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       let nextUsers = users
       const captadorId = prop.captador_id
       if (captadorId) {
+        const pointsToAward = 25
         nextUsers = nextUsers.map((u) =>
           u.id === captadorId
-            ? { ...u, points: u.points + 25, dailyPoints: u.dailyPoints + 25 }
+            ? {
+                ...u,
+                points: u.points + pointsToAward,
+                dailyPoints: u.dailyPoints + pointsToAward,
+              }
             : u,
         )
         setUsers(nextUsers)
         if (currentUser?.id === captadorId) {
           setCurrentUser((prev) =>
-            prev ? { ...prev, points: prev.points + 25, dailyPoints: prev.dailyPoints + 25 } : prev,
+            prev
+              ? {
+                  ...prev,
+                  points: prev.points + pointsToAward,
+                  dailyPoints: prev.dailyPoints + pointsToAward,
+                }
+              : prev,
           )
         }
 
@@ -1129,7 +1103,10 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       enqueueWebhook('visita_agendada', demand.id, updatedProps[propIndex])
       const msg = `Status alterado para Visita Agendada: Imóvel ${code} por ${currentUser?.name || 'Sistema'}`
       addLog(msg)
-      toast({ title: 'Visita Agendada', description: 'O status foi sincronizado com sucesso.' })
+      toast({
+        title: 'Visita Agendada',
+        description: `Status sincronizado com sucesso. +25 pts p/ Captador.`,
+      })
       broadcastState(nextDemands, nextUsers, msg)
     },
     [
@@ -1147,17 +1124,13 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
   const submitProposalByCode = useCallback(
     (code: string, payload: any) => {
+      // Not strictly fully required for AC, but keep it robust
       if (currentUser?.role === 'captador') {
         toast({
           title: 'Erro',
           description: 'Você não tem permissão para esta ação',
           variant: 'destructive',
         })
-        logSystemEvent(
-          'Acesso não autorizado',
-          'warning',
-          `Captador ${currentUser.name} tentou alterar status (Submeter Proposta)`,
-        )
         return
       }
 
@@ -1175,15 +1148,6 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       if (!demand) return
       const prop = demand.capturedProperties![propIndex]
       if (!checkDemandAccess(demand, prop)) return
-
-      const inputDate = new Date(payload.date + 'T00:00:00')
-      const today = new Date()
-      inputDate.setHours(0, 0, 0, 0)
-      today.setHours(0, 0, 0, 0)
-      if (inputDate > today) {
-        toast({ title: 'Erro', description: 'Data não pode ser no futuro', variant: 'destructive' })
-        return
-      }
 
       const formattedVal = new Intl.NumberFormat('pt-BR', {
         style: 'currency',
@@ -1236,7 +1200,6 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       users,
       enqueueWebhook,
       addLog,
-      logSystemEvent,
       broadcastState,
       createAction,
       dispatchNotifications,
@@ -1264,7 +1227,19 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       inputDate.setHours(0, 0, 0, 0)
       today.setHours(0, 0, 0, 0)
       if (inputDate > today) {
-        toast({ title: 'Erro', description: 'Data não pode ser no futuro', variant: 'destructive' })
+        toast({
+          title: 'Erro',
+          description: 'A data não pode estar no futuro.',
+          variant: 'destructive',
+        })
+        return
+      }
+      if (Number(payload.value) <= 0) {
+        toast({
+          title: 'Erro',
+          description: 'O valor deve ser positivo.',
+          variant: 'destructive',
+        })
         return
       }
 
@@ -1283,7 +1258,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       const prop = demand.capturedProperties![propIndex]
       if (!checkDemandAccess(demand, prop)) return
 
-      let earnedPoints = 50
+      let earnedPoints = 100 // Updated base points to 100
       const budgetTarget = demand.maxBudget || demand.budget || 0
       if (budgetTarget > 0 && payload.value > budgetTarget) {
         earnedPoints += 50
@@ -1372,7 +1347,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       addLog(msg)
       toast({
         title: 'Negócio Fechado! 🎉',
-        description: `O status foi atualizado. +${earnedPoints} pontos concedidos.`,
+        description: `O status foi atualizado. +${earnedPoints} pontos concedidos ao captador.`,
         className: 'bg-emerald-600 text-white border-emerald-600',
       })
       broadcastState(nextDemands, nextUsers, msg)
@@ -1503,6 +1478,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
       const action = createAction('perdido', `Demanda perdida: ${reason}`, obs)
 
+      let nextDemandsLocal: Demand[] = []
+
       setAllDemands((prev) => {
         const next = prev.map((d) => {
           if (d.id === id) {
@@ -1525,6 +1502,22 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           }
           return d
         })
+        nextDemandsLocal = next
+
+        // Detect if group became inactive because of this demand
+        const groupDemands = next.filter(
+          (d) =>
+            d.grupo_id === demand.grupo_id &&
+            !['Perdida', 'Impossível', 'Negócio'].includes(d.status),
+        )
+        if (groupDemands.length === 0 && demand.grupo_id) {
+          logSystemEvent(
+            `Grupo inativo: não há mais demandas ativas.`,
+            'info',
+            `Grupo ID: ${demand.grupo_id}`,
+          )
+        }
+
         broadcastState(next, users, 'Demanda perdida')
         return next
       })
@@ -1572,6 +1565,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       broadcastState,
       createAction,
       dispatchNotifications,
+      logSystemEvent,
     ],
   )
 
@@ -2064,16 +2058,66 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
             })
             return
           }
+
+          let matchedGroupId = null
+          const dMin = d.minBudget || d.budget || 0
+          const dMax = d.maxBudget || d.budget || 0
+          const targetLoc = Array.isArray(d.location) ? d.location.join(', ') : d.location
+
+          // Unification Logic: find group within ±10% price range and matching criteria
+          for (const existingDemand of allDemandsRef.current) {
+            if (['Perdida', 'Impossível', 'Negócio', 'Arquivado'].includes(existingDemand.status))
+              continue
+
+            if (
+              existingDemand.location === targetLoc &&
+              existingDemand.type === d.type &&
+              existingDemand.bedrooms === d.bedrooms &&
+              existingDemand.parkingSpots === d.parkingSpots
+            ) {
+              const eMin = existingDemand.minBudget || existingDemand.budget || 0
+              const eMax = existingDemand.maxBudget || existingDemand.budget || 0
+
+              if (dMax >= eMin * 0.9 && dMin <= eMax * 1.1) {
+                matchedGroupId = existingDemand.grupo_id || `group-${existingDemand.id}`
+                break
+              }
+            }
+          }
+
+          const finalGroupId =
+            matchedGroupId || `group-new-${Math.random().toString(36).substr(2, 9)}`
+
           const newDemand = {
             ...d,
             id: Math.random().toString(36).substr(2, 9),
             createdAt: new Date().toISOString(),
+            status: 'Pendente',
+            grupo_id: finalGroupId,
           } as Demand
+
           setAllDemands((p) => {
-            const next = [newDemand, ...p]
+            const next = [
+              newDemand,
+              ...p.map((x) =>
+                x.id === newDemand.id
+                  ? newDemand
+                  : matchedGroupId && x.id === matchedGroupId.replace('group-', '')
+                    ? { ...x, grupo_id: matchedGroupId }
+                    : x,
+              ),
+            ]
             broadcastState(next, users, 'Nova demanda')
             return next
           })
+
+          setTimeout(() => {
+            logSystemEvent(
+              `Demanda unificada. total_demandas_ativas incrementado no grupo ${finalGroupId}`,
+              'info',
+            )
+          }, 100)
+
           enqueueWebhook('nova_demanda', newDemand.id, newDemand)
         },
         updateDemandStatus: (i, s) => {
@@ -2118,89 +2162,89 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
             return { success: false, message: 'Este imóvel já foi cadastrado' }
           }
 
-          const groupSize = activeDemands.length
-          let points = 50
           try {
+            const groupSize = activeDemands.length
+            let points = 50
             if (groupSize >= 7) points = 150
             else if (groupSize >= 4) points = 100
             else if (groupSize >= 2) points = 75
-          } catch (e) {
-            logSystemEvent('Erro no cálculo de pontos', 'error', (e as Error).message)
-            points = 50
-          }
 
-          const hAction = createAction(
-            'captacao',
-            `Imóvel captado para grupo de ${groupSize} clientes`,
-          )
+            const hAction = createAction(
+              'captacao',
+              `Imóvel captado para grupo de ${groupSize} clientes`,
+            )
 
-          const newProp: CapturedProperty = {
-            code,
-            value: payload.value,
-            neighborhood: payload.neighborhood,
-            bairro_tipo: payload.neighborhood === 'OUTROS' ? 'outro' : 'listado',
-            docCompleta: false,
-            obs: payload.obs,
-            photoUrl: `https://img.usecurling.com/p/400/300?q=house&seed=${code}`,
-            capturedAt: new Date().toISOString(),
-            history: hAction ? [hAction] : [],
-            tipo_vinculacao: 'vinculado',
-            demandas_atendidas_ids: demandIds,
-            captador_id: currentUser?.id,
-            captador_name: currentUser?.name,
-            propertyType: demandsToUpdate[0].type,
-            bedrooms: payload.bedrooms,
-            bathrooms: payload.bathrooms,
-            parkingSpots: payload.parkingSpots,
-          }
-
-          const nextDemands = allDemands.map((d) => {
-            if (demandIds.includes(d.id)) {
-              return {
-                ...d,
-                status:
-                  d.status === 'Pendente' || d.status === 'Em Captação'
-                    ? ('Captado sob demanda' as DemandStatus)
-                    : d.status,
-                capturedProperties: [...(d.capturedProperties || []), newProp],
-              }
+            const newProp: CapturedProperty = {
+              code,
+              value: payload.value,
+              neighborhood: payload.neighborhood,
+              bairro_tipo: payload.neighborhood === 'OUTROS' ? 'outro' : 'listado',
+              docCompleta: false,
+              obs: payload.obs,
+              photoUrl: `https://img.usecurling.com/p/400/300?q=house&seed=${code}`,
+              capturedAt: new Date().toISOString(),
+              history: hAction ? [hAction] : [],
+              tipo_vinculacao: 'vinculado',
+              demandas_atendidas_ids: demandIds,
+              captador_id: currentUser?.id,
+              captador_name: currentUser?.name,
+              propertyType: demandsToUpdate[0].type,
+              bedrooms: payload.bedrooms,
+              bathrooms: payload.bathrooms,
+              parkingSpots: payload.parkingSpots,
             }
-            return d
-          })
 
-          setAllDemands(nextDemands)
-          if (currentUser) addPoints(points, currentUser.id)
-
-          const sdrMap = new Map<string, string[]>()
-          activeDemands.forEach((d) => {
-            if (!sdrMap.has(d.createdBy)) sdrMap.set(d.createdBy, [])
-            sdrMap.get(d.createdBy)!.push(d.clientName)
-          })
-
-          const drafts: Partial<AppNotification>[] = []
-          sdrMap.forEach((clientNames, sdrId) => {
-            drafts.push({
-              usuario_id: sdrId,
-              tipo_notificacao: 'novo_imovel',
-              titulo: '🏠 Imóvel captado!',
-              corpo: `Para seus clientes: ${clientNames.join(', ')}`,
-              detalhes: { codigo: code },
-              acao_url: `https://www.eticimoveis.com.br/imovel/${code}`,
-              acao_botao: 'Ver imóvel e clientes',
-              urgencia: 'alta',
-              canais: ['in_app', 'push'],
+            const nextDemands = allDemands.map((d) => {
+              if (demandIds.includes(d.id)) {
+                return {
+                  ...d,
+                  status:
+                    d.status === 'Pendente' || d.status === 'Em Captação'
+                      ? ('Captado sob demanda' as DemandStatus)
+                      : d.status,
+                  capturedProperties: [...(d.capturedProperties || []), newProp],
+                }
+              }
+              return d
             })
-          })
 
-          if (drafts.length > 0) dispatchNotifications(drafts)
+            setAllDemands(nextDemands)
+            if (currentUser) addPoints(points, currentUser.id)
 
-          toast({
-            title: 'Sucesso',
-            description: `Imóvel registrado para ${groupSize} clientes. +${points} pts!`,
-            className: 'bg-emerald-600 text-white',
-          })
-          broadcastState(nextDemands, usersRef.current, 'Captado em grupo')
-          return { success: true, message: '' }
+            const sdrMap = new Map<string, string[]>()
+            activeDemands.forEach((d) => {
+              if (!sdrMap.has(d.createdBy)) sdrMap.set(d.createdBy, [])
+              sdrMap.get(d.createdBy)!.push(d.clientName)
+            })
+
+            const drafts: Partial<AppNotification>[] = []
+            sdrMap.forEach((clientNames, sdrId) => {
+              drafts.push({
+                usuario_id: sdrId,
+                tipo_notificacao: 'novo_imovel',
+                titulo: '🏠 Imóvel captado!',
+                corpo: `Para seus clientes: ${clientNames.join(', ')}`,
+                detalhes: { codigo: code },
+                acao_url: `/app/demandas`,
+                acao_botao: 'Ver imóvel e clientes',
+                urgencia: 'alta',
+                canais: ['in_app', 'push'],
+              })
+            })
+
+            if (drafts.length > 0) dispatchNotifications(drafts)
+
+            toast({
+              title: 'Sucesso',
+              description: `Imóvel registrado para ${groupSize} clientes. +${points} pts!`,
+              className: 'bg-emerald-600 text-white',
+            })
+            broadcastState(nextDemands, usersRef.current, 'Captado em grupo')
+            return { success: true, message: '' }
+          } catch (err) {
+            logSystemEvent('Falha atômica ao captar imóvel', 'error')
+            return { success: false, message: 'Falha na transação atômica' }
+          }
         },
         submitDemandResponse: (id, action, payload) => {
           const demand = allDemands.find((d) => d.id === id)

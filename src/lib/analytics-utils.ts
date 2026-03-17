@@ -65,6 +65,15 @@ export function generateAnalyticsMockDemands(baseId: string): Demand[] {
     'Sobrado reformado',
     'Sala comercial',
   ]
+  const statuses = [
+    'Pendente',
+    'Pendente',
+    'Captado sob demanda',
+    'Visita',
+    'Negócio',
+    'Perdida',
+    'Perdida',
+  ]
   const res: Demand[] = []
   const now = Date.now()
 
@@ -81,7 +90,7 @@ export function generateAnalyticsMockDemands(baseId: string): Demand[] {
       bedrooms: (i % 4) + 1,
       parkingSpots: i % 3,
       type: isVenda ? 'Venda' : 'Aluguel',
-      status: 'Pendente',
+      status: statuses[i % statuses.length] as any,
       createdBy: '1',
       createdAt: new Date(now - Math.random() * 45 * 86400000).toISOString(),
       description: descs[i % descs.length],

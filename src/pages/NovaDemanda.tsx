@@ -28,7 +28,7 @@ const formSchema = z
       .min(3, 'Nome deve ter no mínimo 3 caracteres')
       .max(100, 'Nome no máximo de 100 caracteres'),
     clientEmail: z.string().email('Insira um e-mail válido'),
-    location: z.array(z.string()).min(1, 'Selecione pelo menos um bairro'),
+    location: z.array(z.string()).min(1, 'Selecione pelo menos um bairro da lista da Étic'),
     minBudget: z.coerce
       .number({ invalid_type_error: 'Informe um valor' })
       .positive('Valor deve ser um número positivo'),
@@ -38,11 +38,11 @@ const formSchema = z
     bedrooms: z.coerce
       .number({ invalid_type_error: 'Informe um valor' })
       .int()
-      .min(0, 'Valor deve ser um número positivo'),
+      .min(0, 'Valor deve ser 0 ou positivo'),
     parkingSpots: z.coerce
       .number({ invalid_type_error: 'Informe um valor' })
       .int()
-      .min(0, 'Valor deve ser um número positivo'),
+      .min(0, 'Valor deve ser 0 ou positivo'),
     description: z
       .string()
       .min(10, 'Descrição deve ter no mínimo 10 caracteres')
@@ -95,8 +95,9 @@ export default function NovaDemanda() {
 
     toast({
       title: 'Demanda registrada!',
-      description: 'Os captadores foram notificados.',
+      description: 'A demanda foi validada e vinculada à fila com sucesso.',
       variant: 'default',
+      className: 'bg-emerald-600 text-white border-emerald-600',
     })
 
     form.reset({

@@ -76,10 +76,10 @@ export function useDemandGrouping({ demands, filters }: GroupingOptions) {
           d.isPrioritized,
       )
 
+      // Use the actual grupo_id defined by the store's Unification Logic
       const potentialGroups = new Map<string, Demand[]>()
       activeForGrouping.forEach((d) => {
-        // Grouping logic based on identical: Location, Typology (type), Bedrooms, and Parking Spots
-        const key = `${d.location}|${d.type}|${d.bedrooms || 0}|${d.parkingSpots || 0}`
+        const key = d.grupo_id || `legacy-${d.id}`
         if (!potentialGroups.has(key)) potentialGroups.set(key, [])
         potentialGroups.get(key)!.push(d)
       })
@@ -87,59 +87,27 @@ export function useDemandGrouping({ demands, filters }: GroupingOptions) {
       const groups: GroupedDemand[] = []
       const ungrouped: Demand[] = []
 
-      potentialGroups.forEach((groupDemands) => {
+      potentialGroups.forEach((groupDemands, key) => {
         if (groupDemands.length === 1) {
           ungrouped.push(groupDemands[0])
           return
         }
 
-        const budgetGroups: Demand[][] = []
-        groupDemands.forEach((d) => {
-          let placed = false
-          try {
-            const dMin = d.minBudget || d.budget || 0
-            const dMax = d.maxBudget || d.budget || 0
+        const minB = Math.min(...groupDemands.map((d) => d.minBudget || d.budget || 0))
+        const maxB = Math.max(...groupDemands.map((d) => d.maxBudget || d.budget || 0))
 
-            for (const bg of budgetGroups) {
-              const bgMin = Math.min(...bg.map((x) => x.minBudget || x.budget || 0))
-              const bgMax = Math.max(...bg.map((x) => x.maxBudget || x.budget || 0))
-
-              // Value overlap condition (±10%) strictly applied
-              if (dMax >= bgMin * 0.9 && dMin <= bgMax * 1.1) {
-                bg.push(d)
-                placed = true
-                break
-              }
-            }
-          } catch (e) {
-            logSystemEvent?.(
-              `Erro no cálculo de overlap de valor: ${(e as Error).message}`,
-              'error',
-              `Demanda ${d.id}`,
-            )
-          }
-
-          if (!placed) budgetGroups.push([d])
-        })
-
-        budgetGroups.forEach((bg) => {
-          if (bg.length > 1) {
-            groups.push({
-              id: `group-${bg[0].id}-${Math.random().toString(36).substr(2, 5)}`,
-              location: bg[0].location,
-              type: bg[0].type,
-              bedrooms: bg[0].bedrooms || 0,
-              bathrooms: bg[0].bathrooms || 0,
-              parkingSpots: bg[0].parkingSpots || 0,
-              minBudget: Math.min(...bg.map((d) => d.minBudget || d.budget || 0)),
-              maxBudget: Math.max(...bg.map((d) => d.maxBudget || d.budget || 0)),
-              demands: bg,
-              oldestDate: Math.min(...bg.map((d) => new Date(d.createdAt).getTime())),
-              tier: bg.length >= 7 ? 1 : bg.length >= 4 ? 2 : 3,
-            })
-          } else {
-            ungrouped.push(bg[0])
-          }
+        groups.push({
+          id: key,
+          location: groupDemands[0].location,
+          type: groupDemands[0].type,
+          bedrooms: groupDemands[0].bedrooms || 0,
+          bathrooms: groupDemands[0].bathrooms || 0,
+          parkingSpots: groupDemands[0].parkingSpots || 0,
+          minBudget: minB,
+          maxBudget: maxB,
+          demands: groupDemands,
+          oldestDate: Math.min(...groupDemands.map((d) => new Date(d.createdAt).getTime())),
+          tier: groupDemands.length >= 7 ? 1 : groupDemands.length >= 4 ? 2 : 3,
         })
       })
 

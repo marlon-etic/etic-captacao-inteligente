@@ -51,13 +51,14 @@ export function LostModal({ open, onOpenChange, onConfirm }: Props) {
         }
       }}
     >
-      <DialogContent className="w-full max-w-[calc(100%-32px)] sm:max-w-[400px] p-4 md:p-6 rounded-xl">
+      <DialogContent className="w-full max-w-[calc(100%-32px)] sm:max-w-[400px] p-4 md:p-6 rounded-xl border-[2px] border-[#F44336]/20">
         <DialogHeader className="space-y-3">
-          <DialogTitle className="flex items-center gap-2 text-[16px] md:text-[18px] lg:text-[20px] font-bold leading-[24px] md:leading-[28px] lg:leading-[30px]">
-            ❌ Marcar como Perdida
+          <DialogTitle className="flex items-center gap-2 text-[16px] md:text-[18px] lg:text-[20px] font-bold leading-[24px] md:leading-[28px] lg:leading-[30px] text-[#1A3A52]">
+            ❌ Marcar Demanda como Perdida
           </DialogTitle>
           <DialogDescription className="text-[14px] md:text-[14px] lg:text-[14px] leading-[20px] text-[#333333]">
-            Por que esta demanda foi perdida?
+            Por que esta demanda foi perdida? (Esta ação diminuirá a contagem de clientes no grupo
+            ativo).
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4 md:py-6">
@@ -127,7 +128,7 @@ export function LostModal({ open, onOpenChange, onConfirm }: Props) {
             variant="destructive"
             className="w-full sm:w-[48%] min-h-[48px] md:min-h-[44px] lg:min-h-[40px] text-[14px] font-bold leading-[20px]"
           >
-            ✅ Confirmar
+            ✅ Confirmar Perda
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -7,6 +7,7 @@ import { Demand } from '@/types'
 import { cn } from '@/lib/utils'
 import useAppStore from '@/stores/useAppStore'
 import { DemandDetailsModal } from '@/components/DemandDetailsModal'
+import { LostModal } from '@/components/LostModal'
 import { useSlaCountdown, useTimeElapsed } from '@/hooks/useTimeElapsed'
 import { Building2, Home } from 'lucide-react'
 
@@ -28,8 +29,9 @@ const InfoItem = ({ label, value }: { label: string; value: React.ReactNode }) =
 )
 
 export function DemandCard({ demand, index, onAction }: DemandCardProps) {
-  const { users, logSolicitorContactAttempt } = useAppStore()
+  const { users, logSolicitorContactAttempt, markDemandLost, currentUser } = useAppStore()
   const [showDetails, setShowDetails] = useState(false)
+  const [showLostModal, setShowLostModal] = useState(false)
   const prevStatus = useRef(demand.status)
   const [isJustLost, setIsJustLost] = useState(false)
   const [isJustPrioritized, setIsJustPrioritized] = useState(false)
@@ -75,11 +77,17 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
   const isPrioritized = demand.isPrioritized && !isLost
   const isNew = hoursElapsed <= 24 && isPending && !isLost && !isPrioritized
 
+  const canMarkLost =
+    !isLost &&
+    (currentUser?.role === 'admin' ||
+      currentUser?.role === 'gestor' ||
+      (demand.createdBy === currentUser?.id &&
+        (currentUser?.role === 'sdr' || currentUser?.role === 'corretor')))
+
   let cardBg = 'bg-[#FFFFFF]'
   if (isLost) cardBg = 'bg-[#F5F5F5] opacity-80'
-  else if (isPrioritized)
-    cardBg = 'bg-[#ffebee]' // very light red for priority
-  else if (isNew) cardBg = 'bg-[#e8f5e9]' // very light green for new
+  else if (isPrioritized) cardBg = 'bg-[#ffebee]'
+  else if (isNew) cardBg = 'bg-[#e8f5e9]'
 
   let statusBadge = null
   if (isLost) {
@@ -106,7 +114,6 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
       </Badge>
     )
   } else {
-    // Dynamic status badge mapping
     let bgCol = 'bg-[#2E5F8A]'
     let textCol = 'text-[#FFFFFF]'
 
@@ -171,7 +178,6 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
           </div>
         )}
 
-        {/* Section 1: Type & Status Badges */}
         <div className="flex justify-between items-start mb-4 gap-2 z-0 relative">
           <div
             className={cn(
@@ -200,7 +206,6 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
           </div>
         </div>
 
-        {/* Section 2: Title & Countdown */}
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start pb-4 z-0 relative">
           <h3 className="text-[20px] font-bold text-[#1A3A52] break-words whitespace-normal leading-tight m-0 pr-2">
             {demand.clientName}
@@ -221,7 +226,6 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
           )}
         </div>
 
-        {/* Section 3: Progress Bar */}
         {isPending && !isLost && (
           <div className="pb-4 z-0 relative">
             <Progress
@@ -232,7 +236,6 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
           </div>
         )}
 
-        {/* Section 4: Primary Information Grid */}
         <div
           className={cn(
             'grid grid-cols-1 min-[480px]:grid-cols-2 gap-[16px] py-4 border-t flex-1 z-0 relative',
@@ -254,7 +257,6 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
           <InfoItem label="📅 Criado há" value={timeElapsedText} />
         </div>
 
-        {/* Section 5: Action Buttons Command Center */}
         <div
           className={cn(
             'flex flex-col min-[480px]:flex-row flex-wrap gap-[8px] pt-4 mt-auto border-t shrink-0 z-0 relative',
@@ -270,26 +272,42 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
           >
             Ver Detalhes
           </Button>
-          <Button
-            className={cn(
-              'h-auto min-h-[44px] px-[12px] py-[8px] w-full min-[480px]:flex-1 font-bold whitespace-normal break-words text-[14px]',
-              btnSolid,
-            )}
-            onClick={() => onAction?.(demand.id, 'encontrei')}
-            disabled={isLost}
-          >
-            Encontrei
-          </Button>
-          <Button
-            className={cn(
-              'h-auto min-h-[44px] px-[12px] py-[8px] w-full min-[480px]:flex-1 font-bold whitespace-normal break-words text-[14px]',
-              btnOutline,
-            )}
-            onClick={() => onAction?.(demand.id, 'nao_encontrei')}
-            disabled={isLost}
-          >
-            Não Encontrei
-          </Button>
+
+          {currentUser?.role === 'captador' && (
+            <>
+              <Button
+                className={cn(
+                  'h-auto min-h-[44px] px-[12px] py-[8px] w-full min-[480px]:flex-1 font-bold whitespace-normal break-words text-[14px]',
+                  btnSolid,
+                )}
+                onClick={() => onAction?.(demand.id, 'encontrei')}
+                disabled={isLost}
+              >
+                Encontrei
+              </Button>
+              <Button
+                className={cn(
+                  'h-auto min-h-[44px] px-[12px] py-[8px] w-full min-[480px]:flex-1 font-bold whitespace-normal break-words text-[14px]',
+                  btnOutline,
+                )}
+                onClick={() => onAction?.(demand.id, 'nao_encontrei')}
+                disabled={isLost}
+              >
+                Não Encontrei
+              </Button>
+            </>
+          )}
+
+          {canMarkLost && (
+            <Button
+              variant="destructive"
+              className="h-auto min-h-[44px] px-[12px] py-[8px] w-full min-[480px]:flex-1 font-bold whitespace-normal break-words text-[14px]"
+              onClick={() => setShowLostModal(true)}
+            >
+              Marcar Perdida
+            </Button>
+          )}
+
           <Button
             className={cn(
               'h-auto min-h-[44px] px-[12px] py-[8px] w-full min-[480px]:flex-1 font-bold whitespace-normal break-words text-[14px]',
@@ -309,6 +327,12 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
       </Card>
 
       <DemandDetailsModal open={showDetails} onOpenChange={setShowDetails} demand={demand} />
+
+      <LostModal
+        open={showLostModal}
+        onOpenChange={setShowLostModal}
+        onConfirm={(reason, obs) => markDemandLost(demand.id, reason, obs)}
+      />
     </div>
   )
 }

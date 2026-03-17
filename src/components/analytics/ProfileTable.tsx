@@ -49,9 +49,16 @@ export function ProfileTable({ demands, selectedNeighborhood, onClearNeighborhoo
           vagas: d.parkingSpots || 0,
           tipo: d.type,
           qtd: 0,
+          statusPerdida: 0,
+          statusCaptada: 0,
         })
       }
-      map.get(key).qtd++
+      const entry = map.get(key)
+      entry.qtd++
+      if (d.status === 'Perdida') entry.statusPerdida++
+      if (['Captado sob demanda', 'Visita', 'Proposta', 'Negócio'].includes(d.status)) {
+        entry.statusCaptada++
+      }
     })
 
     return Array.from(map.values()).sort((a, b) => b.qtd - a.qtd)
@@ -68,7 +75,7 @@ export function ProfileTable({ demands, selectedNeighborhood, onClearNeighborhoo
             Perfil de Imóvel Mais Buscado
           </h3>
           <p className="text-[12px] text-[#999999] font-medium">
-            Agrupamento detalhado de demandas
+            Agrupamento detalhado de demandas com taxa de conversão e perda.
           </p>
         </div>
         <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -109,12 +116,14 @@ export function ProfileTable({ demands, selectedNeighborhood, onClearNeighborhoo
               <TableHead className="font-bold text-[#333333] text-center">Vagas</TableHead>
               <TableHead className="font-bold text-[#333333]">Tipo</TableHead>
               <TableHead className="font-bold text-[#1A3A52] text-center">Qtd</TableHead>
+              <TableHead className="font-bold text-[#4CAF50] text-center">Captados</TableHead>
+              <TableHead className="font-bold text-[#F44336] text-center">Perdidos</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {paginated.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center text-[#999999] font-medium">
+                <TableCell colSpan={9} className="h-24 text-center text-[#999999] font-medium">
                   Nenhum perfil encontrado com os filtros atuais.
                 </TableCell>
               </TableRow>
@@ -134,6 +143,12 @@ export function ProfileTable({ demands, selectedNeighborhood, onClearNeighborhoo
                     </span>
                   </TableCell>
                   <TableCell className="text-center font-black text-[#1A3A52]">{row.qtd}</TableCell>
+                  <TableCell className="text-center font-bold text-[#4CAF50]">
+                    {row.statusCaptada}
+                  </TableCell>
+                  <TableCell className="text-center font-bold text-[#F44336]">
+                    {row.statusPerdida}
+                  </TableCell>
                 </TableRow>
               ))
             )}

@@ -32,17 +32,19 @@ import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { Demand } from '@/types'
 import { BAIRROS_ETIC } from '@/lib/bairros'
+import { useToast } from '@/hooks/use-toast'
+import useAppStore from '@/stores/useAppStore'
 
 const encontreiSchema = z
   .object({
     value: z.coerce.number().positive('O valor deve ser um número positivo'),
-    neighborhood: z.string().min(1, 'Selecione um bairro'),
+    neighborhood: z.string().min(1, 'Este bairro não está na lista de atuação da Étic Imóveis'),
     neighborhoodOther: z.string().max(50, 'Máximo 50 caracteres').optional(),
     code: z
       .string()
       .min(1, 'Obrigatório')
       .max(20, 'Máximo 20 caracteres')
-      .regex(/^[a-zA-Z0-9]+$/, 'Apenas letras e números'),
+      .regex(/^[a-zA-Z0-9-]+$/, 'Apenas letras, números e hifens'),
     docCompleta: z.boolean().default(false),
     obs: z.string().optional(),
   })
@@ -75,10 +77,15 @@ const REASONS = [
 function EncontreiForm({
   onSubmit,
   onClose,
+  demandId,
 }: {
   onSubmit: (data: any) => void
   onClose: () => void
+  demandId: string
 }) {
+  const { submitDemandResponse } = useAppStore()
+  const { toast } = useToast()
+
   const form = useForm({
     resolver: zodResolver(encontreiSchema),
     mode: 'onChange',
@@ -99,11 +106,20 @@ function EncontreiForm({
       data.neighborhood === 'OUTROS' ? data.neighborhoodOther.trim() : data.neighborhood
     const bairro_tipo = data.neighborhood === 'OUTROS' ? 'outro' : 'listado'
 
-    onSubmit({
+    const payload = {
       ...data,
       neighborhood: finalNeighborhood,
       bairro_tipo,
-    })
+    }
+
+    const res = submitDemandResponse(demandId, 'encontrei', payload)
+    if (!res.success) {
+      toast({ title: 'Atenção', description: res.message, variant: 'destructive' })
+      return
+    }
+
+    onSubmit(payload)
+    onClose()
   }
 
   return (
@@ -220,7 +236,9 @@ function EncontreiForm({
           <Button type="button" variant="outline" onClick={onClose}>
             Cancelar
           </Button>
-          <Button type="submit">Registrar Imóvel</Button>
+          <Button type="submit" className="bg-[#4CAF50] hover:bg-[#388E3C] text-white font-bold">
+            Registrar Imóvel
+          </Button>
         </div>
       </form>
     </Form>
@@ -230,18 +248,34 @@ function EncontreiForm({
 function NaoEncontreiForm({
   onSubmit,
   onClose,
+  demandId,
 }: {
   onSubmit: (data: any) => void
   onClose: () => void
+  demandId: string
 }) {
+  const { submitDemandResponse } = useAppStore()
+  const { toast } = useToast()
+
   const form = useForm({
     resolver: zodResolver(naoEncontreiSchema),
     defaultValues: { reason: '', continueSearch: true },
   })
 
+  const handleFormSubmit = (data: any) => {
+    const res = submitDemandResponse(demandId, 'nao_encontrei', data)
+    if (!res.success) {
+      toast({ title: 'Atenção', description: res.message, variant: 'destructive' })
+      return
+    }
+
+    onSubmit(data)
+    onClose()
+  }
+
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4">
         <FormField
           control={form.control}
           name="reason"
@@ -329,9 +363,9 @@ export function DemandActionModal({
         </DialogHeader>
         <div className="mt-2">
           {actionType === 'encontrei' ? (
-            <EncontreiForm onSubmit={onConfirm} onClose={onClose} />
+            <EncontreiForm onSubmit={onConfirm} onClose={onClose} demandId={demand.id} />
           ) : (
-            <NaoEncontreiForm onSubmit={onConfirm} onClose={onClose} />
+            <NaoEncontreiForm onSubmit={onConfirm} onClose={onClose} demandId={demand.id} />
           )}
         </div>
       </DialogContent>

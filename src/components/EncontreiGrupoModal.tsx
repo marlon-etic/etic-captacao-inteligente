@@ -32,11 +32,11 @@ import useAppStore from '@/stores/useAppStore'
 import { useToast } from '@/hooks/use-toast'
 
 const formSchema = z.object({
-  code: z.string().min(1, 'Código é obrigatório'),
+  code: z.string().min(1, 'Código é obrigatório').max(20, 'Máximo 20 caracteres'),
   neighborhood: z.string().min(1, 'Este bairro não está na lista de atuação da Étic Imóveis'),
   value: z.coerce.number().positive('Valor deve ser um número positivo'),
-  bedrooms: z.coerce.number().int().min(0, 'Valor deve ser um número positivo'),
-  parkingSpots: z.coerce.number().int().min(0, 'Valor deve ser um número positivo'),
+  bedrooms: z.coerce.number().int().min(0, 'Valor deve ser 0 ou positivo'),
+  parkingSpots: z.coerce.number().int().min(0, 'Valor deve ser 0 ou positivo'),
   obs: z.string().optional(),
 })
 
@@ -60,7 +60,7 @@ export function EncontreiGrupoModal({
   const onSubmit = (data: z.infer<typeof formSchema>) => {
     const res = submitGroupCapture(demandIds, data)
     if (!res.success) {
-      // Error is already toasted/logged in store
+      toast({ title: 'Atenção', description: res.message, variant: 'destructive' })
       return
     }
     form.reset()
@@ -74,7 +74,7 @@ export function EncontreiGrupoModal({
         if (!v) onClose()
       }}
     >
-      <DialogContent>
+      <DialogContent className="sm:max-w-[450px]">
         <DialogHeader>
           <DialogTitle className="text-[#1A3A52] font-bold text-[18px]">
             ✅ ENCONTREI IMÓVEL PARA ESTE GRUPO
@@ -93,7 +93,7 @@ export function EncontreiGrupoModal({
                   <FormItem>
                     <FormLabel>Código do Imóvel</FormLabel>
                     <FormControl>
-                      <Input {...field} />
+                      <Input placeholder="Ex: AP1023" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -172,7 +172,7 @@ export function EncontreiGrupoModal({
                 <FormItem>
                   <FormLabel>Observações (Opcional)</FormLabel>
                   <FormControl>
-                    <Textarea {...field} />
+                    <Textarea className="resize-none h-20" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
