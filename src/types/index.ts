@@ -179,15 +179,10 @@ export interface Demand {
   data_priorizacao?: string
   motivo_priorizacao?: string
   data_perda?: string
-  motivo_perda?:
-    | 'desistiu'
-    | 'alugou'
-    | 'comprou'
-    | 'fora_mercado'
-    | 'mudou_ideia'
-    | 'outro'
-    | string
+  motivo_perda?: string
   observacoes_perda?: string
+  perdida_por?: string
+  perdida_por_tipo?: string
   grupo_id?: string
   posicao_no_grupo?: number
 }

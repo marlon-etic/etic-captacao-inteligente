@@ -1450,109 +1450,126 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
   const markDemandLost = useCallback(
     (id: string, reason: string, obs?: string) => {
-      const demand = allDemands.find((d) => d.id === id)
-      if (!demand) return
-      if (
-        demand.createdBy !== currentUser?.id &&
-        currentUser?.role !== 'admin' &&
-        currentUser?.role !== 'gestor'
-      ) {
-        toast({
-          title: 'Erro',
-          description: 'Você não tem permissão para esta ação',
-          variant: 'destructive',
-        })
-        return
-      }
-
-      if (!reason) {
-        toast({
-          title: 'Erro',
-          description: 'Selecione um motivo para marcar como perdido',
-          variant: 'destructive',
-        })
-        return
-      }
-
-      const action = createAction('perdido', `Demanda perdida: ${reason}`, obs)
-
-      let nextDemandsLocal: Demand[] = []
-
-      setAllDemands((prev) => {
-        const next = prev.map((d) => {
-          if (d.id === id) {
-            const updated = {
-              ...d,
-              status: 'Perdida' as DemandStatus,
-              lostReason: reason,
-              lostObs: obs,
-              motivo_perda: reason,
-              observacoes_perda: obs,
-              data_perda: new Date().toISOString(),
-            }
-            if (updated.capturedProperties && action) {
-              updated.capturedProperties = updated.capturedProperties.map((p) => ({
-                ...p,
-                history: [action, ...(p.history || [])],
-              }))
-            }
-            return updated
-          }
-          return d
-        })
-        nextDemandsLocal = next
-
-        // Detect if group became inactive because of this demand
-        const groupDemands = next.filter(
-          (d) =>
-            d.grupo_id === demand.grupo_id &&
-            !['Perdida', 'Impossível', 'Negócio'].includes(d.status),
-        )
-        if (groupDemands.length === 0 && demand.grupo_id) {
-          logSystemEvent(
-            `Grupo inativo: não há mais demandas ativas.`,
-            'info',
-            `Grupo ID: ${demand.grupo_id}`,
-          )
+      try {
+        const demand = allDemands.find((d) => d.id === id)
+        if (!demand) {
+          toast({
+            title: 'Erro',
+            description: 'Erro ao processar. Contate suporte',
+            variant: 'destructive',
+          })
+          return
+        }
+        if (
+          demand.createdBy !== currentUser?.id &&
+          currentUser?.role !== 'admin' &&
+          currentUser?.role !== 'gestor'
+        ) {
+          toast({
+            title: 'Erro',
+            description: 'Você não tem permissão para esta ação',
+            variant: 'destructive',
+          })
+          return
         }
 
-        broadcastState(next, users, 'Demanda perdida')
-        return next
-      })
+        if (!reason) {
+          toast({
+            title: 'Erro',
+            description: 'Selecione um motivo para marcar como perdido',
+            variant: 'destructive',
+          })
+          return
+        }
 
-      const activeCaptadores = new Set<string>()
-      if (demand.assignedTo) activeCaptadores.add(demand.assignedTo)
-      demand.capturedProperties?.forEach((p) => {
-        if (p.captador_id) activeCaptadores.add(p.captador_id)
-      })
+        const action = createAction('perdido', `Demanda perdida: ${reason}`, obs)
 
-      const drafts: Partial<AppNotification>[] = Array.from(activeCaptadores).map((uId) => ({
-        usuario_id: uId,
-        tipo_notificacao: 'perdido',
-        titulo: `⚫ DEMANDA PERDIDA: ${demand.clientName} em ${demand.location} - Motivo: ${reason}`,
-        corpo: `A demanda de ${demand.clientName} em ${demand.location} foi perdida.`,
-        detalhes: { motivo: reason },
-        urgencia: 'baixa',
-        canais: ['in_app'],
-      }))
+        let nextDemandsLocal: Demand[] = []
 
-      if (currentUser?.role === 'captador' && demand.createdBy) {
-        drafts.push({
-          usuario_id: demand.createdBy,
+        setAllDemands((prev) => {
+          const next = prev.map((d) => {
+            if (d.id === id) {
+              const updated = {
+                ...d,
+                status: 'Perdida' as DemandStatus,
+                lostReason: reason,
+                lostObs: obs,
+                motivo_perda: reason,
+                observacoes_perda: obs,
+                data_perda: new Date().toISOString(),
+                perdida_por: currentUser?.id,
+                perdida_por_tipo: currentUser?.role,
+              }
+              if (updated.capturedProperties && action) {
+                updated.capturedProperties = updated.capturedProperties.map((p) => ({
+                  ...p,
+                  history: [action, ...(p.history || [])],
+                }))
+              }
+              return updated
+            }
+            return d
+          })
+          nextDemandsLocal = next
+
+          // Detect if group became inactive because of this demand
+          const groupDemands = next.filter(
+            (d) =>
+              d.grupo_id === demand.grupo_id &&
+              !['Perdida', 'Impossível', 'Negócio'].includes(d.status),
+          )
+          if (groupDemands.length === 0 && demand.grupo_id) {
+            logSystemEvent(
+              `Grupo inativo: não há mais demandas ativas.`,
+              'info',
+              `Grupo ID: ${demand.grupo_id}`,
+            )
+          }
+
+          broadcastState(next, users, 'Demanda perdida')
+          return next
+        })
+
+        const activeCaptadores = new Set<string>()
+        if (demand.assignedTo) activeCaptadores.add(demand.assignedTo)
+        demand.capturedProperties?.forEach((p) => {
+          if (p.captador_id) activeCaptadores.add(p.captador_id)
+        })
+
+        const drafts: Partial<AppNotification>[] = Array.from(activeCaptadores).map((uId) => ({
+          usuario_id: uId,
           tipo_notificacao: 'perdido',
-          titulo: `⚫ PERDIDO: ${demand.clientName} em ${demand.location} - Motivo: ${reason}`,
-          corpo: `O captador marcou a demanda como perdida.`,
-          detalhes: { motivo: reason },
+          titulo: `⚫ Demanda Perdida`,
+          corpo: `Demanda de ${demand.clientName} foi marcada como perdida`,
+          detalhes: { Motivo: reason },
           urgencia: 'baixa',
           canais: ['in_app'],
+        }))
+
+        if (currentUser?.role === 'captador' && demand.createdBy) {
+          drafts.push({
+            usuario_id: demand.createdBy,
+            tipo_notificacao: 'perdido',
+            titulo: `⚫ Demanda Perdida`,
+            corpo: `Demanda de ${demand.clientName} foi marcada como perdida`,
+            detalhes: { Motivo: reason },
+            urgencia: 'baixa',
+            canais: ['in_app'],
+          })
+        }
+
+        if (drafts.length > 0) dispatchNotifications(drafts)
+
+        enqueueWebhook('demanda_perdida', id, { reason, obs })
+        addLog(`Demanda perdida (ID: ${id})`)
+        toast({ title: 'Demanda perdida', description: 'Status atualizado.' })
+      } catch (e) {
+        toast({
+          title: 'Erro',
+          description: 'Erro ao marcar como perdido. Tente novamente',
+          variant: 'destructive',
         })
       }
-
-      if (drafts.length > 0) dispatchNotifications(drafts)
-
-      enqueueWebhook('demanda_perdida', id, { reason, obs })
-      addLog(`Demanda perdida (ID: ${id})`)
-      toast({ title: 'Demanda perdida', description: 'Status atualizado.' })
     },
     [
       allDemands,
@@ -2322,45 +2339,94 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
             })
             return { success: true, message: '' }
           } else if (action === 'nao_encontrei') {
-            const hAction = createAction('perdido', `Não encontrado: ${payload.reason}`)
-            let updatedDemand = { ...demand }
-            if (payload.continueSearch) {
-              updatedDemand.isExtension48h = true
-              updatedDemand.extensionRequestedAt = new Date().toISOString()
-            } else {
-              updatedDemand.status = 'Perdida'
-              updatedDemand.lostReason = payload.reason
-              updatedDemand.motivo_perda = payload.reason
-              updatedDemand.data_perda = new Date().toISOString()
+            try {
+              const hAction = createAction('perdido', `Não encontrado: ${payload.reason}`)
+              let updatedDemand = { ...demand }
+              if (payload.continueSearch) {
+                updatedDemand.isExtension48h = true
+                updatedDemand.extensionRequestedAt = new Date().toISOString()
+              } else {
+                updatedDemand.status = 'Perdida'
+                updatedDemand.lostReason = payload.reason
+                updatedDemand.motivo_perda = payload.reason
+                updatedDemand.data_perda = new Date().toISOString()
+                updatedDemand.perdida_por = currentUser?.id
+                updatedDemand.perdida_por_tipo = currentUser?.role
+              }
+              if (updatedDemand.capturedProperties && hAction) {
+                updatedDemand.capturedProperties = updatedDemand.capturedProperties.map((p) => ({
+                  ...p,
+                  history: [hAction, ...(p.history || [])],
+                }))
+              }
+
+              setAllDemands((p) => {
+                const next = p.map((d) => (d.id === id ? updatedDemand : d))
+
+                if (!payload.continueSearch) {
+                  const groupDemands = next.filter(
+                    (d) =>
+                      d.grupo_id === updatedDemand.grupo_id &&
+                      !['Perdida', 'Impossível', 'Negócio'].includes(d.status),
+                  )
+                  if (groupDemands.length === 0 && !updatedDemand.grupo_id) {
+                    toast({
+                      title: 'Erro',
+                      description: 'Erro ao processar. Contate suporte',
+                      variant: 'destructive',
+                    })
+                  } else if (groupDemands.length === 0 && updatedDemand.grupo_id) {
+                    logSystemEvent(
+                      `Grupo inativo: não há mais demandas ativas.`,
+                      'info',
+                      `Grupo ID: ${updatedDemand.grupo_id}`,
+                    )
+                  }
+                }
+
+                broadcastState(next, users, 'Ação registrada')
+                return next
+              })
+
+              if (!payload.continueSearch) {
+                const drafts: Partial<AppNotification>[] = [
+                  {
+                    usuario_id: demand.createdBy,
+                    tipo_notificacao: 'perdido',
+                    titulo: `⚫ Demanda Perdida`,
+                    corpo: `Demanda de ${demand.clientName} foi marcada como perdida`,
+                    detalhes: { Motivo: payload.reason },
+                    urgencia: 'baixa',
+                    canais: ['in_app'],
+                  },
+                ]
+                dispatchNotifications(drafts)
+                addLog(`Demanda perdida (ID: ${id})`)
+                toast({ title: 'Demanda perdida', description: 'Status atualizado.' })
+              } else {
+                dispatchNotifications([
+                  {
+                    usuario_id: demand.createdBy,
+                    tipo_notificacao: 'perdido',
+                    titulo: `⏳ Prazo Estendido: ${demand.clientName} em ${demand.location}`,
+                    corpo: `Captador pediu extensão para ${demand.clientName}`,
+                    detalhes: { motivo: payload.reason },
+                    urgencia: 'baixa',
+                    canais: ['in_app'],
+                  },
+                ])
+                toast({ title: 'Prazo estendido', description: 'Demanda ativa por mais 48h.' })
+              }
+
+              return { success: true, message: '' }
+            } catch (e) {
+              toast({
+                title: 'Erro',
+                description: 'Erro ao marcar como perdido. Tente novamente',
+                variant: 'destructive',
+              })
+              return { success: false, message: 'Erro ao processar' }
             }
-            if (updatedDemand.capturedProperties && hAction) {
-              updatedDemand.capturedProperties = updatedDemand.capturedProperties.map((p) => ({
-                ...p,
-                history: [hAction, ...(p.history || [])],
-              }))
-            }
-
-            setAllDemands((p) => {
-              const next = p.map((d) => (d.id === id ? updatedDemand : d))
-              broadcastState(next, users, 'Ação registrada')
-              return next
-            })
-
-            dispatchNotifications([
-              {
-                usuario_id: demand.createdBy,
-                tipo_notificacao: 'perdido',
-                titulo: `❌ NÃO ENCONTROU: ${demand.clientName} em ${demand.location}`,
-                corpo: payload.continueSearch
-                  ? `Captador pediu extensão para ${demand.clientName}`
-                  : `Captador não encontrou imóvel para ${demand.clientName}`,
-                detalhes: { motivo: payload.reason },
-                urgencia: 'baixa',
-                canais: ['in_app'],
-              },
-            ])
-
-            return { success: true, message: '' }
           }
           return { success: false, message: 'Ação desconhecida' }
         },

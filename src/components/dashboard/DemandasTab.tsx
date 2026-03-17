@@ -4,6 +4,7 @@ import { Demand } from '@/types'
 import { cn } from '@/lib/utils'
 import useAppStore from '@/stores/useAppStore'
 import { EncontreiGrupoModal } from '@/components/EncontreiGrupoModal'
+import { NaoEncontreiModal } from '@/components/NaoEncontreiModal'
 import { GroupedCard, IndividualCard, LooseCard } from './NewCapturesCards'
 
 export function DemandasTab({ demands }: { demands: Demand[] }) {
@@ -13,6 +14,7 @@ export function DemandasTab({ demands }: { demands: Demand[] }) {
   const [filterPeriodo, setFilterPeriodo] = useState<'Todas' | 'Últimas 24h' | '7 dias'>('Todas')
 
   const [showCaptureModal, setShowCaptureModal] = useState(false)
+  const [showNaoEncontreiModal, setShowNaoEncontreiModal] = useState(false)
   const [selectedDemandIds, setSelectedDemandIds] = useState<string[]>([])
 
   const filteredDemands = useMemo(() => {
@@ -132,15 +134,21 @@ export function DemandasTab({ demands }: { demands: Demand[] }) {
     setShowCaptureModal(true)
   }
 
-  const handleNaoEncontrei = (ids: string[]) => {
-    ids.forEach((id) => {
+  const handleNaoEncontreiClick = (ids: string[]) => {
+    setSelectedDemandIds(ids)
+    setShowNaoEncontreiModal(true)
+  }
+
+  const handleConfirmNaoEncontrei = (reason: string, continueSearch: boolean) => {
+    selectedDemandIds.forEach((id) => {
       if (id !== 'mock-loose-1') {
         submitDemandResponse(id, 'nao_encontrei', {
-          reason: 'Imóvel indisponível no mercado',
-          continueSearch: false,
+          reason,
+          continueSearch,
         })
       }
     })
+    setShowNaoEncontreiModal(false)
   }
 
   const getUserName = (id?: string) => users.find((u) => u.id === id)?.name || 'Sistema'
@@ -219,7 +227,7 @@ export function DemandasTab({ demands }: { demands: Demand[] }) {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-          {allCards.map((card, idx) => {
+          {allCards.map((card) => {
             if (card.type === 'grouped') {
               const ids = card.data.demands.map((d) => d.id)
               return (
@@ -227,7 +235,7 @@ export function DemandasTab({ demands }: { demands: Demand[] }) {
                   key={card.data.demands[0].id}
                   group={card.data}
                   onEncontrei={() => handleEncontrei(ids)}
-                  onNaoEncontrei={() => handleNaoEncontrei(ids)}
+                  onNaoEncontrei={() => handleNaoEncontreiClick(ids)}
                 />
               )
             }
@@ -238,7 +246,7 @@ export function DemandasTab({ demands }: { demands: Demand[] }) {
                   demand={card.data}
                   creatorName={getUserName(card.data.createdBy)}
                   onEncontrei={() => handleEncontrei([card.data.id])}
-                  onNaoEncontrei={() => handleNaoEncontrei([card.data.id])}
+                  onNaoEncontrei={() => handleNaoEncontreiClick([card.data.id])}
                 />
               )
             }
@@ -248,7 +256,7 @@ export function DemandasTab({ demands }: { demands: Demand[] }) {
                   key={card.data.id}
                   demand={card.data}
                   onEncontrei={() => handleEncontrei([card.data.id])}
-                  onNaoEncontrei={() => handleNaoEncontrei([card.data.id])}
+                  onNaoEncontrei={() => handleNaoEncontreiClick([card.data.id])}
                 />
               )
             }
@@ -260,6 +268,12 @@ export function DemandasTab({ demands }: { demands: Demand[] }) {
         isOpen={showCaptureModal}
         onClose={() => setShowCaptureModal(false)}
         demandIds={selectedDemandIds}
+      />
+
+      <NaoEncontreiModal
+        isOpen={showNaoEncontreiModal}
+        onClose={() => setShowNaoEncontreiModal(false)}
+        onConfirm={handleConfirmNaoEncontrei}
       />
     </div>
   )

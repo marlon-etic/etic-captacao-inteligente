@@ -51,86 +51,95 @@ export function LostModal({ open, onOpenChange, onConfirm }: Props) {
         }
       }}
     >
-      <DialogContent className="w-full max-w-[calc(100%-32px)] sm:max-w-[400px] p-4 md:p-6 rounded-xl border-[2px] border-[#F44336]/20">
-        <DialogHeader className="space-y-3">
-          <DialogTitle className="flex items-center gap-2 text-[16px] md:text-[18px] lg:text-[20px] font-bold leading-[24px] md:leading-[28px] lg:leading-[30px] text-[#1A3A52]">
-            ❌ Marcar Demanda como Perdida
-          </DialogTitle>
-          <DialogDescription className="text-[14px] md:text-[14px] lg:text-[14px] leading-[20px] text-[#333333]">
-            Por que esta demanda foi perdida? (Esta ação diminuirá a contagem de clientes no grupo
-            ativo).
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4 py-4 md:py-6">
-          <div className="space-y-2">
-            <Label className="text-[12px] md:text-[13px] lg:text-[14px] leading-[16px] md:leading-[18px] lg:leading-[20px] font-bold">
-              Motivo da Perda
-            </Label>
-            <Select
-              value={reason}
-              onValueChange={(val) => {
-                setReason(val)
-                setError('')
-              }}
+      <DialogContent className="w-full h-[100dvh] max-h-[100dvh] sm:h-auto sm:max-h-[85vh] max-w-full sm:max-w-[400px] p-0 sm:p-6 rounded-none sm:rounded-xl border-0 sm:border-[2px] sm:border-[#F44336]/20 flex flex-col overflow-hidden bg-[#FFFFFF]">
+        <div className="flex flex-col h-full p-4 sm:p-0">
+          <DialogHeader className="space-y-3 shrink-0 text-left">
+            <DialogTitle className="flex items-center gap-2 text-[18px] md:text-[20px] font-bold leading-tight text-[#1A3A52]">
+              ❌ Marcar Demanda como Perdida
+            </DialogTitle>
+            <DialogDescription className="text-[14px] leading-tight text-[#333333]">
+              Por que esta demanda foi perdida? (Esta ação diminuirá a contagem de clientes no grupo
+              ativo).
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-y-auto space-y-4 py-4 md:py-6">
+            <div className="space-y-2">
+              <Label className="text-[14px] font-bold text-[#1A3A52]">Motivo da Perda</Label>
+              <Select
+                value={reason}
+                onValueChange={(val) => {
+                  setReason(val)
+                  setError('')
+                }}
+              >
+                <SelectTrigger className="min-h-[48px] text-[14px] font-medium border-[#E5E5E5] focus:ring-[#1A3A52]">
+                  <SelectValue placeholder="Selecione um motivo..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem
+                    value="Cliente desistiu"
+                    className="min-h-[44px] text-[14px] cursor-pointer"
+                  >
+                    Cliente desistiu
+                  </SelectItem>
+                  <SelectItem
+                    value="Cliente já alugou"
+                    className="min-h-[44px] text-[14px] cursor-pointer"
+                  >
+                    Cliente já alugou
+                  </SelectItem>
+                  <SelectItem
+                    value="Cliente já comprou"
+                    className="min-h-[44px] text-[14px] cursor-pointer"
+                  >
+                    Cliente já comprou
+                  </SelectItem>
+                  <SelectItem
+                    value="Imóvel fora do mercado"
+                    className="min-h-[44px] text-[14px] cursor-pointer"
+                  >
+                    Imóvel fora do mercado
+                  </SelectItem>
+                  <SelectItem
+                    value="Outro motivo"
+                    className="min-h-[44px] text-[14px] cursor-pointer"
+                  >
+                    Outro motivo
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              {error && <p className="text-[13px] font-bold text-destructive mt-1">{error}</p>}
+            </div>
+            <div className="space-y-2">
+              <Label className="text-[14px] font-bold text-[#1A3A52]">Observações (Opcional)</Label>
+              <Textarea
+                value={obs}
+                onChange={(e) => setObs(e.target.value)}
+                placeholder="Detalhes adicionais..."
+                className="resize-none min-h-[88px] text-[14px] border-[#E5E5E5] focus-visible:ring-[#1A3A52]"
+                rows={3}
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="shrink-0 flex flex-col sm:flex-row gap-2 sm:gap-3 pt-2 sm:pt-0">
+            <Button
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              className="w-full sm:w-1/2 min-h-[48px] text-[14px] font-bold border-[#E5E5E5] text-[#333333] hover:bg-[#F5F5F5]"
             >
-              <SelectTrigger className="min-h-[48px] md:min-h-[44px] lg:min-h-[40px] text-[14px] leading-[20px]">
-                <SelectValue placeholder="Selecione um motivo..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="desistiu" className="min-h-[44px] text-[14px] leading-[20px]">
-                  Cliente desistiu
-                </SelectItem>
-                <SelectItem value="alugou" className="min-h-[44px] text-[14px] leading-[20px]">
-                  Cliente já alugou
-                </SelectItem>
-                <SelectItem value="comprou" className="min-h-[44px] text-[14px] leading-[20px]">
-                  Cliente já comprou
-                </SelectItem>
-                <SelectItem
-                  value="fora_mercado"
-                  className="min-h-[44px] text-[14px] leading-[20px]"
-                >
-                  Imóvel fora do mercado
-                </SelectItem>
-                <SelectItem value="mudou_ideia" className="min-h-[44px] text-[14px] leading-[20px]">
-                  Cliente mudou de ideia
-                </SelectItem>
-                <SelectItem value="outro" className="min-h-[44px] text-[14px] leading-[20px]">
-                  Outro
-                </SelectItem>
-              </SelectContent>
-            </Select>
-            {error && <p className="text-[12px] font-medium text-destructive mt-1">{error}</p>}
-          </div>
-          <div className="space-y-2">
-            <Label className="text-[12px] md:text-[13px] lg:text-[14px] leading-[16px] md:leading-[18px] lg:leading-[20px] font-bold">
-              Observações (Opcional)
-            </Label>
-            <Textarea
-              value={obs}
-              onChange={(e) => setObs(e.target.value)}
-              placeholder="Detalhes adicionais..."
-              className="resize-none min-h-[88px] text-[14px] leading-[20px]"
-              rows={3}
-            />
-          </div>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleConfirm}
+              variant="destructive"
+              className="w-full sm:w-1/2 min-h-[48px] text-[14px] font-bold bg-[#F44336] hover:bg-[#d32f2f] text-white"
+            >
+              ✅ Confirmar Perda
+            </Button>
+          </DialogFooter>
         </div>
-        <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            className="w-full sm:w-[48%] min-h-[48px] md:min-h-[44px] lg:min-h-[40px] text-[14px] font-bold leading-[20px]"
-          >
-            Cancelar
-          </Button>
-          <Button
-            onClick={handleConfirm}
-            variant="destructive"
-            className="w-full sm:w-[48%] min-h-[48px] md:min-h-[44px] lg:min-h-[40px] text-[14px] font-bold leading-[20px]"
-          >
-            ✅ Confirmar Perda
-          </Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   )
