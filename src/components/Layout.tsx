@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Outlet, Navigate, useLocation } from 'react-router-dom'
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar'
 import { AppSidebar } from '@/components/AppSidebar'
@@ -6,11 +6,15 @@ import { AppHeader } from '@/components/AppHeader'
 import { BottomNav } from '@/components/BottomNav'
 import { useToast } from '@/hooks/use-toast'
 import useAppStore from '@/stores/useAppStore'
+import { AddPropertyModal } from '@/components/AddPropertyModal'
+import { Plus } from 'lucide-react'
 
 export default function Layout() {
   const { currentUser, sessionExpiresAt, logout } = useAppStore()
   const location = useLocation()
   const { toast } = useToast()
+
+  const [isAddPropertyModalOpen, setAddPropertyModalOpen] = useState(false)
 
   useEffect(() => {
     if (currentUser && sessionExpiresAt && Date.now() > sessionExpiresAt) {
@@ -38,11 +42,33 @@ export default function Layout() {
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset className="flex flex-col min-h-[100dvh] overflow-hidden bg-[#F5F5F5]">
-        <AppHeader />
+      <SidebarInset className="flex flex-col min-h-[100dvh] overflow-hidden bg-[#F5F5F5] relative">
+        <AppHeader onAddPropertyClick={() => setAddPropertyModalOpen(true)} />
         <main className="flex-1 overflow-y-auto w-full max-w-[1400px] mx-auto px-[16px] min-[480px]:px-[24px] md:px-[32px] py-[16px] md:py-[24px] animate-fade-in-up pb-safe-offset-4">
           <Outlet />
         </main>
+
+        {currentUser?.role === 'captador' && (
+          <>
+            <button
+              onClick={() => setAddPropertyModalOpen(true)}
+              className="md:hidden fixed bottom-[76px] right-[16px] w-[56px] h-[56px] bg-[#4CAF50] text-white rounded-full flex items-center justify-center shadow-[0_4px_12px_rgba(76,175,80,0.4)] z-[100] active:scale-95 transition-transform"
+              aria-label="Adicionar Imóvel"
+            >
+              <Plus className="w-8 h-8" />
+            </button>
+            <button
+              id="btn-add-property-trigger"
+              className="hidden"
+              onClick={() => setAddPropertyModalOpen(true)}
+            />
+            <AddPropertyModal
+              isOpen={isAddPropertyModalOpen}
+              onClose={() => setAddPropertyModalOpen(false)}
+            />
+          </>
+        )}
+
         <BottomNav />
       </SidebarInset>
     </SidebarProvider>

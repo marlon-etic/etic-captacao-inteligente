@@ -41,7 +41,11 @@ const getNotifIcon = (type: string) => {
   }
 }
 
-export function AppHeader() {
+interface AppHeaderProps {
+  onAddPropertyClick?: () => void
+}
+
+export function AppHeader({ onAddPropertyClick }: AppHeaderProps) {
   const store = useAppStore()
   const currentUser = store.currentUser
   const navigate = useNavigate()
@@ -85,6 +89,15 @@ export function AppHeader() {
       </div>
 
       <div className="flex items-center gap-3 md:gap-4">
+        {currentUser.role === 'captador' && onAddPropertyClick && (
+          <Button
+            onClick={onAddPropertyClick}
+            className="hidden md:flex bg-[#4CAF50] hover:bg-[#388E3C] h-[48px] w-[200px] text-white font-bold transition-colors shadow-[0_2px_4px_rgba(76,175,80,0.3)] shrink-0"
+          >
+            ➕ ADICIONAR IMÓVEL
+          </Button>
+        )}
+
         <Badge
           variant="secondary"
           className="flex items-center gap-1.5 px-[12px] py-[6px] bg-[#2E5F8A] text-white border-none cursor-pointer hover:bg-[#2E5F8A]/80 transition-colors min-h-[44px] md:min-h-[40px] shadow-[0_2px_4px_rgba(26,58,82,0.2)]"
