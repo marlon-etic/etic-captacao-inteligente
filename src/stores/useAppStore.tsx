@@ -24,6 +24,8 @@ import {
   GroupComment,
   InactiveGroup,
   SystemLog,
+  AuthAuditLog,
+  Role,
 } from '@/types'
 import { toast } from '@/hooks/use-toast'
 import { ToastAction } from '@/components/ui/toast'
@@ -40,11 +42,20 @@ interface AppState {
   groupComments: GroupComment[]
   inactiveGroups: InactiveGroup[]
   systemLogs: SystemLog[]
+  authAuditLogs: AuthAuditLog[]
   logSystemEvent: (message: string, type?: 'error' | 'info' | 'warning', context?: string) => void
+  logAuthEvent: (
+    event: string,
+    status: 'sucesso' | 'erro' | 'bloqueado',
+    path?: string,
+    email?: string,
+  ) => void
   markNotificationAsRead: (id: string) => void
   markAllNotificationsAsRead: () => void
   archiveNotification: (id: string) => void
   updateUserPreferences: (prefs: Partial<UserPreferences['notifications']>) => void
+  updateDashboardPrefs: (prefs: Record<string, boolean>) => void
+  updateUser: (id: string, updates: Partial<User>) => void
   login: (email: string, password?: string) => Promise<void>
   logout: () => void
   requestPasswordReset: (email: string) => void
@@ -344,7 +355,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       const stored = localStorage.getItem('etic_session')
       if (stored) {
         const { user, expiresAt } = JSON.parse(stored)
-        if (Date.now() < expiresAt && user) return user
+        if (Date.now() < expiresAt && user && user.status !== 'bloqueado') return user
       }
     } catch {
       // ignore
@@ -391,6 +402,26 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const [webhookQueue, setWebhookQueue] = useState<WebhookEvent[]>([])
   const [auditLogs, setAuditLogs] = useState<string[]>([])
   const [systemLogs, setSystemLogs] = useState<SystemLog[]>([])
+  const [authAuditLogs, setAuthAuditLogs] = useState<AuthAuditLog[]>(() => {
+    try {
+      const raw = localStorage.getItem('etic_auth_logs')
+      if (raw) return JSON.parse(raw)
+    } catch {
+      // ignore
+    }
+    return [
+      {
+        id: 'log1',
+        timestamp: new Date(Date.now() - 3600000).toISOString(),
+        userEmail: 'admin@etic.com',
+        event: 'Login com sucesso',
+        status: 'sucesso',
+        path: '/login',
+        ip: '192.168.1.100',
+      },
+    ]
+  })
+
   const [notifications, setNotifications] = useState<AppNotification[]>(() => {
     try {
       const raw = localStorage.getItem('etic_state_sync')
@@ -461,6 +492,10 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('etic_group_comments', JSON.stringify(groupComments))
   }, [groupComments])
 
+  useEffect(() => {
+    localStorage.setItem('etic_auth_logs', JSON.stringify(authAuditLogs))
+  }, [authAuditLogs])
+
   const webhookQueueRef = useRef(webhookQueue)
   const loosePropertiesRef = useRef(looseProperties)
   const isProcessingRef = useRef(false)
@@ -501,6 +536,30 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           message,
           context,
           type,
+        },
+        ...prev,
+      ])
+    },
+    [currentUser],
+  )
+
+  const logAuthEvent = useCallback(
+    (
+      event: string,
+      status: 'sucesso' | 'erro' | 'bloqueado',
+      path?: string,
+      targetEmail?: string,
+    ) => {
+      setAuthAuditLogs((prev) => [
+        {
+          id: Math.random().toString(36).substring(2, 9),
+          timestamp: new Date().toISOString(),
+          userId: currentUser?.id,
+          userEmail: targetEmail || currentUser?.email,
+          event,
+          status,
+          path,
+          ip: '127.0.0.1', // Mock IP
         },
         ...prev,
       ])
@@ -639,7 +698,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
         drafts.forEach((draft) => {
           const user = currentUsers.find((u) => u.id === draft.usuario_id)
-          if (!user || user.status === 'inativo') {
+          if (!user || user.status === 'inativo' || user.status === 'bloqueado') {
             return
           }
 
@@ -874,6 +933,28 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         )
     },
     [currentUser],
+  )
+
+  const updateUser = useCallback(
+    (id: string, updates: Partial<User>) => {
+      setUsers((prev) => {
+        const next = prev.map((u) => (u.id === id ? { ...u, ...updates } : u))
+        broadcastState(allDemandsRef.current, next, `Usuário atualizado: ${id}`)
+        return next
+      })
+      if (currentUser?.id === id) {
+        setCurrentUser((prev) => (prev ? { ...prev, ...updates } : prev))
+      }
+    },
+    [broadcastState, currentUser],
+  )
+
+  const updateDashboardPrefs = useCallback(
+    (prefs: Record<string, boolean>) => {
+      if (!currentUser) return
+      updateUser(currentUser.id, { dashboardPrefs: prefs })
+    },
+    [currentUser, updateUser],
   )
 
   const triggerCron = useCallback(() => {
@@ -1924,7 +2005,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         webhookQueue,
         auditLogs,
         systemLogs,
+        authAuditLogs,
         logSystemEvent,
+        logAuthEvent,
         notifications,
         groupComments,
         inactiveGroups,
@@ -1983,28 +2066,22 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           })
         },
         updateUserPreferences: (prefs) => {
-          setCurrentUser((prev) => {
-            if (!prev) return prev
-            const currentPrefs = prev.preferences || defaultPreferences
-            const nextPrefs: UserPreferences = {
-              ...currentPrefs,
+          updateUser(currentUser?.id as string, {
+            preferences: {
+              ...(currentUser?.preferences || defaultPreferences),
               notifications: {
-                ...currentPrefs.notifications,
+                ...(currentUser?.preferences?.notifications || defaultPreferences.notifications),
                 ...prefs,
-                channels: { ...currentPrefs.notifications.channels, ...prefs.channels },
-                types: { ...currentPrefs.notifications.types, ...prefs.types },
-                quietHours: { ...currentPrefs.notifications.quietHours, ...prefs.quietHours },
               },
-            }
-            const nextUser = { ...prev, preferences: nextPrefs }
-            setUsers((uList) => uList.map((u) => (u.id === prev.id ? nextUser : u)))
-            return nextUser
+            },
           })
           toast({
             title: 'Preferências Salvas',
             description: 'Suas configurações de alerta foram atualizadas.',
           })
         },
+        updateDashboardPrefs,
+        updateUser,
         getMatchesForProperty: (property: CapturedProperty) => {
           if (property.tipo_vinculacao === 'vinculado') return []
           const matches = allDemands
@@ -2045,8 +2122,14 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           let user = users.find((u) => u.email.toLowerCase() === cleanEmail)
           if (!user) user = mockUsers.find((u) => u.email.toLowerCase() === cleanEmail)
           if (!user || (cleanPass && cleanPass !== '123456' && cleanPass !== 'Password1')) {
+            logAuthEvent('Tentativa de login falhou', 'erro', '/login', email)
             throw new Error('Erro ao acessar o perfil. Verifique suas credenciais')
           }
+          if (user.status === 'bloqueado' || user.status === 'inativo') {
+            logAuthEvent('Login em conta bloqueada/inativa', 'bloqueado', '/login', email)
+            throw new Error('Sua conta está bloqueada ou inativa.')
+          }
+
           const expiresAt = Date.now() + 86400000
           setUsers((prev) => {
             if (!prev.find((u) => u.id === user!.id)) return [...prev, user!]
@@ -2055,6 +2138,23 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           setCurrentUser(user)
           setSessionExpiresAt(expiresAt)
           localStorage.setItem('etic_session', JSON.stringify({ user, expiresAt }))
+
+          // Log auth success
+          setTimeout(() => {
+            setAuthAuditLogs((prev) => [
+              {
+                id: Math.random().toString(36).substring(2, 9),
+                timestamp: new Date().toISOString(),
+                userId: user?.id,
+                userEmail: email,
+                event: 'Login com sucesso',
+                status: 'sucesso',
+                path: '/login',
+                ip: '127.0.0.1',
+              },
+              ...prev,
+            ])
+          }, 0)
         },
         logout: () => {
           setCurrentUser(null)

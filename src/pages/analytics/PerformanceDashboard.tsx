@@ -16,7 +16,13 @@ import { exportToCSV } from '@/lib/exportToCSV'
 import { Navigate } from 'react-router-dom'
 
 export function PerformanceDashboard() {
-  const { demands, currentUser } = useAppStore()
+  const { demands, currentUser, logAuthEvent } = useAppStore()
+
+  useEffect(() => {
+    if (currentUser && currentUser.role !== 'admin' && currentUser.role !== 'gestor') {
+      logAuthEvent('Acesso não autorizado', 'bloqueado', '/app/performance')
+    }
+  }, [currentUser, logAuthEvent])
 
   const [filters, setFilters] = useState<PerformanceFilterState>(() => {
     try {

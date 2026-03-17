@@ -51,7 +51,7 @@ export interface User {
   name: string
   email: string
   role: Role
-  status?: 'ativo' | 'inativo'
+  status?: 'ativo' | 'inativo' | 'bloqueado'
   tipo_demanda?: 'locacao' | 'vendas'
   tipos_demanda_solicitados?: ('locacao' | 'vendas' | 'ambos')[]
   phone?: string
@@ -63,6 +63,7 @@ export interface User {
   stats: UserStats
   avatarUrl?: string
   preferences?: UserPreferences
+  dashboardPrefs?: Record<string, boolean>
 }
 
 export type DemandStatus =
@@ -258,4 +259,15 @@ export interface SystemLog {
   message: string
   context?: string
   type: 'error' | 'info' | 'warning'
+}
+
+export interface AuthAuditLog {
+  id: string
+  userId?: string
+  userEmail?: string
+  event: string
+  path?: string
+  status: 'sucesso' | 'erro' | 'bloqueado'
+  ip?: string
+  timestamp: string
 }

@@ -27,6 +27,17 @@ export default function Layout() {
     }
   }, [currentUser, sessionExpiresAt, logout, toast])
 
+  useEffect(() => {
+    if (currentUser && (currentUser.status === 'bloqueado' || currentUser.status === 'inativo')) {
+      toast({
+        title: 'Acesso Negado',
+        description: 'Sua conta foi bloqueada ou inativada pelo administrador.',
+        variant: 'destructive',
+      })
+      logout()
+    }
+  }, [currentUser, logout, toast])
+
   if (!currentUser && location.pathname !== '/') {
     return <Navigate to="/" replace />
   }

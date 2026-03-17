@@ -1,5 +1,13 @@
 import { Link, useLocation, useSearchParams } from 'react-router-dom'
-import { LayoutDashboard, Users, PlusCircle, UserCircle, Trophy, Home } from 'lucide-react'
+import {
+  LayoutDashboard,
+  Users,
+  PlusCircle,
+  UserCircle,
+  Trophy,
+  Home,
+  UsersCog,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import useAppStore from '@/stores/useAppStore'
 import { AppNotification } from '@/types'
@@ -14,6 +22,7 @@ export function BottomNav() {
   const isCreator = ['admin', 'sdr', 'corretor'].includes(currentUser.role)
   const canSeeDemandas = ['admin', 'sdr', 'corretor', 'captador'].includes(currentUser.role)
   const isCaptador = currentUser.role === 'captador'
+  const isAdmin = currentUser.role === 'admin'
 
   const userNotifications =
     notifications?.filter(
@@ -25,7 +34,10 @@ export function BottomNav() {
 
   const links = [
     { title: 'Dashboard', icon: LayoutDashboard, url: '/app' },
-    ...(canSeeDemandas ? [{ title: 'Demandas', icon: Users, url: '/app/demandas' }] : []),
+    ...(canSeeDemandas && !isAdmin
+      ? [{ title: 'Demandas', icon: Users, url: '/app/demandas' }]
+      : []),
+    ...(isAdmin ? [{ title: 'Usuários', icon: UsersCog, url: '/app/usuarios' }] : []),
     ...(isCreator
       ? [{ title: 'Nova', icon: PlusCircle, url: '/app/nova-demanda', isFab: true }]
       : []),

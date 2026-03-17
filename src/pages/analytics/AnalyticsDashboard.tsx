@@ -1,9 +1,19 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Navigate } from 'react-router-dom'
 import useAppStore from '@/stores/useAppStore'
 import { useToast } from '@/hooks/use-toast'
-import { Loader2, AlertTriangle, Inbox } from 'lucide-react'
+import { Loader2, AlertTriangle, Inbox, Settings2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
+import { Label } from '@/components/ui/label'
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+  SheetTrigger,
+} from '@/components/ui/sheet'
 import {
   enhanceDemands,
   generateAnalyticsMockDemands,
@@ -18,7 +28,7 @@ import { PriceDonutChart } from '@/components/analytics/PriceDonutChart'
 import { ProfileTable } from '@/components/analytics/ProfileTable'
 
 export function AnalyticsDashboard() {
-  const { currentUser, demands } = useAppStore()
+  const { currentUser, demands, logAuthEvent, updateDashboardPrefs } = useAppStore()
   const { toast } = useToast()
 
   const [activeFilters, setActiveFilters] = useState<AnalyticsFiltersState>({
@@ -28,6 +38,12 @@ export function AnalyticsDashboard() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(false)
   const [selectedNeighborhood, setSelectedNeighborhood] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (currentUser && currentUser.role !== 'admin' && currentUser.role !== 'gestor') {
+      logAuthEvent('Acesso não autorizado', 'bloqueado', '/app/analytics')
+    }
+  }, [currentUser, logAuthEvent])
 
   const enhancedAllDemands = useMemo(() => {
     // Combine real demands with 200 mock demands for rich analytics display
@@ -83,15 +99,84 @@ export function AnalyticsDashboard() {
     return <Navigate to="/app" replace />
   }
 
+  const defaultPrefs = {
+    summary: true,
+    neighborhoods: true,
+    typology: true,
+    price: true,
+    profile: true,
+  }
+
+  const prefs = { ...defaultPrefs, ...(currentUser?.dashboardPrefs || {}) }
+
+  const handleTogglePref = (key: keyof typeof defaultPrefs, value: boolean) => {
+    updateDashboardPrefs({ ...prefs, [key]: value })
+  }
+
   return (
     <div className="flex flex-col space-y-6 pb-12 max-w-[1400px] mx-auto w-full animate-fade-in-up">
-      <div className="flex flex-col gap-2 border-b border-[#2E5F8A]/20 pb-4">
-        <h1 className="text-[28px] md:text-[32px] font-black text-[#1A3A52] leading-tight">
-          Analytics Dashboard
-        </h1>
-        <p className="text-[14px] text-[#999999] font-medium">
-          Visualize dados agregados para guiar esforços estratégicos de captação.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#2E5F8A]/20 pb-4">
+        <div>
+          <h1 className="text-[28px] md:text-[32px] font-black text-[#1A3A52] leading-tight">
+            Analytics Dashboard
+          </h1>
+          <p className="text-[14px] text-[#999999] font-medium">
+            Visualize dados agregados para guiar esforços estratégicos de captação.
+          </p>
+        </div>
+
+        <Sheet>
+          <SheetTrigger asChild>
+            <Button variant="outline" className="font-bold shrink-0">
+              <Settings2 className="w-4 h-4 mr-2" /> Configurar Dashboard
+            </Button>
+          </SheetTrigger>
+          <SheetContent>
+            <SheetHeader className="mb-6">
+              <SheetTitle>Personalizar Dashboard</SheetTitle>
+              <SheetDescription>
+                Selecione quais gráficos e métricas você deseja visualizar.
+              </SheetDescription>
+            </SheetHeader>
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <Label className="text-base font-medium">Resumo Geral (Cards)</Label>
+                <Switch
+                  checked={prefs.summary}
+                  onCheckedChange={(v) => handleTogglePref('summary', v)}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label className="text-base font-medium">Gráfico: Top Bairros</Label>
+                <Switch
+                  checked={prefs.neighborhoods}
+                  onCheckedChange={(v) => handleTogglePref('neighborhoods', v)}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label className="text-base font-medium">Gráfico: Tipologia</Label>
+                <Switch
+                  checked={prefs.typology}
+                  onCheckedChange={(v) => handleTogglePref('typology', v)}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label className="text-base font-medium">Gráfico: Faixa de Valor</Label>
+                <Switch
+                  checked={prefs.price}
+                  onCheckedChange={(v) => handleTogglePref('price', v)}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label className="text-base font-medium">Tabela: Perfil Mais Buscado</Label>
+                <Switch
+                  checked={prefs.profile}
+                  onCheckedChange={(v) => handleTogglePref('profile', v)}
+                />
+              </div>
+            </div>
+          </SheetContent>
+        </Sheet>
       </div>
 
       <DashboardFilters initialFilters={activeFilters} onApply={handleApply} />
@@ -125,24 +210,32 @@ export function AnalyticsDashboard() {
         </div>
       ) : (
         <div className="space-y-6 animate-fade-in">
-          <SummaryCards demands={filteredDemands} />
+          {prefs.summary && <SummaryCards demands={filteredDemands} />}
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <NeighborhoodsChart
+          {(prefs.neighborhoods || prefs.typology) && (
+            <div
+              className={`grid grid-cols-1 ${prefs.neighborhoods && prefs.typology ? 'lg:grid-cols-2' : ''} gap-6`}
+            >
+              {prefs.neighborhoods && (
+                <NeighborhoodsChart
+                  demands={filteredDemands}
+                  onBarClick={setSelectedNeighborhood}
+                  selected={selectedNeighborhood}
+                />
+              )}
+              {prefs.typology && <TypologyBarChart demands={filteredDemands} />}
+            </div>
+          )}
+
+          {prefs.price && <PriceDonutChart demands={filteredDemands} type={activeFilters.type} />}
+
+          {prefs.profile && (
+            <ProfileTable
               demands={filteredDemands}
-              onBarClick={setSelectedNeighborhood}
-              selected={selectedNeighborhood}
+              selectedNeighborhood={selectedNeighborhood}
+              onClearNeighborhood={() => setSelectedNeighborhood(null)}
             />
-            <TypologyBarChart demands={filteredDemands} />
-          </div>
-
-          <PriceDonutChart demands={filteredDemands} type={activeFilters.type} />
-
-          <ProfileTable
-            demands={filteredDemands}
-            selectedNeighborhood={selectedNeighborhood}
-            onClearNeighborhood={() => setSelectedNeighborhood(null)}
-          />
+          )}
         </div>
       )}
     </div>

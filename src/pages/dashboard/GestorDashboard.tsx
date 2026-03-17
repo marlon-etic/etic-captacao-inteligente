@@ -1,4 +1,5 @@
-import React from 'react'
+import React, { useEffect } from 'react'
+import { Navigate } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import useAppStore from '@/stores/useAppStore'
 import { Badge } from '@/components/ui/badge'
@@ -6,18 +7,16 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { ShieldAlert, AlertTriangle, Info, ShieldCheck } from 'lucide-react'
 
 export function GestorDashboard() {
-  const { systemLogs, currentUser } = useAppStore()
+  const { systemLogs, currentUser, logAuthEvent } = useAppStore()
+
+  useEffect(() => {
+    if (currentUser?.role !== 'admin' && currentUser?.role !== 'gestor') {
+      logAuthEvent('Acesso não autorizado', 'bloqueado', '/app/gestor-dashboard')
+    }
+  }, [currentUser, logAuthEvent])
 
   if (currentUser?.role !== 'admin' && currentUser?.role !== 'gestor') {
-    return (
-      <div className="p-8 text-center flex flex-col items-center justify-center min-h-[50vh]">
-        <ShieldAlert className="w-16 h-16 text-destructive mb-4" />
-        <h2 className="text-2xl font-bold text-primary">Acesso Negado</h2>
-        <p className="text-muted-foreground mt-2">
-          Você não tem permissão para visualizar esta página.
-        </p>
-      </div>
-    )
+    return <Navigate to="/app" replace />
   }
 
   const errorLogs = systemLogs.filter((l) => l.type === 'error')

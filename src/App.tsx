@@ -16,6 +16,8 @@ import Ajuda from '@/pages/Ajuda'
 import { GestorDashboard } from '@/pages/dashboard/GestorDashboard'
 import { AnalyticsDashboard } from '@/pages/analytics/AnalyticsDashboard'
 import { PerformanceDashboard } from '@/pages/analytics/PerformanceDashboard'
+import { Usuarios } from '@/pages/admin/Usuarios'
+import { Auditoria } from '@/pages/admin/Auditoria'
 
 const App = () => (
   <AppStoreProvider>
@@ -36,6 +38,8 @@ const App = () => (
             <Route path="gestor-dashboard" element={<GestorDashboard />} />
             <Route path="analytics" element={<AnalyticsDashboard />} />
             <Route path="performance" element={<PerformanceDashboard />} />
+            <Route path="usuarios" element={<Usuarios />} />
+            <Route path="auditoria" element={<Auditoria />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>

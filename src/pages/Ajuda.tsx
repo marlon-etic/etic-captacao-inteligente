@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { Navigate } from 'react-router-dom'
 import { Printer, BookOpen } from 'lucide-react'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
@@ -10,9 +11,14 @@ import { Troubleshooting } from '@/components/help/Troubleshooting'
 import useAppStore from '@/stores/useAppStore'
 
 export default function Ajuda() {
-  const { currentUser } = useAppStore()
+  const { currentUser, logAuthEvent } = useAppStore()
 
-  // Route Guarding: Only Admin can access the Help section
+  useEffect(() => {
+    if (currentUser?.role !== 'admin') {
+      logAuthEvent('Acesso não autorizado', 'bloqueado', '/app/ajuda')
+    }
+  }, [currentUser, logAuthEvent])
+
   if (currentUser?.role !== 'admin') {
     return <Navigate to="/app" replace />
   }

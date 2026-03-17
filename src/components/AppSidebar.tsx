@@ -8,6 +8,8 @@ import {
   LineChart,
   Bell,
   HelpCircle,
+  UsersCog,
+  Shield,
 } from 'lucide-react'
 import {
   Sidebar,
@@ -31,7 +33,7 @@ export function AppSidebar() {
   const canSeeNovaDemanda = ['admin', 'sdr', 'corretor'].includes(currentUser.role)
   const canSeeDemandas = ['admin', 'sdr', 'corretor', 'captador'].includes(currentUser.role)
   const canSeeAnalytics = ['admin', 'gestor'].includes(currentUser.role)
-  const canSeeAjuda = currentUser.role === 'admin'
+  const isAdmin = currentUser.role === 'admin'
 
   const navItems = [
     { title: 'Dashboard', icon: LayoutDashboard, url: '/app' },
@@ -42,7 +44,9 @@ export function AppSidebar() {
     ...(canSeeAnalytics ? [{ title: 'Analytics', icon: LineChart, url: '/app/analytics' }] : []),
     { title: 'Ranking', icon: Trophy, url: '/app/ranking' },
     { title: 'Notificações', icon: Bell, url: '/app/notificacoes' },
-    ...(canSeeAjuda ? [{ title: 'Ajuda', icon: HelpCircle, url: '/app/ajuda' }] : []),
+    ...(isAdmin ? [{ title: 'Ajuda', icon: HelpCircle, url: '/app/ajuda' }] : []),
+    ...(isAdmin ? [{ title: 'Usuários', icon: UsersCog, url: '/app/usuarios' }] : []),
+    ...(isAdmin ? [{ title: 'Auditoria', icon: Shield, url: '/app/auditoria' }] : []),
     { title: 'Perfil', icon: UserCircle, url: '/app/perfil' },
   ]
 
