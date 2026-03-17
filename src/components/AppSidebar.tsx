@@ -8,7 +8,7 @@ import {
   LineChart,
   Bell,
   HelpCircle,
-  UsersCog,
+  UserCog,
   Shield,
 } from 'lucide-react'
 import {
@@ -45,7 +45,7 @@ export function AppSidebar() {
     { title: 'Ranking', icon: Trophy, url: '/app/ranking' },
     { title: 'Notificações', icon: Bell, url: '/app/notificacoes' },
     ...(isAdmin ? [{ title: 'Ajuda', icon: HelpCircle, url: '/app/ajuda' }] : []),
-    ...(isAdmin ? [{ title: 'Usuários', icon: UsersCog, url: '/app/usuarios' }] : []),
+    ...(isAdmin ? [{ title: 'Usuários', icon: UserCog, url: '/app/usuarios' }] : []),
     ...(isAdmin ? [{ title: 'Auditoria', icon: Shield, url: '/app/auditoria' }] : []),
     { title: 'Perfil', icon: UserCircle, url: '/app/perfil' },
   ]

@@ -1,13 +1,5 @@
 import { Link, useLocation, useSearchParams } from 'react-router-dom'
-import {
-  LayoutDashboard,
-  Users,
-  PlusCircle,
-  UserCircle,
-  Trophy,
-  Home,
-  UsersCog,
-} from 'lucide-react'
+import { LayoutDashboard, Users, PlusCircle, UserCircle, Trophy, Home, UserCog } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import useAppStore from '@/stores/useAppStore'
 import { AppNotification } from '@/types'
@@ -37,7 +29,7 @@ export function BottomNav() {
     ...(canSeeDemandas && !isAdmin
       ? [{ title: 'Demandas', icon: Users, url: '/app/demandas' }]
       : []),
-    ...(isAdmin ? [{ title: 'Usuários', icon: UsersCog, url: '/app/usuarios' }] : []),
+    ...(isAdmin ? [{ title: 'Usuários', icon: UserCog, url: '/app/usuarios' }] : []),
     ...(isCreator
       ? [{ title: 'Nova', icon: PlusCircle, url: '/app/nova-demanda', isFab: true }]
       : []),

@@ -20,7 +20,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Input } from '@/components/ui/input'
-import { UsersCog, Search } from 'lucide-react'
+import { UserCog, Search } from 'lucide-react'
 import useAppStore from '@/stores/useAppStore'
 import { Role } from '@/types'
 import { toast } from '@/hooks/use-toast'
@@ -84,7 +84,7 @@ export function Usuarios() {
     <div className="max-w-6xl mx-auto space-y-6 pb-12 animate-fade-in-up">
       <div className="flex flex-col gap-2 border-b border-[#2E5F8A]/20 pb-4">
         <h1 className="text-[28px] md:text-[32px] font-black text-[#1A3A52] flex items-center gap-3">
-          <UsersCog className="w-8 h-8 text-[#2E5F8A]" />
+          <UserCog className="w-8 h-8 text-[#2E5F8A]" />
           Gestão de Usuários
         </h1>
         <p className="text-[14px] text-[#999999] font-medium">
