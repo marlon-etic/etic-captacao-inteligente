@@ -36,21 +36,23 @@ export function AnalyticsDashboard() {
   }, [demands])
 
   const filteredDemands = useMemo(() => {
+    const now = new Date()
+    const weekStart = new Date(now.setDate(now.getDate() - now.getDay())).setHours(0, 0, 0, 0)
+    const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime()
+
     return enhancedAllDemands.filter((d) => {
       if (activeFilters.type !== 'Ambos' && d.type !== activeFilters.type) return false
 
       const dDate = new Date(d.createdAt).getTime()
-      const now = new Date()
 
       if (activeFilters.period === 'week') {
-        const start = new Date(now.setDate(now.getDate() - now.getDay())).setHours(0, 0, 0, 0)
-        if (dDate < start) return false
+        if (dDate < weekStart) return false
       } else if (activeFilters.period === 'month') {
-        const start = new Date(now.getFullYear(), now.getMonth(), 1).getTime()
-        if (dDate < start) return false
+        if (dDate < monthStart) return false
       } else if (activeFilters.period === 'custom') {
         if (activeFilters.startDate && dDate < activeFilters.startDate.getTime()) return false
-        if (activeFilters.endDate && dDate > activeFilters.endDate.getTime()) return false
+        if (activeFilters.endDate && dDate > activeFilters.endDate.getTime() + 86399999)
+          return false
       }
       return true
     })

@@ -1011,7 +1011,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       if (inputDate < new Date()) {
         toast({
           title: 'Erro',
-          description: 'A data e hora da visita não podem estar no passado.',
+          description: 'Data não pode ser no passado',
           variant: 'destructive',
         })
         return
@@ -1124,7 +1124,6 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
   const submitProposalByCode = useCallback(
     (code: string, payload: any) => {
-      // Not strictly fully required for AC, but keep it robust
       if (currentUser?.role === 'captador') {
         toast({
           title: 'Erro',
@@ -1258,12 +1257,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       const prop = demand.capturedProperties![propIndex]
       if (!checkDemandAccess(demand, prop)) return
 
-      let earnedPoints = 100 // Updated base points to 100
-      const budgetTarget = demand.maxBudget || demand.budget || 0
-      if (budgetTarget > 0 && payload.value > budgetTarget) {
-        earnedPoints += 50
-      }
-      if (demand.isPrioritized) earnedPoints += 25
+      let earnedPoints = 50 // Base points to match "+50 additional points"
 
       const formattedVal = new Intl.NumberFormat('pt-BR', {
         style: 'currency',

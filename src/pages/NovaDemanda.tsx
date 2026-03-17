@@ -27,7 +27,7 @@ const formSchema = z
       .string()
       .min(3, 'Nome deve ter no mínimo 3 caracteres')
       .max(100, 'Nome no máximo de 100 caracteres'),
-    clientEmail: z.string().email('Insira um e-mail válido'),
+    clientEmail: z.string().email('Email inválido'),
     location: z.array(z.string()).min(1, 'Selecione pelo menos um bairro da lista da Étic'),
     minBudget: z.coerce
       .number({ invalid_type_error: 'Informe um valor' })
@@ -51,7 +51,7 @@ const formSchema = z
     type: z.enum(['Venda', 'Aluguel'], { required_error: 'Selecione um tipo' }),
   })
   .refine((data) => data.minBudget < data.maxBudget, {
-    message: 'O orçamento máximo deve ser maior que o mínimo',
+    message: 'Valor mínimo deve ser menor que máximo',
     path: ['maxBudget'],
   })
 
