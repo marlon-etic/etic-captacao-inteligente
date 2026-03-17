@@ -7,16 +7,6 @@ import { EncontreiGrupoModal } from '@/components/EncontreiGrupoModal'
 import { GroupedCard, IndividualCard, LooseCard } from './NewCapturesCards'
 
 export function DemandasTab({ demands }: { demands: Demand[] }) {
-  if (!demands) {
-    return (
-      <div className="text-center py-16 bg-[#FFFFFF] border-2 rounded-xl border-dashed border-[#F44336]/50">
-        <p className="text-[16px] font-bold text-[#F44336]">
-          Erro ao carregar demandas. Tente novamente.
-        </p>
-      </div>
-    )
-  }
-
   const { users, submitDemandResponse } = useAppStore()
 
   const [filterTipo, setFilterTipo] = useState<'Ambas' | 'Venda' | 'Aluguel'>('Ambas')
@@ -26,6 +16,7 @@ export function DemandasTab({ demands }: { demands: Demand[] }) {
   const [selectedDemandIds, setSelectedDemandIds] = useState<string[]>([])
 
   const filteredDemands = useMemo(() => {
+    if (!demands) return []
     const now = Date.now()
     return demands.filter((d) => {
       if (d.status !== 'Pendente') return false
@@ -153,6 +144,16 @@ export function DemandasTab({ demands }: { demands: Demand[] }) {
   }
 
   const getUserName = (id?: string) => users.find((u) => u.id === id)?.name || 'Sistema'
+
+  if (!demands) {
+    return (
+      <div className="text-center py-16 bg-[#FFFFFF] border-2 rounded-xl border-dashed border-[#F44336]/50">
+        <p className="text-[16px] font-bold text-[#F44336]">
+          Erro ao carregar demandas. Tente novamente.
+        </p>
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col gap-6 animate-fade-in w-full">
