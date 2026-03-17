@@ -125,9 +125,11 @@ export interface CapturedProperty {
   numero_imovel_para_demanda?: number
   demandas_atendidas_ids?: string[]
   tipo_vinculacao?: 'vinculado' | 'solto'
-  status_reivindicacao?: 'disponivel' | 'reivindicado' | 'vinculado'
+  status_reivindicacao?: 'disponivel' | 'reivindicado' | 'vinculado' | 'vinculado_manualmente'
   usuario_reivindicou_id?: string
   data_reivindicacao?: string
+  vinculado_por?: string
+  data_vinculacao_manual?: string
   captador_id?: string
   captador_name?: string
   propertyType?: 'Venda' | 'Aluguel'

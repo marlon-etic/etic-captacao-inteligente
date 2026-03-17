@@ -4,6 +4,7 @@ import { DemandCard } from '@/components/DemandCard'
 import { CapturedPropertiesView } from '@/components/CapturedPropertiesView'
 import { LoosePropertiesView } from '@/components/LoosePropertiesView'
 import { MyClientsCapturedView } from '@/components/MyClientsCapturedView'
+import { PropertiesToLinkView } from '@/components/PropertiesToLinkView'
 import useAppStore from '@/stores/useAppStore'
 
 export function SDRDashboard() {
@@ -28,10 +29,27 @@ export function SDRDashboard() {
     return false
   }).length
 
+  const vincularCount = looseProperties.filter((p) => {
+    if (p.status_reivindicacao && p.status_reivindicacao !== 'disponivel') return false
+    if (p.propertyType === 'Aluguel' || p.propertyType === 'Venda') return true
+    return false
+  }).length
+
   return (
     <div className="px-[16px] pb-[72px] pt-[24px] max-w-7xl mx-auto flex flex-col gap-[24px]">
-      <Tabs defaultValue="demandas" className="w-full">
+      <Tabs defaultValue="vincular" className="w-full">
         <TabsList className="flex h-[48px] w-full bg-transparent p-0 border-b overflow-x-auto justify-start gap-[16px] rounded-none">
+          <TabsTrigger
+            value="vincular"
+            className="relative h-[48px] px-[16px] text-[14px] data-[state=active]:border-b-2 data-[state=active]:border-[#4CAF50] data-[state=active]:text-[#4CAF50] data-[state=active]:shadow-none rounded-none bg-transparent whitespace-nowrap font-bold transition-colors"
+          >
+            🏠 CAPTADOS PARA VINCULAR
+            {vincularCount > 0 && (
+              <span className="ml-[8px] inline-flex items-center justify-center w-[20px] h-[20px] bg-[#4CAF50] text-white rounded-full text-[10px] font-bold">
+                {vincularCount}
+              </span>
+            )}
+          </TabsTrigger>
           <TabsTrigger
             value="demandas"
             className="relative h-[48px] px-[16px] text-[14px] data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none rounded-none bg-transparent whitespace-nowrap"
@@ -53,7 +71,7 @@ export function SDRDashboard() {
             value="disponiveis"
             className="relative h-[48px] px-[16px] text-[14px] data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none rounded-none bg-transparent whitespace-nowrap"
           >
-            Disponíveis
+            Disponíveis Geral
             {looseCount > 0 && (
               <span className="ml-[8px] inline-flex items-center justify-center w-[20px] h-[20px] bg-blue-600 text-white rounded-full text-[10px] font-bold">
                 {looseCount}
@@ -64,7 +82,7 @@ export function SDRDashboard() {
             value="captados"
             className="relative h-[48px] px-[16px] text-[14px] data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none rounded-none bg-transparent whitespace-nowrap"
           >
-            Captados Geral
+            Todos os Captados
           </TabsTrigger>
           <TabsTrigger
             value="historico"
@@ -73,6 +91,10 @@ export function SDRDashboard() {
             Histórico
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="vincular" className="mt-[24px]">
+          <PropertiesToLinkView />
+        </TabsContent>
 
         <TabsContent value="demandas" className="mt-[24px]">
           {activeDemands.length === 0 ? (

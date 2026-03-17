@@ -8,14 +8,16 @@ export function LoosePropertyCard({
   property,
   onClaim,
   onIgnore,
+  onLink,
 }: {
   property: CapturedProperty
-  onClaim: (p: CapturedProperty) => void
+  onClaim?: (p: CapturedProperty) => void
   onIgnore?: (code: string) => void
+  onLink?: (p: CapturedProperty) => void
 }) {
   return (
-    <Card className="overflow-hidden flex flex-col h-full border-2 border-blue-200 hover:shadow-md relative transition-all bg-card">
-      <div className="relative h-48 w-full bg-muted">
+    <Card className="overflow-hidden flex flex-col h-full border-[2px] border-[#2E5F8A] hover:shadow-[0_8px_24px_rgba(26,58,82,0.15)] relative transition-all bg-[#FFFFFF] rounded-[12px]">
+      <div className="relative h-48 w-full bg-[#F5F5F5]">
         <img
           src={
             property.photoUrl ||
@@ -27,26 +29,26 @@ export function LoosePropertyCard({
         <div className="absolute top-2 right-2">
           <Badge
             variant="outline"
-            className="font-medium shadow-sm bg-blue-50 text-blue-800 border-blue-300"
+            className="font-bold shadow-sm bg-[#FFFFFF] text-[#1A3A52] border-[#2E5F8A]"
           >
-            🔓 Disponível para todos
+            🔓 Disponível
           </Badge>
         </div>
         <div className="absolute bottom-2 left-3.5 flex flex-col gap-1">
           <Badge
             variant="secondary"
-            className="bg-black/70 text-white border-none shadow-sm self-start"
+            className="bg-[#1A3A52]/90 text-white border-none shadow-sm self-start font-bold"
           >
             Cód: {property.code}
           </Badge>
         </div>
       </div>
-      <CardContent className="p-4 flex-grow flex flex-col gap-2">
+      <CardContent className="p-[16px] flex-grow flex flex-col gap-2">
         <div className="flex justify-between items-start gap-2">
-          <h4 className="font-semibold text-lg line-clamp-1 flex-1 text-blue-900">
+          <h4 className="font-bold text-[18px] line-clamp-1 flex-1 text-[#1A3A52]">
             {property.propertyType === 'Aluguel' ? '🏠 Locação' : '🏢 Venda'}
           </h4>
-          <span className="font-bold text-primary whitespace-nowrap">
+          <span className="font-bold text-[#4CAF50] whitespace-nowrap text-[16px]">
             {new Intl.NumberFormat('pt-BR', {
               style: 'currency',
               currency: 'BRL',
@@ -54,52 +56,75 @@ export function LoosePropertyCard({
             }).format(property.value)}
           </span>
         </div>
-        <p className="text-sm text-muted-foreground flex items-center gap-1">
-          <MapPin className="w-3.5 h-3.5 shrink-0" />
+        <p className="text-[14px] text-[#333333] font-medium flex items-center gap-1.5">
+          <MapPin className="w-4 h-4 shrink-0 text-[#1A3A52]" />
           <span className="truncate">
             {property.bairro_tipo === 'outro' && <span className="mr-1">🔹</span>}
             {property.neighborhood}
           </span>
         </p>
 
-        <div className="flex gap-3 text-xs text-muted-foreground mt-1">
+        <div className="flex gap-3 text-[12px] text-[#333333] mt-1 font-medium">
           {property.bedrooms !== undefined && (
             <span className="flex items-center gap-1">
-              <Bed className="w-3.5 h-3.5" /> {property.bedrooms}
+              <Bed className="w-4 h-4 text-[#1A3A52]" /> {property.bedrooms} dorms
+            </span>
+          )}
+          {property.bathrooms !== undefined && (
+            <span className="flex items-center gap-1">
+              <Bath className="w-4 h-4 text-[#1A3A52]" /> {property.bathrooms} banhs
+            </span>
+          )}
+          {property.parkingSpots !== undefined && (
+            <span className="flex items-center gap-1">
+              <Car className="w-4 h-4 text-[#1A3A52]" /> {property.parkingSpots} vagas
             </span>
           )}
         </div>
 
-        <div className="mt-3 flex flex-col gap-1.5 text-xs text-muted-foreground bg-blue-50/50 p-2 rounded-md border border-blue-100">
-          <p className="flex items-center gap-1.5">
-            <Calendar className="w-3.5 h-3.5 shrink-0" />
+        <div className="mt-3 flex flex-col gap-1.5 text-[12px] text-[#333333] bg-[#F5F5F5] p-3 rounded-[8px] border border-[#E5E5E5]">
+          <p className="flex items-center gap-1.5 font-medium">
+            <Calendar className="w-4 h-4 shrink-0 text-[#1A3A52]" />
             Captação: {new Date(property.capturedAt || '').toLocaleDateString('pt-BR')}
           </p>
-          <p className="flex items-center gap-1.5">
-            <UserCircle className="w-3.5 h-3.5 shrink-0" />
+          <p className="flex items-center gap-1.5 font-medium">
+            <UserCircle className="w-4 h-4 shrink-0 text-[#1A3A52]" />
             Captador:{' '}
-            <span className="font-medium text-foreground">{property.captador_name || 'N/A'}</span>
+            <span className="font-bold text-[#1A3A52]">{property.captador_name || 'N/A'}</span>
           </p>
         </div>
 
         {property.obs && (
-          <p className="text-xs text-muted-foreground mt-2 line-clamp-2 italic">"{property.obs}"</p>
+          <p className="text-[12px] text-[#999999] mt-2 line-clamp-2 italic leading-tight">
+            "{property.obs}"
+          </p>
         )}
       </CardContent>
 
-      <div className="p-4 pt-0 mt-auto flex flex-col gap-2">
-        <Button
-          size="sm"
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white shadow-sm font-semibold h-[44px]"
-          onClick={() => onClaim(property)}
-        >
-          ✅ Usar para meu cliente
-        </Button>
+      <div className="p-[16px] pt-0 mt-auto flex flex-col gap-2">
+        {onLink ? (
+          <Button
+            size="sm"
+            className="w-full bg-[#1A3A52] hover:bg-[#2E5F8A] text-white shadow-[0_2px_4px_rgba(26,58,82,0.1)] font-bold h-[44px]"
+            onClick={() => onLink(property)}
+          >
+            🔗 VINCULAR A UM CLIENTE
+          </Button>
+        ) : onClaim ? (
+          <Button
+            size="sm"
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white shadow-sm font-semibold h-[44px]"
+            onClick={() => onClaim(property)}
+          >
+            ✅ Usar para meu cliente
+          </Button>
+        ) : null}
+
         {onIgnore && (
           <Button
             size="sm"
             variant="outline"
-            className="w-full h-[44px]"
+            className="w-full h-[44px] font-bold"
             onClick={() => onIgnore(property.code)}
           >
             ❌ Não me interessa

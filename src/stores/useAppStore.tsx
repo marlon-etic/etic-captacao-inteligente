@@ -54,6 +54,10 @@ interface AppState {
   submitIndependentCapture: (payload: any) => { success: boolean; message: string }
   submitGroupCapture: (demandIds: string[], payload: any) => { success: boolean; message: string }
   claimLooseProperty: (code: string, demandId: string) => { success: boolean; message: string }
+  linkLoosePropertyToDemand: (
+    code: string,
+    demandId: string,
+  ) => { success: boolean; message: string }
   addPoints: (amount: number, userId?: string) => void
   getSimilarDemands: (id: string) => Demand[]
   triggerCron: () => void
@@ -2542,6 +2546,94 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
             const nextDemands = prevDemands.map((d) => (d.id === demandId ? updatedDemand : d))
             broadcastState(nextDemands, usersRef.current, 'Imóvel reivindicado', nextLoose)
+            return nextDemands
+          })
+
+          return { success, message }
+        },
+        linkLoosePropertyToDemand: (code, demandId) => {
+          let success = false
+          let message = ''
+
+          setAllDemands((prevDemands) => {
+            const demandIndex = prevDemands.findIndex((d) => d.id === demandId)
+            if (demandIndex === -1) {
+              message = 'Demanda não encontrada'
+              return prevDemands
+            }
+            const demand = prevDemands[demandIndex]
+
+            if (
+              demand.createdBy !== currentUser?.id &&
+              currentUser?.role !== 'admin' &&
+              currentUser?.role !== 'gestor'
+            ) {
+              message = 'Você não tem permissão para vincular este imóvel'
+              return prevDemands
+            }
+
+            const propIndex = loosePropertiesRef.current.findIndex((p) => p.code === code)
+            if (propIndex === -1) {
+              message = 'Imóvel não encontrado'
+              return prevDemands
+            }
+            const prop = loosePropertiesRef.current[propIndex]
+
+            if (prop.status_reivindicacao && prop.status_reivindicacao !== 'disponivel') {
+              message = 'Este imóvel já foi vinculado'
+              return prevDemands
+            }
+
+            const action = createAction(
+              'captacao',
+              `Imóvel vinculado manualmente a ${demand.clientName}`,
+            )
+
+            const newProp: CapturedProperty = {
+              ...prop,
+              tipo_vinculacao: 'vinculado',
+              status_reivindicacao: 'vinculado_manualmente',
+              vinculado_por: currentUser?.id,
+              data_vinculacao_manual: new Date().toISOString(),
+              demandas_atendidas_ids: [...(prop.demandas_atendidas_ids || []), demandId],
+              numero_imovel_para_demanda: (demand.capturedProperties?.length || 0) + 1,
+              history: action ? [action, ...(prop.history || [])] : prop.history,
+            }
+
+            const updatedDemand = {
+              ...demand,
+              status:
+                demand.status === 'Pendente' || demand.status === 'Em Captação'
+                  ? 'Captado sob demanda'
+                  : demand.status,
+              capturedProperties: [...(demand.capturedProperties || []), newProp],
+            }
+
+            success = true
+            const nextLoose = loosePropertiesRef.current.map((p) => (p.code === code ? newProp : p))
+            setLooseProperties(nextLoose)
+
+            const drafts: Partial<AppNotification>[] = []
+            if (prop.captador_id) {
+              drafts.push({
+                usuario_id: prop.captador_id,
+                tipo_notificacao: 'reivindicado',
+                titulo: '✅ Seu imóvel foi vinculado!',
+                corpo: `Imóvel ${prop.code} foi vinculado a ${demand.clientName} por ${currentUser?.name}`,
+                detalhes: { reivindicado_por: currentUser?.name, cliente: demand.clientName },
+                acao_url: `/app/demandas`,
+                urgencia: 'media',
+                canais: ['in_app', 'push'],
+              })
+            }
+
+            dispatchNotifications(drafts)
+            enqueueWebhook('imovel_vinculado_manualmente', demandId, {
+              captadorId: prop.captador_id,
+            })
+
+            const nextDemands = prevDemands.map((d) => (d.id === demandId ? updatedDemand : d))
+            broadcastState(nextDemands, usersRef.current, 'Imóvel vinculado manualmente', nextLoose)
             return nextDemands
           })
 
