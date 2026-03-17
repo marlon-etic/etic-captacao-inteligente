@@ -415,7 +415,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     try {
       const raw = localStorage.getItem('etic_group_comments')
       if (raw) return JSON.parse(raw)
-    } catch {}
+    } catch {
+      // ignore
+    }
     return [
       {
         id: 'c1',
@@ -1442,7 +1444,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           usuario_id: demand.createdBy,
           tipo_notificacao: 'perdido',
           titulo: `⚫ PERDIDO: ${demand.clientName} em ${demand.location} - Motivo: ${reason}`,
-          corpo: `O captador marcou a demanda como perdida.`,
+          corpo: `O captador mar বহুমarcou a demanda como perdida.`,
           detalhes: { motivo: reason },
           urgencia: 'baixa',
           canais: ['in_app'],
@@ -1937,7 +1939,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           setSessionExpiresAt(null)
           localStorage.removeItem('etic_session')
         },
-        requestPasswordReset: (email) => {},
+        requestPasswordReset: (email) => {
+          // TODO: implementar
+        },
         addDemand: (d) => {
           if (currentUser?.role === 'corretor' && d.type !== 'Venda') {
             toast({
@@ -2253,8 +2257,12 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
           return { success, message }
         },
-        scheduleVisit: (id, payload) => {},
-        closeDeal: (id, payload) => {},
+        scheduleVisit: (id, payload) => {
+          // TODO: implement
+        },
+        closeDeal: (id, payload) => {
+          // TODO: implement
+        },
         scheduleVisitByCode,
         submitProposalByCode,
         closeDealByCode,
