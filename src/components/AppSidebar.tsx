@@ -28,18 +28,21 @@ export function AppSidebar() {
 
   if (!currentUser) return null
 
+  const canSeeNovaDemanda = ['admin', 'sdr', 'corretor'].includes(currentUser.role)
+  const canSeeDemandas = ['admin', 'sdr', 'corretor', 'captador'].includes(currentUser.role)
+  const canSeeAnalytics = ['admin', 'gestor'].includes(currentUser.role)
+  const canSeeAjuda = currentUser.role === 'admin'
+
   const navItems = [
     { title: 'Dashboard', icon: LayoutDashboard, url: '/app' },
-    ...(currentUser.role === 'sdr' || currentUser.role === 'corretor'
+    ...(canSeeNovaDemanda
       ? [{ title: 'Nova Demanda', icon: PlusCircle, url: '/app/nova-demanda' }]
       : []),
-    { title: 'Demandas', icon: Users, url: '/app/demandas' },
-    ...(currentUser.role === 'gestor' || currentUser.role === 'admin'
-      ? [{ title: 'Analytics', icon: LineChart, url: '/app/analytics' }]
-      : []),
+    ...(canSeeDemandas ? [{ title: 'Demandas', icon: Users, url: '/app/demandas' }] : []),
+    ...(canSeeAnalytics ? [{ title: 'Analytics', icon: LineChart, url: '/app/analytics' }] : []),
     { title: 'Ranking', icon: Trophy, url: '/app/ranking' },
     { title: 'Notificações', icon: Bell, url: '/app/notificacoes' },
-    { title: 'Ajuda', icon: HelpCircle, url: '/app/ajuda' },
+    ...(canSeeAjuda ? [{ title: 'Ajuda', icon: HelpCircle, url: '/app/ajuda' }] : []),
     { title: 'Perfil', icon: UserCircle, url: '/app/perfil' },
   ]
 

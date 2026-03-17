@@ -1,3 +1,4 @@
+import { Navigate } from 'react-router-dom'
 import { Printer, BookOpen } from 'lucide-react'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
@@ -6,8 +7,16 @@ import { UserManuals } from '@/components/help/UserManuals'
 import { DatabaseStructure } from '@/components/help/DatabaseStructure'
 import { BusinessRules } from '@/components/help/BusinessRules'
 import { Troubleshooting } from '@/components/help/Troubleshooting'
+import useAppStore from '@/stores/useAppStore'
 
 export default function Ajuda() {
+  const { currentUser } = useAppStore()
+
+  // Route Guarding: Only Admin can access the Help section
+  if (currentUser?.role !== 'admin') {
+    return <Navigate to="/app" replace />
+  }
+
   const handlePrint = () => {
     window.print()
   }

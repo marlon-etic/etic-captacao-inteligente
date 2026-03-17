@@ -11,7 +11,8 @@ export function BottomNav() {
 
   if (!currentUser) return null
 
-  const isCreator = currentUser.role === 'sdr' || currentUser.role === 'corretor'
+  const isCreator = ['admin', 'sdr', 'corretor'].includes(currentUser.role)
+  const canSeeDemandas = ['admin', 'sdr', 'corretor', 'captador'].includes(currentUser.role)
   const isCaptador = currentUser.role === 'captador'
 
   const userNotifications =
@@ -24,7 +25,7 @@ export function BottomNav() {
 
   const links = [
     { title: 'Dashboard', icon: LayoutDashboard, url: '/app' },
-    { title: 'Demandas', icon: Users, url: '/app/demandas' },
+    ...(canSeeDemandas ? [{ title: 'Demandas', icon: Users, url: '/app/demandas' }] : []),
     ...(isCreator
       ? [{ title: 'Nova', icon: PlusCircle, url: '/app/nova-demanda', isFab: true }]
       : []),
@@ -77,9 +78,9 @@ export function BottomNav() {
             >
               <div className="relative">
                 <link.icon className={cn('w-6 h-6')} />
-                {link.badge !== undefined && link.badge > 0 && (
+                {(link as any).badge !== undefined && (link as any).badge > 0 && (
                   <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-[#F44336] text-white flex items-center justify-center rounded-full text-[9px] font-bold border-[1.5px] border-[#FFFFFF]">
-                    {link.badge > 9 ? '9+' : link.badge}
+                    {(link as any).badge > 9 ? '9+' : (link as any).badge}
                   </span>
                 )}
               </div>
