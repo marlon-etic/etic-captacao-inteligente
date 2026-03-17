@@ -12,6 +12,7 @@ import Ranking from '@/pages/Ranking'
 import Perfil from '@/pages/Perfil'
 import NotFound from '@/pages/NotFound'
 import Notificacoes from '@/pages/Notificacoes'
+import Ajuda from '@/pages/Ajuda'
 import { GestorDashboard } from '@/pages/dashboard/GestorDashboard'
 import { AnalyticsDashboard } from '@/pages/analytics/AnalyticsDashboard'
 import { PerformanceDashboard } from '@/pages/analytics/PerformanceDashboard'
@@ -31,6 +32,7 @@ const App = () => (
             <Route path="ranking" element={<Ranking />} />
             <Route path="perfil" element={<Perfil />} />
             <Route path="notificacoes" element={<Notificacoes />} />
+            <Route path="ajuda" element={<Ajuda />} />
             <Route path="gestor-dashboard" element={<GestorDashboard />} />
             <Route path="analytics" element={<AnalyticsDashboard />} />
             <Route path="performance" element={<PerformanceDashboard />} />

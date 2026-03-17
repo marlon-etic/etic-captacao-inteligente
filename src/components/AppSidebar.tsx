@@ -7,6 +7,7 @@ import {
   PlusCircle,
   LineChart,
   Bell,
+  HelpCircle,
 } from 'lucide-react'
 import {
   Sidebar,
@@ -38,6 +39,7 @@ export function AppSidebar() {
       : []),
     { title: 'Ranking', icon: Trophy, url: '/app/ranking' },
     { title: 'Notificações', icon: Bell, url: '/app/notificacoes' },
+    { title: 'Ajuda', icon: HelpCircle, url: '/app/ajuda' },
     { title: 'Perfil', icon: UserCircle, url: '/app/perfil' },
   ]
 
