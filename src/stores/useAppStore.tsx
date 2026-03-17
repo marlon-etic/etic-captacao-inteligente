@@ -49,6 +49,7 @@ interface AppState {
   updateDemandStatus: (id: string, status: DemandStatus) => void
   submitDemandResponse: (id: string, action: 'encontrei' | 'nao_encontrei', payload: any) => any
   submitIndependentCapture: (payload: any) => void
+  submitGroupCapture: (demandIds: string[], payload: any) => { success: boolean; message: string }
   claimLooseProperty: (code: string, demandId: string) => { success: boolean; message: string }
   addPoints: (amount: number, userId?: string) => void
   getSimilarDemands: (id: string) => Demand[]
@@ -1193,7 +1194,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       const prop = demand.capturedProperties![propIndex]
       if (!checkDemandAccess(demand, prop)) return
 
-      let earnedPoints = 100
+      let earnedPoints = 50
       const budgetTarget = demand.maxBudget || demand.budget || 0
       if (budgetTarget > 0 && payload.value > budgetTarget) {
         earnedPoints += 50
@@ -1444,7 +1445,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           usuario_id: demand.createdBy,
           tipo_notificacao: 'perdido',
           titulo: `⚫ PERDIDO: ${demand.clientName} em ${demand.location} - Motivo: ${reason}`,
-          corpo: `O captador mar বহুমarcou a demanda como perdida.`,
+          corpo: `O captador marcou a demanda como perdida.`,
           detalhes: { motivo: reason },
           urgencia: 'baixa',
           canais: ['in_app'],
@@ -1969,6 +1970,91 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
             broadcastState(next, users, 'Status atualizado')
             return next
           })
+        },
+        submitGroupCapture: (demandIds, payload) => {
+          const demandsToUpdate = allDemands.filter((d) => demandIds.includes(d.id))
+          if (demandsToUpdate.length === 0)
+            return { success: false, message: 'Nenhuma demanda ativa' }
+
+          const groupSize = demandsToUpdate.length
+          let points = 50
+          if (groupSize >= 7) points = 150
+          else if (groupSize >= 4) points = 100
+          else if (groupSize >= 2) points = 75
+
+          const code = payload.code || `IMV-${Math.floor(Math.random() * 1000)}`
+          const hAction = createAction(
+            'captacao',
+            `Imóvel captado para grupo de ${groupSize} clientes`,
+          )
+
+          const newProp: CapturedProperty = {
+            code,
+            value: payload.value,
+            neighborhood: payload.neighborhood,
+            bairro_tipo: payload.neighborhood === 'OUTROS' ? 'outro' : 'listado',
+            docCompleta: false,
+            obs: payload.obs,
+            photoUrl: `https://img.usecurling.com/p/400/300?q=house&seed=${code}`,
+            capturedAt: new Date().toISOString(),
+            history: hAction ? [hAction] : [],
+            tipo_vinculacao: 'vinculado',
+            demandas_atendidas_ids: demandIds,
+            captador_id: currentUser?.id,
+            captador_name: currentUser?.name,
+            propertyType: demandsToUpdate[0].type,
+            bedrooms: payload.bedrooms,
+            bathrooms: payload.bathrooms,
+            parkingSpots: payload.parkingSpots,
+          }
+
+          const nextDemands = allDemands.map((d) => {
+            if (demandIds.includes(d.id)) {
+              return {
+                ...d,
+                status:
+                  d.status === 'Pendente' || d.status === 'Em Captação'
+                    ? ('Captado sob demanda' as DemandStatus)
+                    : d.status,
+                capturedProperties: [...(d.capturedProperties || []), newProp],
+              }
+            }
+            return d
+          })
+
+          setAllDemands(nextDemands)
+          if (currentUser) addPoints(points, currentUser.id)
+
+          const sdrMap = new Map<string, string[]>()
+          demandsToUpdate.forEach((d) => {
+            if (!sdrMap.has(d.createdBy)) sdrMap.set(d.createdBy, [])
+            sdrMap.get(d.createdBy)!.push(d.clientName)
+          })
+
+          const drafts: Partial<AppNotification>[] = []
+          sdrMap.forEach((clientNames, sdrId) => {
+            drafts.push({
+              usuario_id: sdrId,
+              tipo_notificacao: 'novo_imovel',
+              titulo: '🏠 Imóvel captado!',
+              corpo: `Para seus clientes: ${clientNames.join(', ')}`,
+              detalhes: { codigo: code },
+              acao_url: `https://www.eticimoveis.com.br/imovel/${code}`,
+              acao_botao: 'Ver imóvel e clientes',
+              urgencia: 'alta',
+              canais: ['in_app', 'push'],
+            })
+          })
+
+          if (drafts.length > 0) dispatchNotifications(drafts)
+
+          toast({
+            title: 'Sucesso',
+            description: `Imóvel registrado para ${groupSize} clientes. +${points} pts!`,
+            className: 'bg-emerald-600 text-white',
+          })
+          broadcastState(nextDemands, usersRef.current, 'Captado em grupo')
+          return { success: true, message: '' }
         },
         submitDemandResponse: (id, action, payload) => {
           const demand = allDemands.find((d) => d.id === id)

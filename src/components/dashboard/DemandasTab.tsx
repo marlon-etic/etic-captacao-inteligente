@@ -134,27 +134,48 @@ export function DemandasTab({ demands }: { demands: Demand[] }) {
             <p className="text-[16px] font-medium text-[#999999]">Nenhuma demanda no momento.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-[16px] md:gap-[20px]">
-            {groupedDemands.map((g, i) => (
-              <div
-                key={g.id}
-                className="opacity-0 animate-cascade-fade"
-                style={{ animationDelay: `${i * 50}ms` }}
-              >
-                <GroupedDemandCard group={g} />
+          <div className="flex flex-col gap-10">
+            {groupedDemands.length > 0 && (
+              <div className="flex flex-col gap-4">
+                <h2 className="text-[22px] font-black text-[#1A3A52] flex items-center gap-2 border-b-2 border-[#E5E5E5] pb-2">
+                  🎯 Busque por Prioridade
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-[16px] md:gap-[20px]">
+                  {groupedDemands.map((g, i) => (
+                    <div
+                      key={g.id}
+                      className="opacity-0 animate-cascade-fade h-full"
+                      style={{ animationDelay: `${i * 50}ms` }}
+                    >
+                      <GroupedDemandCard group={g} />
+                    </div>
+                  ))}
+                </div>
               </div>
-            ))}
-            {ungroupedDemands.map((d, i) => (
-              <DemandCard
-                key={d.id}
-                demand={d}
-                isNewDemand={
-                  (Date.now() - new Date(d.createdAt).getTime()) / 3600000 <= 24 &&
-                  d.status === 'Pendente'
-                }
-                index={i + groupedDemands.length}
-              />
-            ))}
+            )}
+
+            {ungroupedDemands.length > 0 && (
+              <div className="flex flex-col gap-4">
+                {groupedDemands.length > 0 && (
+                  <h2 className="text-[20px] font-bold text-[#1A3A52] flex items-center gap-2 border-b border-[#E5E5E5] pb-2">
+                    👤 Demandas Individuais
+                  </h2>
+                )}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-[16px] md:gap-[20px]">
+                  {ungroupedDemands.map((d, i) => (
+                    <DemandCard
+                      key={d.id}
+                      demand={d}
+                      isNewDemand={
+                        (Date.now() - new Date(d.createdAt).getTime()) / 3600000 <= 24 &&
+                        d.status === 'Pendente'
+                      }
+                      index={i}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

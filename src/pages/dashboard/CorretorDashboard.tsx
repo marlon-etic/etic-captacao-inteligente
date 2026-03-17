@@ -3,6 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { DemandCard } from '@/components/DemandCard'
 import { CapturedPropertiesView } from '@/components/CapturedPropertiesView'
 import { LoosePropertiesView } from '@/components/LoosePropertiesView'
+import { MyClientsCapturedView } from '@/components/MyClientsCapturedView'
 import useAppStore from '@/stores/useAppStore'
 
 export function CorretorDashboard() {
@@ -45,6 +46,12 @@ export function CorretorDashboard() {
             )}
           </TabsTrigger>
           <TabsTrigger
+            value="meus-clientes"
+            className="relative h-[48px] px-[16px] text-[14px] data-[state=active]:border-b-2 data-[state=active]:border-[#FF4444] data-[state=active]:text-[#FF4444] data-[state=active]:shadow-none rounded-none bg-transparent whitespace-nowrap transition-colors"
+          >
+            Captados p/ Meus Clientes
+          </TabsTrigger>
+          <TabsTrigger
             value="disponiveis"
             className="relative h-[48px] px-[16px] text-[14px] data-[state=active]:border-b-2 data-[state=active]:border-[#FF4444] data-[state=active]:text-[#FF4444] data-[state=active]:shadow-none rounded-none bg-transparent whitespace-nowrap transition-colors"
           >
@@ -59,7 +66,7 @@ export function CorretorDashboard() {
             value="captados"
             className="relative h-[48px] px-[16px] text-[14px] data-[state=active]:border-b-2 data-[state=active]:border-[#FF4444] data-[state=active]:text-[#FF4444] data-[state=active]:shadow-none rounded-none bg-transparent whitespace-nowrap transition-colors"
           >
-            Captados
+            Captados Geral
           </TabsTrigger>
           <TabsTrigger
             value="historico"
@@ -84,6 +91,10 @@ export function CorretorDashboard() {
               ))}
             </div>
           )}
+        </TabsContent>
+
+        <TabsContent value="meus-clientes" className="mt-[24px]">
+          <MyClientsCapturedView filterType="Venda" />
         </TabsContent>
 
         <TabsContent value="disponiveis" className="mt-[24px]">

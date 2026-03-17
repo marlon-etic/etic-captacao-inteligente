@@ -134,9 +134,9 @@ export function useDemandGrouping({ demands, filters }: GroupingOptions) {
         })
       })
 
-      // Primary Sort: Tier level (1 is highest priority), Secondary Sort: Oldest created demand
+      // Primary Sort: Number of active clients (descending), Secondary Sort: Oldest created demand
       groups.sort((a, b) => {
-        if (a.tier !== b.tier) return a.tier - b.tier
+        if (b.demands.length !== a.demands.length) return b.demands.length - a.demands.length
         return a.oldestDate - b.oldestDate
       })
 
