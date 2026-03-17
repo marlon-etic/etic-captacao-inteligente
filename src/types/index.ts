@@ -186,6 +186,8 @@ export interface Demand {
     | 'outro'
     | string
   observacoes_perda?: string
+  grupo_id?: string
+  posicao_no_grupo?: number
 }
 
 export interface WebhookEvent {
@@ -221,8 +223,6 @@ export interface AppNotification {
   data_criacao: string
   data_leitura?: string
   arquivada?: boolean
-
-  // Legacy compat
   message?: string
   userId?: string
   createdAt?: string

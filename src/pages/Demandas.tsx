@@ -1,4 +1,4 @@
-import { useState, useTransition, useMemo } from 'react'
+import { useState, useTransition } from 'react'
 import {
   Select,
   SelectContent,
@@ -10,10 +10,12 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { DemandCard } from '@/components/DemandCard'
+import { GroupedDemandCard } from '@/components/GroupedDemandCard'
 import { CapturedPropertiesView } from '@/components/CapturedPropertiesView'
 import useAppStore from '@/stores/useAppStore'
 import { cn } from '@/lib/utils'
 import { RefreshCw } from 'lucide-react'
+import { useDemandGrouping } from '@/hooks/useDemandGrouping'
 
 export default function Demandas() {
   const { demands } = useAppStore()
@@ -40,45 +42,10 @@ export default function Demandas() {
     })
   }
 
-  const now = Date.now()
-
-  const filtered = useMemo(
-    () =>
-      demands.filter((d) => {
-        if (activeFilters.status === 'open') {
-          if (d.status === 'Perdida') return false
-          if (d.isPrioritized) return false
-        } else if (activeFilters.status === 'prioritized') {
-          if (!d.isPrioritized || d.status === 'Perdida') return false
-        } else if (activeFilters.status === 'lost') {
-          if (d.status !== 'Perdida') return false
-        }
-
-        if (activeFilters.type !== 'all' && d.type !== activeFilters.type) return false
-
-        const createdAt = new Date(d.createdAt).getTime()
-        const diffDays = (now - createdAt) / 86400000
-        if (activeFilters.period === '7days' && diffDays > 7) return false
-        if (activeFilters.period === '30days' && diffDays > 30) return false
-
-        return true
-      }),
-    [demands, activeFilters, now],
-  )
-
-  const sorted = useMemo(
-    () =>
-      [...filtered].sort((a, b) => {
-        if (a.isPrioritized && !b.isPrioritized) return -1
-        if (!a.isPrioritized && b.isPrioritized) return 1
-
-        if (a.status === 'Perdida' && b.status !== 'Perdida') return 1
-        if (a.status !== 'Perdida' && b.status === 'Perdida') return -1
-
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      }),
-    [filtered],
-  )
+  const { groupedDemands, ungroupedDemands } = useDemandGrouping({
+    demands,
+    filters: activeFilters,
+  })
 
   const filterHash = JSON.stringify(activeFilters)
 
@@ -200,14 +167,27 @@ export default function Demandas() {
           <div
             key={filterHash}
             className={cn(
-              'grid gap-[16px] md:gap-[24px] grid-cols-1 md:grid-cols-2 animate-slide-in-filters',
+              'grid gap-[16px] md:gap-[24px] grid-cols-1 md:grid-cols-2 lg:grid-cols-3 animate-slide-in-filters',
               isPending && 'opacity-50',
             )}
           >
-            {sorted.map((demand, index) => (
-              <DemandCard key={demand.id} demand={demand} index={index} />
+            {groupedDemands.map((g, index) => (
+              <GroupedDemandCard key={g.id} group={g} />
             ))}
-            {sorted.length === 0 && (
+
+            {ungroupedDemands.map((demand, index) => (
+              <DemandCard
+                key={demand.id}
+                demand={demand}
+                index={index + groupedDemands.length}
+                isNewDemand={
+                  (Date.now() - new Date(demand.createdAt).getTime()) / 3600000 <= 24 &&
+                  demand.status === 'Pendente'
+                }
+              />
+            ))}
+
+            {groupedDemands.length === 0 && ungroupedDemands.length === 0 && (
               <div className="col-span-full flex flex-col items-center justify-center py-16 text-center bg-[#FFFFFF] border-[2px] border-dashed border-[#E5E5E5] rounded-xl opacity-0 animate-fade-in-up forwards">
                 <div className="text-4xl mb-4">📭</div>
                 <p className="text-[#333333] font-bold text-[16px]">Nenhuma demanda no momento</p>
