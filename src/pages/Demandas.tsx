@@ -1,4 +1,5 @@
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   Select,
   SelectContent,
@@ -18,7 +19,10 @@ import { RefreshCw } from 'lucide-react'
 import { useDemandGrouping } from '@/hooks/useDemandGrouping'
 
 export default function Demandas() {
-  const { demands } = useAppStore()
+  const { demands, notifications, markNotificationAsRead } = useAppStore()
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  const currentTab = searchParams.get('tab') === 'captados' ? 'captados' : 'demandas'
 
   const [filterStatus, setFilterStatus] = useState<string>('all')
   const [filterType, setFilterType] = useState<string>('all')
@@ -31,6 +35,18 @@ export default function Demandas() {
   })
 
   const [isPending, startTransition] = useTransition()
+
+  // Reset notifications badge when viewing captados tab
+  useEffect(() => {
+    if (currentTab === 'captados') {
+      const unreadProps = notifications?.filter(
+        (n) => n.tipo_notificacao === 'novo_imovel' && !n.lida,
+      )
+      if (unreadProps && unreadProps.length > 0) {
+        unreadProps.forEach((n) => markNotificationAsRead(n.id))
+      }
+    }
+  }, [currentTab, notifications, markNotificationAsRead])
 
   const applyFilters = () => {
     startTransition(() => {
@@ -49,6 +65,10 @@ export default function Demandas() {
 
   const filterHash = JSON.stringify(activeFilters)
 
+  const handleTabChange = (val: string) => {
+    setSearchParams({ tab: val })
+  }
+
   return (
     <div className="space-y-[16px] md:space-y-[24px]">
       <div className="animate-fade-in-up">
@@ -58,7 +78,11 @@ export default function Demandas() {
         </p>
       </div>
 
-      <Tabs defaultValue="demandas" className="w-full animate-fade-in-up delay-75">
+      <Tabs
+        value={currentTab}
+        onValueChange={handleTabChange}
+        className="w-full animate-fade-in-up delay-75"
+      >
         <div className="sticky top-[64px] md:top-[72px] z-20 bg-[#F5F5F5] pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
           <TabsList className="grid w-full grid-cols-2 h-[48px] bg-[#FFFFFF] border-[2px] border-[#2E5F8A]/20 shadow-sm p-1">
             <TabsTrigger

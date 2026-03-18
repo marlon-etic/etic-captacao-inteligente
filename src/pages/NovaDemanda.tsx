@@ -1,6 +1,7 @@
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
+import { useNavigate } from 'react-router-dom'
 import { DollarSign, User, Tag, Mail, AlignLeft } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -17,6 +18,7 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { useToast } from '@/hooks/use-toast'
+import { ToastAction } from '@/components/ui/toast'
 import useAppStore from '@/stores/useAppStore'
 import { LocationSelector } from '@/components/LocationSelector'
 import { UrgencySelector } from '@/components/UrgencySelector'
@@ -27,7 +29,13 @@ const formSchema = z
       .string()
       .min(3, 'Nome deve ter no mínimo 3 caracteres')
       .max(100, 'Nome no máximo de 100 caracteres'),
-    clientEmail: z.string().email('Email inválido'),
+    clientEmail: z
+      .string()
+      .trim()
+      .refine((val) => val === '' || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val), {
+        message: 'Email inválido. Use: nome@dominio.com',
+      })
+      .optional(),
     location: z.array(z.string()).min(1, 'Selecione pelo menos um bairro da lista da Étic'),
     minBudget: z.coerce
       .number({ invalid_type_error: 'Informe um valor' })
@@ -58,6 +66,7 @@ const formSchema = z
 export default function NovaDemanda() {
   const { addDemand } = useAppStore()
   const { toast } = useToast()
+  const navigate = useNavigate()
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -79,39 +88,38 @@ export default function NovaDemanda() {
   const { isValid, isSubmitting } = form.formState
 
   const handleSubmit = (values: z.infer<typeof formSchema>) => {
-    addDemand({
-      clientName: values.clientName,
-      clientEmail: values.clientEmail,
-      location: values.location.join(', '),
-      minBudget: values.minBudget,
-      maxBudget: values.maxBudget,
-      bedrooms: values.bedrooms,
-      parkingSpots: values.parkingSpots,
-      description: values.description,
-      timeframe: values.timeframe,
-      type: values.type,
-      budget: values.maxBudget,
-    })
+    try {
+      addDemand({
+        clientName: values.clientName,
+        clientEmail: values.clientEmail || undefined,
+        location: values.location.join(', '),
+        minBudget: values.minBudget,
+        maxBudget: values.maxBudget,
+        bedrooms: values.bedrooms,
+        parkingSpots: values.parkingSpots,
+        description: values.description,
+        timeframe: values.timeframe,
+        type: values.type,
+        budget: values.maxBudget,
+      })
 
-    toast({
-      title: 'Demanda registrada!',
-      description: 'A demanda foi validada e vinculada à fila com sucesso.',
-      variant: 'default',
-      className: 'bg-emerald-600 text-white border-emerald-600',
-    })
+      toast({
+        title: '✅ Demanda cadastrada com sucesso!',
+        className: 'bg-emerald-600 text-white border-emerald-600',
+      })
 
-    form.reset({
-      clientName: '',
-      clientEmail: '',
-      location: [],
-      minBudget: '' as unknown as number,
-      maxBudget: '' as unknown as number,
-      bedrooms: '' as unknown as number,
-      parkingSpots: '' as unknown as number,
-      description: '',
-      timeframe: '',
-      type: 'Venda',
-    })
+      navigate('/app/demandas')
+    } catch (error) {
+      toast({
+        title: 'Erro ao salvar. Tente novamente.',
+        variant: 'destructive',
+        action: (
+          <ToastAction altText="Tentar novamente" onClick={() => form.handleSubmit(handleSubmit)()}>
+            🔄
+          </ToastAction>
+        ),
+      })
+    }
   }
 
   return (
@@ -151,15 +159,18 @@ export default function NovaDemanda() {
                   name="clientEmail"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>E-mail do Cliente</FormLabel>
+                      <FormLabel>
+                        Email do Cliente <span className="text-[#999999]">(opcional)</span>
+                      </FormLabel>
                       <FormControl>
                         <div className="relative">
                           <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                           <Input
                             type="email"
                             className="pl-9"
-                            placeholder="joao@exemplo.com"
+                            placeholder="email@exemplo.com (opcional)"
                             {...field}
+                            value={field.value || ''}
                           />
                         </div>
                       </FormControl>
@@ -335,7 +346,7 @@ export default function NovaDemanda() {
               <Button
                 type="submit"
                 size="lg"
-                className="w-full text-lg h-14 mt-4 transition-all duration-300"
+                className="w-full text-lg h-14 mt-4 transition-all duration-300 bg-[#1A3A52] hover:bg-[#2E5F8A] text-white font-bold"
                 disabled={!isValid || isSubmitting}
               >
                 <Tag className="w-5 h-5 mr-2" />

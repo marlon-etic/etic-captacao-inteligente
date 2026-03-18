@@ -1,5 +1,5 @@
 import { Link, useLocation, useSearchParams } from 'react-router-dom'
-import { LayoutDashboard, Users, PlusCircle, UserCircle, Trophy, Home, UserCog } from 'lucide-react'
+import { LayoutDashboard, Users, Building2, Bell, UserCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import useAppStore from '@/stores/useAppStore'
 import { AppNotification } from '@/types'
@@ -11,39 +11,39 @@ export function BottomNav() {
 
   if (!currentUser) return null
 
-  const isCreator = ['admin', 'sdr', 'corretor'].includes(currentUser.role)
-  const canSeeDemandas = ['admin', 'sdr', 'corretor', 'captador'].includes(currentUser.role)
-  const isCaptador = currentUser.role === 'captador'
-  const isAdmin = currentUser.role === 'admin'
-
   const userNotifications =
     notifications?.filter(
-      (n: AppNotification) => n.usuario_id === currentUser.id && !n.arquivada,
+      (n: AppNotification) => n.usuario_id === currentUser.id && !n.arquivada && !n.lida,
     ) || []
-  const unreadCount = userNotifications.filter((n: AppNotification) => !n.lida).length
+
+  const unreadCaptadosCount = userNotifications.filter(
+    (n) => n.tipo_notificacao === 'novo_imovel',
+  ).length
+
+  const unreadNotifCount = userNotifications.filter(
+    (n) => n.tipo_notificacao !== 'novo_imovel',
+  ).length
 
   const currentTab = searchParams.get('tab')
 
   const links = [
     { title: 'Dashboard', icon: LayoutDashboard, url: '/app' },
-    ...(canSeeDemandas && !isAdmin
-      ? [{ title: 'Demandas', icon: Users, url: '/app/demandas' }]
-      : []),
-    ...(isAdmin ? [{ title: 'Usuários', icon: UserCog, url: '/app/usuarios' }] : []),
-    ...(isCreator
-      ? [{ title: 'Nova', icon: PlusCircle, url: '/app/nova-demanda', isFab: true }]
-      : []),
-    ...(isCaptador
-      ? [{ title: 'Captados', icon: Home, url: '/app/demandas?tab=captados' }]
-      : [{ title: 'Ranking', icon: Trophy, url: '/app/ranking' }]),
+    { title: 'Demandas', icon: Users, url: '/app/demandas' },
+    {
+      title: 'Captados',
+      icon: Building2,
+      url: '/app/demandas?tab=captados',
+      badge: unreadCaptadosCount,
+    },
+    { title: 'Notificações', icon: Bell, url: '/app/notificacoes', badge: unreadNotifCount },
     { title: 'Perfil', icon: UserCircle, url: '/app/perfil' },
   ]
 
   return (
     <>
-      <div className="h-[56px] w-full block md:hidden bg-transparent" />
+      <div className="h-[56px] w-full block md:hidden bg-transparent shrink-0" />
 
-      <div className="fixed bottom-0 left-0 right-0 h-[56px] bg-[#FFFFFF] border-t-[2px] border-[#2E5F8A]/20 flex items-center justify-around px-[4px] py-[4px] z-50 md:hidden shadow-[0_-4px_12px_rgba(26,58,82,0.1)] pb-safe transition-all duration-200 ease-in-out">
+      <div className="fixed bottom-0 left-0 right-0 h-[56px] bg-[#FFFFFF] border-t-[1px] border-[#E5E5E5] flex items-center justify-around z-50 md:hidden shadow-[0_-4px_12px_rgba(26,58,82,0.05)] pb-safe transition-all duration-200 ease-in-out">
         {links.map((link) => {
           let isActive = false
           if (link.url.includes('?tab=')) {
@@ -55,41 +55,27 @@ export function BottomNav() {
               (!link.url.includes('/app/demandas') || !currentTab || currentTab === 'demandas')
           }
 
-          if (link.isFab) {
-            return (
-              <Link
-                key={link.url}
-                to={link.url}
-                className="relative -top-5 flex items-center justify-center w-[56px] h-[56px]"
-              >
-                <div className="w-[56px] h-[56px] rounded-full bg-[#1A3A52] flex items-center justify-center shadow-[0_4px_12px_rgba(26,58,82,0.2)] text-white transform active:scale-95 transition-all duration-200 ease-in-out hover:bg-[#1f4866]">
-                  <link.icon className="w-7 h-7" />
-                </div>
-              </Link>
-            )
-          }
-
           return (
             <Link
-              key={link.url}
+              key={link.title}
               to={link.url}
               className={cn(
-                'relative flex flex-col items-center justify-center min-h-[48px] min-w-[48px] transition-all duration-200 ease-in-out flex-1 rounded-[8px]',
+                'relative flex flex-col items-center justify-center h-full transition-all duration-200 ease-in-out flex-1',
                 isActive
-                  ? 'text-[#1A3A52] bg-[#F5F5F5]'
-                  : 'text-[#999999] hover:text-[#1A3A52] hover:bg-[#F5F5F5]/50',
+                  ? 'text-[#1A3A52]'
+                  : 'text-[#999999] hover:text-[#1A3A52] hover:bg-[#F5F5F5]/30',
               )}
             >
-              <div className="relative">
-                <link.icon className={cn('w-6 h-6')} />
-                {(link as any).badge !== undefined && (link as any).badge > 0 && (
-                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-[#F44336] text-white flex items-center justify-center rounded-full text-[12px] font-bold border-[1.5px] border-[#FFFFFF]">
-                    {(link as any).badge > 9 ? '9+' : (link as any).badge}
+              <div className="relative flex flex-col items-center justify-center">
+                <link.icon className={cn('w-[24px] h-[24px]', isActive && 'fill-current/10')} />
+                {link.badge > 0 && (
+                  <span className="absolute -top-1.5 -right-2 min-w-[18px] h-[18px] px-1 bg-[#F44336] text-white flex items-center justify-center rounded-full text-[10px] font-bold border-[1.5px] border-[#FFFFFF] shadow-sm">
+                    {link.badge > 9 ? '9+' : link.badge}
                   </span>
                 )}
               </div>
-              <span className="text-[12px] font-bold tracking-tight mt-[4px] leading-none">
-                {titleCase(link.title)}
+              <span className="text-[10px] font-bold tracking-tight mt-[4px] leading-none">
+                {link.title}
               </span>
             </Link>
           )
@@ -97,8 +83,4 @@ export function BottomNav() {
       </div>
     </>
   )
-}
-
-function titleCase(str: string) {
-  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase()
 }
