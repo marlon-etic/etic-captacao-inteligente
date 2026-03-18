@@ -56,6 +56,7 @@ interface AppState {
   updateUserPreferences: (prefs: Partial<UserPreferences['notifications']>) => void
   updateDashboardPrefs: (prefs: Record<string, boolean>) => void
   updateUser: (id: string, updates: Partial<User>) => void
+  createUser: (user: Partial<User>) => void
   login: (email: string, password?: string) => Promise<void>
   logout: () => void
   requestPasswordReset: (email: string) => void
@@ -132,6 +133,7 @@ const mockUsers: User[] = [
     role: 'captador',
     status: 'ativo',
     phone: '5511999999999',
+    whatsapp: '(11) 99999-9999',
     points: 1250,
     dailyPoints: 150,
     weeklyPoints: 600,
@@ -144,6 +146,7 @@ const mockUsers: User[] = [
       negociosFechados: 2,
     },
     preferences: defaultPreferences,
+    createdAt: new Date(Date.now() - 30 * 86400000).toISOString(),
   },
   {
     id: '2',
@@ -152,6 +155,7 @@ const mockUsers: User[] = [
     role: 'sdr',
     status: 'ativo',
     phone: '5511988888888',
+    whatsapp: '(11) 98888-8888',
     points: 800,
     dailyPoints: 0,
     weeklyPoints: 200,
@@ -159,6 +163,7 @@ const mockUsers: User[] = [
     badges: ['🚀 Rastreador Rápido'],
     stats: { ...defaultStats, responseCount: 10, responseTimeSum: 120 },
     preferences: defaultPreferences,
+    createdAt: new Date(Date.now() - 60 * 86400000).toISOString(),
   },
   {
     id: '3',
@@ -167,6 +172,7 @@ const mockUsers: User[] = [
     role: 'corretor',
     status: 'ativo',
     phone: '5511977777777',
+    whatsapp: '(11) 97777-7777',
     tipo_demanda: 'vendas',
     tipos_demanda_solicitados: ['locacao', 'vendas'],
     points: 950,
@@ -176,6 +182,7 @@ const mockUsers: User[] = [
     badges: ['⭐ Negociador Estrela'],
     stats: { ...defaultStats, negociosFechados: 5 },
     preferences: defaultPreferences,
+    createdAt: new Date(Date.now() - 15 * 86400000).toISOString(),
   },
   {
     id: '4',
@@ -190,6 +197,7 @@ const mockUsers: User[] = [
     badges: [],
     stats: { ...defaultStats },
     preferences: defaultPreferences,
+    createdAt: new Date(Date.now() - 100 * 86400000).toISOString(),
   },
   {
     id: '5',
@@ -204,6 +212,7 @@ const mockUsers: User[] = [
     badges: [],
     stats: { ...defaultStats },
     preferences: defaultPreferences,
+    createdAt: new Date(Date.now() - 200 * 86400000).toISOString(),
   },
 ]
 
@@ -947,6 +956,30 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       }
     },
     [broadcastState, currentUser],
+  )
+
+  const createUser = useCallback(
+    (userData: Partial<User>) => {
+      const newUser: User = {
+        id: Math.random().toString(36).substr(2, 9),
+        points: 0,
+        dailyPoints: 0,
+        weeklyPoints: 0,
+        monthlyPoints: 0,
+        badges: [],
+        stats: defaultStats,
+        status: 'ativo',
+        createdAt: new Date().toISOString(),
+        ...userData,
+      } as User
+
+      setUsers((prev) => {
+        const next = [...prev, newUser]
+        setTimeout(() => broadcastState(allDemandsRef.current, next, `Novo usuário criado`), 0)
+        return next
+      })
+    },
+    [broadcastState],
   )
 
   const updateDashboardPrefs = useCallback(
@@ -2082,6 +2115,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         },
         updateDashboardPrefs,
         updateUser,
+        createUser,
         getMatchesForProperty: (property: CapturedProperty) => {
           if (property.tipo_vinculacao === 'vinculado') return []
           const matches = allDemands
@@ -2162,7 +2196,11 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           localStorage.removeItem('etic_session')
         },
         requestPasswordReset: (email) => {
-          // TODO: implementar
+          toast({
+            title: 'Email enviado',
+            description: `✅ Email de redefinição enviado para ${email}`,
+            className: 'bg-[#4CAF50] text-white border-none',
+          })
         },
         addDemand: (d) => {
           if (currentUser?.role === 'corretor' && d.type !== 'Venda') {

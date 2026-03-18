@@ -65,6 +65,7 @@ export interface User {
   avatarUrl?: string
   preferences?: UserPreferences
   dashboardPrefs?: Record<string, boolean>
+  createdAt?: string
 }
 
 export type DemandStatus =
