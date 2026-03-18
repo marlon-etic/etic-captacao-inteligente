@@ -7,6 +7,7 @@ import { BottomNav } from '@/components/BottomNav'
 import { useToast } from '@/hooks/use-toast'
 import useAppStore from '@/stores/useAppStore'
 import { AddPropertyModal } from '@/components/AddPropertyModal'
+import { NewDemandModal } from '@/components/NewDemandModal'
 import { Plus } from 'lucide-react'
 
 export default function Layout() {
@@ -15,6 +16,7 @@ export default function Layout() {
   const { toast } = useToast()
 
   const [isAddPropertyModalOpen, setAddPropertyModalOpen] = useState(false)
+  const [isNewDemandModalOpen, setNewDemandModalOpen] = useState(false)
 
   useEffect(() => {
     if (currentUser && sessionExpiresAt && Date.now() > sessionExpiresAt) {
@@ -50,11 +52,17 @@ export default function Layout() {
     )
   }
 
+  const canCreateDemand =
+    currentUser?.role === 'sdr' || currentUser?.role === 'corretor' || currentUser?.role === 'admin'
+
   return (
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset className="flex flex-col min-h-[100dvh] overflow-hidden bg-[#F5F5F5] relative">
-        <AppHeader onAddPropertyClick={() => setAddPropertyModalOpen(true)} />
+        <AppHeader
+          onAddPropertyClick={() => setAddPropertyModalOpen(true)}
+          onAddDemandClick={() => setNewDemandModalOpen(true)}
+        />
         <main className="flex-1 overflow-y-auto w-full max-w-[1400px] mx-auto px-[16px] min-[480px]:px-[24px] md:px-[32px] pt-[16px] pb-[72px] md:py-[24px] animate-fade-in-up">
           <Outlet />
         </main>
@@ -63,7 +71,7 @@ export default function Layout() {
           <>
             <button
               onClick={() => setAddPropertyModalOpen(true)}
-              className="md:hidden fixed bottom-[76px] right-[16px] w-[56px] h-[56px] bg-[#4CAF50] text-white rounded-full flex items-center justify-center shadow-[0_4px_12px_rgba(76,175,80,0.4)] z-[100] active:scale-95 transition-transform"
+              className="md:hidden fixed bottom-[80px] right-[16px] w-[56px] h-[56px] bg-[#4CAF50] text-white rounded-full flex items-center justify-center shadow-[0_4px_12px_rgba(76,175,80,0.4)] z-[1000] active:scale-95 transition-transform"
               aria-label="Adicionar Imóvel"
             >
               <Plus className="w-8 h-8" />
@@ -76,6 +84,28 @@ export default function Layout() {
             <AddPropertyModal
               isOpen={isAddPropertyModalOpen}
               onClose={() => setAddPropertyModalOpen(false)}
+            />
+          </>
+        )}
+
+        {canCreateDemand && (
+          <>
+            <button
+              onClick={() => setNewDemandModalOpen(true)}
+              className="md:hidden fixed bottom-[80px] right-[16px] w-[56px] h-[56px] bg-[#4CAF50] text-white rounded-full flex items-center justify-center shadow-[0_4px_12px_rgba(76,175,80,0.4)] z-[1000] animate-pulse-subtle active:scale-95 transition-transform group"
+              aria-label="Nova Demanda"
+              title="Nova Demanda"
+            >
+              <Plus className="w-7 h-7" />
+            </button>
+            <button
+              id="btn-add-demand-trigger"
+              className="hidden"
+              onClick={() => setNewDemandModalOpen(true)}
+            />
+            <NewDemandModal
+              isOpen={isNewDemandModalOpen}
+              onClose={() => setNewDemandModalOpen(false)}
             />
           </>
         )}

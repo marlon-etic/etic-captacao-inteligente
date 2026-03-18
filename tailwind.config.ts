@@ -141,6 +141,10 @@ export default {
           '0%': { opacity: '0' },
           '100%': { opacity: '1' },
         },
+        'pulse-subtle': {
+          '0%, 100%': { transform: 'scale(1)', boxShadow: '0 4px 12px rgba(76,175,80,0.4)' },
+          '50%': { transform: 'scale(1.05)', boxShadow: '0 8px 16px rgba(76,175,80,0.6)' },
+        },
       },
       animation: {
         'cascade-fade': 'cascade-fade 200ms ease-in-out forwards',
@@ -154,6 +158,7 @@ export default {
         'fast-pulse': 'fast-pulse 200ms cubic-bezier(0.4, 0, 0.6, 1) infinite',
         'spin-slow': 'spin 2s linear infinite',
         'tab-fade': 'tab-fade 150ms ease-in-out forwards',
+        'pulse-subtle': 'pulse-subtle 2s ease-in-out infinite',
       },
     },
   },

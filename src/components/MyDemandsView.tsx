@@ -70,6 +70,10 @@ export function MyDemandsView({ filterType }: Props) {
 
   const handleClear = () => handleFilterChange({ status: 'Todos', prazo: 'Todos', bairro: '' })
 
+  const isAnyFilterActive = Object.values(filters).some(
+    (v) => v !== 'Todos' && v !== '' && v !== 'Ativos',
+  )
+
   return (
     <div className="flex flex-col gap-[16px] animate-fade-in w-full">
       <StickyFilterBar
@@ -87,25 +91,36 @@ export function MyDemandsView({ filterType }: Props) {
           ))}
         </div>
       ) : filteredDemands.length === 0 ? (
-        <div className="text-center py-[48px] bg-[#FFFFFF] border-[2px] rounded-[12px] border-dashed border-[#E5E5E5] flex flex-col items-center">
-          <Search className="w-12 h-12 text-[#999999]/30 mb-3" />
-          <p className="text-[16px] font-bold text-[#333333]">
-            {Object.values(filters).some((v) => v !== 'Todos' && v !== '' && v !== 'Ativos')
-              ? 'Nenhuma demanda com estes filtros.'
-              : 'Nenhuma demanda encontrada. Crie uma nova demanda.'}
-          </p>
-          <div className="mt-4 flex flex-col sm:flex-row gap-3">
-            {Object.values(filters).some((v) => v !== 'Todos' && v !== '' && v !== 'Ativos') && (
-              <Button variant="outline" onClick={handleClear}>
-                Limpar filtros
-              </Button>
-            )}
-            <Button asChild className="bg-[#1A3A52] text-white hover:bg-[#2E5F8A]">
-              <Link to="/app/nova-demanda">
-                <PlusCircle className="w-4 h-4 mr-2" /> Nova Demanda
-              </Link>
-            </Button>
-          </div>
+        <div className="text-center py-[48px] px-4 bg-[#FFFFFF] border-[2px] rounded-[12px] border-dashed border-[#E5E5E5] flex flex-col items-center">
+          {isAnyFilterActive ? (
+            <>
+              <Search className="w-12 h-12 text-[#999999]/30 mb-3" />
+              <p className="text-[16px] font-bold text-[#333333]">
+                Nenhuma demanda com estes filtros.
+              </p>
+              <div className="mt-4 flex flex-col sm:flex-row gap-3">
+                <Button variant="outline" onClick={handleClear}>
+                  Limpar filtros
+                </Button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="text-[64px] leading-none mb-4">📋</div>
+              <h3 className="text-[20px] font-bold text-[#333333]">Nenhuma demanda ativa</h3>
+              <p className="text-[14px] text-[#999999] mt-1 mb-6 max-w-[300px]">
+                Clique em '+ Nova Demanda' para criar sua primeira demanda
+              </p>
+              <div className="w-full max-w-sm">
+                <Button
+                  className="w-full h-[48px] bg-[#4CAF50] hover:bg-[#388E3C] text-white font-bold text-[16px]"
+                  onClick={() => document.getElementById('btn-add-demand-trigger')?.click()}
+                >
+                  ➕ Criar Nova Demanda
+                </Button>
+              </div>
+            </>
+          )}
         </div>
       ) : (
         <div className="grid gap-[12px] grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
