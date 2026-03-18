@@ -83,12 +83,12 @@ export function BottomNav() {
               <div className="relative">
                 <link.icon className={cn('w-6 h-6')} />
                 {(link as any).badge !== undefined && (link as any).badge > 0 && (
-                  <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-[#F44336] text-white flex items-center justify-center rounded-full text-[9px] font-bold border-[1.5px] border-[#FFFFFF]">
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-[#F44336] text-white flex items-center justify-center rounded-full text-[12px] font-bold border-[1.5px] border-[#FFFFFF]">
                     {(link as any).badge > 9 ? '9+' : (link as any).badge}
                   </span>
                 )}
               </div>
-              <span className="text-[11px] font-bold tracking-tight mt-[4px] leading-none">
+              <span className="text-[12px] font-bold tracking-tight mt-[4px] leading-none">
                 {titleCase(link.title)}
               </span>
             </Link>

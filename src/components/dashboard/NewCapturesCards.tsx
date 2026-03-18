@@ -27,7 +27,12 @@ export function GroupedCard({ group, onEncontrei, onNaoEncontrei }: any) {
   return (
     <div className="flex flex-col bg-[#E8F0F8] border-[2px] border-[#1A3A52] rounded-[12px] p-5 shadow-sm h-full gap-4 transition-all hover:shadow-md">
       <div className="flex justify-between items-start">
-        <Badge className={cn('font-bold text-[12px] border-none shadow-none', badgeClass)}>
+        <Badge
+          className={cn(
+            'font-bold text-[12px] border-none shadow-none min-h-[28px] px-3 py-1',
+            badgeClass,
+          )}
+        >
           {badgeText}
         </Badge>
       </div>
@@ -58,13 +63,13 @@ export function GroupedCard({ group, onEncontrei, onNaoEncontrei }: any) {
 
       <div className="flex flex-col sm:flex-row gap-2 mt-4 shrink-0">
         <Button
-          className="flex-1 bg-[#4CAF50] hover:bg-[#388E3C] text-white font-bold h-auto min-h-[44px] py-2 whitespace-normal leading-tight text-[12px] md:text-[13px]"
+          className="flex-1 bg-[#4CAF50] hover:bg-[#388E3C] text-white font-bold h-auto min-h-[48px] py-3 px-4 whitespace-normal break-words leading-tight text-[14px]"
           onClick={onEncontrei}
         >
           ✅ ENCONTREI IMÓVEL PARA ESTE GRUPO
         </Button>
         <Button
-          className="sm:w-auto min-h-[44px] bg-[#FFFFFF] hover:bg-[#F5F5F5] text-[#F44336] border border-[#F44336]/30 font-bold text-[12px] md:text-[13px]"
+          className="sm:w-auto min-h-[48px] bg-[#FFFFFF] hover:bg-[#F5F5F5] text-[#F44336] border border-[#F44336]/30 font-bold text-[14px] px-4 whitespace-normal break-words py-3 h-auto"
           onClick={onNaoEncontrei}
         >
           ❌ Não Encontrei
@@ -78,7 +83,7 @@ export function IndividualCard({ demand, onEncontrei, onNaoEncontrei, creatorNam
   return (
     <div className="flex flex-col bg-[#FFFFFF] border-[2px] border-[#2E5F8A] rounded-[12px] p-5 shadow-sm h-full gap-4 transition-all hover:shadow-md">
       <div className="flex justify-between items-start">
-        <Badge className="bg-[#2E5F8A] text-white font-bold text-[12px] border-none shadow-none">
+        <Badge className="bg-[#2E5F8A] text-white font-bold text-[12px] min-h-[28px] px-3 py-1 border-none shadow-none">
           👤 INDIVIDUAL
         </Badge>
       </div>
@@ -104,20 +109,20 @@ export function IndividualCard({ demand, onEncontrei, onNaoEncontrei, creatorNam
           </p>
         </div>
         <p className="text-[14px] text-[#333333] flex items-center gap-2">🏷️ {demand.type}</p>
-        <p className="text-[13px] text-[#999999] mt-2 font-medium">
+        <p className="text-[14px] text-[#999999] mt-2 font-medium">
           👤 Solicitado por: {creatorName}
         </p>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-2 mt-4 shrink-0">
         <Button
-          className="flex-1 bg-[#4CAF50] hover:bg-[#388E3C] text-white font-bold h-auto min-h-[44px] py-2 whitespace-normal leading-tight text-[12px] md:text-[13px]"
+          className="flex-1 bg-[#4CAF50] hover:bg-[#388E3C] text-white font-bold h-auto min-h-[48px] py-3 px-4 whitespace-normal break-words leading-tight text-[14px]"
           onClick={onEncontrei}
         >
           ✅ ENCONTREI IMÓVEL
         </Button>
         <Button
-          className="sm:w-auto min-h-[44px] bg-[#F5F5F5] hover:bg-[#EAEAEA] text-[#F44336] border border-[#F44336]/20 font-bold text-[12px] md:text-[13px]"
+          className="sm:w-auto min-h-[48px] bg-[#F5F5F5] hover:bg-[#EAEAEA] text-[#F44336] border border-[#F44336]/20 font-bold text-[14px] px-4 whitespace-normal break-words py-3 h-auto"
           onClick={onNaoEncontrei}
         >
           ❌ Não Encontrei
@@ -131,7 +136,7 @@ export function LooseCard({ demand, onEncontrei, onNaoEncontrei }: any) {
   return (
     <div className="flex flex-col bg-[#E8F5E9] border-[2px] border-[#4CAF50] rounded-[12px] p-5 shadow-sm h-full gap-4 transition-all hover:shadow-md">
       <div className="flex justify-between items-start">
-        <Badge className="bg-[#4CAF50] text-white font-bold text-[12px] border-none shadow-none">
+        <Badge className="bg-[#4CAF50] text-white font-bold text-[12px] min-h-[28px] px-3 py-1 border-none shadow-none">
           🔓 DISPONÍVEL PARA TODOS
         </Badge>
       </div>
@@ -159,7 +164,7 @@ export function LooseCard({ demand, onEncontrei, onNaoEncontrei }: any) {
 
         <div className="mt-3 bg-[#4CAF50]/10 p-3 rounded-[8px] flex gap-2 items-start">
           <span className="text-[16px] shrink-0 mt-0.5">ℹ️</span>
-          <span className="text-[13px] text-[#2E7D32] font-medium leading-tight">
+          <span className="text-[14px] text-[#2E7D32] font-medium leading-tight">
             Nenhum cliente específico — qualquer imóvel que se encaixe serve!
           </span>
         </div>
@@ -167,13 +172,13 @@ export function LooseCard({ demand, onEncontrei, onNaoEncontrei }: any) {
 
       <div className="flex flex-col sm:flex-row gap-2 mt-4 shrink-0">
         <Button
-          className="flex-1 bg-[#4CAF50] hover:bg-[#388E3C] text-white font-bold h-auto min-h-[44px] py-2 whitespace-normal leading-tight text-[12px] md:text-[13px]"
+          className="flex-1 bg-[#4CAF50] hover:bg-[#388E3C] text-white font-bold h-auto min-h-[48px] py-3 px-4 whitespace-normal break-words leading-tight text-[14px]"
           onClick={onEncontrei}
         >
           ✅ ENCONTREI IMÓVEL
         </Button>
         <Button
-          className="sm:w-auto min-h-[44px] bg-[#FFFFFF] hover:bg-[#F5F5F5] text-[#F44336] border border-[#F44336]/30 font-bold text-[12px] md:text-[13px]"
+          className="sm:w-auto min-h-[48px] bg-[#FFFFFF] hover:bg-[#F5F5F5] text-[#F44336] border border-[#F44336]/30 font-bold text-[14px] px-4 whitespace-normal break-words py-3 h-auto"
           onClick={onNaoEncontrei}
         >
           ❌ Não Encontrei

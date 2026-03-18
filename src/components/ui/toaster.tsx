@@ -14,13 +14,12 @@ export function Toaster() {
 
   const renderAnimatedTitle = (text: React.ReactNode) => {
     if (typeof text !== 'string') return text
-    // Extract emoji to animate as an icon
     const match = text.match(/^(\p{Emoji})(.*)/u)
     if (match) {
       return (
-        <span className="flex items-center gap-1.5">
+        <span className="flex items-center gap-2">
           <span
-            className="inline-block animate-bounce-scale origin-center"
+            className="inline-block animate-bounce-scale origin-center text-[20px]"
             style={{ animationDuration: '400ms' }}
           >
             {match[1]}
@@ -33,7 +32,7 @@ export function Toaster() {
   }
 
   return (
-    <ToastProvider>
+    <ToastProvider duration={3000}>
       {toasts.map(function ({ id, title, description, action, ...props }) {
         return (
           <Toast key={id} {...props}>

@@ -69,19 +69,19 @@ export function AppHeader({ onAddPropertyClick }: AppHeaderProps) {
   }
 
   return (
-    <header className="h-[56px] md:h-[64px] lg:h-[72px] bg-[#1A3A52] text-white border-b border-[#2E5F8A] flex items-center justify-between px-[16px] md:px-[24px] lg:px-[32px] sticky top-0 z-40 shadow-[0_4px_12px_rgba(26,58,82,0.15)] transition-all duration-200 ease-in-out">
+    <header className="h-[64px] lg:h-[72px] bg-[#1A3A52] text-white border-b border-[#2E5F8A] flex items-center justify-between px-[16px] md:px-[24px] lg:px-[32px] sticky top-0 z-40 shadow-[0_4px_12px_rgba(26,58,82,0.15)] transition-all duration-200 ease-in-out">
       <div className="flex items-center gap-[16px]">
         {isMobile ? (
           <Button
             variant="ghost"
             size="icon"
-            className="w-[44px] h-[44px] p-0 text-white hover:bg-[#2E5F8A] hover:text-white"
+            className="w-[48px] h-[48px] p-0 text-white hover:bg-[#2E5F8A] hover:text-white"
             onClick={() => setOpenMobile(true)}
           >
             <Menu className="w-6 h-6" />
           </Button>
         ) : (
-          <SidebarTrigger className="w-[44px] h-[44px] p-0 text-white hover:bg-[#2E5F8A] hover:text-white" />
+          <SidebarTrigger className="w-[48px] h-[48px] p-0 text-white hover:bg-[#2E5F8A] hover:text-white" />
         )}
         <h1 className="text-[20px] font-bold leading-[30px] truncate max-w-[200px] md:max-w-none text-white">
           {getTitle()}
@@ -92,7 +92,7 @@ export function AppHeader({ onAddPropertyClick }: AppHeaderProps) {
         {currentUser.role === 'captador' && onAddPropertyClick && (
           <Button
             onClick={onAddPropertyClick}
-            className="hidden md:flex bg-[#4CAF50] hover:bg-[#388E3C] h-[48px] w-[200px] text-white font-bold transition-colors shadow-[0_2px_4px_rgba(76,175,80,0.3)] shrink-0"
+            className="hidden md:flex bg-[#4CAF50] hover:bg-[#388E3C] min-h-[48px] w-auto px-6 text-white font-bold transition-colors shadow-[0_2px_4px_rgba(76,175,80,0.3)] shrink-0 text-[14px]"
           >
             ➕ ADICIONAR IMÓVEL
           </Button>
@@ -100,11 +100,11 @@ export function AppHeader({ onAddPropertyClick }: AppHeaderProps) {
 
         <Badge
           variant="secondary"
-          className="flex items-center gap-1.5 px-[12px] py-[6px] bg-[#2E5F8A] text-white border-none cursor-pointer hover:bg-[#2E5F8A]/80 transition-colors min-h-[44px] md:min-h-[40px] shadow-[0_2px_4px_rgba(26,58,82,0.2)]"
+          className="flex items-center gap-2 px-[16px] py-[8px] bg-[#2E5F8A] text-white border-none cursor-pointer hover:bg-[#2E5F8A]/80 transition-colors min-h-[48px] shadow-[0_2px_4px_rgba(26,58,82,0.2)]"
           onClick={() => navigate('/app/ranking')}
         >
-          <Star className="w-4 h-4 fill-white" />
-          <span className="font-bold text-[14px] leading-[20px] text-white">
+          <Star className="w-5 h-5 fill-white" />
+          <span className="font-bold text-[14px] leading-none text-white">
             {currentUser.points} pts
           </span>
         </Badge>
@@ -114,11 +114,11 @@ export function AppHeader({ onAddPropertyClick }: AppHeaderProps) {
             <Button
               variant="ghost"
               size="icon"
-              className="relative w-[44px] h-[44px] text-white hover:bg-[#2E5F8A] hover:text-white"
+              className="relative w-[48px] h-[48px] min-w-[48px] text-white hover:bg-[#2E5F8A] hover:text-white"
             >
               <Bell className="w-6 h-6" />
               {unreadCount > 0 && (
-                <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-[#F44336] rounded-full border-2 border-[#1A3A52] animate-pulse" />
+                <span className="absolute top-2 right-2 w-3 h-3 bg-[#F44336] rounded-full border-2 border-[#1A3A52] animate-pulse" />
               )}
             </Button>
           </PopoverTrigger>
@@ -135,7 +135,7 @@ export function AppHeader({ onAddPropertyClick }: AppHeaderProps) {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-auto px-[12px] py-[6px] text-[14px] font-bold text-[#2E5F8A] hover:bg-[#FFFFFF] hover:text-[#1A3A52]"
+                    className="min-h-[48px] px-[16px] py-[8px] text-[14px] font-bold text-[#2E5F8A] hover:bg-[#FFFFFF] hover:text-[#1A3A52]"
                     onClick={() => markAllNotificationsAsRead()}
                   >
                     <Check className="w-4 h-4 mr-1.5" /> Marcar lidas
@@ -193,7 +193,7 @@ export function AppHeader({ onAddPropertyClick }: AppHeaderProps) {
                         {n.acao_botao && (
                           <Button
                             variant={n.urgencia === 'alta' ? 'default' : 'secondary'}
-                            className="mt-3 w-full"
+                            className="mt-3 w-full min-h-[48px]"
                             onClick={(e) => {
                               e.stopPropagation()
                               if (!n.lida) markNotificationAsRead(n.id)
@@ -219,7 +219,7 @@ export function AppHeader({ onAddPropertyClick }: AppHeaderProps) {
               <div className="p-3 border-t border-[#2E5F8A]/20 bg-[#F5F5F5]">
                 <Button
                   variant="outline"
-                  className="w-full text-[14px] font-bold"
+                  className="w-full text-[14px] font-bold min-h-[48px]"
                   onClick={() => navigate('/app/notificacoes')}
                 >
                   Ver todas as notificações

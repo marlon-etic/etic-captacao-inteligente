@@ -110,12 +110,17 @@ export function GroupedDemandCard({
       >
         <CardContent className="p-[16px] flex flex-col flex-1 h-full gap-3">
           <div className="flex justify-between items-start gap-2">
-            <Badge className={cn('font-bold text-[13px] leading-tight px-3 py-1', badgeColor)}>
+            <Badge
+              className={cn(
+                'font-bold text-[14px] leading-tight px-3 py-1.5 min-h-[28px]',
+                badgeColor,
+              )}
+            >
               {badgeLabel}
             </Badge>
             <Badge
               variant="outline"
-              className="bg-white text-[#333333] border-[#1A3A52]/20 font-bold text-[12px] px-2 py-1 shrink-0 shadow-sm"
+              className="bg-white text-[#333333] border-[#1A3A52]/20 font-bold text-[12px] px-2 py-1.5 min-h-[28px] shrink-0 shadow-sm"
             >
               {group.type}
             </Badge>
@@ -124,8 +129,10 @@ export function GroupedDemandCard({
           <div className="flex flex-col gap-2 flex-grow">
             <div className="bg-white/90 p-3 rounded-xl border border-[#1A3A52]/10 space-y-2 shadow-sm">
               <p className="text-[14px] md:text-[15px] text-[#333333] flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-[#1A3A52]" />
-                <span className="font-bold">{group.location}</span>
+                <MapPin className="w-5 h-5 text-[#1A3A52]" />
+                <span className="font-bold break-words whitespace-normal leading-tight">
+                  {group.location}
+                </span>
               </p>
               <p className="text-[15px] md:text-[17px] font-black text-[#1A3A52] flex items-center gap-2">
                 💰 R$ {formatCurrency(group.minBudget)} - R$ {formatCurrency(group.maxBudget)}
@@ -141,25 +148,25 @@ export function GroupedDemandCard({
 
           <div className="flex flex-col gap-2 mt-2 shrink-0">
             <Button
-              className="w-full min-h-[44px] bg-[#4CAF50] hover:bg-[#388E3C] text-white font-bold text-[11px] sm:text-[12px] shadow-sm leading-tight px-2 whitespace-normal h-auto py-2"
+              className="w-full min-h-[48px] bg-[#4CAF50] hover:bg-[#388E3C] text-white font-bold text-[12px] sm:text-[14px] shadow-sm leading-tight px-4 whitespace-normal break-words h-auto py-3"
               onClick={() => handleGroupAction('encontrei')}
             >
-              <Check className="w-4 h-4 mr-1.5 shrink-0" /> ENCONTREI IMÓVEL PARA ESTE GRUPO
+              <Check className="w-5 h-5 mr-2 shrink-0" /> ENCONTREI IMÓVEL PARA ESTE GRUPO
             </Button>
 
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
               <Button
-                className="w-full min-h-[40px] bg-[#FFFFFF] border border-[#E5E5E5] text-[#333333] hover:bg-[#F5F5F5] font-bold text-[12px] px-2"
+                className="w-full min-h-[48px] bg-[#FFFFFF] border border-[#E5E5E5] text-[#333333] hover:bg-[#F5F5F5] font-bold text-[14px] px-4 whitespace-normal break-words"
                 onClick={() => setShowModal(true)}
               >
-                <Users className="w-3.5 h-3.5 mr-1.5 shrink-0 text-[#1A3A52]" />
+                <Users className="w-5 h-5 mr-2 shrink-0 text-[#1A3A52]" />
                 Ver {clientCount} Clientes
               </Button>
               <Button
-                className="w-full min-h-[40px] bg-[#FFFFFF] hover:bg-[#F5F5F5] border border-[#E5E5E5] text-[#F44336] font-bold text-[12px] px-2"
+                className="w-full min-h-[48px] bg-[#FFFFFF] hover:bg-[#F5F5F5] border border-[#E5E5E5] text-[#F44336] font-bold text-[14px] px-4 whitespace-normal break-words"
                 onClick={() => handleGroupAction('nao_encontrei')}
               >
-                <X className="w-3.5 h-3.5 mr-1.5 shrink-0" /> Não Encontrei
+                <X className="w-5 h-5 mr-2 shrink-0" /> Não Encontrei
               </Button>
             </div>
           </div>
@@ -175,7 +182,7 @@ export function GroupedDemandCard({
       <Dialog open={showModal} onOpenChange={setShowModal}>
         <DialogContent className="w-full max-w-[calc(100%-32px)] sm:max-w-[700px] h-[85vh] flex flex-col p-0 rounded-[12px] bg-white border-[2px] border-[#1A3A52] overflow-hidden">
           <DialogHeader className="p-4 md:p-6 border-b border-[#E5E5E5] shrink-0 bg-[#1A3A52] text-white rounded-t-[10px] relative">
-            <DialogTitle className="text-[18px] md:text-[22px] font-bold flex items-center gap-2 text-white">
+            <DialogTitle className="text-[18px] md:text-[22px] font-bold flex items-center gap-2 text-white pr-8">
               <Users className="w-6 h-6" />
               Detalhes do Grupo ({clientCount} clientes)
             </DialogTitle>
@@ -227,7 +234,7 @@ export function GroupedDemandCard({
                           </h4>
                           <Badge
                             variant="outline"
-                            className="text-[11px] h-[20px] bg-[#F5F5F5] text-[#333333] border-none px-2 shrink-0"
+                            className="text-[12px] h-[24px] bg-[#F5F5F5] text-[#333333] border-none px-2 shrink-0 font-bold"
                           >
                             {d.status}
                           </Badge>
@@ -248,7 +255,7 @@ export function GroupedDemandCard({
                       </div>
                       <Button
                         variant="outline"
-                        className="w-full sm:w-auto border-[2px] border-[#1A3A52] text-[#1A3A52] hover:bg-[#F5F5F5] font-bold"
+                        className="w-full sm:w-auto border-[2px] border-[#1A3A52] text-[#1A3A52] hover:bg-[#F5F5F5] font-bold min-h-[48px]"
                         onClick={() => setSelectedDemand(d)}
                       >
                         Ver Detalhes
@@ -277,7 +284,7 @@ export function GroupedDemandCard({
                           <span className="font-bold text-[14px] text-[#1A3A52]">{c.userName}</span>
                           <Badge
                             variant="secondary"
-                            className="text-[10px] h-[20px] px-1.5 capitalize bg-[#E8F0F8] text-[#1A3A52] border-none"
+                            className="text-[12px] h-[20px] px-1.5 capitalize bg-[#E8F0F8] text-[#1A3A52] border-none font-bold"
                           >
                             {c.userRole}
                           </Badge>
@@ -295,7 +302,7 @@ export function GroupedDemandCard({
                 <div className="flex gap-2 pt-4 border-t border-[#E5E5E5] shrink-0">
                   <Textarea
                     placeholder="Digite sua mensagem..."
-                    className="min-h-[44px] h-[44px] resize-none border-[2px] border-[#E5E5E5] focus-visible:ring-[#1A3A52]"
+                    className="min-h-[48px] h-[48px] resize-none border-[2px] border-[#E5E5E5] focus-visible:ring-[#1A3A52]"
                     value={newComment}
                     onChange={(e) => setNewComment(e.target.value)}
                     onKeyDown={(e) => {
@@ -307,9 +314,9 @@ export function GroupedDemandCard({
                   />
                   <Button
                     onClick={handleSendComment}
-                    className="h-[44px] px-4 shrink-0 bg-[#FF9800] hover:bg-[#F57C00] text-white font-bold border-none"
+                    className="h-[48px] min-h-[48px] px-4 shrink-0 bg-[#FF9800] hover:bg-[#F57C00] text-white font-bold border-none"
                   >
-                    <Send className="w-4 h-4 mr-2" />
+                    <Send className="w-5 h-5 mr-2" />
                     Enviar
                   </Button>
                 </div>

@@ -5,7 +5,7 @@ import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from '@/lib/utils'
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-[8px] text-[14px] font-bold ring-offset-background transition-all duration-200 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1A3A52] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 active:scale-[0.98] shadow-[0_2px_4px_rgba(26,58,82,0.1)] hover:shadow-[0_4px_8px_rgba(26,58,82,0.15)] [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0',
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-[8px] text-[14px] font-bold ring-offset-background transition-all duration-200 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1A3A52] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 active:scale-[0.98] shadow-[0_2px_4px_rgba(26,58,82,0.1)] hover:shadow-[0_4px_8px_rgba(26,58,82,0.15)] [&_svg]:pointer-events-none [&_svg]:size-5 [&_svg]:shrink-0',
   {
     variants: {
       variant: {
@@ -18,10 +18,10 @@ const buttonVariants = cva(
         link: 'text-[#1A3A52] underline-offset-4 hover:underline shadow-none hover:shadow-none',
       },
       size: {
-        default: 'px-[12px] py-[8px]',
-        sm: 'h-9 rounded-[8px] px-3',
-        lg: 'h-11 rounded-[8px] px-8',
-        icon: 'h-10 w-10 px-0 py-0',
+        default: 'min-h-[48px] px-[16px] py-[12px]',
+        sm: 'min-h-[48px] rounded-[8px] px-[16px]',
+        lg: 'min-h-[56px] rounded-[8px] px-[24px]',
+        icon: 'min-h-[48px] min-w-[48px] w-[48px] h-[48px] px-0 py-0',
       },
     },
     defaultVariants: {

@@ -97,7 +97,7 @@ export function StickyFilterBar({ filters, values, onChange, resultsCount }: Pro
 
   if (isMobile) {
     return (
-      <div className="sticky top-[56px] z-30 bg-[#F5F5F5] pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
+      <div className="sticky top-[64px] z-30 bg-[#F5F5F5] pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
         <div className="bg-white border border-[#E5E5E5] rounded-[12px] p-2 flex items-center gap-3 shadow-[0_2px_8px_rgba(26,58,82,0.05)] h-[56px]">
           <Sheet open={isOpen} onOpenChange={setIsOpen}>
             <SheetTrigger asChild>

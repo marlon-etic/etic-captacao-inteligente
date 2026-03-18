@@ -92,7 +92,7 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
   let statusBadge = null
   if (isLost) {
     statusBadge = (
-      <Badge className="bg-[#999999] text-[#FFFFFF] border-none font-bold text-[12px] min-h-[24px]">
+      <Badge className="bg-[#999999] text-[#FFFFFF] border-none font-bold text-[12px] min-h-[28px] py-1 px-3">
         ⚫ PERDIDA
       </Badge>
     )
@@ -100,7 +100,7 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
     statusBadge = (
       <Badge
         className={cn(
-          'bg-[#F44336] text-[#FFFFFF] border-none font-bold text-[12px] min-h-[24px]',
+          'bg-[#F44336] text-[#FFFFFF] border-none font-bold text-[12px] min-h-[28px] py-1 px-3',
           isJustPrioritized && 'animate-bounce-scale',
         )}
       >
@@ -109,7 +109,7 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
     )
   } else if (isNew) {
     statusBadge = (
-      <Badge className="bg-[#4CAF50] text-[#FFFFFF] border-none font-bold text-[12px] min-h-[24px]">
+      <Badge className="bg-[#4CAF50] text-[#FFFFFF] border-none font-bold text-[12px] min-h-[28px] py-1 px-3">
         🆕 NOVA - Responda em 24h
       </Badge>
     )
@@ -130,7 +130,9 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
     }
 
     statusBadge = (
-      <Badge className={cn('border-none text-[12px] font-bold min-h-[24px]', bgCol, textCol)}>
+      <Badge
+        className={cn('border-none text-[12px] font-bold min-h-[28px] py-1 px-3', bgCol, textCol)}
+      >
         {isPending ? slaBadgeText || '⏳ Pendente' : demand.status}
       </Badge>
     )
@@ -181,10 +183,9 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
         <div className="flex justify-between items-start mb-4 gap-2 z-0 relative">
           <div
             className={cn(
-              'flex items-center justify-start px-2 py-1 gap-[4px] rounded-[6px] shadow-[0_2px_4px_rgba(26,58,82,0.1)] shrink-0 overflow-hidden',
+              'flex items-center justify-start px-3 py-1.5 gap-[6px] rounded-[6px] shadow-[0_2px_4px_rgba(26,58,82,0.1)] shrink-0 overflow-hidden min-h-[28px]',
               isSale ? 'bg-[#FF9800]' : 'bg-[#1A3A52]',
             )}
-            style={{ minWidth: '80px', height: '28px' }}
           >
             {isSale ? (
               <Building2 className="w-[16px] h-[16px] text-white shrink-0" />
@@ -198,7 +199,7 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
 
           <div className="flex items-center justify-end flex-wrap gap-2">
             {!isLost && !isPrioritized && !isNew && isPending && (
-              <Badge className="bg-[#4CAF50] text-[#FFFFFF] hover:bg-[#388E3C] border-none text-[12px] font-bold whitespace-normal break-words text-center min-h-[24px]">
+              <Badge className="bg-[#4CAF50] text-[#FFFFFF] hover:bg-[#388E3C] border-none text-[12px] font-bold whitespace-normal break-words text-center min-h-[28px] py-1 px-3">
                 🟢 Ativa
               </Badge>
             )}
@@ -265,7 +266,7 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
         >
           <Button
             className={cn(
-              'h-auto min-h-[44px] px-[12px] py-[8px] w-full min-[480px]:flex-1 font-bold whitespace-normal break-words text-[14px]',
+              'h-auto min-h-[48px] px-[16px] py-[12px] w-full min-[480px]:flex-1 font-bold whitespace-normal break-words text-[14px]',
               btnSoft,
             )}
             onClick={() => setShowDetails(true)}
@@ -277,7 +278,7 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
             <>
               <Button
                 className={cn(
-                  'h-auto min-h-[44px] px-[12px] py-[8px] w-full min-[480px]:flex-1 font-bold whitespace-normal break-words text-[14px]',
+                  'h-auto min-h-[48px] px-[16px] py-[12px] w-full min-[480px]:flex-1 font-bold whitespace-normal break-words text-[14px]',
                   btnSolid,
                 )}
                 onClick={() => onAction?.(demand.id, 'encontrei')}
@@ -287,7 +288,7 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
               </Button>
               <Button
                 className={cn(
-                  'h-auto min-h-[44px] px-[12px] py-[8px] w-full min-[480px]:flex-1 font-bold whitespace-normal break-words text-[14px]',
+                  'h-auto min-h-[48px] px-[16px] py-[12px] w-full min-[480px]:flex-1 font-bold whitespace-normal break-words text-[14px]',
                   btnOutline,
                 )}
                 onClick={() => onAction?.(demand.id, 'nao_encontrei')}
@@ -301,7 +302,7 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
           {canMarkLost && (
             <Button
               variant="destructive"
-              className="h-auto min-h-[44px] px-[12px] py-[8px] w-full min-[480px]:flex-1 font-bold whitespace-normal break-words text-[14px]"
+              className="h-auto min-h-[48px] px-[16px] py-[12px] w-full min-[480px]:flex-1 font-bold whitespace-normal break-words text-[14px]"
               onClick={() => setShowLostModal(true)}
             >
               Marcar Perdida
@@ -310,7 +311,7 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
 
           <Button
             className={cn(
-              'h-auto min-h-[44px] px-[12px] py-[8px] w-full min-[480px]:flex-1 font-bold whitespace-normal break-words text-[14px]',
+              'h-auto min-h-[48px] px-[16px] py-[12px] w-full min-[480px]:flex-1 font-bold whitespace-normal break-words text-[14px]',
               'bg-transparent text-[#1A3A52] hover:bg-[#F5F5F5] border-none shadow-none',
             )}
             onClick={() =>
