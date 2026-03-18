@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import useAppStore from '@/stores/useAppStore'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -15,7 +15,15 @@ import { useViewFilters } from '@/hooks/useViewFilters'
 import { Skeleton } from '@/components/ui/skeleton'
 
 export function MyClientsCapturedView({ filterType }: { filterType?: 'Venda' | 'Aluguel' }) {
-  const { demands, users, currentUser, markPropertyLost, scheduleVisitByCode } = useAppStore()
+  const {
+    demands,
+    users,
+    currentUser,
+    markPropertyLost,
+    scheduleVisitByCode,
+    notifications,
+    markNotificationAsRead,
+  } = useAppStore()
   const { toast } = useToast()
   const [actionDemand, setActionDemand] = useState<Demand | null>(null)
   const [actionProperty, setActionProperty] = useState<CapturedProperty | null>(null)
@@ -26,6 +34,13 @@ export function MyClientsCapturedView({ filterType }: { filterType?: 'Venda' | '
     bairro: '',
   })
   const [isFiltering, setIsFiltering] = useState(false)
+
+  useEffect(() => {
+    const unreadCaptados = notifications.filter(
+      (n) => n.usuario_id === currentUser?.id && !n.lida && n.tipo_notificacao === 'novo_imovel',
+    )
+    unreadCaptados.forEach((n) => markNotificationAsRead(n.id))
+  }, [notifications, currentUser, markNotificationAsRead])
 
   const FILTERS: FilterDef[] = [{ id: 'bairro', label: 'Bairro', isSearch: true, options: [] }]
 
@@ -79,23 +94,6 @@ export function MyClientsCapturedView({ filterType }: { filterType?: 'Venda' | '
     )
   }, [demands, currentUser, filterType, filters])
 
-  const handleCopyLink = async (e: React.MouseEvent, url: string) => {
-    e.stopPropagation()
-    try {
-      await navigator.clipboard.writeText(url)
-      toast({
-        title: 'Link copiado!',
-        description: 'A URL do imóvel foi copiada para a área de transferência.',
-      })
-    } catch (err) {
-      toast({
-        title: 'Erro ao copiar link',
-        description: 'Não foi possível copiar a URL.',
-        variant: 'destructive',
-      })
-    }
-  }
-
   return (
     <div className="flex flex-col gap-[16px] animate-fade-in w-full">
       <StickyFilterBar
@@ -130,19 +128,24 @@ export function MyClientsCapturedView({ filterType }: { filterType?: 'Venda' | '
             const isFechado = !!group.property.fechamentoDate
 
             return (
-              <Card key={group.property.code} className="border-[2px] border-[#2E5F8A] shadow-sm">
-                <CardContent className="p-[16px] flex flex-col gap-4">
+              <Card
+                key={group.property.code}
+                className="border-[2px] border-[#2E5F8A] shadow-sm flex flex-col h-full"
+              >
+                <CardContent className="p-[16px] flex flex-col gap-4 flex-1">
                   <div className="flex flex-col space-y-2">
-                    <div className="flex items-center gap-2 mb-1 justify-between">
+                    <div className="flex items-center gap-2 mb-1 justify-between flex-wrap">
                       <div className="flex items-center gap-2">
-                        <Badge className="bg-[#1A3A52] font-bold">{group.property.code}</Badge>
-                        <Badge variant="outline" className="font-bold border-[#E5E5E5]">
+                        <Badge className="bg-[#1A3A52] font-bold text-[14px]">
+                          {group.property.code}
+                        </Badge>
+                        <Badge variant="outline" className="font-bold border-[#E5E5E5] text-[12px]">
                           {group.property.propertyType}
                         </Badge>
                       </div>
                       <Badge
                         className={cn(
-                          'font-bold border-none text-white',
+                          'font-bold border-none text-white text-[12px]',
                           isFechado ? 'bg-[#4CAF50]' : isVisita ? 'bg-[#FF9800]' : 'bg-[#9C27B0]',
                         )}
                       >
@@ -150,17 +153,19 @@ export function MyClientsCapturedView({ filterType }: { filterType?: 'Venda' | '
                       </Badge>
                     </div>
 
-                    <p className="flex items-center gap-2 text-[14px] text-[#333333] font-medium leading-tight">
-                      <MapPin className="w-4 h-4 text-[#1A3A52]" /> {group.property.neighborhood}
+                    <p className="flex items-center gap-2 text-[14px] text-[#333333] font-medium leading-tight mt-2">
+                      <MapPin className="w-4 h-4 text-[#1A3A52] shrink-0" />{' '}
+                      <span className="truncate">{group.property.neighborhood}</span>
                     </p>
                     <p className="flex items-center gap-2 text-[16px] font-bold text-[#1A3A52] leading-tight">
-                      <DollarSign className="w-4 h-4 text-[#1A3A52]" /> R${' '}
+                      <DollarSign className="w-4 h-4 text-[#1A3A52] shrink-0" /> R${' '}
                       {group.property.value?.toLocaleString('pt-BR')}
                     </p>
                     <div className="flex items-center justify-between">
                       <p className="flex items-center gap-2 text-[14px] text-[#333333] font-medium leading-tight">
-                        <Home className="w-4 h-4 text-[#1A3A52]" /> {group.property.bedrooms} dorm,{' '}
-                        {group.property.bathrooms} banh, {group.property.parkingSpots} vagas
+                        <Home className="w-4 h-4 text-[#1A3A52] shrink-0" />{' '}
+                        {group.property.bedrooms} dorm, {group.property.bathrooms} banh,{' '}
+                        {group.property.parkingSpots} vagas
                       </p>
                     </div>
                     <div className="flex flex-col gap-1 border-t border-[#E5E5E5] pt-2 mt-2">
@@ -181,22 +186,27 @@ export function MyClientsCapturedView({ filterType }: { filterType?: 'Venda' | '
                     <h4 className="font-bold text-[13px] text-[#999999] uppercase tracking-wider">
                       Clientes Interessados
                     </h4>
-                    <div className="space-y-3">
+                    <div className="space-y-4">
                       {group.demands.map((d) => (
-                        <div key={d.id} className="flex flex-col gap-2">
-                          <div className="flex items-center justify-between">
-                            <p className="font-bold text-[14px] text-[#1A3A52] leading-tight break-words">
-                              👤 {d.clientName}
-                            </p>
-                            <span className="text-[12px] font-bold text-[#999999] shrink-0 ml-2">
-                              {d.status}
-                            </span>
+                        <div
+                          key={d.id}
+                          className="flex flex-col gap-2 border-b border-[#E5E5E5]/50 pb-3 last:border-0 last:pb-0"
+                        >
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center justify-between">
+                              <p className="font-bold text-[14px] text-[#1A3A52] leading-tight break-words">
+                                👤 {d.clientName}
+                              </p>
+                              <span className="text-[12px] font-bold text-[#999999] shrink-0 ml-2">
+                                {d.status}
+                              </span>
+                            </div>
                           </div>
 
                           <div className="flex flex-col gap-2 w-full mt-1">
-                            <div className="flex gap-2 w-full">
+                            <div className="flex flex-col sm:flex-row gap-2 w-full">
                               <Button
-                                className="flex-1 bg-[#FF9800] hover:bg-[#F57C00] text-white font-bold h-[48px] text-[12px] px-1"
+                                className="flex-1 bg-[#FF9800] hover:bg-[#F57C00] text-white font-bold h-[48px] text-[14px]"
                                 onClick={() => {
                                   setActionDemand(d)
                                   setActionProperty(group.property)
@@ -206,7 +216,7 @@ export function MyClientsCapturedView({ filterType }: { filterType?: 'Venda' | '
                                 👁️ Visita
                               </Button>
                               <Button
-                                className="flex-1 bg-[#4CAF50] hover:bg-[#388E3C] text-white font-bold h-[48px] text-[12px] px-1"
+                                className="flex-1 bg-[#4CAF50] hover:bg-[#388E3C] text-white font-bold h-[48px] text-[14px]"
                                 onClick={() => {
                                   setActionDemand(d)
                                   setActionProperty(group.property)
@@ -216,11 +226,11 @@ export function MyClientsCapturedView({ filterType }: { filterType?: 'Venda' | '
                                 💰 Negócio
                               </Button>
                             </div>
-                            <div className="flex gap-2 w-full">
+                            <div className="flex flex-col sm:flex-row gap-2 w-full">
                               <Button
                                 variant="outline"
                                 className={cn(
-                                  'flex-1 font-bold h-[48px] border-[#2E5F8A] text-[#1A3A52] text-[12px] px-1 bg-white hover:bg-[#F5F5F5]',
+                                  'flex-1 font-bold h-[48px] border-[#2E5F8A] text-[#1A3A52] text-[14px] bg-white hover:bg-[#F5F5F5]',
                                   !publicUrl && 'opacity-50 cursor-not-allowed',
                                 )}
                                 onClick={(e) => {
@@ -231,7 +241,7 @@ export function MyClientsCapturedView({ filterType }: { filterType?: 'Venda' | '
                                 🔗 Ver Imóvel
                               </Button>
                               <Button
-                                className="flex-1 bg-[#25D366] hover:bg-[#128C7E] text-white font-bold h-[48px] text-[12px] px-1"
+                                className="flex-1 bg-[#25D366] hover:bg-[#128C7E] text-white font-bold h-[48px] text-[14px]"
                                 onClick={() => {
                                   if (captadorPhone) {
                                     window.open(
@@ -252,7 +262,7 @@ export function MyClientsCapturedView({ filterType }: { filterType?: 'Venda' | '
                             </div>
                             <Button
                               variant="destructive"
-                              className="w-full font-bold h-[48px] text-[12px]"
+                              className="w-full font-bold h-[48px] text-[14px]"
                               onClick={() => {
                                 setActionDemand(d)
                                 setActionProperty(group.property)

@@ -275,7 +275,7 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
           </Button>
 
           {currentUser?.role === 'captador' && (
-            <div className="flex w-full gap-2">
+            <div className="flex flex-col sm:flex-row w-full gap-2">
               <Button
                 className={cn(
                   'h-[48px] flex-1 font-bold whitespace-normal break-words text-[14px] px-2',
@@ -299,7 +299,7 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
             </div>
           )}
 
-          <div className="flex w-full gap-2">
+          <div className="flex flex-col sm:flex-row w-full gap-2">
             <Button
               className={cn(
                 'h-[44px] flex-1 font-bold whitespace-normal break-words text-[14px]',

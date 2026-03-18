@@ -84,13 +84,19 @@ export function AppSidebar() {
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild
-                    isActive={location.pathname === item.url}
+                    isActive={
+                      location.pathname === item.url ||
+                      (item.url === '/app/demandas' &&
+                        location.pathname.startsWith('/app/demandas'))
+                    }
                     onClick={() => {
                       if (isMobile) setOpenMobile(false)
                     }}
                     className={cn(
                       'transition-all duration-200 ease-in-out font-bold text-[14px] px-[16px] py-[12px] min-h-[48px] rounded-[8px] h-auto border border-transparent',
-                      location.pathname === item.url
+                      location.pathname === item.url ||
+                        (item.url === '/app/demandas' &&
+                          location.pathname.startsWith('/app/demandas'))
                         ? 'bg-[#1A3A52] text-white shadow-[0_2px_4px_rgba(26,58,82,0.15)] hover:bg-[#1f4866]'
                         : 'bg-transparent text-[#333333] hover:bg-[#FFFFFF] hover:border-[#2E5F8A]/20 shadow-none hover:text-[#1A3A52]',
                     )}

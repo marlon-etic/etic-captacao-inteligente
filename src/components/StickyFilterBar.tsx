@@ -79,10 +79,10 @@ export function StickyFilterBar({
     const active = Object.keys(values).filter((k) => values[k] !== defaultValues[k])
     if (active.length === 0) return null
 
-    const visible = isMobile ? active.slice(0, 2) : active
+    const visible = isMobile ? active.slice(0, 3) : active
 
     return (
-      <div className="flex items-center gap-2 flex-1 overflow-x-auto scrollbar-hide">
+      <div className="flex items-center gap-2 flex-1 overflow-x-auto scrollbar-hide px-1 py-1">
         {visible.map((id) => {
           const val = values[id]
           const def = filters.find((f) => f.id === id)
@@ -111,102 +111,113 @@ export function StickyFilterBar({
   if (isMobile) {
     return (
       <div className={cn('sticky z-30 bg-[#F5F5F5] pb-2 -mx-4 px-4 sm:mx-0 sm:px-0', stickyTop)}>
-        <div className="bg-white border border-[#E5E5E5] rounded-[12px] p-2 flex items-center gap-3 shadow-[0_2px_8px_rgba(26,58,82,0.05)] h-[56px]">
-          <Drawer open={isOpen} onOpenChange={setIsOpen}>
-            <DrawerTrigger asChild>
-              <Button
-                variant="outline"
-                className="shrink-0 h-[40px] px-4 bg-[#FFFFFF] hover:bg-[#F5F5F5] text-[#1A3A52] border-[2px] border-[#2E5F8A]/20 font-bold"
-              >
-                🔽 Filtros {activeCount > 0 && `(${activeCount})`}
-              </Button>
-            </DrawerTrigger>
-            <DrawerContent className="max-h-[85vh] h-[65vh] flex flex-col rounded-t-[24px] bg-[#F5F5F5] outline-none">
-              <DrawerHeader className="px-6 py-4 text-left border-b border-[#E5E5E5] shrink-0 bg-[#F5F5F5]">
-                <DrawerTitle className="text-[20px] font-black text-[#1A3A52]">Filtros</DrawerTitle>
-              </DrawerHeader>
-              <ScrollArea className="flex-1 px-6 py-4 bg-white">
-                <div className="space-y-8 pb-6">
-                  {filters.map((f) => (
-                    <div key={f.id} className="space-y-3">
-                      <h3 className="text-[13px] font-bold text-[#999999] uppercase tracking-wider">
-                        {f.label}
-                      </h3>
-                      {f.isSearch ? (
-                        <div className="relative">
-                          <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#999999]" />
-                          <Input
-                            placeholder="Buscar bairro..."
-                            className="pl-9 h-12 bg-[#F5F5F5] border-transparent focus-visible:ring-[#1A3A52] font-medium"
-                            value={mobileValues[f.id] || ''}
-                            onChange={(e) =>
-                              setMobileValues((p) => ({ ...p, [f.id]: e.target.value }))
-                            }
-                          />
-                          <div className="flex flex-wrap gap-2 mt-3">
-                            {BAIRROS_ETIC.filter((b) =>
-                              mobileValues[f.id]
-                                ? b.toLowerCase().includes(mobileValues[f.id].toLowerCase())
-                                : false,
-                            )
-                              .slice(0, 5)
-                              .map((b) => (
-                                <Badge
-                                  key={b}
-                                  variant="outline"
-                                  className="cursor-pointer bg-white h-8 hover:bg-[#F5F5F5]"
-                                  onClick={() => setMobileValues((p) => ({ ...p, [f.id]: b }))}
-                                >
-                                  {b}
-                                </Badge>
-                              ))}
+        <div className="flex flex-col gap-2">
+          <div className="bg-white border border-[#E5E5E5] rounded-[12px] p-2 flex items-center gap-3 shadow-[0_2px_8px_rgba(26,58,82,0.05)] min-h-[60px] w-full">
+            <Drawer open={isOpen} onOpenChange={setIsOpen}>
+              <DrawerTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="shrink-0 h-[52px] px-4 bg-[#FFFFFF] hover:bg-[#F5F5F5] text-[#1A3A52] border-[2px] border-[#2E5F8A]/20 font-bold w-full justify-between"
+                >
+                  <span className="flex items-center gap-2">
+                    🔽 Filtros {activeCount > 0 && `(${activeCount})`}
+                  </span>
+                  <span className="text-[#999999] text-[12px] font-normal">
+                    {resultsCount} res.
+                  </span>
+                </Button>
+              </DrawerTrigger>
+              <DrawerContent className="max-h-[85vh] h-[65vh] flex flex-col rounded-t-[24px] bg-[#F5F5F5] outline-none">
+                <DrawerHeader className="px-6 py-4 text-left border-b border-[#E5E5E5] shrink-0 bg-[#F5F5F5]">
+                  <DrawerTitle className="text-[20px] font-black text-[#1A3A52]">
+                    Filtros
+                  </DrawerTitle>
+                </DrawerHeader>
+                <ScrollArea className="flex-1 px-6 py-4 bg-white">
+                  <div className="space-y-8 pb-6">
+                    {filters.map((f) => (
+                      <div key={f.id} className="space-y-3">
+                        <h3 className="text-[13px] font-bold text-[#999999] uppercase tracking-wider">
+                          {f.label}
+                        </h3>
+                        {f.isSearch ? (
+                          <div className="relative">
+                            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#999999]" />
+                            <Input
+                              placeholder="Buscar bairro..."
+                              className="pl-9 h-12 bg-[#F5F5F5] border-transparent focus-visible:ring-[#1A3A52] font-medium"
+                              value={mobileValues[f.id] || ''}
+                              onChange={(e) =>
+                                setMobileValues((p) => ({ ...p, [f.id]: e.target.value }))
+                              }
+                            />
+                            <div className="flex flex-wrap gap-2 mt-3">
+                              {BAIRROS_ETIC.filter((b) =>
+                                mobileValues[f.id]
+                                  ? b.toLowerCase().includes(mobileValues[f.id].toLowerCase())
+                                  : false,
+                              )
+                                .slice(0, 5)
+                                .map((b) => (
+                                  <Badge
+                                    key={b}
+                                    variant="outline"
+                                    className="cursor-pointer bg-white h-8 hover:bg-[#F5F5F5]"
+                                    onClick={() => setMobileValues((p) => ({ ...p, [f.id]: b }))}
+                                  >
+                                    {b}
+                                  </Badge>
+                                ))}
+                            </div>
                           </div>
-                        </div>
-                      ) : (
-                        <div className="grid grid-cols-2 gap-3">
-                          {f.options.map((o) => {
-                            const isSelected = mobileValues[f.id] === o.value
-                            return (
-                              <Button
-                                key={o.value}
-                                variant="outline"
-                                onClick={() => setMobileValues((p) => ({ ...p, [f.id]: o.value }))}
-                                className={cn(
-                                  'h-12 justify-start font-bold border-[2px] transition-all px-3',
-                                  isSelected
-                                    ? 'bg-[#1A3A52] text-white border-[#1A3A52] shadow-[0_2px_8px_rgba(26,58,82,0.2)]'
-                                    : 'bg-white text-[#333333] border-[#E5E5E5] hover:border-[#1A3A52]/30 hover:bg-[#F5F5F5]',
-                                )}
-                              >
-                                {o.icon && <span className="mr-2 text-[16px]">{o.icon}</span>}
-                                <span className="truncate">{o.label}</span>
-                              </Button>
-                            )
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                        ) : (
+                          <div className="grid grid-cols-2 gap-3">
+                            {f.options.map((o) => {
+                              const isSelected = mobileValues[f.id] === o.value
+                              return (
+                                <Button
+                                  key={o.value}
+                                  variant="outline"
+                                  onClick={() =>
+                                    setMobileValues((p) => ({ ...p, [f.id]: o.value }))
+                                  }
+                                  className={cn(
+                                    'h-12 justify-start font-bold border-[2px] transition-all px-3',
+                                    isSelected
+                                      ? 'bg-[#1A3A52] text-white border-[#1A3A52] shadow-[0_2px_8px_rgba(26,58,82,0.2)]'
+                                      : 'bg-white text-[#333333] border-[#E5E5E5] hover:border-[#1A3A52]/30 hover:bg-[#F5F5F5]',
+                                  )}
+                                >
+                                  {o.icon && <span className="mr-2 text-[16px]">{o.icon}</span>}
+                                  <span className="truncate">{o.label}</span>
+                                </Button>
+                              )
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+                <div className="p-4 bg-white border-t border-[#E5E5E5] flex items-center justify-between gap-4 shrink-0 pb-safe shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
+                  <Button
+                    variant="ghost"
+                    onClick={handleClearAll}
+                    className="font-bold text-[#999999] hover:bg-[#F5F5F5] hover:text-[#333333] h-12 px-2"
+                  >
+                    Limpar tudo
+                  </Button>
+                  <Button
+                    onClick={handleMobileApply}
+                    className="bg-[#1A3A52] hover:bg-[#2E5F8A] text-white font-bold h-12 flex-1 shadow-[0_4px_12px_rgba(26,58,82,0.2)]"
+                  >
+                    Ver resultados ({resultsCount})
+                  </Button>
                 </div>
-              </ScrollArea>
-              <div className="p-4 bg-white border-t border-[#E5E5E5] flex items-center justify-between gap-4 shrink-0 pb-safe shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
-                <Button
-                  variant="ghost"
-                  onClick={handleClearAll}
-                  className="font-bold text-[#999999] hover:bg-[#F5F5F5] hover:text-[#333333] h-12 px-2"
-                >
-                  Limpar tudo
-                </Button>
-                <Button
-                  onClick={handleMobileApply}
-                  className="bg-[#1A3A52] hover:bg-[#2E5F8A] text-white font-bold h-12 flex-1 shadow-[0_4px_12px_rgba(26,58,82,0.2)]"
-                >
-                  Ver resultados ({resultsCount})
-                </Button>
-              </div>
-            </DrawerContent>
-          </Drawer>
-          {renderActiveChips()}
+              </DrawerContent>
+            </Drawer>
+          </div>
+          {activeCount > 0 && renderActiveChips()}
         </div>
       </div>
     )

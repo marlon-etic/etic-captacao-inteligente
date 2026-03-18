@@ -1,4 +1,5 @@
 import { useRef, useState, useEffect, useMemo } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { MyDemandsView } from '@/components/MyDemandsView'
 import { CapturedPropertiesView } from '@/components/CapturedPropertiesView'
@@ -9,6 +10,8 @@ import useAppStore from '@/stores/useAppStore'
 
 export function SDRDashboard() {
   const { demands, currentUser, looseProperties } = useAppStore()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const currentTab = searchParams.get('tab') || 'demandas'
 
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const [canScrollRight, setCanScrollRight] = useState(true)
@@ -68,9 +71,17 @@ export function SDRDashboard() {
     ['Negócio', 'Perdida', 'Impossível', 'Arquivado'].includes(d.status),
   ).length
 
+  const handleTabChange = (val: string) => {
+    setSearchParams({ tab: val })
+  }
+
   return (
     <div className="px-[16px] pb-[72px] pt-[24px] max-w-7xl mx-auto flex flex-col w-full">
-      <Tabs defaultValue="demandas" className="w-full flex flex-col gap-[16px]">
+      <Tabs
+        value={currentTab}
+        onValueChange={handleTabChange}
+        className="w-full flex flex-col gap-[16px]"
+      >
         <div className="sticky top-[64px] sm:top-[72px] z-40 bg-[#F5F5F5] pt-2 pb-2 -mx-[16px] px-[16px] sm:mx-0 sm:px-0">
           <div className="relative w-full">
             {canScrollLeft && (

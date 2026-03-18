@@ -28,11 +28,11 @@ export function BottomNav() {
 
   const links = [
     { title: 'Dashboard', icon: LayoutDashboard, url: '/app' },
-    { title: 'Demandas', icon: Users, url: '/app/demandas' },
+    { title: 'Demandas', icon: Users, url: '/app/demandas?tab=demandas' },
     {
       title: 'Captados',
       icon: Building2,
-      url: '/app/demandas?tab=captados',
+      url: '/app/demandas?tab=meus-clientes',
       badge: unreadCaptadosCount,
     },
     { title: 'Notificações', icon: Bell, url: '/app/notificacoes', badge: unreadNotifCount },
@@ -46,13 +46,13 @@ export function BottomNav() {
       <div className="fixed bottom-0 left-0 right-0 h-[56px] bg-[#FFFFFF] border-t-[1px] border-[#E5E5E5] flex items-center justify-around z-50 md:hidden shadow-[0_-4px_12px_rgba(26,58,82,0.05)] pb-safe transition-all duration-200 ease-in-out">
         {links.map((link) => {
           let isActive = false
-          if (link.url.includes('?tab=')) {
-            const targetTab = link.url.split('?tab=')[1]
-            isActive = location.pathname === link.url.split('?')[0] && currentTab === targetTab
-          } else {
+          if (link.url === '/app/demandas?tab=demandas') {
             isActive =
-              location.pathname === link.url &&
-              (!link.url.includes('/app/demandas') || !currentTab || currentTab === 'demandas')
+              location.pathname === '/app/demandas' && (!currentTab || currentTab === 'demandas')
+          } else if (link.url === '/app/demandas?tab=meus-clientes') {
+            isActive = location.pathname === '/app/demandas' && currentTab === 'meus-clientes'
+          } else {
+            isActive = location.pathname === link.url
           }
 
           return (
@@ -68,11 +68,11 @@ export function BottomNav() {
             >
               <div className="relative flex flex-col items-center justify-center">
                 <link.icon className={cn('w-[24px] h-[24px]', isActive && 'fill-current/10')} />
-                {link.badge > 0 && (
+                {link.badge && link.badge > 0 ? (
                   <span className="absolute -top-1.5 -right-2 min-w-[18px] h-[18px] px-1 bg-[#F44336] text-white flex items-center justify-center rounded-full text-[10px] font-bold border-[1.5px] border-[#FFFFFF] shadow-sm">
                     {link.badge > 9 ? '9+' : link.badge}
                   </span>
-                )}
+                ) : null}
               </div>
               <span className="text-[10px] font-bold tracking-tight mt-[4px] leading-none">
                 {link.title}

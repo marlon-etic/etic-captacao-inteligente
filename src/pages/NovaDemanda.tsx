@@ -32,10 +32,9 @@ const formSchema = z
     clientEmail: z
       .string()
       .trim()
-      .refine((val) => val === '' || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val), {
-        message: 'Email inválido. Use: nome@dominio.com',
-      })
-      .optional(),
+      .email('Email inválido. Use: nome@dominio.com')
+      .optional()
+      .or(z.literal('')),
     location: z.array(z.string()).min(1, 'Selecione pelo menos um bairro da lista da Étic'),
     minBudget: z.coerce
       .number({ invalid_type_error: 'Informe um valor' })
@@ -108,7 +107,7 @@ export default function NovaDemanda() {
         className: 'bg-emerald-600 text-white border-emerald-600',
       })
 
-      navigate('/app/demandas')
+      navigate('/app/demandas?tab=demandas')
     } catch (error) {
       toast({
         title: 'Erro ao salvar. Tente novamente.',
@@ -159,9 +158,7 @@ export default function NovaDemanda() {
                   name="clientEmail"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>
-                        Email do Cliente <span className="text-[#999999]">(opcional)</span>
-                      </FormLabel>
+                      <FormLabel className="text-[#999999]">Email do Cliente (opcional)</FormLabel>
                       <FormControl>
                         <div className="relative">
                           <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
