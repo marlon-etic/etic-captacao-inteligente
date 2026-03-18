@@ -59,7 +59,8 @@ interface AppState {
   createUser: (user: Partial<User>) => void
   login: (email: string, password?: string) => Promise<void>
   logout: () => void
-  requestPasswordReset: (email: string) => void
+  requestPasswordReset: (email: string) => Promise<void>
+  resetPassword: (password: string, token: string) => Promise<void>
   addDemand: (demand: Partial<Demand>) => void
   updateDemandStatus: (id: string, status: DemandStatus) => void
   submitDemandResponse: (id: string, action: 'encontrei' | 'nao_encontrei', payload: any) => any
@@ -2195,12 +2196,20 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           setSessionExpiresAt(null)
           localStorage.removeItem('etic_session')
         },
-        requestPasswordReset: (email) => {
-          toast({
-            title: 'Email enviado',
-            description: `✅ Email de redefinição enviado para ${email}`,
-            className: 'bg-[#4CAF50] text-white border-none',
-          })
+        requestPasswordReset: async (email) => {
+          await new Promise((r) => setTimeout(r, 800))
+          const key = `reset_limit_${email}`
+          const attempts = parseInt(sessionStorage.getItem(key) || '0', 10)
+          if (attempts >= 3) {
+            throw new Error('Limite de tentativas excedido. Tente novamente em 1 hora.')
+          }
+          sessionStorage.setItem(key, (attempts + 1).toString())
+        },
+        resetPassword: async (password, token) => {
+          await new Promise((r) => setTimeout(r, 800))
+          if (token === 'expired' || token === 'used') {
+            throw new Error('Token expirado')
+          }
         },
         addDemand: (d) => {
           if (currentUser?.role === 'corretor' && d.type !== 'Venda') {

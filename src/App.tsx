@@ -5,6 +5,8 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { AppStoreProvider } from '@/stores/useAppStore'
 import Layout from '@/components/Layout'
 import Index from '@/pages/Index'
+import EsqueciSenha from '@/pages/EsqueciSenha'
+import RedefinirSenha from '@/pages/RedefinirSenha'
 import DashboardRedirect from '@/pages/DashboardRedirect'
 import Demandas from '@/pages/Demandas'
 import NovaDemanda from '@/pages/NovaDemanda'
@@ -30,6 +32,8 @@ const App = () => (
         <Sonner />
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/esqueci-senha" element={<EsqueciSenha />} />
+          <Route path="/redefinir-senha" element={<RedefinirSenha />} />
           <Route path="/app" element={<Layout />}>
             <Route index element={<DashboardRedirect />} />
             <Route path="demandas" element={<Demandas />} />

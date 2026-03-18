@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Mail, Lock, LogIn, Building2, KeyRound, ArrowLeft, Loader2 } from 'lucide-react'
+import { useNavigate, Link } from 'react-router-dom'
+import { Mail, Lock, LogIn, Building2, Loader2 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -11,9 +11,8 @@ import useAppStore from '@/stores/useAppStore'
 export default function Index() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [isResetting, setIsResetting] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const { currentUser, login, requestPasswordReset } = useAppStore()
+  const { currentUser, login } = useAppStore()
   const navigate = useNavigate()
   const { toast } = useToast()
 
@@ -47,26 +46,6 @@ export default function Index() {
       })
     } finally {
       setIsLoading(false)
-    }
-  }
-
-  const handleReset = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!email) {
-      toast({ title: 'Atenção', description: 'Preencha seu e-mail.', variant: 'destructive' })
-      return
-    }
-    try {
-      requestPasswordReset(email)
-      toast({
-        title: 'Email enviado',
-        description:
-          'Verifique sua caixa de entrada com o link de recuperação (válido por 1 hora).',
-        className: 'bg-[#4CAF50] text-white border-none',
-      })
-      setIsResetting(false)
-    } catch (err: any) {
-      toast({ title: 'Erro', description: err.message, variant: 'destructive' })
     }
   }
 
@@ -106,150 +85,110 @@ export default function Index() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {!isResetting ? (
-            <>
-              <form onSubmit={handleLogin} className="space-y-[16px]">
-                <div className="space-y-[8px]">
-                  <Label
-                    htmlFor="email"
-                    className="text-[#333333] text-[12px] font-bold uppercase tracking-wider"
-                  >
-                    Email
-                  </Label>
-                  <div className="relative">
-                    <Mail className="absolute left-[12px] top-[12px] h-[20px] w-[20px] text-[#999999]" />
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="seu@email.com"
-                      className="pl-[40px]"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      disabled={isLoading}
-                    />
-                  </div>
-                </div>
-                <div className="space-y-[8px]">
-                  <div className="flex justify-between items-center">
-                    <Label
-                      htmlFor="password"
-                      className="text-[#333333] text-[12px] font-bold uppercase tracking-wider"
-                    >
-                      Senha
-                    </Label>
-                    <button
-                      type="button"
-                      onClick={() => setIsResetting(true)}
-                      className="text-[12px] text-[#2E5F8A] hover:text-[#1A3A52] hover:underline font-bold"
-                      disabled={isLoading}
-                    >
-                      Esqueceu a senha?
-                    </button>
-                  </div>
-                  <div className="relative">
-                    <Lock className="absolute left-[12px] top-[12px] h-[20px] w-[20px] text-[#999999]" />
-                    <Input
-                      id="password"
-                      type="password"
-                      placeholder="••••••••"
-                      className="pl-[40px]"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      disabled={isLoading}
-                    />
-                  </div>
-                </div>
-                <Button
-                  type="submit"
-                  className="w-full h-[48px] text-[14px] font-bold mt-[8px]"
+          <form onSubmit={handleLogin} className="space-y-[16px]">
+            <div className="space-y-[8px]">
+              <Label
+                htmlFor="email"
+                className="text-[#333333] text-[12px] font-bold uppercase tracking-wider"
+              >
+                Email
+              </Label>
+              <div className="relative">
+                <Mail className="absolute left-[12px] top-[12px] h-[20px] w-[20px] text-[#999999]" />
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="seu@email.com"
+                  className="pl-[40px]"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   disabled={isLoading}
-                >
-                  {isLoading ? (
-                    <Loader2 className="w-[20px] h-[20px] mr-[8px] animate-spin" />
-                  ) : (
-                    <LogIn className="w-[20px] h-[20px] mr-[8px]" />
-                  )}
-                  {isLoading ? 'Entrando...' : 'Entrar no Sistema'}
-                </Button>
-              </form>
+                />
+              </div>
+            </div>
+            <div className="space-y-[8px]">
+              <Label
+                htmlFor="password"
+                className="text-[#333333] text-[12px] font-bold uppercase tracking-wider"
+              >
+                Senha
+              </Label>
+              <div className="relative">
+                <Lock className="absolute left-[12px] top-[12px] h-[20px] w-[20px] text-[#999999]" />
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="••••••••"
+                  className="pl-[40px]"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={isLoading}
+                />
+              </div>
+            </div>
+            <div className="pt-2">
+              <Button
+                type="submit"
+                className="w-full h-[48px] text-[14px] font-bold"
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <Loader2 className="w-[20px] h-[20px] mr-[8px] animate-spin" />
+                ) : (
+                  <LogIn className="w-[20px] h-[20px] mr-[8px]" />
+                )}
+                {isLoading ? 'Entrando...' : 'Entrar no Sistema'}
+              </Button>
+            </div>
+            <div className="flex justify-end pt-1">
+              <Link
+                to="/esqueci-senha"
+                className="text-[14px] text-[#1A3A52] hover:underline font-bold transition-all duration-200"
+              >
+                Esqueci minha senha
+              </Link>
+            </div>
+          </form>
 
-              <div className="mt-[32px] pt-[24px] border-t border-[#2E5F8A]/20 space-y-[12px]">
-                <p className="text-[12px] font-bold uppercase tracking-wider text-center text-[#999999] mb-[16px]">
-                  Ambiente de Teste (Atalhos)
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-[8px]">
-                  <Button
-                    variant="secondary"
-                    onClick={() => quickLogin('captador@etic.com')}
-                    className="text-[12px]"
-                    disabled={isLoading}
-                  >
-                    Captador
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    onClick={() => quickLogin('sdr@etic.com')}
-                    className="text-[12px]"
-                    disabled={isLoading}
-                  >
-                    SDR
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    onClick={() => quickLogin('corretor@etic.com')}
-                    className="text-[12px]"
-                    disabled={isLoading}
-                  >
-                    Corretor
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    onClick={() => quickLogin('gestor@etic.com')}
-                    className="text-[12px]"
-                    disabled={isLoading}
-                  >
-                    Gestor / Admin
-                  </Button>
-                </div>
-              </div>
-            </>
-          ) : (
-            <form onSubmit={handleReset} className="space-y-[16px] animate-fade-in">
-              <div className="space-y-[8px]">
-                <Label
-                  htmlFor="reset-email"
-                  className="text-[#333333] text-[12px] font-bold uppercase tracking-wider"
-                >
-                  Email para recuperação
-                </Label>
-                <div className="relative">
-                  <Mail className="absolute left-[12px] top-[12px] h-[20px] w-[20px] text-[#999999]" />
-                  <Input
-                    id="reset-email"
-                    type="email"
-                    placeholder="seu@email.com"
-                    className="pl-[40px]"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                  />
-                </div>
-                <p className="text-[12px] text-[#333333] pt-[4px] font-medium">
-                  Um link com validade de 1 hora será enviado.
-                </p>
-              </div>
-              <Button type="submit" className="w-full h-[48px] text-[14px] font-bold mt-[8px]">
-                <KeyRound className="w-[20px] h-[20px] mr-[8px]" /> Recuperar Senha
+          <div className="mt-[32px] pt-[24px] border-t border-[#2E5F8A]/20 space-y-[12px]">
+            <p className="text-[12px] font-bold uppercase tracking-wider text-center text-[#999999] mb-[16px]">
+              Ambiente de Teste (Atalhos)
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-[8px]">
+              <Button
+                variant="secondary"
+                onClick={() => quickLogin('captador@etic.com')}
+                className="text-[12px]"
+                disabled={isLoading}
+              >
+                Captador
               </Button>
               <Button
-                type="button"
-                variant="ghost"
-                className="w-full h-[44px]"
-                onClick={() => setIsResetting(false)}
+                variant="secondary"
+                onClick={() => quickLogin('sdr@etic.com')}
+                className="text-[12px]"
+                disabled={isLoading}
               >
-                <ArrowLeft className="w-[16px] h-[16px] mr-[8px]" /> Voltar ao Login
+                SDR
               </Button>
-            </form>
-          )}
+              <Button
+                variant="secondary"
+                onClick={() => quickLogin('corretor@etic.com')}
+                className="text-[12px]"
+                disabled={isLoading}
+              >
+                Corretor
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => quickLogin('gestor@etic.com')}
+                className="text-[12px]"
+                disabled={isLoading}
+              >
+                Gestor / Admin
+              </Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>
