@@ -17,9 +17,10 @@ import { useIsMobile } from '@/hooks/use-mobile'
 interface LocationSelectorProps {
   value: string[]
   onChange: (value: string[]) => void
+  error?: boolean
 }
 
-export function LocationSelector({ value, onChange }: LocationSelectorProps) {
+export function LocationSelector({ value, onChange, error }: LocationSelectorProps) {
   const [open, setOpen] = useState(false)
   const isMobile = useIsMobile()
 
@@ -41,12 +42,10 @@ export function LocationSelector({ value, onChange }: LocationSelectorProps) {
         <button
           role="combobox"
           aria-expanded={open}
-          onFocus={(e) => {
-            setTimeout(() => {
-              e.target.scrollIntoView({ behavior: 'smooth', block: 'center' })
-            }, 300)
-          }}
-          className="flex min-h-[48px] w-full items-center justify-between rounded-[8px] border border-[#E0E0E0] bg-[#FFFFFF] px-[16px] py-[12px] text-[16px] text-[#333333] hover:border-[#1A3A52] transition-colors focus:outline-none focus:ring-2 focus:ring-[#1A3A52] focus:ring-offset-0 relative"
+          className={cn(
+            'flex min-h-[48px] w-full items-center justify-between rounded-[8px] border bg-[#FFFFFF] px-[16px] py-[12px] text-[16px] text-[#333333] hover:border-[#1A3A52] transition-colors focus:outline-none focus:ring-2 focus:ring-[#1A3A52] focus:ring-offset-0 relative',
+            error ? 'border-2 border-[#FF4444]' : 'border-[#E0E0E0]',
+          )}
         >
           <div className="flex flex-wrap gap-1 pr-6 flex-1 h-full items-center">
             {value.length === 0 ? (
@@ -74,14 +73,14 @@ export function LocationSelector({ value, onChange }: LocationSelectorProps) {
       </PopoverTrigger>
       <PopoverContent
         className={cn(
-          'w-full p-0 border-[#E0E0E0] shadow-lg rounded-[8px]',
-          isMobile ? 'w-[calc(100vw-48px)]' : 'w-[400px]',
+          'w-full p-0 border-[#E0E0E0] shadow-lg rounded-[8px] z-[9999]',
+          isMobile ? 'w-[calc(100vw-32px)]' : 'w-[400px]',
         )}
         align="start"
       >
         <Command>
           <CommandInput placeholder="Buscar bairro..." className="h-12 text-[16px]" />
-          <CommandList className="max-h-[300px]">
+          <CommandList className="max-h-[200px]">
             <CommandEmpty className="py-6 text-center text-sm text-[#999999]">
               Nenhum bairro encontrado.
             </CommandEmpty>

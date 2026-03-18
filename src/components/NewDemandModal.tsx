@@ -1,14 +1,13 @@
 import { useEffect } from 'react'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/use-toast'
 import useAppStore from '@/stores/useAppStore'
 import { LocationSelector } from '@/components/LocationSelector'
 import { UrgencySelector } from '@/components/UrgencySelector'
-import { Textarea } from '@/components/ui/textarea'
+import { CustomInput } from '@/components/CustomInput'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -21,20 +20,35 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { useNavigate } from 'react-router-dom'
-import { X } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
-const formSchema = z
+export const formSchema = z
   .object({
     clientName: z.string().min(3, 'Mínimo 3 caracteres'),
-    clientPhone: z.string().optional().or(z.literal('')),
+    clientPhone: z
+      .string()
+      .transform((v) => (v ? v.replace(/\D/g, '') : ''))
+      .refine(
+        (v) => v === '' || v.length === 10 || v.length === 11,
+        'Telefone inválido. Use: (11) 99999-9999',
+      )
+      .optional()
+      .or(z.literal('')),
+    clientEmail: z
+      .string()
+      .refine(
+        (v) => v === '' || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v),
+        'Email inválido. Use: nome@dominio.com',
+      )
+      .optional()
+      .or(z.literal('')),
     type: z.enum(['Venda', 'Aluguel']),
     location: z.array(z.string()).min(1, 'Selecione um bairro'),
-    minBudget: z.coerce.number().positive('Maior que zero'),
-    maxBudget: z.coerce.number().positive('Maior que zero'),
-    bedrooms: z.coerce.number().min(0, 'Valor inválido'),
-    parkingSpots: z.coerce.number().min(0, 'Valor inválido'),
+    minBudget: z.coerce.number({ invalid_type_error: 'Obrigatório' }).positive('Maior que zero'),
+    maxBudget: z.coerce.number({ invalid_type_error: 'Obrigatório' }).positive('Maior que zero'),
+    bedrooms: z.coerce.number({ invalid_type_error: 'Obrigatório' }).min(0, 'Valor inválido'),
+    parkingSpots: z.coerce.number({ invalid_type_error: 'Obrigatório' }).min(0, 'Valor inválido'),
     timeframe: z.string().min(1, 'Selecione a urgência'),
-    clientEmail: z.string().email('Email inválido').optional().or(z.literal('')),
     description: z.string().optional(),
   })
   .refine((data) => data.minBudget < data.maxBudget, {
@@ -53,6 +67,7 @@ export function NewDemandModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
     defaultValues: {
       clientName: '',
       clientPhone: '',
+      clientEmail: '',
       type: currentUser?.role === 'corretor' ? 'Venda' : 'Aluguel',
       location: [],
       minBudget: '' as any,
@@ -60,7 +75,6 @@ export function NewDemandModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
       bedrooms: '' as any,
       parkingSpots: '' as any,
       timeframe: '',
-      clientEmail: '',
       description: '',
     },
   })
@@ -68,24 +82,6 @@ export function NewDemandModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
   useEffect(() => {
     if (!isOpen) form.reset()
   }, [isOpen, form])
-
-  useEffect(() => {
-    if (!isOpen) return
-
-    const updateVh = () => {
-      const vh = (window.visualViewport?.height || window.innerHeight) * 0.01
-      document.documentElement.style.setProperty('--vh', `${vh}px`)
-    }
-
-    updateVh()
-    window.visualViewport?.addEventListener('resize', updateVh)
-    window.visualViewport?.addEventListener('scroll', updateVh)
-
-    return () => {
-      window.visualViewport?.removeEventListener('resize', updateVh)
-      window.visualViewport?.removeEventListener('scroll', updateVh)
-    }
-  }, [isOpen])
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     addDemand({
@@ -102,14 +98,12 @@ export function NewDemandModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
       timeframe: values.timeframe,
       description: values.description || 'Nova demanda via modal rápido',
     })
-
     toast({
       title: '✅ Demanda cadastrada com sucesso!',
       className: 'bg-emerald-600 text-white border-emerald-600',
+      duration: 3000,
     })
-
     onClose()
-
     sessionStorage.setItem(
       'etic_filters_my_demands_view_all',
       JSON.stringify({ status: 'Ativos', prazo: 'Todos', bairro: '' }),
@@ -122,303 +116,183 @@ export function NewDemandModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay className="fixed inset-0 z-[100] bg-black/60 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
         <DialogPrimitive.Content
-          className="fixed top-0 left-0 right-0 bottom-0 z-[110] flex flex-col bg-white overflow-hidden data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
-          style={{ maxHeight: 'calc(var(--vh, 1vh) * 100)', height: 'auto' }}
+          className="fixed z-[110] flex flex-col bg-white overflow-hidden data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 top-0 left-0 right-0 bottom-0 md:top-[50%] md:left-[50%] md:-translate-x-[50%] md:-translate-y-[50%] md:bottom-auto md:right-auto md:w-[640px] md:max-w-[90vw] md:max-h-[90vh] md:rounded-[12px]"
           aria-describedby={undefined}
         >
           <div className="h-[56px] shrink-0 border-b border-[#E0E0E0] flex items-center justify-between px-4 bg-white">
             <DialogPrimitive.Title className="text-[18px] font-bold text-[#1A3A52]">
               Nova Demanda
             </DialogPrimitive.Title>
-            <button
-              onClick={onClose}
-              className="p-2 rounded-full hover:bg-gray-100 active:bg-gray-200 transition-colors"
-            >
-              <X className="h-6 w-6 text-[#999999]" />
-            </button>
           </div>
-
-          <div
-            className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col"
-            style={{ WebkitOverflowScrolling: 'touch' }}
-          >
-            <div className="flex-1 px-4 py-6 pb-[120px]">
-              <Form {...form}>
-                <form
-                  id="new-demand-form"
-                  onSubmit={form.handleSubmit(onSubmit)}
-                  className="space-y-6"
-                >
-                  <FormField
+          <div className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col">
+            <Form {...form}>
+              <form id="new-demand-form" onSubmit={form.handleSubmit(onSubmit)}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 px-4 py-6">
+                  <CustomInput
                     control={form.control}
                     name="clientName"
-                    render={({ field }) => (
-                      <FormItem className="space-y-1.5">
-                        <FormLabel className="text-[14px] text-[#333333] font-semibold">
-                          Nome
-                        </FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="Ex: Maria Silva"
-                            inputMode="text"
-                            autoCapitalize="words"
-                            enterKeyHint="next"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage className="text-[#FF4444]" />
-                      </FormItem>
-                    )}
+                    label="Nome do Cliente"
+                    placeholder="Ex: Maria Silva"
+                    className="md:col-span-2"
                   />
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    <FormField
-                      control={form.control}
-                      name="clientPhone"
-                      render={({ field }) => (
-                        <FormItem className="space-y-1.5">
-                          <FormLabel className="text-[14px] text-[#333333] font-semibold">
-                            Telefone <span className="text-[#999999] font-normal">(opcional)</span>
-                          </FormLabel>
-                          <FormControl>
-                            <Input
-                              type="tel"
-                              inputMode="tel"
-                              enterKeyHint="next"
-                              placeholder="Somente números"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage className="text-[#FF4444]" />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="clientEmail"
-                      render={({ field }) => (
-                        <FormItem className="space-y-1.5">
-                          <FormLabel className="text-[14px] text-[#333333] font-semibold">
-                            Email <span className="text-[#999999] font-normal">(opcional)</span>
-                          </FormLabel>
-                          <FormControl>
-                            <Input
-                              type="email"
-                              inputMode="email"
-                              autoCapitalize="none"
-                              enterKeyHint="next"
-                              placeholder="email@exemplo.com"
-                              {...field}
-                              value={field.value || ''}
-                            />
-                          </FormControl>
-                          <FormMessage className="text-[#FF4444]" />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
+                  <CustomInput
+                    control={form.control}
+                    name="clientPhone"
+                    label="Telefone do Cliente"
+                    placeholder="(11) 99999-9999 (opcional)"
+                    optional
+                  />
+                  <CustomInput
+                    control={form.control}
+                    name="clientEmail"
+                    label="Email do Cliente"
+                    placeholder="email@exemplo.com (opcional)"
+                    type="email"
+                    optional
+                  />
                   <FormField
                     control={form.control}
                     name="type"
-                    render={({ field }) => (
-                      <FormItem className="space-y-1.5">
-                        <FormLabel className="text-[14px] text-[#333333] font-semibold">
+                    render={({ field, fieldState }) => (
+                      <FormItem className="space-y-0">
+                        <FormLabel className="flex items-center h-[20px] mb-[4px] text-[14px] text-[#333333] font-semibold">
                           Tipo
                         </FormLabel>
                         <FormControl>
                           <RadioGroup
                             onValueChange={field.onChange}
                             value={field.value}
-                            className="flex gap-4"
+                            className="flex gap-4 h-[48px]"
                           >
-                            <div className="flex-1 flex items-center space-x-2 bg-[#F5F5F5] px-4 py-2 rounded-[8px] border border-[#E0E0E0] min-h-[48px]">
+                            <div
+                              className={cn(
+                                'flex-1 flex items-center space-x-2 bg-[#F5F5F5] px-4 rounded-[8px] border',
+                                fieldState.error ? 'border-[#FF4444] border-2' : 'border-[#E0E0E0]',
+                              )}
+                            >
                               <RadioGroupItem value="Venda" id="venda-modal" />
                               <Label
                                 htmlFor="venda-modal"
-                                className="font-semibold text-[16px] text-[#333333] cursor-pointer flex-1 h-full flex items-center"
+                                className="font-semibold text-[16px] cursor-pointer flex-1 py-3"
                               >
                                 Venda
                               </Label>
                             </div>
-                            <div className="flex-1 flex items-center space-x-2 bg-[#F5F5F5] px-4 py-2 rounded-[8px] border border-[#E0E0E0] min-h-[48px]">
+                            <div
+                              className={cn(
+                                'flex-1 flex items-center space-x-2 bg-[#F5F5F5] px-4 rounded-[8px] border',
+                                fieldState.error ? 'border-[#FF4444] border-2' : 'border-[#E0E0E0]',
+                              )}
+                            >
                               <RadioGroupItem value="Aluguel" id="aluguel-modal" />
                               <Label
                                 htmlFor="aluguel-modal"
-                                className="font-semibold text-[16px] text-[#333333] cursor-pointer flex-1 h-full flex items-center"
+                                className="font-semibold text-[16px] cursor-pointer flex-1 py-3"
                               >
                                 Aluguel
                               </Label>
                             </div>
                           </RadioGroup>
                         </FormControl>
-                        <FormMessage className="text-[#FF4444]" />
+                        <FormMessage className="min-h-[16px] mt-1" />
                       </FormItem>
                     )}
                   />
-
                   <FormField
                     control={form.control}
                     name="location"
-                    render={({ field }) => (
-                      <FormItem className="space-y-1.5">
-                        <FormLabel className="text-[14px] text-[#333333] font-semibold">
+                    render={({ field, fieldState }) => (
+                      <FormItem className="space-y-0">
+                        <FormLabel className="flex items-center h-[20px] mb-[4px] text-[14px] text-[#333333] font-semibold">
                           Bairro
                         </FormLabel>
                         <FormControl>
-                          <LocationSelector value={field.value} onChange={field.onChange} />
+                          <LocationSelector
+                            value={field.value}
+                            onChange={field.onChange}
+                            error={!!fieldState.error}
+                          />
                         </FormControl>
-                        <FormMessage className="text-[#FF4444]" />
+                        <FormMessage className="min-h-[16px] mt-1" />
                       </FormItem>
                     )}
                   />
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="minBudget"
-                      render={({ field }) => (
-                        <FormItem className="space-y-1.5">
-                          <FormLabel className="text-[14px] text-[#333333] font-semibold">
-                            Valor mínimo (R$)
-                          </FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              inputMode="numeric"
-                              enterKeyHint="next"
-                              placeholder="Ex: 2000"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage className="text-[#FF4444]" />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="maxBudget"
-                      render={({ field }) => (
-                        <FormItem className="space-y-1.5">
-                          <FormLabel className="text-[14px] text-[#333333] font-semibold">
-                            Valor máximo (R$)
-                          </FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              inputMode="numeric"
-                              enterKeyHint="next"
-                              placeholder="Ex: 5000"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage className="text-[#FF4444]" />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="bedrooms"
-                      render={({ field }) => (
-                        <FormItem className="space-y-1.5">
-                          <FormLabel className="text-[14px] text-[#333333] font-semibold">
-                            Dormitórios
-                          </FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              inputMode="numeric"
-                              enterKeyHint="next"
-                              placeholder="Ex: 2"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage className="text-[#FF4444]" />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="parkingSpots"
-                      render={({ field }) => (
-                        <FormItem className="space-y-1.5">
-                          <FormLabel className="text-[14px] text-[#333333] font-semibold">
-                            Vagas
-                          </FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              inputMode="numeric"
-                              enterKeyHint="next"
-                              placeholder="Ex: 1"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage className="text-[#FF4444]" />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
+                  <CustomInput
+                    control={form.control}
+                    name="minBudget"
+                    label="Valor mínimo (R$)"
+                    type="number"
+                    placeholder="Ex: 2000"
+                  />
+                  <CustomInput
+                    control={form.control}
+                    name="maxBudget"
+                    label="Valor máximo (R$)"
+                    type="number"
+                    placeholder="Ex: 5000"
+                  />
+                  <CustomInput
+                    control={form.control}
+                    name="bedrooms"
+                    label="Dormitórios"
+                    type="number"
+                    placeholder="Ex: 2"
+                  />
+                  <CustomInput
+                    control={form.control}
+                    name="parkingSpots"
+                    label="Vagas"
+                    type="number"
+                    placeholder="Ex: 1"
+                  />
                   <FormField
                     control={form.control}
                     name="timeframe"
-                    render={({ field }) => (
-                      <FormItem className="space-y-1.5">
-                        <FormLabel className="text-[14px] text-[#333333] font-semibold">
+                    render={({ field, fieldState }) => (
+                      <FormItem className="space-y-0 md:col-span-2">
+                        <FormLabel className="flex items-center h-[20px] mb-[4px] text-[14px] text-[#333333] font-semibold">
                           Urgência
                         </FormLabel>
                         <FormControl>
-                          <UrgencySelector value={field.value} onChange={field.onChange} />
-                        </FormControl>
-                        <FormMessage className="text-[#FF4444]" />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="description"
-                    render={({ field }) => (
-                      <FormItem className="space-y-1.5">
-                        <FormLabel className="text-[14px] text-[#333333] font-semibold">
-                          Observações
-                        </FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="Detalhes adicionais da demanda..."
-                            enterKeyHint="done"
-                            {...field}
+                          <UrgencySelector
+                            value={field.value}
+                            onChange={field.onChange}
+                            error={!!fieldState.error}
                           />
                         </FormControl>
-                        <FormMessage className="text-[#FF4444]" />
+                        <FormMessage className="min-h-[16px] mt-1" />
                       </FormItem>
                     )}
                   />
-                </form>
-              </Form>
-            </div>
-
-            <div className="sticky bottom-0 bg-white border-t border-[#E0E0E0] p-4 shrink-0 flex flex-col gap-3 z-50">
-              <Button
-                type="submit"
-                form="new-demand-form"
-                className="w-full min-h-[48px] bg-[#4CAF50] hover:bg-[#388E3C] text-white font-bold text-[16px] rounded-[8px]"
-              >
-                ✅ Criar Demanda
-              </Button>
-              <Button
-                variant="ghost"
-                onClick={onClose}
-                className="w-full min-h-[48px] text-[#999999] hover:text-[#333333] font-bold text-[16px] rounded-[8px]"
-              >
-                Cancelar
-              </Button>
-            </div>
+                  <CustomInput
+                    control={form.control}
+                    name="description"
+                    label="Observações"
+                    placeholder="Detalhes adicionais da demanda..."
+                    className="md:col-span-2"
+                    multiline
+                  />
+                </div>
+              </form>
+            </Form>
+          </div>
+          <div className="sticky bottom-0 bg-white border-t border-[#E0E0E0] p-4 shrink-0 flex flex-col md:flex-row md:justify-end gap-3 z-50">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={onClose}
+              className="w-full md:w-auto min-h-[44px] md:min-h-[48px] text-[#666666] hover:text-[#333333] hover:bg-transparent font-bold text-[16px] rounded-[8px] order-2 md:order-1 border border-[#E0E0E0] md:border-transparent"
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              form="new-demand-form"
+              disabled={form.formState.isSubmitting}
+              className="w-full md:w-[160px] min-h-[48px] bg-[#4CAF50] hover:bg-[#388E3C] text-white font-bold text-[16px] rounded-[8px] order-1 md:order-2"
+            >
+              ✅ Criar Demanda
+            </Button>
           </div>
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
