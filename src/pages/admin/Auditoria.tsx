@@ -38,10 +38,6 @@ export function Auditoria() {
     }
   }, [currentUser, logAuthEvent])
 
-  if (currentUser?.role !== 'admin') {
-    return <Navigate to="/app" replace />
-  }
-
   const filteredAuthLogs = useMemo(() => {
     return authAuditLogs.filter((log) => {
       if (filterStatus !== 'todos' && log.status !== filterStatus) return false
@@ -74,6 +70,10 @@ export function Auditoria() {
       return true
     })
   }, [adminAuditLogs, filterStatus, search, startDate, endDate])
+
+  if (currentUser?.role !== 'admin') {
+    return <Navigate to="/app" replace />
+  }
 
   return (
     <div className="max-w-6xl mx-auto space-y-6 pb-12 animate-fade-in-up">
