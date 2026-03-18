@@ -57,7 +57,7 @@ export function AppSidebar() {
     ...(canSeeAnalytics ? [{ title: 'Analytics', icon: LineChart, url: '/app/analytics' }] : []),
     { title: 'Notificações', icon: Bell, url: '/app/notificacoes' },
     { title: 'Ranking de Captadores', icon: Trophy, url: '/app/ranking' },
-    ...(isAdmin ? [{ title: 'Ajuda', icon: HelpCircle, url: '/app/ajuda' }] : []),
+    { title: 'Ajuda', icon: HelpCircle, url: '/app/ajuda' },
     ...(isAdmin ? [{ title: 'Usuários', icon: UserCog, url: '/app/usuarios' }] : []),
     ...(isAdmin ? [{ title: 'Auditoria', icon: Shield, url: '/app/auditoria' }] : []),
     { title: 'Perfil', icon: UserCircle, url: '/app/perfil' },
