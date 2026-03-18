@@ -1,11 +1,5 @@
-import { useState, useEffect } from 'react'
-import {
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerDescription,
-} from '@/components/ui/drawer'
+import { useEffect } from 'react'
+import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -14,6 +8,7 @@ import { useToast } from '@/hooks/use-toast'
 import useAppStore from '@/stores/useAppStore'
 import { LocationSelector } from '@/components/LocationSelector'
 import { UrgencySelector } from '@/components/UrgencySelector'
+import { Textarea } from '@/components/ui/textarea'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -26,12 +21,12 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { useNavigate } from 'react-router-dom'
-import { ScrollArea } from '@/components/ui/scroll-area'
+import { X } from 'lucide-react'
 
 const formSchema = z
   .object({
     clientName: z.string().min(3, 'Mínimo 3 caracteres'),
-    clientPhone: z.string().min(8, 'Telefone inválido'),
+    clientPhone: z.string().optional().or(z.literal('')),
     type: z.enum(['Venda', 'Aluguel']),
     location: z.array(z.string()).min(1, 'Selecione um bairro'),
     minBudget: z.coerce.number().positive('Maior que zero'),
@@ -40,6 +35,7 @@ const formSchema = z
     parkingSpots: z.coerce.number().min(0, 'Valor inválido'),
     timeframe: z.string().min(1, 'Selecione a urgência'),
     clientEmail: z.string().email('Email inválido').optional().or(z.literal('')),
+    description: z.string().optional(),
   })
   .refine((data) => data.minBudget < data.maxBudget, {
     message: 'Mínimo deve ser menor que máximo',
@@ -53,6 +49,7 @@ export function NewDemandModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
+    mode: 'onBlur',
     defaultValues: {
       clientName: '',
       clientPhone: '',
@@ -64,12 +61,31 @@ export function NewDemandModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
       parkingSpots: '' as any,
       timeframe: '',
       clientEmail: '',
+      description: '',
     },
   })
 
   useEffect(() => {
     if (!isOpen) form.reset()
   }, [isOpen, form])
+
+  useEffect(() => {
+    if (!isOpen) return
+
+    const updateVh = () => {
+      const vh = (window.visualViewport?.height || window.innerHeight) * 0.01
+      document.documentElement.style.setProperty('--vh', `${vh}px`)
+    }
+
+    updateVh()
+    window.visualViewport?.addEventListener('resize', updateVh)
+    window.visualViewport?.addEventListener('scroll', updateVh)
+
+    return () => {
+      window.visualViewport?.removeEventListener('resize', updateVh)
+      window.visualViewport?.removeEventListener('scroll', updateVh)
+    }
+  }, [isOpen])
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     addDemand({
@@ -84,7 +100,7 @@ export function NewDemandModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
       bedrooms: values.bedrooms,
       parkingSpots: values.parkingSpots,
       timeframe: values.timeframe,
-      description: 'Nova demanda via modal rápido',
+      description: values.description || 'Nova demanda via modal rápido',
     })
 
     toast({
@@ -102,217 +118,310 @@ export function NewDemandModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
   }
 
   return (
-    <Drawer open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DrawerContent className="max-h-[95vh] flex flex-col transition-transform duration-300">
-        <DrawerHeader className="border-b pb-4 shrink-0 text-left px-6">
-          <DrawerTitle className="text-2xl font-bold text-[#1A3A52]">Nova Demanda</DrawerTitle>
-          <DrawerDescription className="text-[14px]">
-            SDR: Locação | Corretor: Venda
-          </DrawerDescription>
-        </DrawerHeader>
-
-        <ScrollArea className="flex-1 px-6 py-4">
-          <Form {...form}>
-            <form
-              id="new-demand-form"
-              onSubmit={form.handleSubmit(onSubmit)}
-              className="space-y-6 pb-[40px]"
+    <DialogPrimitive.Root open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Overlay className="fixed inset-0 z-[100] bg-black/60 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+        <DialogPrimitive.Content
+          className="fixed top-0 left-0 right-0 bottom-0 z-[110] flex flex-col bg-white overflow-hidden data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
+          style={{ maxHeight: 'calc(var(--vh, 1vh) * 100)', height: 'auto' }}
+          aria-describedby={undefined}
+        >
+          <div className="h-[56px] shrink-0 border-b border-[#E0E0E0] flex items-center justify-between px-4 bg-white">
+            <DialogPrimitive.Title className="text-[18px] font-bold text-[#1A3A52]">
+              Nova Demanda
+            </DialogPrimitive.Title>
+            <button
+              onClick={onClose}
+              className="p-2 rounded-full hover:bg-gray-100 active:bg-gray-200 transition-colors"
             >
-              <FormField
-                control={form.control}
-                name="clientName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="font-bold text-[#333333]">Nome do cliente</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Ex: Maria Silva" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <X className="h-6 w-6 text-[#999999]" />
+            </button>
+          </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="clientPhone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="font-bold text-[#333333]">Telefone</FormLabel>
-                      <FormControl>
-                        <Input type="number" placeholder="Somente números" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="clientEmail"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="font-bold text-[#333333]">
-                        Email do Cliente{' '}
-                        <span className="text-[#999999] font-normal">(opcional)</span>
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          type="email"
-                          placeholder="email@exemplo.com"
-                          {...field}
-                          value={field.value || ''}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <FormField
-                control={form.control}
-                name="type"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="font-bold text-[#333333]">Tipo</FormLabel>
-                    <FormControl>
-                      <RadioGroup
-                        onValueChange={field.onChange}
-                        value={field.value}
-                        className="flex gap-6"
-                      >
-                        <div className="flex items-center space-x-2 bg-[#F5F5F5] px-4 py-2 rounded-[8px] border border-[#E5E5E5] h-[48px]">
-                          <RadioGroupItem value="Venda" id="venda-modal" />
-                          <Label
-                            htmlFor="venda-modal"
-                            className="font-bold cursor-pointer h-full flex items-center"
-                          >
-                            Venda
-                          </Label>
-                        </div>
-                        <div className="flex items-center space-x-2 bg-[#F5F5F5] px-4 py-2 rounded-[8px] border border-[#E5E5E5] h-[48px]">
-                          <RadioGroupItem value="Aluguel" id="aluguel-modal" />
-                          <Label
-                            htmlFor="aluguel-modal"
-                            className="font-bold cursor-pointer h-full flex items-center"
-                          >
-                            Aluguel
-                          </Label>
-                        </div>
-                      </RadioGroup>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="location"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="font-bold text-[#333333]">Bairro</FormLabel>
-                    <FormControl>
-                      <LocationSelector value={field.value} onChange={field.onChange} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="minBudget"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="font-bold text-[#333333]">Valor mínimo (R$)</FormLabel>
-                      <FormControl>
-                        <Input type="number" placeholder="Ex: 2000" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="maxBudget"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="font-bold text-[#333333]">Valor máximo (R$)</FormLabel>
-                      <FormControl>
-                        <Input type="number" placeholder="Ex: 5000" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="bedrooms"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="font-bold text-[#333333]">Dormitórios</FormLabel>
-                      <FormControl>
-                        <Input type="number" placeholder="Ex: 2" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="parkingSpots"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="font-bold text-[#333333]">Vagas</FormLabel>
-                      <FormControl>
-                        <Input type="number" placeholder="Ex: 1" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <FormField
-                control={form.control}
-                name="timeframe"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="font-bold text-[#333333]">Urgência</FormLabel>
-                    <FormControl>
-                      <UrgencySelector value={field.value} onChange={field.onChange} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </form>
-          </Form>
-        </ScrollArea>
-
-        <div className="p-4 border-t border-[#E5E5E5] bg-white shrink-0 flex flex-col gap-2 pb-safe z-50">
-          <Button
-            type="submit"
-            form="new-demand-form"
-            className="w-full min-h-[48px] bg-[#4CAF50] hover:bg-[#388E3C] text-white font-bold text-[16px] shadow-[0_4px_12px_rgba(76,175,80,0.3)]"
+          <div
+            className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col"
+            style={{ WebkitOverflowScrolling: 'touch' }}
           >
-            ✅ Criar Demanda
-          </Button>
-          <Button
-            variant="ghost"
-            onClick={onClose}
-            className="w-full min-h-[48px] text-[#999999] hover:text-[#333333] font-bold bg-transparent border-none"
-          >
-            Cancelar
-          </Button>
-        </div>
-      </DrawerContent>
-    </Drawer>
+            <div className="flex-1 px-4 py-6 pb-[120px]">
+              <Form {...form}>
+                <form
+                  id="new-demand-form"
+                  onSubmit={form.handleSubmit(onSubmit)}
+                  className="space-y-6"
+                >
+                  <FormField
+                    control={form.control}
+                    name="clientName"
+                    render={({ field }) => (
+                      <FormItem className="space-y-1.5">
+                        <FormLabel className="text-[14px] text-[#333333] font-semibold">
+                          Nome
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Ex: Maria Silva"
+                            inputMode="text"
+                            autoCapitalize="words"
+                            enterKeyHint="next"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage className="text-[#FF4444]" />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <FormField
+                      control={form.control}
+                      name="clientPhone"
+                      render={({ field }) => (
+                        <FormItem className="space-y-1.5">
+                          <FormLabel className="text-[14px] text-[#333333] font-semibold">
+                            Telefone <span className="text-[#999999] font-normal">(opcional)</span>
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              type="tel"
+                              inputMode="tel"
+                              enterKeyHint="next"
+                              placeholder="Somente números"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage className="text-[#FF4444]" />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="clientEmail"
+                      render={({ field }) => (
+                        <FormItem className="space-y-1.5">
+                          <FormLabel className="text-[14px] text-[#333333] font-semibold">
+                            Email <span className="text-[#999999] font-normal">(opcional)</span>
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              type="email"
+                              inputMode="email"
+                              autoCapitalize="none"
+                              enterKeyHint="next"
+                              placeholder="email@exemplo.com"
+                              {...field}
+                              value={field.value || ''}
+                            />
+                          </FormControl>
+                          <FormMessage className="text-[#FF4444]" />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <FormField
+                    control={form.control}
+                    name="type"
+                    render={({ field }) => (
+                      <FormItem className="space-y-1.5">
+                        <FormLabel className="text-[14px] text-[#333333] font-semibold">
+                          Tipo
+                        </FormLabel>
+                        <FormControl>
+                          <RadioGroup
+                            onValueChange={field.onChange}
+                            value={field.value}
+                            className="flex gap-4"
+                          >
+                            <div className="flex-1 flex items-center space-x-2 bg-[#F5F5F5] px-4 py-2 rounded-[8px] border border-[#E0E0E0] min-h-[48px]">
+                              <RadioGroupItem value="Venda" id="venda-modal" />
+                              <Label
+                                htmlFor="venda-modal"
+                                className="font-semibold text-[16px] text-[#333333] cursor-pointer flex-1 h-full flex items-center"
+                              >
+                                Venda
+                              </Label>
+                            </div>
+                            <div className="flex-1 flex items-center space-x-2 bg-[#F5F5F5] px-4 py-2 rounded-[8px] border border-[#E0E0E0] min-h-[48px]">
+                              <RadioGroupItem value="Aluguel" id="aluguel-modal" />
+                              <Label
+                                htmlFor="aluguel-modal"
+                                className="font-semibold text-[16px] text-[#333333] cursor-pointer flex-1 h-full flex items-center"
+                              >
+                                Aluguel
+                              </Label>
+                            </div>
+                          </RadioGroup>
+                        </FormControl>
+                        <FormMessage className="text-[#FF4444]" />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="location"
+                    render={({ field }) => (
+                      <FormItem className="space-y-1.5">
+                        <FormLabel className="text-[14px] text-[#333333] font-semibold">
+                          Bairro
+                        </FormLabel>
+                        <FormControl>
+                          <LocationSelector value={field.value} onChange={field.onChange} />
+                        </FormControl>
+                        <FormMessage className="text-[#FF4444]" />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="minBudget"
+                      render={({ field }) => (
+                        <FormItem className="space-y-1.5">
+                          <FormLabel className="text-[14px] text-[#333333] font-semibold">
+                            Valor mínimo (R$)
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              inputMode="numeric"
+                              enterKeyHint="next"
+                              placeholder="Ex: 2000"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage className="text-[#FF4444]" />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="maxBudget"
+                      render={({ field }) => (
+                        <FormItem className="space-y-1.5">
+                          <FormLabel className="text-[14px] text-[#333333] font-semibold">
+                            Valor máximo (R$)
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              inputMode="numeric"
+                              enterKeyHint="next"
+                              placeholder="Ex: 5000"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage className="text-[#FF4444]" />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="bedrooms"
+                      render={({ field }) => (
+                        <FormItem className="space-y-1.5">
+                          <FormLabel className="text-[14px] text-[#333333] font-semibold">
+                            Dormitórios
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              inputMode="numeric"
+                              enterKeyHint="next"
+                              placeholder="Ex: 2"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage className="text-[#FF4444]" />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="parkingSpots"
+                      render={({ field }) => (
+                        <FormItem className="space-y-1.5">
+                          <FormLabel className="text-[14px] text-[#333333] font-semibold">
+                            Vagas
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              inputMode="numeric"
+                              enterKeyHint="next"
+                              placeholder="Ex: 1"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage className="text-[#FF4444]" />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <FormField
+                    control={form.control}
+                    name="timeframe"
+                    render={({ field }) => (
+                      <FormItem className="space-y-1.5">
+                        <FormLabel className="text-[14px] text-[#333333] font-semibold">
+                          Urgência
+                        </FormLabel>
+                        <FormControl>
+                          <UrgencySelector value={field.value} onChange={field.onChange} />
+                        </FormControl>
+                        <FormMessage className="text-[#FF4444]" />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem className="space-y-1.5">
+                        <FormLabel className="text-[14px] text-[#333333] font-semibold">
+                          Observações
+                        </FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Detalhes adicionais da demanda..."
+                            enterKeyHint="done"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage className="text-[#FF4444]" />
+                      </FormItem>
+                    )}
+                  />
+                </form>
+              </Form>
+            </div>
+
+            <div className="sticky bottom-0 bg-white border-t border-[#E0E0E0] p-4 shrink-0 flex flex-col gap-3 z-50">
+              <Button
+                type="submit"
+                form="new-demand-form"
+                className="w-full min-h-[48px] bg-[#4CAF50] hover:bg-[#388E3C] text-white font-bold text-[16px] rounded-[8px]"
+              >
+                ✅ Criar Demanda
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={onClose}
+                className="w-full min-h-[48px] text-[#999999] hover:text-[#333333] font-bold text-[16px] rounded-[8px]"
+              >
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
   )
 }

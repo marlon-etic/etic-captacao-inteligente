@@ -28,13 +28,22 @@ export function UrgencySelector({ value, onChange }: UrgencySelectorProps) {
     >
       {options.map((opt) => (
         <div key={opt.value}>
-          <RadioGroupItem value={opt.value} id={`urgency-${opt.value}`} className="peer sr-only" />
+          <RadioGroupItem
+            value={opt.value}
+            id={`urgency-${opt.value}`}
+            className="peer sr-only"
+            onFocus={(e) => {
+              setTimeout(() => {
+                e.target.parentElement?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+              }, 300)
+            }}
+          />
           <Label
             htmlFor={`urgency-${opt.value}`}
-            className="flex items-center gap-3 rounded-lg border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer transition-all min-h-[48px]"
+            className="flex items-center gap-3 rounded-[8px] border border-[#E0E0E0] bg-[#FFFFFF] p-4 hover:bg-[#F5F5F5] peer-focus-visible:ring-2 peer-focus-visible:ring-[#1A3A52] peer-focus-visible:ring-offset-2 peer-data-[state=checked]:border-2 peer-data-[state=checked]:border-[#1A3A52] cursor-pointer transition-all min-h-[48px]"
           >
             <opt.icon className={`h-5 w-5 ${opt.color}`} />
-            <span className="font-semibold">{opt.label}</span>
+            <span className="font-semibold text-[16px] text-[#333333]">{opt.label}</span>
           </Label>
         </div>
       ))}
