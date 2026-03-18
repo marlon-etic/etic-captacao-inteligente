@@ -32,6 +32,31 @@ export function Usuarios() {
     }
   }, [currentUser, logAuthEvent])
 
+  const filteredUsers = useMemo(() => {
+    return users.filter((u) => {
+      const matchSearch =
+        u.name.toLowerCase().includes(search.toLowerCase()) ||
+        u.email.toLowerCase().includes(search.toLowerCase())
+      if (!matchSearch) return false
+      if (activeFilter === 'todos') return true
+      if (activeFilter === 'captadores') return u.role === 'captador'
+      if (activeFilter === 'sdrs') return u.role === 'sdr'
+      if (activeFilter === 'corretores') return u.role === 'corretor'
+      if (activeFilter === 'admins') return u.role === 'admin'
+      return true
+    })
+  }, [users, search, activeFilter])
+
+  const activeCount = users.filter((u) => u.status === 'ativo').length
+
+  const filterOptions = [
+    { id: 'todos', label: 'Todos' },
+    { id: 'captadores', label: 'Captadores' },
+    { id: 'sdrs', label: 'SDRs' },
+    { id: 'corretores', label: 'Corretores' },
+    { id: 'admins', label: 'Admins' },
+  ]
+
   if (currentUser?.role !== 'admin') {
     return <Navigate to="/app" replace />
   }
@@ -65,31 +90,6 @@ export function Usuarios() {
       requestPasswordReset(u.email)
     }
   }
-
-  const filteredUsers = useMemo(() => {
-    return users.filter((u) => {
-      const matchSearch =
-        u.name.toLowerCase().includes(search.toLowerCase()) ||
-        u.email.toLowerCase().includes(search.toLowerCase())
-      if (!matchSearch) return false
-      if (activeFilter === 'todos') return true
-      if (activeFilter === 'captadores') return u.role === 'captador'
-      if (activeFilter === 'sdrs') return u.role === 'sdr'
-      if (activeFilter === 'corretores') return u.role === 'corretor'
-      if (activeFilter === 'admins') return u.role === 'admin'
-      return true
-    })
-  }, [users, search, activeFilter])
-
-  const activeCount = users.filter((u) => u.status === 'ativo').length
-
-  const filterOptions = [
-    { id: 'todos', label: 'Todos' },
-    { id: 'captadores', label: 'Captadores' },
-    { id: 'sdrs', label: 'SDRs' },
-    { id: 'corretores', label: 'Corretores' },
-    { id: 'admins', label: 'Admins' },
-  ]
 
   return (
     <div className="max-w-[1400px] mx-auto space-y-6 pb-12 animate-fade-in-up">
