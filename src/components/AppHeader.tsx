@@ -17,7 +17,7 @@ import { Badge } from '@/components/ui/badge'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import useAppStore from '@/stores/useAppStore'
 import { cn } from '@/lib/utils'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { AppNotification } from '@/types'
 
 const getNotifIcon = (type: string) => {
@@ -49,6 +49,7 @@ export function AppHeader({ onAddPropertyClick }: AppHeaderProps) {
   const store = useAppStore()
   const currentUser = store.currentUser
   const navigate = useNavigate()
+  const location = useLocation()
   const { isMobile, setOpenMobile } = useSidebar()
 
   if (!currentUser) return null
@@ -61,6 +62,9 @@ export function AppHeader({ onAddPropertyClick }: AppHeaderProps) {
   const { markNotificationAsRead, markAllNotificationsAsRead } = store
 
   const getTitle = () => {
+    if (location.pathname.includes('/app/pontuacao')) return 'Pontuação e Desempenho'
+    if (location.pathname.includes('/app/historico')) return 'Histórico de Demandas'
+    if (location.pathname.includes('/app/perdidos')) return 'Demandas Perdidas'
     if (currentUser.role === 'corretor') return 'Demandas de Venda'
     if (currentUser.role === 'sdr') return 'Demandas de Locação'
     if (currentUser.role === 'captador') return 'Demandas de Captação'

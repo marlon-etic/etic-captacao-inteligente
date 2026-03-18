@@ -10,6 +10,9 @@ import {
   HelpCircle,
   UserCog,
   Shield,
+  Star,
+  History,
+  ArchiveX,
 } from 'lucide-react'
 import {
   Sidebar,
@@ -36,6 +39,7 @@ export function AppSidebar() {
   const canSeeDemandas = ['admin', 'sdr', 'corretor', 'captador'].includes(currentUser.role)
   const canSeeAnalytics = ['admin', 'gestor'].includes(currentUser.role)
   const isAdmin = currentUser.role === 'admin'
+  const isCaptador = currentUser.role === 'captador'
 
   const navItems = [
     { title: 'Dashboard', icon: LayoutDashboard, url: '/app' },
@@ -43,6 +47,13 @@ export function AppSidebar() {
       ? [{ title: 'Nova Demanda', icon: PlusCircle, url: '/app/nova-demanda' }]
       : []),
     ...(canSeeDemandas ? [{ title: 'Demandas', icon: Users, url: '/app/demandas' }] : []),
+    ...(isCaptador
+      ? [
+          { title: 'Pontuação', icon: Star, url: '/app/pontuacao' },
+          { title: 'Histórico', icon: History, url: '/app/historico' },
+          { title: 'Perdidos', icon: ArchiveX, url: '/app/perdidos' },
+        ]
+      : []),
     ...(canSeeAnalytics ? [{ title: 'Analytics', icon: LineChart, url: '/app/analytics' }] : []),
     { title: 'Ranking', icon: Trophy, url: '/app/ranking' },
     { title: 'Notificações', icon: Bell, url: '/app/notificacoes' },
@@ -84,9 +95,9 @@ export function AppSidebar() {
                         : 'bg-transparent text-[#333333] hover:bg-[#FFFFFF] hover:border-[#2E5F8A]/20 shadow-none hover:text-[#1A3A52]',
                     )}
                   >
-                    <Link to={item.url} className="flex items-center gap-[12px]">
-                      <item.icon className="w-[20px] h-[20px]" />
-                      <span>{item.title}</span>
+                    <Link to={item.url} className="flex items-center gap-[12px] w-full">
+                      <item.icon className="w-[20px] h-[20px] shrink-0" />
+                      <span className="truncate">{item.title}</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
