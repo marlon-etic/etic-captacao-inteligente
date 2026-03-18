@@ -9,7 +9,7 @@ import useAppStore from '@/stores/useAppStore'
 import { DemandDetailsModal } from '@/components/DemandDetailsModal'
 import { LostModal } from '@/components/LostModal'
 import { useSlaCountdown, useTimeElapsed } from '@/hooks/useTimeElapsed'
-import { Building2, Home } from 'lucide-react'
+import { Building2, Home, Eye } from 'lucide-react'
 
 interface DemandCardProps {
   demand: Demand
@@ -260,70 +260,71 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
 
         <div
           className={cn(
-            'flex flex-col min-[480px]:flex-row flex-wrap gap-[8px] pt-4 mt-auto border-t shrink-0 z-0 relative',
+            'flex flex-col gap-[8px] pt-4 mt-auto border-t shrink-0 z-0 relative',
             isLost ? 'border-[#999999]/30 opacity-80 grayscale' : 'border-[#2E5F8A]/20',
           )}
         >
           <Button
             className={cn(
-              'h-auto min-h-[48px] px-[16px] py-[12px] w-full min-[480px]:flex-1 font-bold whitespace-normal break-words text-[14px]',
+              'h-[48px] w-full font-bold whitespace-normal break-words text-[14px]',
               btnSoft,
             )}
             onClick={() => setShowDetails(true)}
           >
-            Ver Detalhes
+            <Eye className="w-4 h-4 mr-2" /> Ver Detalhes
           </Button>
 
           {currentUser?.role === 'captador' && (
-            <>
+            <div className="flex w-full gap-2">
               <Button
                 className={cn(
-                  'h-auto min-h-[48px] px-[16px] py-[12px] w-full min-[480px]:flex-1 font-bold whitespace-normal break-words text-[14px]',
+                  'h-[48px] flex-1 font-bold whitespace-normal break-words text-[14px] px-2',
                   btnSolid,
                 )}
                 onClick={() => onAction?.(demand.id, 'encontrei')}
                 disabled={isLost}
               >
-                Encontrei
+                ✅ Encontrei
               </Button>
               <Button
                 className={cn(
-                  'h-auto min-h-[48px] px-[16px] py-[12px] w-full min-[480px]:flex-1 font-bold whitespace-normal break-words text-[14px]',
+                  'h-[48px] flex-1 font-bold whitespace-normal break-words text-[14px] px-2',
                   btnOutline,
                 )}
                 onClick={() => onAction?.(demand.id, 'nao_encontrei')}
                 disabled={isLost}
               >
-                Não Encontrei
+                ❌ Não Encontrei
               </Button>
-            </>
+            </div>
           )}
 
-          {canMarkLost && (
+          <div className="flex w-full gap-2">
             <Button
-              variant="destructive"
-              className="h-auto min-h-[48px] px-[16px] py-[12px] w-full min-[480px]:flex-1 font-bold whitespace-normal break-words text-[14px]"
-              onClick={() => setShowLostModal(true)}
+              className={cn(
+                'h-[44px] flex-1 font-bold whitespace-normal break-words text-[14px]',
+                'bg-transparent text-[#1A3A52] hover:bg-[#F5F5F5] border-[2px] border-[#1A3A52]',
+              )}
+              onClick={() =>
+                logSolicitorContactAttempt(
+                  demand.id,
+                  'interno',
+                  'Olá, gostaria de falar sobre esta demanda.',
+                )
+              }
             >
-              Marcar Perdida
+              💬 Contato
             </Button>
-          )}
-
-          <Button
-            className={cn(
-              'h-auto min-h-[48px] px-[16px] py-[12px] w-full min-[480px]:flex-1 font-bold whitespace-normal break-words text-[14px]',
-              'bg-transparent text-[#1A3A52] hover:bg-[#F5F5F5] border-none shadow-none',
+            {canMarkLost && (
+              <Button
+                variant="destructive"
+                className="h-[44px] flex-1 font-bold whitespace-normal break-words text-[14px]"
+                onClick={() => setShowLostModal(true)}
+              >
+                ❌ Perdida
+              </Button>
             )}
-            onClick={() =>
-              logSolicitorContactAttempt(
-                demand.id,
-                'interno',
-                'Olá, gostaria de falar sobre esta demanda.',
-              )
-            }
-          >
-            Contato
-          </Button>
+          </div>
         </div>
       </Card>
 

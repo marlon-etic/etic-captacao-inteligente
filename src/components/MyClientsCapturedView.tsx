@@ -15,13 +15,16 @@ import { useViewFilters } from '@/hooks/useViewFilters'
 import { Skeleton } from '@/components/ui/skeleton'
 
 export function MyClientsCapturedView({ filterType }: { filterType?: 'Venda' | 'Aluguel' }) {
-  const { demands, currentUser, markPropertyLost, scheduleVisitByCode } = useAppStore()
+  const { demands, users, currentUser, markPropertyLost, scheduleVisitByCode } = useAppStore()
   const { toast } = useToast()
   const [actionDemand, setActionDemand] = useState<Demand | null>(null)
   const [actionProperty, setActionProperty] = useState<CapturedProperty | null>(null)
-  const [actionType, setActionType] = useState<'visita' | 'lost' | null>(null)
+  const [actionType, setActionType] = useState<'visita' | 'lost' | 'negocio' | null>(null)
 
-  const [filters, setFilters] = useViewFilters('my_clients_view', { tipo: 'Todos', bairro: '' })
+  const [filters, setFilters] = useViewFilters('my_clients_view_' + (filterType || 'all'), {
+    tipo: 'Todos',
+    bairro: '',
+  })
   const [isFiltering, setIsFiltering] = useState(false)
 
   const FILTERS: FilterDef[] = [{ id: 'bairro', label: 'Bairro', isSearch: true, options: [] }]
@@ -94,12 +97,13 @@ export function MyClientsCapturedView({ filterType }: { filterType?: 'Venda' | '
   }
 
   return (
-    <div className="flex flex-col gap-4 animate-fade-in">
+    <div className="flex flex-col gap-[16px] animate-fade-in w-full">
       <StickyFilterBar
         filters={FILTERS}
         values={filters}
         onChange={handleFilterChange}
         resultsCount={propertyGroups.length}
+        stickyTop="top-[128px] sm:top-[136px]"
       />
 
       {isFiltering ? (
@@ -109,153 +113,164 @@ export function MyClientsCapturedView({ filterType }: { filterType?: 'Venda' | '
           ))}
         </div>
       ) : propertyGroups.length === 0 ? (
-        <div className="text-center py-16 bg-[#FFFFFF] border rounded-xl border-dashed border-[#E5E5E5] w-full animate-fade-in">
+        <div className="text-center py-16 bg-[#FFFFFF] border-[2px] rounded-[12px] border-dashed border-[#E5E5E5] w-full animate-fade-in">
           <Search className="w-12 h-12 text-[#999999]/30 mx-auto mb-3" />
           <p className="text-[16px] font-bold text-[#333333]">
             Nenhum imóvel captado para seus clientes
           </p>
         </div>
       ) : (
-        propertyGroups.map((group) => {
-          const publicUrl = getPropertyPublicUrl(group.property.code)
+        <div className="grid gap-[16px] grid-cols-1 md:grid-cols-2">
+          {propertyGroups.map((group) => {
+            const publicUrl = getPropertyPublicUrl(group.property.code)
+            const captadorName =
+              users.find((u) => u.id === group.property.captador_id)?.name || 'Não informado'
+            const captadorPhone = users.find((u) => u.id === group.property.captador_id)?.phone
+            const isVisita = !!group.property.visitaDate && !group.property.fechamentoDate
+            const isFechado = !!group.property.fechamentoDate
 
-          return (
-            <Card key={group.property.code} className="border-[2px] border-[#2E5F8A] shadow-sm">
-              <CardContent className="p-4 flex flex-col md:flex-row gap-6">
-                <div className="flex-1 space-y-2">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Badge className="bg-[#1A3A52] font-bold">{group.property.code}</Badge>
-                    <Badge variant="outline" className="font-bold border-[#E5E5E5]">
-                      {group.property.propertyType}
-                    </Badge>
-                  </div>
-
-                  <p className="flex items-center gap-2 text-sm text-[#333333] font-medium">
-                    <span>🏷️ Código:</span>
-                    <a
-                      href={publicUrl || '#'}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={cn(
-                        'font-bold text-[#1A3A52] hover:underline',
-                        !publicUrl && 'pointer-events-none text-gray-400',
-                      )}
-                      onClick={(e) => {
-                        if (!publicUrl) e.preventDefault()
-                        e.stopPropagation()
-                      }}
-                    >
-                      {group.property.code || 'N/A'}
-                    </a>
-                  </p>
-
-                  <p className="flex items-center gap-2 text-sm text-[#333333] font-medium">
-                    <MapPin className="w-4 h-4 text-[#1A3A52]" /> {group.property.neighborhood}
-                  </p>
-                  <p className="flex items-center gap-2 text-[16px] font-bold text-[#1A3A52]">
-                    <DollarSign className="w-4 h-4 text-[#1A3A52]" /> R${' '}
-                    {group.property.value?.toLocaleString('pt-BR')}
-                  </p>
-                  <p className="flex items-center gap-2 text-sm text-[#333333] font-medium">
-                    <Home className="w-4 h-4 text-[#1A3A52]" /> {group.property.bedrooms} dorm,{' '}
-                    {group.property.parkingSpots} vagas
-                  </p>
-
-                  <div className="flex flex-row gap-[8px] w-full pt-2">
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          className={cn(
-                            'flex-1 font-bold h-[40px] md:h-[44px]',
-                            publicUrl
-                              ? 'bg-[#1A3A52] hover:bg-[#153045] text-white'
-                              : 'bg-[#E5E5E5] text-[#999999] hover:bg-[#E5E5E5] cursor-not-allowed',
-                          )}
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            if (publicUrl) window.open(publicUrl, '_blank')
-                          }}
-                        >
-                          👁️ Visualizar no Site
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>
-                          {publicUrl
-                            ? 'Visualizar imóvel em www.eticimoveis.com.br'
-                            : 'Código do imóvel não informado'}
-                        </p>
-                      </TooltipContent>
-                    </Tooltip>
-
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        'w-[40px] md:w-[44px] h-[40px] md:h-[44px] p-0 shrink-0 border-[2px]',
-                        publicUrl
-                          ? 'border-[#2E5F8A] text-[#1A3A52] hover:bg-[#F5F5F5]'
-                          : 'border-[#E5E5E5] text-[#999999] hover:bg-transparent cursor-not-allowed',
-                      )}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        if (publicUrl) handleCopyLink(e, publicUrl)
-                      }}
-                      title="Copiar Link"
-                    >
-                      📋
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="flex-1 md:flex-[2] bg-[#F5F5F5] p-4 rounded-xl space-y-4 border border-[#E5E5E5]">
-                  <h4 className="font-bold text-sm text-[#999999] uppercase tracking-wider">
-                    Clientes Correspondentes
-                  </h4>
-                  <div className="space-y-3">
-                    {group.demands.map((d) => (
-                      <div
-                        key={d.id}
-                        className="bg-[#FFFFFF] p-3 rounded-lg border border-[#E5E5E5] flex flex-col sm:flex-row justify-between gap-3 items-start sm:items-center shadow-sm"
-                      >
-                        <div>
-                          <p className="font-bold text-[14px] text-[#1A3A52]">{d.clientName}</p>
-                          <p className="text-[12px] text-[#999999] font-medium">
-                            Demanda: R$ {d.maxBudget?.toLocaleString('pt-BR')} • Status: {d.status}
-                          </p>
-                        </div>
-                        <div className="flex gap-2 w-full sm:w-auto">
-                          <Button
-                            size="sm"
-                            className="flex-1 sm:flex-none bg-[#4CAF50] hover:bg-[#388E3C] text-white font-bold h-[36px]"
-                            onClick={() => {
-                              setActionDemand(d)
-                              setActionProperty(group.property)
-                              setActionType('visita')
-                            }}
-                          >
-                            <Check className="w-4 h-4 mr-1" /> Agendar Visita para {d.clientName}
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            className="flex-1 sm:flex-none font-bold h-[36px]"
-                            onClick={() => {
-                              setActionDemand(d)
-                              setActionProperty(group.property)
-                              setActionType('lost')
-                            }}
-                          >
-                            <X className="w-4 h-4 mr-1" /> Perdido para {d.clientName}
-                          </Button>
-                        </div>
+            return (
+              <Card key={group.property.code} className="border-[2px] border-[#2E5F8A] shadow-sm">
+                <CardContent className="p-[16px] flex flex-col gap-4">
+                  <div className="flex flex-col space-y-2">
+                    <div className="flex items-center gap-2 mb-1 justify-between">
+                      <div className="flex items-center gap-2">
+                        <Badge className="bg-[#1A3A52] font-bold">{group.property.code}</Badge>
+                        <Badge variant="outline" className="font-bold border-[#E5E5E5]">
+                          {group.property.propertyType}
+                        </Badge>
                       </div>
-                    ))}
+                      <Badge
+                        className={cn(
+                          'font-bold border-none text-white',
+                          isFechado ? 'bg-[#4CAF50]' : isVisita ? 'bg-[#FF9800]' : 'bg-[#9C27B0]',
+                        )}
+                      >
+                        {isFechado ? '🟢 Negócio' : isVisita ? '🟠 Visita' : '🟣 Captado'}
+                      </Badge>
+                    </div>
+
+                    <p className="flex items-center gap-2 text-[14px] text-[#333333] font-medium leading-tight">
+                      <MapPin className="w-4 h-4 text-[#1A3A52]" /> {group.property.neighborhood}
+                    </p>
+                    <p className="flex items-center gap-2 text-[16px] font-bold text-[#1A3A52] leading-tight">
+                      <DollarSign className="w-4 h-4 text-[#1A3A52]" /> R${' '}
+                      {group.property.value?.toLocaleString('pt-BR')}
+                    </p>
+                    <div className="flex items-center justify-between">
+                      <p className="flex items-center gap-2 text-[14px] text-[#333333] font-medium leading-tight">
+                        <Home className="w-4 h-4 text-[#1A3A52]" /> {group.property.bedrooms} dorm,{' '}
+                        {group.property.bathrooms} banh, {group.property.parkingSpots} vagas
+                      </p>
+                    </div>
+                    <div className="flex flex-col gap-1 border-t border-[#E5E5E5] pt-2 mt-2">
+                      <p className="text-[12px] text-[#999999] leading-tight">
+                        👤 Captador:{' '}
+                        <span className="font-medium text-[#333333]">{captadorName}</span>
+                      </p>
+                      <p className="text-[12px] text-[#999999] leading-tight">
+                        📅 Captação:{' '}
+                        <span className="font-medium text-[#333333]">
+                          {new Date(group.property.capturedAt || '').toLocaleDateString('pt-BR')}
+                        </span>
+                      </p>
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          )
-        })
+
+                  <div className="bg-[#F5F5F5] p-3 rounded-[8px] space-y-3 border border-[#E5E5E5] mt-auto">
+                    <h4 className="font-bold text-[13px] text-[#999999] uppercase tracking-wider">
+                      Clientes Interessados
+                    </h4>
+                    <div className="space-y-3">
+                      {group.demands.map((d) => (
+                        <div key={d.id} className="flex flex-col gap-2">
+                          <div className="flex items-center justify-between">
+                            <p className="font-bold text-[14px] text-[#1A3A52] leading-tight break-words">
+                              👤 {d.clientName}
+                            </p>
+                            <span className="text-[12px] font-bold text-[#999999] shrink-0 ml-2">
+                              {d.status}
+                            </span>
+                          </div>
+
+                          <div className="flex flex-col gap-2 w-full mt-1">
+                            <div className="flex gap-2 w-full">
+                              <Button
+                                className="flex-1 bg-[#FF9800] hover:bg-[#F57C00] text-white font-bold h-[48px] text-[12px] px-1"
+                                onClick={() => {
+                                  setActionDemand(d)
+                                  setActionProperty(group.property)
+                                  setActionType('visita')
+                                }}
+                              >
+                                👁️ Visita
+                              </Button>
+                              <Button
+                                className="flex-1 bg-[#4CAF50] hover:bg-[#388E3C] text-white font-bold h-[48px] text-[12px] px-1"
+                                onClick={() => {
+                                  setActionDemand(d)
+                                  setActionProperty(group.property)
+                                  setActionType('negocio')
+                                }}
+                              >
+                                💰 Negócio
+                              </Button>
+                            </div>
+                            <div className="flex gap-2 w-full">
+                              <Button
+                                variant="outline"
+                                className={cn(
+                                  'flex-1 font-bold h-[48px] border-[#2E5F8A] text-[#1A3A52] text-[12px] px-1 bg-white hover:bg-[#F5F5F5]',
+                                  !publicUrl && 'opacity-50 cursor-not-allowed',
+                                )}
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  if (publicUrl) window.open(publicUrl, '_blank')
+                                }}
+                              >
+                                🔗 Ver Imóvel
+                              </Button>
+                              <Button
+                                className="flex-1 bg-[#25D366] hover:bg-[#128C7E] text-white font-bold h-[48px] text-[12px] px-1"
+                                onClick={() => {
+                                  if (captadorPhone) {
+                                    window.open(
+                                      `https://wa.me/${captadorPhone.replace(/\D/g, '')}`,
+                                      '_blank',
+                                    )
+                                  } else {
+                                    toast({
+                                      title: 'Telefone indisponível',
+                                      description: 'O captador não possui número cadastrado.',
+                                      variant: 'destructive',
+                                    })
+                                  }
+                                }}
+                              >
+                                💬 WhatsApp
+                              </Button>
+                            </div>
+                            <Button
+                              variant="destructive"
+                              className="w-full font-bold h-[48px] text-[12px]"
+                              onClick={() => {
+                                setActionDemand(d)
+                                setActionProperty(group.property)
+                                setActionType('lost')
+                              }}
+                            >
+                              ❌ Perdido
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          })}
+        </div>
       )}
 
       <CapturedPropertyModals

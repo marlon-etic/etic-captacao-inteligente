@@ -238,6 +238,7 @@ export function DemandasTab({ demands }: { demands: Demand[] }) {
         values={filters}
         onChange={handleFilterChange}
         resultsCount={finalCards.length}
+        stickyTop="top-[128px] sm:top-[136px]"
       />
 
       {isFiltering ? (

@@ -26,7 +26,7 @@ export function CapturedPropertiesView({
     markPropertyLost,
   } = useAppStore()
 
-  const [filters, setFilters] = useViewFilters('captados_view', {
+  const [filters, setFilters] = useViewFilters('captados_view_' + (filterType || 'all'), {
     status: 'Todos',
     periodo: 'Todos',
     tipo: 'Todos',
@@ -170,6 +170,7 @@ export function CapturedPropertiesView({
         values={filters}
         onChange={handleFilterChange}
         resultsCount={filteredAndSorted.length}
+        stickyTop="top-[128px] sm:top-[136px]"
       />
 
       {isFiltering ? (
@@ -179,9 +180,9 @@ export function CapturedPropertiesView({
           ))}
         </div>
       ) : filteredAndSorted.length === 0 ? (
-        <div className="text-center py-16 bg-[#FFFFFF] border rounded-xl border-dashed border-[#E5E5E5] w-full">
+        <div className="text-center py-16 bg-[#FFFFFF] border rounded-xl border-dashed border-[#E5E5E5] w-full flex flex-col items-center justify-center min-h-[250px]">
           <Search className="w-12 h-12 text-[#999999]/30 mx-auto mb-3" />
-          <p className="text-[16px] font-bold text-[#333333]">Nenhum imóvel encontrado</p>
+          <p className="text-[16px] font-bold text-[#333333]">{emptyStateText}</p>
           <p className="text-[14px] text-[#999999] mt-1">
             Tente ajustar os filtros ou registre novos imóveis.
           </p>
@@ -191,7 +192,7 @@ export function CapturedPropertiesView({
           {filteredAndSorted.map(({ demand, property }, index) => (
             <div
               key={`${demand.id}-${property.code}`}
-              className="opacity-0 animate-cascade-fade"
+              className="opacity-0 animate-cascade-fade h-full"
               style={{ animationDelay: `${index * 50}ms` }}
             >
               <CapturedPropertyCard demand={demand} property={property} onAction={handleAction} />

@@ -2,7 +2,13 @@ import { useState, useEffect } from 'react'
 import { Filter, X, Search as SearchIcon, ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from '@/components/ui/drawer'
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -27,9 +33,16 @@ interface Props {
   values: Record<string, string>
   onChange: (values: Record<string, string>) => void
   resultsCount: number
+  stickyTop?: string
 }
 
-export function StickyFilterBar({ filters, values, onChange, resultsCount }: Props) {
+export function StickyFilterBar({
+  filters,
+  values,
+  onChange,
+  resultsCount,
+  stickyTop = 'top-[72px]',
+}: Props) {
   const isMobile = useIsMobile()
   const [isOpen, setIsOpen] = useState(false)
   const [mobileValues, setMobileValues] = useState(values)
@@ -97,25 +110,21 @@ export function StickyFilterBar({ filters, values, onChange, resultsCount }: Pro
 
   if (isMobile) {
     return (
-      <div className="sticky top-[64px] z-30 bg-[#F5F5F5] pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
+      <div className={cn('sticky z-30 bg-[#F5F5F5] pb-2 -mx-4 px-4 sm:mx-0 sm:px-0', stickyTop)}>
         <div className="bg-white border border-[#E5E5E5] rounded-[12px] p-2 flex items-center gap-3 shadow-[0_2px_8px_rgba(26,58,82,0.05)] h-[56px]">
-          <Sheet open={isOpen} onOpenChange={setIsOpen}>
-            <SheetTrigger asChild>
+          <Drawer open={isOpen} onOpenChange={setIsOpen}>
+            <DrawerTrigger asChild>
               <Button
                 variant="outline"
                 className="shrink-0 h-[40px] px-4 bg-[#FFFFFF] hover:bg-[#F5F5F5] text-[#1A3A52] border-[2px] border-[#2E5F8A]/20 font-bold"
               >
                 🔽 Filtros {activeCount > 0 && `(${activeCount})`}
               </Button>
-            </SheetTrigger>
-            <SheetContent
-              side="bottom"
-              className="h-[75vh] p-0 flex flex-col rounded-t-[24px] bg-[#F5F5F5] border-t-0 shadow-[0_-8px_32px_rgba(26,58,82,0.15)]"
-            >
-              <div className="w-12 h-1.5 bg-[#D4D4D4] rounded-full mx-auto mt-3 shrink-0" />
-              <SheetHeader className="px-6 py-4 text-left border-b border-[#E5E5E5] shrink-0 bg-[#F5F5F5]">
-                <SheetTitle className="text-[20px] font-black text-[#1A3A52]">Filtros</SheetTitle>
-              </SheetHeader>
+            </DrawerTrigger>
+            <DrawerContent className="max-h-[85vh] h-[65vh] flex flex-col rounded-t-[24px] bg-[#F5F5F5] outline-none">
+              <DrawerHeader className="px-6 py-4 text-left border-b border-[#E5E5E5] shrink-0 bg-[#F5F5F5]">
+                <DrawerTitle className="text-[20px] font-black text-[#1A3A52]">Filtros</DrawerTitle>
+              </DrawerHeader>
               <ScrollArea className="flex-1 px-6 py-4 bg-white">
                 <div className="space-y-8 pb-6">
                   {filters.map((f) => (
@@ -195,8 +204,8 @@ export function StickyFilterBar({ filters, values, onChange, resultsCount }: Pro
                   Ver resultados ({resultsCount})
                 </Button>
               </div>
-            </SheetContent>
-          </Sheet>
+            </DrawerContent>
+          </Drawer>
           {renderActiveChips()}
         </div>
       </div>
@@ -204,7 +213,7 @@ export function StickyFilterBar({ filters, values, onChange, resultsCount }: Pro
   }
 
   return (
-    <div className="sticky top-[72px] z-30 bg-[#F5F5F5] pb-4 -mx-4 px-4 sm:mx-0 sm:px-0">
+    <div className={cn('sticky z-30 bg-[#F5F5F5] pb-4 -mx-4 px-4 sm:mx-0 sm:px-0', stickyTop)}>
       <div className="bg-white border border-[#E5E5E5] rounded-[12px] p-3 flex items-center gap-3 shadow-[0_4px_12px_rgba(26,58,82,0.05)] min-h-[56px] flex-wrap">
         <span className="font-black text-[#1A3A52] mr-2 flex items-center gap-2 uppercase tracking-wide text-[14px]">
           <Filter className="w-4 h-4" /> Filtros

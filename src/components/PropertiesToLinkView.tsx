@@ -93,6 +93,7 @@ export function PropertiesToLinkView() {
         values={filters}
         onChange={handleFilterChange}
         resultsCount={sortedProperties.length}
+        stickyTop="top-[128px] sm:top-[136px]"
       />
 
       {isFiltering ? (
@@ -102,7 +103,7 @@ export function PropertiesToLinkView() {
           ))}
         </div>
       ) : sortedProperties.length === 0 ? (
-        <div className="text-center py-16 bg-[#FFFFFF] border rounded-xl border-dashed border-[#E5E5E5] w-full">
+        <div className="text-center py-16 bg-[#FFFFFF] border rounded-xl border-dashed border-[#E5E5E5] w-full flex flex-col items-center justify-center min-h-[250px]">
           <Search className="w-12 h-12 text-[#999999]/30 mx-auto mb-3" />
           <p className="text-[16px] font-bold text-[#333333]">Nenhum imóvel encontrado.</p>
           <p className="text-[14px] text-[#999999] mt-1">Tente ajustar os filtros de busca.</p>
@@ -112,7 +113,7 @@ export function PropertiesToLinkView() {
           {sortedProperties.map((property, index) => (
             <div
               key={property.code}
-              className="opacity-0 animate-cascade-fade"
+              className="opacity-0 animate-cascade-fade h-full"
               style={{ animationDelay: `${index * 50}ms` }}
             >
               <LoosePropertyCard property={property} onLink={setLinkProperty} />
