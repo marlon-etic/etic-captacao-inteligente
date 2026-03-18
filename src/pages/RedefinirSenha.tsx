@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import {
   Lock,
   Eye,
@@ -33,37 +33,44 @@ const getStrength = (p: string) => {
 }
 
 export default function RedefinirSenha() {
-  const [searchParams] = useSearchParams()
-  const token = searchParams.get('token')
+  const location = useLocation()
+  const navigate = useNavigate()
+  const { toast } = useToast()
 
   const [pass, setPass] = useState('')
   const [confirm, setConfirm] = useState('')
   const [showPass, setShowPass] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
 
-  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error_expired'>('idle')
-  const [redirectCountdown, setRedirectCountdown] = useState(3)
+  const [status, setStatus] = useState<'idle' | 'loading' | 'error_expired'>('idle')
+  const [token, setToken] = useState<string | null>(null)
 
   const { resetPassword } = useAppStore()
-  const { toast } = useToast()
-  const navigate = useNavigate()
 
   useEffect(() => {
-    // Basic frontend mock validation for token presence
-    if (token === 'expired' || token === 'used') {
+    // Extract token from either query parameters or hash (Supabase default behavior)
+    const searchParams = new URLSearchParams(location.search)
+    let extractedToken = searchParams.get('token')
+
+    if (!extractedToken && location.hash) {
+      const hashParams = new URLSearchParams(location.hash.substring(1))
+      extractedToken = hashParams.get('access_token')
+
+      if (
+        hashParams.get('error_code') === '404' ||
+        hashParams.get('error_description')?.includes('expired') ||
+        hashParams.get('error') === 'unauthorized_client'
+      ) {
+        extractedToken = 'expired'
+      }
+    }
+
+    if (extractedToken === 'expired' || extractedToken === 'used') {
       setStatus('error_expired')
     }
-  }, [token])
 
-  useEffect(() => {
-    let timer: ReturnType<typeof setTimeout>
-    if (status === 'success' && redirectCountdown > 0) {
-      timer = setTimeout(() => setRedirectCountdown((c) => c - 1), 1000)
-    } else if (status === 'success' && redirectCountdown === 0) {
-      navigate('/')
-    }
-    return () => clearTimeout(timer)
-  }, [status, redirectCountdown, navigate])
+    setToken(extractedToken)
+  }, [location])
 
   const strength = getStrength(pass)
   const passwordsMatch = pass && confirm && pass === confirm
@@ -77,7 +84,14 @@ export default function RedefinirSenha() {
     setStatus('loading')
     try {
       await resetPassword(pass, token || '')
-      setStatus('success')
+
+      toast({
+        title: 'Senha redefinida com sucesso!',
+        description: 'Sua senha foi atualizada. Faça login para continuar.',
+        className: 'bg-emerald-600 text-white',
+      })
+
+      navigate('/')
     } catch (err: any) {
       if (err.message === 'Token expirado') {
         setStatus('error_expired')
@@ -99,7 +113,7 @@ export default function RedefinirSenha() {
             <div className="space-y-2">
               <h2 className="text-[24px] font-bold text-[#1A3A52]">Link Expirado</h2>
               <p className="text-[14px] text-[#333333]">
-                Este link de recuperação de senha já expirou ou foi utilizado.
+                Este link de recuperação de senha expirou (limite de 1 hora) ou já foi utilizado.
               </p>
             </div>
             <div className="w-full space-y-4 pt-4">
@@ -111,36 +125,6 @@ export default function RedefinirSenha() {
                   <ArrowLeft className="w-4 h-4 mr-2" /> Voltar para o login
                 </Button>
               </Link>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
-
-  if (status === 'success') {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-[24px] bg-[#F5F5F5]">
-        <Card className="w-full max-w-[400px] shadow-[0_8px_32px_rgba(26,58,82,0.15)] border-[2px] border-transparent animate-fade-in-up bg-[#FFFFFF]">
-          <CardContent className="p-[32px] flex flex-col items-center text-center space-y-6">
-            <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center animate-bounce-scale">
-              <CheckCircle2 className="w-[64px] h-[64px] text-green-500" />
-            </div>
-            <div className="space-y-2">
-              <h2 className="text-[24px] font-bold text-[#1A3A52]">Sucesso!</h2>
-              <p className="text-[14px] text-[#333333]">
-                Sua nova senha foi salva com sucesso. Você será redirecionado para o login.
-              </p>
-            </div>
-            <div className="w-full pt-4">
-              <Button
-                onClick={() => navigate('/')}
-                className="w-full h-[48px] font-bold bg-[#4CAF50] hover:bg-[#388E3C] text-white"
-              >
-                {redirectCountdown > 0
-                  ? `Redirecionando em ${redirectCountdown}s...`
-                  : 'Ir para o login agora'}
-              </Button>
             </div>
           </CardContent>
         </Card>

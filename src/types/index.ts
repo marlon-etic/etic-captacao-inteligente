@@ -66,6 +66,9 @@ export interface User {
   preferences?: UserPreferences
   dashboardPrefs?: Record<string, boolean>
   createdAt?: string
+  super_admin?: boolean
+  perfis_adicionais?: Role[]
+  original_role?: Role
 }
 
 export type DemandStatus =
