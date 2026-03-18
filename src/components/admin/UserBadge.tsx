@@ -28,7 +28,7 @@ export function UserBadge({ role, className }: UserBadgeProps) {
     <Badge
       className={cn(
         colors[role] || 'bg-gray-500 text-white',
-        'border-none uppercase tracking-wider text-[10px] whitespace-nowrap',
+        'border-none uppercase tracking-wider text-[10px] whitespace-nowrap min-h-[20px] px-2 py-0.5',
         className,
       )}
     >

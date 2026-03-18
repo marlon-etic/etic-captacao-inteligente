@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils'
 interface UserItemProps {
   user: User
   onEdit: (u: User) => void
-  onToggleStatus: (u: User) => void
+  onToggleStatus: (u: User, forceAction?: 'deactivate' | 'reactivate') => void
   onResetPassword: (u: User) => void
   isCurrentUser: boolean
 }
@@ -57,7 +57,7 @@ export function UserDesktopRow({
         <div className="flex items-center gap-2">
           <Switch
             checked={!isInactive}
-            onCheckedChange={() => onToggleStatus(user)}
+            onCheckedChange={() => onToggleStatus(user, isInactive ? 'reactivate' : 'deactivate')}
             disabled={isCurrentUser}
           />
           <span
@@ -76,7 +76,7 @@ export function UserDesktopRow({
             variant="outline"
             size="sm"
             onClick={() => onEdit(user)}
-            className="h-8 px-2"
+            className="h-8 px-2 border-[#E5E5E5] hover:bg-[#F5F5F5]"
             title="Editar"
           >
             <Edit className="w-4 h-4 text-[#2E5F8A]" />
@@ -85,21 +85,26 @@ export function UserDesktopRow({
             variant="outline"
             size="sm"
             onClick={() => onResetPassword(user)}
-            className="h-8 px-2"
+            className="h-8 px-2 border-[#E5E5E5] hover:bg-[#F5F5F5]"
             title="Resetar Senha"
           >
             <Key className="w-4 h-4 text-orange-500" />
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onToggleStatus(user)}
-            disabled={isCurrentUser}
-            className={cn('h-8 px-2', isInactive ? 'text-emerald-600' : 'text-destructive')}
-            title={isInactive ? 'Reativar' : 'Desativar'}
-          >
-            {isInactive ? <Power className="w-4 h-4" /> : <PowerOff className="w-4 h-4" />}
-          </Button>
+          {!isCurrentUser && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onToggleStatus(user, isInactive ? 'reactivate' : 'deactivate')}
+              className="h-8 px-2 border-[#E5E5E5] hover:bg-[#F5F5F5]"
+              title={isInactive ? 'Reativar' : 'Desativar'}
+            >
+              {isInactive ? (
+                <Power className="w-4 h-4 text-emerald-600" />
+              ) : (
+                <PowerOff className="w-4 h-4 text-destructive" />
+              )}
+            </Button>
+          )}
         </div>
       </TableCell>
     </TableRow>
@@ -143,14 +148,14 @@ export function UserMobileCard({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={() => onEdit(user)}>
-              <Edit className="w-4 h-4 mr-2" /> Editar
+              <Edit className="w-4 h-4 mr-2 text-[#2E5F8A]" /> Editar
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => onResetPassword(user)}>
-              <Key className="w-4 h-4 mr-2" /> Resetar Senha
+              <Key className="w-4 h-4 mr-2 text-orange-500" /> Resetar Senha
             </DropdownMenuItem>
             {!isCurrentUser && (
               <DropdownMenuItem
-                onClick={() => onToggleStatus(user)}
+                onClick={() => onToggleStatus(user, isInactive ? 'reactivate' : 'deactivate')}
                 className={isInactive ? 'text-emerald-600' : 'text-destructive'}
               >
                 {isInactive ? (
@@ -187,7 +192,7 @@ export function UserMobileCard({
           </span>
           <Switch
             checked={!isInactive}
-            onCheckedChange={() => onToggleStatus(user)}
+            onCheckedChange={() => onToggleStatus(user, isInactive ? 'reactivate' : 'deactivate')}
             disabled={isCurrentUser}
           />
         </div>
