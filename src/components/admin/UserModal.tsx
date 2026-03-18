@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
-import { Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff, Loader2, AlertTriangle } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -27,22 +27,6 @@ import useAppStore from '@/stores/useAppStore'
 import { User, Role } from '@/types'
 import { cn } from '@/lib/utils'
 
-const baseSchema = z.object({
-  name: z.string().min(3, 'Nome é obrigatório'),
-  email: z.string().email('Email inválido'),
-  role: z.enum(['captador', 'sdr', 'corretor', 'admin', 'gestor'] as const),
-  whatsapp: z
-    .string()
-    .optional()
-    .refine(
-      (val) => !val || val.replace(/\D/g, '').length >= 10,
-      'WhatsApp inválido (mínimo 10 dígitos)',
-    ),
-  status: z.enum(['ativo', 'inativo', 'bloqueado']).default('ativo'),
-  password: z.string().optional(),
-  confirmPassword: z.string().optional(),
-})
-
 interface UserModalProps {
   isOpen: boolean
   onClose: () => void
@@ -50,24 +34,47 @@ interface UserModalProps {
 }
 
 export function UserModal({ isOpen, onClose, user }: UserModalProps) {
-  const { users, createUser, updateUser } = useAppStore()
+  const { users, createUserAdmin, updateUserAdmin, isProcessingUser } = useAppStore()
   const { toast } = useToast()
   const [showPass, setShowPass] = useState(false)
 
   const formSchema = useMemo(() => {
-    return baseSchema
+    return z
+      .object({
+        name: z.string().min(3, 'Nome é obrigatório'),
+        email: z.string().email('Email inválido'),
+        role: z.enum(['captador', 'sdr', 'corretor', 'admin', 'gestor'] as const, {
+          required_error: 'Perfil é obrigatório',
+        }),
+        whatsapp: z
+          .string()
+          .optional()
+          .refine(
+            (val) => !val || val.replace(/\D/g, '').length >= 10,
+            'WhatsApp inválido (mínimo 10 dígitos)',
+          ),
+        status: z.enum(['ativo', 'inativo', 'bloqueado']).default('ativo'),
+        password: z.string().optional(),
+        confirmPassword: z.string().optional(),
+      })
       .refine(
         (data) => {
           if (!user && (!data.password || data.password.length < 8)) return false
           if (data.password && data.password.length > 0 && data.password.length < 8) return false
           return true
         },
-        { message: 'Mínimo 8 caracteres', path: ['password'] },
+        { message: 'Senha deve ter mínimo 8 caracteres', path: ['password'] },
       )
-      .refine((data) => data.password === data.confirmPassword, {
-        message: 'As senhas não coincidem',
-        path: ['confirmPassword'],
-      })
+      .refine(
+        (data) => {
+          if (data.password && data.password !== data.confirmPassword) return false
+          return true
+        },
+        {
+          message: 'As senhas não coincidem',
+          path: ['confirmPassword'],
+        },
+      )
   }, [user])
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -111,6 +118,10 @@ export function UserModal({ isOpen, onClose, user }: UserModalProps) {
   }, [isOpen, user, form])
 
   const passwordVal = form.watch('password')
+  const emailVal = form.watch('email')
+
+  const emailChanged = user && emailVal && emailVal.toLowerCase() !== user.email.toLowerCase()
+
   const strength = useMemo(() => {
     if (!passwordVal) return ''
     if (passwordVal.length < 6) return 'Fraca'
@@ -127,59 +138,76 @@ export function UserModal({ isOpen, onClose, user }: UserModalProps) {
   }, [passwordVal])
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    if (isProcessingUser) return
     try {
       const isDuplicate = users.some(
         (u) => u.email.toLowerCase() === values.email.toLowerCase() && u.id !== user?.id,
       )
       if (isDuplicate) {
-        form.setError('email', { type: 'manual', message: 'Este email já está cadastrado' })
+        form.setError('email', { type: 'manual', message: 'Este email já está em uso' })
         return
       }
 
       if (user) {
-        updateUser(user.id, {
-          name: values.name,
-          email: values.email,
-          role: values.role as Role,
-          whatsapp: values.whatsapp,
-          status: values.status as any,
-        })
+        await updateUserAdmin(
+          user.id,
+          {
+            name: values.name,
+            email: values.email,
+            role: values.role as Role,
+            whatsapp: values.whatsapp,
+            status: values.status as any,
+          },
+          values.password,
+        )
         toast({
           title: '✅ Usuário atualizado com sucesso!',
           className: 'bg-emerald-600 text-white',
         })
       } else {
-        createUser({
-          name: values.name,
-          email: values.email,
-          role: values.role as Role,
-          whatsapp: values.whatsapp,
-          status: values.status as any,
-        })
+        await createUserAdmin(
+          {
+            name: values.name,
+            email: values.email,
+            role: values.role as Role,
+            whatsapp: values.whatsapp,
+            status: values.status as any,
+          },
+          values.password,
+        )
         toast({
           title: `✅ Usuário ${values.name} criado com sucesso!`,
           className: 'bg-emerald-600 text-white',
         })
       }
       onClose()
-    } catch (error) {
-      toast({
-        title: 'Erro',
-        description: 'Erro ao criar usuário. Tente novamente',
-        variant: 'destructive',
-      })
+    } catch (error: any) {
+      if (error.message === 'Este email já está em uso') {
+        form.setError('email', { type: 'manual', message: 'Este email já está em uso' })
+      } else {
+        toast({
+          title: 'Erro',
+          description: error.message || 'Erro ao processar. Tente novamente',
+          variant: 'destructive',
+        })
+      }
     }
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={(o) => !o && onClose()}>
+    <Dialog open={isOpen} onOpenChange={(o) => !o && !isProcessingUser && onClose()}>
       <DialogContent className="sm:max-w-[425px] p-0 overflow-hidden">
         <DialogHeader className="p-6 pb-2">
           <DialogTitle className="text-xl font-bold text-[#1A3A52]">
             {user ? 'Editar Usuário' : 'Criar Novo Usuário'}
           </DialogTitle>
         </DialogHeader>
-        <div className="p-6 pt-2 overflow-y-auto max-h-[75vh]">
+        <div
+          className={cn(
+            'p-6 pt-2 overflow-y-auto max-h-[75vh]',
+            isProcessingUser && 'pointer-events-none opacity-80',
+          )}
+        >
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField
@@ -189,7 +217,7 @@ export function UserModal({ isOpen, onClose, user }: UserModalProps) {
                   <FormItem>
                     <FormLabel>Nome Completo</FormLabel>
                     <FormControl>
-                      <Input placeholder="Ex: João Silva" {...field} />
+                      <Input placeholder="Ex: João Silva" {...field} disabled={isProcessingUser} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -202,8 +230,19 @@ export function UserModal({ isOpen, onClose, user }: UserModalProps) {
                   <FormItem>
                     <FormLabel>Email</FormLabel>
                     <FormControl>
-                      <Input placeholder="joao@etic.com" type="email" {...field} />
+                      <Input
+                        placeholder="joao@etic.com"
+                        type="email"
+                        {...field}
+                        disabled={isProcessingUser}
+                      />
                     </FormControl>
+                    {emailChanged && (
+                      <p className="text-[12px] font-bold text-orange-600 flex items-center gap-1 mt-1">
+                        <AlertTriangle className="w-3 h-3" />
+                        ⚠️ Alterar o email mudará o login do usuário imediatamente
+                      </p>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )}
@@ -214,7 +253,11 @@ export function UserModal({ isOpen, onClose, user }: UserModalProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Perfil</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value}
+                      disabled={isProcessingUser}
+                    >
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione um perfil" />
@@ -239,7 +282,7 @@ export function UserModal({ isOpen, onClose, user }: UserModalProps) {
                   <FormItem>
                     <FormLabel>WhatsApp (opcional)</FormLabel>
                     <FormControl>
-                      <Input placeholder="(11) 99999-9999" {...field} />
+                      <Input placeholder="(11) 99999-9999" {...field} disabled={isProcessingUser} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -250,13 +293,14 @@ export function UserModal({ isOpen, onClose, user }: UserModalProps) {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{user ? 'Nova Senha (opcional)' : 'Senha'}</FormLabel>
+                    <FormLabel>{user ? 'Nova Senha' : 'Senha'}</FormLabel>
                     <FormControl>
                       <div className="relative">
                         <Input
                           type={showPass ? 'text' : 'password'}
-                          placeholder="••••••••"
+                          placeholder={user ? 'Deixe em branco para não alterar' : '••••••••'}
                           {...field}
+                          disabled={isProcessingUser}
                         />
                         <Button
                           type="button"
@@ -265,6 +309,7 @@ export function UserModal({ isOpen, onClose, user }: UserModalProps) {
                           className="absolute right-0 top-0 h-full text-muted-foreground hover:text-foreground"
                           onClick={() => setShowPass(!showPass)}
                           tabIndex={-1}
+                          disabled={isProcessingUser}
                         >
                           {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                         </Button>
@@ -299,6 +344,7 @@ export function UserModal({ isOpen, onClose, user }: UserModalProps) {
                         type={showPass ? 'text' : 'password'}
                         placeholder="••••••••"
                         {...field}
+                        disabled={isProcessingUser}
                       />
                     </FormControl>
                     <FormMessage />
@@ -323,6 +369,7 @@ export function UserModal({ isOpen, onClose, user }: UserModalProps) {
                       <Switch
                         checked={field.value === 'ativo'}
                         onCheckedChange={(checked) => field.onChange(checked ? 'ativo' : 'inativo')}
+                        disabled={isProcessingUser}
                       />
                     </FormControl>
                   </FormItem>
@@ -335,14 +382,25 @@ export function UserModal({ isOpen, onClose, user }: UserModalProps) {
                   variant="outline"
                   onClick={onClose}
                   className="w-full sm:w-auto h-12"
+                  disabled={isProcessingUser}
                 >
                   Cancelar
                 </Button>
                 <Button
                   type="submit"
-                  className="w-full sm:w-auto h-12 bg-[#4CAF50] hover:bg-[#388E3C] text-white font-bold px-8"
+                  disabled={isProcessingUser}
+                  className="w-full sm:w-auto h-12 bg-[#4CAF50] hover:bg-[#388E3C] text-white font-bold px-8 transition-all"
                 >
-                  {user ? '💾 Salvar Alterações' : '✅ Criar Usuário'}
+                  {isProcessingUser ? (
+                    <>
+                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                      Processando...
+                    </>
+                  ) : user ? (
+                    '💾 Salvar Alterações'
+                  ) : (
+                    '✅ Criar Usuário'
+                  )}
                 </Button>
               </div>
             </form>

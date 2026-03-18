@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Navigate } from 'react-router-dom'
-import { Search, UserPlus, Users as UsersIcon, Filter } from 'lucide-react'
+import { Search, UserPlus, Users as UsersIcon, Filter, Loader2 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import {
@@ -32,7 +32,14 @@ type ConfirmAction = {
 } | null
 
 export function Usuarios() {
-  const { currentUser, users, updateUser, logAuthEvent, requestPasswordReset } = useAppStore()
+  const {
+    currentUser,
+    users,
+    isProcessingUser,
+    updateUserAdmin,
+    logAuthEvent,
+    requestPasswordReset,
+  } = useAppStore()
 
   const [search, setSearch] = useState('')
   const [activeFilter, setActiveFilter] = useState<string>('todos')
@@ -93,18 +100,19 @@ export function Usuarios() {
   }
 
   const handleToggleStatus = (u: User, forceAction?: 'deactivate' | 'reactivate') => {
-    if (u.id === currentUser.id) return
+    if (u.id === currentUser.id || isProcessingUser) return
     const isInactive = u.status === 'inativo' || u.status === 'bloqueado'
     const actionType = forceAction || (isInactive ? 'reactivate' : 'deactivate')
     setConfirmAction({ type: actionType, user: u })
   }
 
   const handleResetPassword = (u: User) => {
+    if (isProcessingUser) return
     setConfirmAction({ type: 'reset', user: u })
   }
 
   const executeConfirmAction = async () => {
-    if (!confirmAction) return
+    if (!confirmAction || isProcessingUser) return
 
     const { type, user } = confirmAction
     try {
@@ -115,10 +123,10 @@ export function Usuarios() {
           className: 'bg-emerald-600 text-white',
         })
       } else if (type === 'deactivate') {
-        updateUser(user.id, { status: 'inativo' })
+        await updateUserAdmin(user.id, { status: 'inativo' })
         toast({ title: `⚫ ${user.name} foi desativado`, variant: 'destructive' })
       } else if (type === 'reactivate') {
-        updateUser(user.id, { status: 'ativo' })
+        await updateUserAdmin(user.id, { status: 'ativo' })
         toast({
           title: `✅ ${user.name} foi reativado`,
           className: 'bg-emerald-600 text-white',
@@ -132,7 +140,12 @@ export function Usuarios() {
   }
 
   return (
-    <div className="max-w-[1400px] mx-auto space-y-6 pb-12 animate-fade-in-up">
+    <div
+      className={cn(
+        'max-w-[1400px] mx-auto space-y-6 pb-12 animate-fade-in-up',
+        isProcessingUser && 'pointer-events-none',
+      )}
+    >
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-[#2E5F8A]/20 pb-6">
         <div>
           <h1 className="text-[28px] md:text-[32px] font-black text-[#1A3A52] flex items-center gap-3">
@@ -145,9 +158,15 @@ export function Usuarios() {
         </div>
         <Button
           onClick={handleCreate}
-          className="bg-[#4CAF50] hover:bg-[#388E3C] text-white min-h-[48px] px-6 font-bold w-full sm:w-auto shadow-md"
+          disabled={isProcessingUser}
+          className="bg-[#4CAF50] hover:bg-[#388E3C] text-white min-h-[48px] px-6 font-bold w-full sm:w-auto shadow-md transition-all"
         >
-          <UserPlus className="w-5 h-5 mr-2" /> Novo Usuário
+          {isProcessingUser ? (
+            <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+          ) : (
+            <UserPlus className="w-5 h-5 mr-2" />
+          )}
+          Novo Usuário
         </Button>
       </div>
 
@@ -157,6 +176,7 @@ export function Usuarios() {
             <button
               key={f.id}
               onClick={() => setActiveFilter(f.id)}
+              disabled={isProcessingUser}
               className={cn(
                 'px-4 py-2 rounded-full text-[13px] font-bold transition-colors border',
                 activeFilter === f.id
@@ -170,7 +190,11 @@ export function Usuarios() {
         </div>
         <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
           <div className="relative w-full sm:w-[220px]">
-            <Select value={statusFilter} onValueChange={(v: any) => setStatusFilter(v)}>
+            <Select
+              value={statusFilter}
+              onValueChange={(v: any) => setStatusFilter(v)}
+              disabled={isProcessingUser}
+            >
               <SelectTrigger className="w-full">
                 <Filter className="w-4 h-4 mr-2 text-muted-foreground" />
                 <SelectValue placeholder="Status" />
@@ -188,6 +212,7 @@ export function Usuarios() {
               placeholder="Buscar por nome ou email..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              disabled={isProcessingUser}
               className="pl-10 min-h-[44px]"
             />
           </div>
@@ -222,6 +247,7 @@ export function Usuarios() {
                   onToggleStatus={handleToggleStatus}
                   onResetPassword={handleResetPassword}
                   isCurrentUser={u.id === currentUser.id}
+                  isProcessing={isProcessingUser}
                 />
               ))
             )}
@@ -243,6 +269,7 @@ export function Usuarios() {
               onToggleStatus={handleToggleStatus}
               onResetPassword={handleResetPassword}
               isCurrentUser={u.id === currentUser.id}
+              isProcessing={isProcessingUser}
             />
           ))
         )}
@@ -279,28 +306,38 @@ export function Usuarios() {
             )}
           </div>
           <div className="flex justify-end gap-3 mt-2">
-            <Button variant="outline" onClick={() => setConfirmAction(null)}>
+            <Button
+              variant="outline"
+              onClick={() => setConfirmAction(null)}
+              disabled={isProcessingUser}
+            >
               Cancelar
             </Button>
             {confirmAction?.type === 'reset' && (
               <Button
                 className="bg-[#2196F3] hover:bg-[#1E88E5] text-white"
                 onClick={executeConfirmAction}
+                disabled={isProcessingUser}
               >
-                Enviar Email
+                {isProcessingUser ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Enviar Email'}
               </Button>
             )}
             {confirmAction?.type === 'deactivate' && (
-              <Button variant="destructive" onClick={executeConfirmAction}>
-                Desativar
+              <Button
+                variant="destructive"
+                onClick={executeConfirmAction}
+                disabled={isProcessingUser}
+              >
+                {isProcessingUser ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Desativar'}
               </Button>
             )}
             {confirmAction?.type === 'reactivate' && (
               <Button
                 className="bg-[#4CAF50] hover:bg-[#388E3C] text-white"
                 onClick={executeConfirmAction}
+                disabled={isProcessingUser}
               >
-                Reativar
+                {isProcessingUser ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Reativar'}
               </Button>
             )}
           </div>

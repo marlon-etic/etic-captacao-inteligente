@@ -25,6 +25,7 @@ import {
   InactiveGroup,
   SystemLog,
   AuthAuditLog,
+  AdminAuditLog,
   Role,
 } from '@/types'
 import { toast } from '@/hooks/use-toast'
@@ -43,6 +44,8 @@ interface AppState {
   inactiveGroups: InactiveGroup[]
   systemLogs: SystemLog[]
   authAuditLogs: AuthAuditLog[]
+  adminAuditLogs: AdminAuditLog[]
+  isProcessingUser: boolean
   logSystemEvent: (message: string, type?: 'error' | 'info' | 'warning', context?: string) => void
   logAuthEvent: (
     event: string,
@@ -57,6 +60,8 @@ interface AppState {
   updateDashboardPrefs: (prefs: Record<string, boolean>) => void
   updateUser: (id: string, updates: Partial<User>) => void
   createUser: (user: Partial<User>) => void
+  createUserAdmin: (user: Partial<User>, password?: string) => Promise<void>
+  updateUserAdmin: (id: string, user: Partial<User>, password?: string) => Promise<void>
   login: (email: string, password?: string) => Promise<void>
   logout: () => void
   requestPasswordReset: (email: string) => Promise<void>
@@ -412,6 +417,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const [webhookQueue, setWebhookQueue] = useState<WebhookEvent[]>([])
   const [auditLogs, setAuditLogs] = useState<string[]>([])
   const [systemLogs, setSystemLogs] = useState<SystemLog[]>([])
+  const [isProcessingUser, setIsProcessingUser] = useState(false)
+
   const [authAuditLogs, setAuthAuditLogs] = useState<AuthAuditLog[]>(() => {
     try {
       const raw = localStorage.getItem('etic_auth_logs')
@@ -430,6 +437,16 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         ip: '192.168.1.100',
       },
     ]
+  })
+
+  const [adminAuditLogs, setAdminAuditLogs] = useState<AdminAuditLog[]>(() => {
+    try {
+      const raw = localStorage.getItem('etic_admin_logs')
+      if (raw) return JSON.parse(raw)
+    } catch {
+      // ignore
+    }
+    return []
   })
 
   const [notifications, setNotifications] = useState<AppNotification[]>(() => {
@@ -505,6 +522,10 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     localStorage.setItem('etic_auth_logs', JSON.stringify(authAuditLogs))
   }, [authAuditLogs])
+
+  useEffect(() => {
+    localStorage.setItem('etic_admin_logs', JSON.stringify(adminAuditLogs))
+  }, [adminAuditLogs])
 
   const webhookQueueRef = useRef(webhookQueue)
   const loosePropertiesRef = useRef(looseProperties)
@@ -2040,6 +2061,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         auditLogs,
         systemLogs,
         authAuditLogs,
+        adminAuditLogs,
+        isProcessingUser,
         logSystemEvent,
         logAuthEvent,
         notifications,
@@ -2117,6 +2140,140 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         updateDashboardPrefs,
         updateUser,
         createUser,
+        createUserAdmin: async (payload: Partial<User>) => {
+          setIsProcessingUser(true)
+          try {
+            await Promise.race([
+              new Promise((_, rej) =>
+                setTimeout(() => rej(new Error('Erro: Tempo esgotado. Tente novamente')), 10000),
+              ),
+              (async () => {
+                if (
+                  usersRef.current.some(
+                    (u) => u.email.toLowerCase() === payload.email?.toLowerCase(),
+                  )
+                ) {
+                  throw new Error('Este email já está em uso')
+                }
+                await new Promise((r) => setTimeout(r, 600)) // Auth Delay
+                await new Promise((r) => setTimeout(r, 600)) // DB Delay
+
+                const newUser: User = {
+                  id: Math.random().toString(36).substring(2, 9),
+                  points: 0,
+                  dailyPoints: 0,
+                  weeklyPoints: 0,
+                  monthlyPoints: 0,
+                  badges: [],
+                  stats: defaultStats,
+                  ...payload,
+                } as User
+
+                setUsers((p) => {
+                  const next = [...p, newUser]
+                  broadcastState(allDemandsRef.current, next, 'Usuário criado')
+                  return next
+                })
+
+                setAdminAuditLogs((p) => [
+                  {
+                    id: Math.random().toString(),
+                    data_operacao: new Date().toISOString(),
+                    admin_id: currentUser?.id || '',
+                    usuario_afetado_id: newUser.id,
+                    status: 'sucesso',
+                    acao: 'Criar Usuário',
+                  },
+                  ...p,
+                ])
+              })(),
+            ])
+          } catch (err: any) {
+            setAdminAuditLogs((p) => [
+              {
+                id: Math.random().toString(),
+                data_operacao: new Date().toISOString(),
+                admin_id: currentUser?.id || '',
+                usuario_afetado_id: 'unknown',
+                status: 'erro',
+                erro_detalhes: err.message,
+                acao: 'Criar Usuário',
+              },
+              ...p,
+            ])
+            throw err
+          } finally {
+            setIsProcessingUser(false)
+          }
+        },
+        updateUserAdmin: async (id: string, payload: Partial<User>, password?: string) => {
+          setIsProcessingUser(true)
+          try {
+            await Promise.race([
+              new Promise((_, rej) =>
+                setTimeout(() => rej(new Error('Erro: Tempo esgotado. Tente novamente')), 10000),
+              ),
+              (async () => {
+                const target = usersRef.current.find((u) => u.id === id)
+                if (!target) throw new Error('Usuário não encontrado')
+
+                if (payload.email && payload.email !== target.email) {
+                  if (
+                    usersRef.current.some(
+                      (u) => u.id !== id && u.email.toLowerCase() === payload.email?.toLowerCase(),
+                    )
+                  ) {
+                    throw new Error('Este email já está em uso')
+                  }
+                  await new Promise((r) => setTimeout(r, 500))
+                }
+
+                if (password) {
+                  await new Promise((r) => setTimeout(r, 500))
+                }
+
+                await new Promise((r) => setTimeout(r, 500))
+
+                setUsers((p) => {
+                  const next = p.map((u) => (u.id === id ? { ...u, ...payload } : u))
+                  broadcastState(allDemandsRef.current, next, 'Usuário editado')
+                  return next
+                })
+
+                setAdminAuditLogs((p) => [
+                  {
+                    id: Math.random().toString(),
+                    data_operacao: new Date().toISOString(),
+                    admin_id: currentUser?.id || '',
+                    usuario_afetado_id: id,
+                    status: 'sucesso',
+                    acao: 'Editar Usuário',
+                  },
+                  ...p,
+                ])
+                if (currentUser?.id === id) {
+                  setCurrentUser((prev) => (prev ? { ...prev, ...payload } : prev))
+                }
+              })(),
+            ])
+          } catch (err: any) {
+            setAdminAuditLogs((p) => [
+              {
+                id: Math.random().toString(),
+                data_operacao: new Date().toISOString(),
+                admin_id: currentUser?.id || '',
+                usuario_afetado_id: id,
+                status: 'erro',
+                erro_detalhes: err.message,
+                acao: 'Editar Usuário',
+              },
+              ...p,
+            ])
+            throw err
+          } finally {
+            setIsProcessingUser(false)
+          }
+        },
         getMatchesForProperty: (property: CapturedProperty) => {
           if (property.tipo_vinculacao === 'vinculado') return []
           const matches = allDemands

@@ -8,7 +8,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { TableCell, TableRow } from '@/components/ui/table'
-import { Edit, Key, PowerOff, Power, MoreVertical } from 'lucide-react'
+import { Edit, Key, PowerOff, Power, MoreVertical, Loader2 } from 'lucide-react'
 import { UserBadge } from './UserBadge'
 import { User } from '@/types'
 import { cn } from '@/lib/utils'
@@ -19,6 +19,7 @@ interface UserItemProps {
   onToggleStatus: (u: User, forceAction?: 'deactivate' | 'reactivate') => void
   onResetPassword: (u: User) => void
   isCurrentUser: boolean
+  isProcessing?: boolean
 }
 
 export function UserDesktopRow({
@@ -27,6 +28,7 @@ export function UserDesktopRow({
   onToggleStatus,
   onResetPassword,
   isCurrentUser,
+  isProcessing,
 }: UserItemProps) {
   const isInactive = user.status === 'inativo' || user.status === 'bloqueado'
 
@@ -58,7 +60,7 @@ export function UserDesktopRow({
           <Switch
             checked={!isInactive}
             onCheckedChange={() => onToggleStatus(user, isInactive ? 'reactivate' : 'deactivate')}
-            disabled={isCurrentUser}
+            disabled={isCurrentUser || isProcessing}
           />
           <span
             className={cn(
@@ -78,6 +80,7 @@ export function UserDesktopRow({
             onClick={() => onEdit(user)}
             className="h-8 px-2 border-[#E5E5E5] hover:bg-[#F5F5F5]"
             title="Editar"
+            disabled={isProcessing}
           >
             <Edit className="w-4 h-4 text-[#2E5F8A]" />
           </Button>
@@ -87,6 +90,7 @@ export function UserDesktopRow({
             onClick={() => onResetPassword(user)}
             className="h-8 px-2 border-[#E5E5E5] hover:bg-[#F5F5F5]"
             title="Resetar Senha"
+            disabled={isProcessing}
           >
             <Key className="w-4 h-4 text-orange-500" />
           </Button>
@@ -97,6 +101,7 @@ export function UserDesktopRow({
               onClick={() => onToggleStatus(user, isInactive ? 'reactivate' : 'deactivate')}
               className="h-8 px-2 border-[#E5E5E5] hover:bg-[#F5F5F5]"
               title={isInactive ? 'Reativar' : 'Desativar'}
+              disabled={isProcessing}
             >
               {isInactive ? (
                 <Power className="w-4 h-4 text-emerald-600" />
@@ -117,6 +122,7 @@ export function UserMobileCard({
   onToggleStatus,
   onResetPassword,
   isCurrentUser,
+  isProcessing,
 }: UserItemProps) {
   const isInactive = user.status === 'inativo' || user.status === 'bloqueado'
 
@@ -141,7 +147,7 @@ export function UserMobileCard({
           </div>
         </div>
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
+          <DropdownMenuTrigger asChild disabled={isProcessing}>
             <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2">
               <MoreVertical className="w-5 h-5 text-[#999999]" />
             </Button>
@@ -193,7 +199,7 @@ export function UserMobileCard({
           <Switch
             checked={!isInactive}
             onCheckedChange={() => onToggleStatus(user, isInactive ? 'reactivate' : 'deactivate')}
-            disabled={isCurrentUser}
+            disabled={isCurrentUser || isProcessing}
           />
         </div>
       </div>

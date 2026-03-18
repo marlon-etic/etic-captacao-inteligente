@@ -286,3 +286,13 @@ export interface AuthAuditLog {
   ip?: string
   timestamp: string
 }
+
+export interface AdminAuditLog {
+  id: string
+  data_operacao: string
+  admin_id: string
+  usuario_afetado_id: string
+  acao: string
+  status: 'sucesso' | 'erro'
+  erro_detalhes?: string
+}
