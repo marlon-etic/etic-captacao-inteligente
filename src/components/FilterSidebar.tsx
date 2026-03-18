@@ -1,12 +1,11 @@
 import { FilterDef } from './StickyFilterBar'
 import { Label } from '@/components/ui/label'
-import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { SearchIcon, Filter, X } from 'lucide-react'
+import { Filter, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { BAIRROS_ETIC } from '@/lib/bairros'
+import { LocationSelector } from '@/components/LocationSelector'
 
 interface Props {
   filters: FilterDef[]
@@ -29,7 +28,7 @@ export function FilterSidebar({ filters, values, onChange, resultsCount }: Props
   const handleClearAll = () => onChange(defaultValues)
 
   return (
-    <aside className="hidden lg:flex w-[240px] shrink-0 flex-col sticky top-[88px] bg-[#FFFFFF] border-[2px] border-[#E5E5E5] rounded-[12px] shadow-[0_4px_12px_rgba(26,58,82,0.05)] overflow-hidden h-[calc(100vh-120px)] animate-fade-in">
+    <aside className="hidden lg:flex w-[260px] shrink-0 flex-col sticky top-[88px] bg-[#FFFFFF] border-[2px] border-[#E5E5E5] rounded-[12px] shadow-[0_4px_12px_rgba(26,58,82,0.05)] overflow-hidden h-[calc(100vh-120px)] animate-fade-in z-20">
       <div className="p-4 border-b border-[#E5E5E5] bg-[#F5F5F5] flex items-center justify-between shrink-0">
         <h3 className="font-black text-[#1A3A52] flex items-center gap-2 uppercase tracking-wide text-[14px]">
           <Filter className="w-4 h-4" /> Filtros
@@ -47,31 +46,14 @@ export function FilterSidebar({ filters, values, onChange, resultsCount }: Props
                 {f.label}
               </Label>
               {f.isSearch ? (
-                <div className="relative">
-                  <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#999999]" />
-                  <Input
-                    placeholder={`Buscar...`}
-                    className="pl-9 h-[44px] bg-[#F5F5F5] border-transparent focus-visible:ring-[#1A3A52] font-medium transition-colors"
-                    value={values[f.id] || ''}
-                    onChange={(e) => onChange({ ...values, [f.id]: e.target.value })}
-                  />
-                  <div className="flex flex-wrap gap-2 mt-3">
-                    {BAIRROS_ETIC.filter((b) =>
-                      values[f.id] ? b.toLowerCase().includes(values[f.id].toLowerCase()) : false,
-                    )
-                      .slice(0, 5)
-                      .map((b) => (
-                        <Badge
-                          key={b}
-                          variant="outline"
-                          className="cursor-pointer bg-white h-7 px-2 text-[11px] font-bold border-[#E5E5E5] hover:bg-[#F5F5F5] text-[#333333]"
-                          onClick={() => onChange({ ...values, [f.id]: b })}
-                        >
-                          {b}
-                        </Badge>
-                      ))}
-                  </div>
-                </div>
+                <LocationSelector
+                  value={
+                    values[f.id] && values[f.id] !== '' && values[f.id] !== 'all'
+                      ? values[f.id].split(',')
+                      : []
+                  }
+                  onChange={(val) => onChange({ ...values, [f.id]: val.join(',') })}
+                />
               ) : (
                 <div className="flex flex-col gap-1.5">
                   {f.options.map((o) => {

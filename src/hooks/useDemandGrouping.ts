@@ -10,6 +10,7 @@ interface GroupingOptions {
     status?: string
     timeframe?: string
     period?: string
+    bairro?: string
   }
 }
 
@@ -45,6 +46,13 @@ export function useDemandGrouping({ demands, filters }: GroupingOptions) {
           filtered = filtered.filter((d) => d.type?.toLowerCase() === filters.type?.toLowerCase())
         }
 
+        if (filters.bairro && filters.bairro !== 'all') {
+          const bairroFilter = filters.bairro.toLowerCase()
+          filtered = filtered.filter((d) =>
+            d.location.some((l) => l.toLowerCase() === bairroFilter),
+          )
+        }
+
         const period = filters.period || filters.timeframe
         if (period && period !== 'all' && period !== 'todas') {
           const now = Date.now()
@@ -76,7 +84,6 @@ export function useDemandGrouping({ demands, filters }: GroupingOptions) {
           d.isPrioritized,
       )
 
-      // Use the actual grupo_id defined by the store's Unification Logic
       const potentialGroups = new Map<string, Demand[]>()
       activeForGrouping.forEach((d) => {
         const key = d.grupo_id || `legacy-${d.id}`
@@ -96,9 +103,13 @@ export function useDemandGrouping({ demands, filters }: GroupingOptions) {
         const minB = Math.min(...groupDemands.map((d) => d.minBudget || d.budget || 0))
         const maxB = Math.max(...groupDemands.map((d) => d.maxBudget || d.budget || 0))
 
+        const allLocs = Array.from(new Set(groupDemands.flatMap((d) => d.location)))
+
         groups.push({
           id: key,
-          location: groupDemands[0].location,
+          location:
+            allLocs.slice(0, 3).join(', ') +
+            (allLocs.length > 3 ? ` e mais ${allLocs.length - 3}` : ''),
           type: groupDemands[0].type,
           bedrooms: groupDemands[0].bedrooms || 0,
           bathrooms: groupDemands[0].bathrooms || 0,
@@ -111,7 +122,6 @@ export function useDemandGrouping({ demands, filters }: GroupingOptions) {
         })
       })
 
-      // Primary Sort: Number of active clients (descending), Secondary Sort: Oldest created demand
       groups.sort((a, b) => {
         if (b.demands.length !== a.demands.length) return b.demands.length - a.demands.length
         return a.oldestDate - b.oldestDate

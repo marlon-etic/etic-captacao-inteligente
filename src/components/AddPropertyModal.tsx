@@ -19,7 +19,7 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 import { Link2, Search, Unlock, ArrowLeft } from 'lucide-react'
 import useAppStore from '@/stores/useAppStore'
-import { BAIRROS_ETIC } from '@/lib/bairros'
+import { LocationSelector } from '@/components/LocationSelector'
 import { useToast } from '@/hooks/use-toast'
 import { ToastAction } from '@/components/ui/toast'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -39,14 +39,16 @@ export function AddPropertyModal({ isOpen, onClose }: Props) {
 
   const [code, setCode] = useState('')
   const [type, setType] = useState('Venda')
-  const [neighborhood, setNeighborhood] = useState('')
+  const [neighborhoods, setNeighborhoods] = useState<string[]>([])
   const [value, setValue] = useState('')
   const [bedrooms, setBedrooms] = useState('')
   const [bathrooms, setBathrooms] = useState('')
   const [parkingSpots, setParkingSpots] = useState('')
   const [obs, setObs] = useState('')
 
-  const [errors, setErrors] = useState<{ code?: string; value?: string }>({})
+  const [errors, setErrors] = useState<{ code?: string; value?: string; neighborhoods?: string }>(
+    {},
+  )
 
   const pendingDemands = demands.filter((d) => d.status === 'Pendente')
 
@@ -62,7 +64,7 @@ export function AddPropertyModal({ isOpen, onClose }: Props) {
     setSelectedDemandId('')
     setCode('')
     setType('Venda')
-    setNeighborhood('')
+    setNeighborhoods([])
     setValue('')
     setBedrooms('')
     setBathrooms('')
@@ -86,6 +88,7 @@ export function AddPropertyModal({ isOpen, onClose }: Props) {
     const newErrors: any = {}
     if (!code) newErrors.code = 'Código é obrigatório'
     if (!value || Number(value) <= 0) newErrors.value = 'Valor deve ser maior que zero'
+    if (neighborhoods.length === 0) newErrors.neighborhoods = 'Selecione pelo menos um bairro'
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors)
@@ -95,7 +98,7 @@ export function AddPropertyModal({ isOpen, onClose }: Props) {
     const payload = {
       code,
       propertyType: type,
-      neighborhood,
+      neighborhood: neighborhoods,
       value: Number(value),
       bedrooms: Number(bedrooms),
       bathrooms: Number(bathrooms),
@@ -146,7 +149,7 @@ export function AddPropertyModal({ isOpen, onClose }: Props) {
 
   return (
     <Dialog open={isOpen} onOpenChange={(val) => !val && onClose()}>
-      <DialogContent className="w-full max-w-[calc(100%-32px)] sm:max-w-3xl h-[85vh] sm:h-auto max-h-[85vh] p-0 flex flex-col rounded-[12px] bg-white border-[2px] border-[#1A3A52] overflow-hidden">
+      <DialogContent className="w-full max-w-[calc(100%-32px)] sm:max-w-3xl h-[85vh] sm:h-auto max-h-[85vh] p-0 flex flex-col rounded-[12px] bg-white border-[2px] border-[#1A3A52] overflow-hidden z-[9999]">
         <DialogHeader className="p-4 md:p-6 border-b border-[#E5E5E5] shrink-0 bg-[#F5F5F5] flex flex-row items-center gap-3">
           {step > 1 && (
             <Button
@@ -243,7 +246,8 @@ export function AddPropertyModal({ isOpen, onClose }: Props) {
                     <SelectContent>
                       {pendingDemands.map((d) => (
                         <SelectItem key={d.id} value={d.id} className="min-h-[48px]">
-                          {d.clientName} - {d.location} ({d.type})
+                          {d.clientName} - {d.location.slice(0, 2).join(', ')}{' '}
+                          {d.location.length > 2 ? '...' : ''} ({d.type})
                         </SelectItem>
                       ))}
                       {pendingDemands.length === 0 && (
@@ -302,22 +306,21 @@ export function AddPropertyModal({ isOpen, onClose }: Props) {
                   </Select>
                 </div>
                 <div>
-                  <Label className="font-bold text-[#333333]">Bairro</Label>
-                  <Select value={neighborhood} onValueChange={setNeighborhood}>
-                    <SelectTrigger className="min-h-[48px]">
-                      <SelectValue placeholder="Selecione o bairro..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {BAIRROS_ETIC.map((b) => (
-                        <SelectItem key={b} value={b} className="min-h-[48px]">
-                          {b}
-                        </SelectItem>
-                      ))}
-                      <SelectItem value="OUTROS" className="min-h-[48px]">
-                        Outros
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Label className="font-bold text-[#333333]">
+                    Bairros <span className="text-red-500">*</span>
+                  </Label>
+                  <LocationSelector
+                    value={neighborhoods}
+                    onChange={(val) => {
+                      setNeighborhoods(val)
+                      if (val.length > 0)
+                        setErrors((prev) => ({ ...prev, neighborhoods: undefined }))
+                    }}
+                    error={!!errors.neighborhoods}
+                  />
+                  {errors.neighborhoods && (
+                    <p className="text-red-500 text-xs mt-1 font-bold">{errors.neighborhoods}</p>
+                  )}
                 </div>
                 <div>
                   <Label className="font-bold text-[#333333]">

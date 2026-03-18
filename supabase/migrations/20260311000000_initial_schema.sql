@@ -50,7 +50,7 @@ CREATE TABLE auth_audit_logs (
 CREATE TABLE demandas_locacao (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     cliente_nome VARCHAR(255) NOT NULL,
-    localizacao VARCHAR(255) NOT NULL,
+    localizacoes TEXT[] NOT NULL DEFAULT '{}',
     orcamento_min DECIMAL(12,2) NOT NULL DEFAULT 0,
     orcamento_max DECIMAL(12,2) NOT NULL,
     quartos INTEGER NOT NULL,
@@ -76,7 +76,7 @@ CREATE TABLE demandas_locacao (
 CREATE TABLE demandas_vendas (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     cliente_nome VARCHAR(255) NOT NULL,
-    localizacao VARCHAR(255) NOT NULL,
+    localizacoes TEXT[] NOT NULL DEFAULT '{}',
     orcamento_min DECIMAL(12,2) NOT NULL DEFAULT 0,
     orcamento_max DECIMAL(12,2) NOT NULL,
     quartos INTEGER NOT NULL,
@@ -108,7 +108,7 @@ CREATE TABLE imoveis_captados (
     numero_imovel_para_demanda INTEGER,
     tipo_demanda VARCHAR(20) CHECK (tipo_demanda IN ('locacao', 'vendas')),
     endereco TEXT NOT NULL,
-    bairro_imovel TEXT,
+    bairros_imovel TEXT[] DEFAULT '{}',
     bairro_tipo TEXT CHECK (bairro_tipo IN ('listado', 'outro')),
     valor DECIMAL(12,2) NOT NULL,
     link_anuncio TEXT,
@@ -190,12 +190,12 @@ CREATE TABLE webhook_queue (
 
 -- Function: Automatically set updated_at
 CREATE OR REPLACE FUNCTION set_updated_at()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER AS $
 BEGIN
     NEW.updated_at = CURRENT_TIMESTAMP;
     RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$ LANGUAGE plpgsql;
 
 CREATE TRIGGER update_captadores_updated_at BEFORE UPDATE ON captadores FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 CREATE TRIGGER update_demandas_locacao_updated_at BEFORE UPDATE ON demandas_locacao FOR EACH ROW EXECUTE FUNCTION set_updated_at();
@@ -206,7 +206,7 @@ CREATE TRIGGER update_webhook_updated_at BEFORE UPDATE ON webhook_queue FOR EACH
 
 -- Function: Track actions for Gamification Engine
 CREATE OR REPLACE FUNCTION add_gamification_points()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER AS $
 BEGIN
     -- Add 10 points for each new captured property to the current month's ranking
     UPDATE ranking_gamificacao
@@ -228,7 +228,7 @@ BEGIN
 
     RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trigger_imovel_captado_points
 AFTER INSERT ON imoveis_captados
@@ -243,18 +243,19 @@ CREATE INDEX idx_auth_audit_logs_user_id ON auth_audit_logs(user_id);
 
 -- Demandas Locação
 CREATE INDEX idx_demandas_locacao_captador_id ON demandas_locacao(captador_id);
-CREATE INDEX idx_demandas_locacao_localizacao ON demandas_locacao(localizacao);
 CREATE INDEX idx_demandas_locacao_status ON demandas_locacao(status);
 CREATE INDEX idx_demandas_locacao_data_criacao ON demandas_locacao(data_criacao);
+CREATE INDEX idx_demandas_locacao_localizacoes ON demandas_locacao USING GIN(localizacoes);
 
 -- Demandas Vendas
 CREATE INDEX idx_demandas_vendas_captador_id ON demandas_vendas(captador_id);
-CREATE INDEX idx_demandas_vendas_localizacao ON demandas_vendas(localizacao);
 CREATE INDEX idx_demandas_vendas_status ON demandas_vendas(status);
 CREATE INDEX idx_demandas_vendas_data_criacao ON demandas_vendas(data_criacao);
+CREATE INDEX idx_demandas_vendas_localizacoes ON demandas_vendas USING GIN(localizacoes);
 
 -- Imóveis Captados & Gamification
 CREATE INDEX idx_imoveis_captados_captador_id ON imoveis_captados(captador_id);
+CREATE INDEX idx_imoveis_captados_bairros ON imoveis_captados USING GIN(bairros_imovel);
 CREATE INDEX idx_historico_imovel_id ON historico_acoes_imovel(imovel_id);
 CREATE INDEX idx_ranking_captador_id ON ranking_gamificacao(captador_id);
 CREATE INDEX idx_badges_captador_id ON badges_obtidos(captador_id);
@@ -333,3 +334,4 @@ CREATE POLICY "Anyone can view badges" ON badges_obtidos FOR SELECT USING (true)
 CREATE POLICY "Only admins/gestores can manage webhooks" ON webhook_queue FOR ALL USING (
     EXISTS (SELECT 1 FROM captadores WHERE id = auth.uid() AND role IN ('gestor', 'admin'))
 );
+

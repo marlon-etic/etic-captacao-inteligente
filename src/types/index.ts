@@ -105,7 +105,7 @@ export interface PropertyAction {
 export interface CapturedProperty {
   code: string
   value: number
-  neighborhood: string
+  neighborhood: string[]
   bairro_tipo?: 'listado' | 'outro'
   docCompleta: boolean
   obs?: string
@@ -146,7 +146,7 @@ export interface Demand {
   id: string
   clientName: string
   clientEmail?: string
-  location: string
+  location: string[]
   budget?: number
   minBudget: number
   maxBudget: number
@@ -253,7 +253,7 @@ export interface GroupComment {
 
 export interface InactiveGroup {
   id: string
-  location: string
+  location: string[]
   type: string
   bedrooms: number
   bathrooms: number

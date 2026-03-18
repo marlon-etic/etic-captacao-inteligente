@@ -54,7 +54,7 @@ export default function NovaDemanda() {
         clientName: values.clientName,
         phone: values.clientPhone,
         clientEmail: values.clientEmail || undefined,
-        location: values.location.join(', '),
+        location: values.location,
         minBudget: values.minBudget,
         maxBudget: values.maxBudget,
         budget: values.maxBudget,
@@ -177,7 +177,7 @@ export default function NovaDemanda() {
                   render={({ field, fieldState }) => (
                     <FormItem className="space-y-0">
                       <FormLabel className="flex items-center h-[20px] mb-[4px] text-[14px] text-[#333333] font-semibold">
-                        Bairro
+                        Bairros
                       </FormLabel>
                       <FormControl>
                         <LocationSelector

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Filter, X, Search as SearchIcon, ChevronDown } from 'lucide-react'
+import { Filter, X, ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -15,11 +15,10 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from '@/components/ui/dropdown-menu'
-import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { useIsMobile } from '@/hooks/use-mobile'
-import { BAIRROS_ETIC } from '@/lib/bairros'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { LocationSelector } from '@/components/LocationSelector'
 
 export interface FilterDef {
   id: string
@@ -46,9 +45,21 @@ export function StickyFilterBar({
   const isMobile = useIsMobile()
   const [isOpen, setIsOpen] = useState(false)
   const [mobileValues, setMobileValues] = useState(values)
+  const [selectedLocations, setSelectedLocations] = useState<string[]>(() => {
+    return values.bairro && values.bairro !== '' && values.bairro !== 'all'
+      ? values.bairro.split(',')
+      : []
+  })
 
   useEffect(() => {
-    if (isOpen) setMobileValues(values)
+    if (isOpen) {
+      setMobileValues(values)
+      setSelectedLocations(
+        values.bairro && values.bairro !== '' && values.bairro !== 'all'
+          ? values.bairro.split(',')
+          : [],
+      )
+    }
   }, [isOpen, values])
 
   const defaultValues = filters.reduce(
@@ -59,24 +70,41 @@ export function StickyFilterBar({
     {} as Record<string, string>,
   )
 
-  const activeCount = Object.keys(values).filter((k) => values[k] !== defaultValues[k]).length
+  const activeCount =
+    Object.keys(values).filter((k) => values[k] !== defaultValues[k]).length +
+    (selectedLocations.length > 0 ? 1 : 0)
 
   const handleMobileApply = () => {
-    onChange(mobileValues)
+    const finalVals = { ...mobileValues }
+    if (selectedLocations.length > 0) {
+      finalVals.bairro = selectedLocations.join(',')
+    } else {
+      finalVals.bairro = ''
+    }
+    onChange(finalVals)
     setIsOpen(false)
   }
 
   const handleClearAll = () => {
     onChange(defaultValues)
     setMobileValues(defaultValues)
+    setSelectedLocations([])
   }
 
   const removeFilter = (id: string) => {
-    onChange({ ...values, [id]: defaultValues[id] })
+    if (id === 'bairro') {
+      setSelectedLocations([])
+      onChange({ ...values, bairro: '' })
+    } else {
+      onChange({ ...values, [id]: defaultValues[id] })
+    }
   }
 
   const renderActiveChips = () => {
-    const active = Object.keys(values).filter((k) => values[k] !== defaultValues[k])
+    const active = Object.keys(values).filter(
+      (k) => k !== 'bairro' && values[k] !== defaultValues[k],
+    )
+    if (selectedLocations.length > 0) active.push('bairro')
     if (active.length === 0) return null
 
     const visible = isMobile ? active.slice(0, 3) : active
@@ -84,6 +112,24 @@ export function StickyFilterBar({
     return (
       <div className="flex items-center gap-2 flex-1 overflow-x-auto scrollbar-hide px-1 py-1">
         {visible.map((id) => {
+          if (id === 'bairro') {
+            return (
+              <Badge
+                key={id}
+                className="bg-[#1A3A52] text-white hover:bg-[#1A3A52] border-transparent flex items-center gap-1 shrink-0 h-[36px] px-3 whitespace-nowrap font-bold shadow-[0_2px_4px_rgba(26,58,82,0.1)]"
+              >
+                📍 {selectedLocations.length} Bairros
+                <X
+                  className="w-3.5 h-3.5 ml-1.5 cursor-pointer hover:text-red-300 opacity-80 hover:opacity-100 transition-opacity"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    removeFilter(id)
+                  }}
+                />
+              </Badge>
+            )
+          }
+
           const val = values[id]
           const def = filters.find((f) => f.id === id)
           const opt = def?.options.find((o) => o.value === val)
@@ -127,7 +173,7 @@ export function StickyFilterBar({
                   </span>
                 </Button>
               </DrawerTrigger>
-              <DrawerContent className="max-h-[85vh] h-[65vh] flex flex-col rounded-t-[24px] bg-[#F5F5F5] outline-none">
+              <DrawerContent className="max-h-[85vh] h-[85vh] flex flex-col rounded-t-[24px] bg-[#F5F5F5] outline-none">
                 <DrawerHeader className="px-6 py-4 text-left border-b border-[#E5E5E5] shrink-0 bg-[#F5F5F5]">
                   <DrawerTitle className="text-[20px] font-black text-[#1A3A52]">
                     Filtros
@@ -141,35 +187,10 @@ export function StickyFilterBar({
                           {f.label}
                         </h3>
                         {f.isSearch ? (
-                          <div className="relative">
-                            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#999999]" />
-                            <Input
-                              placeholder="Buscar bairro..."
-                              className="pl-9 h-12 bg-[#F5F5F5] border-transparent focus-visible:ring-[#1A3A52] font-medium"
-                              value={mobileValues[f.id] || ''}
-                              onChange={(e) =>
-                                setMobileValues((p) => ({ ...p, [f.id]: e.target.value }))
-                              }
-                            />
-                            <div className="flex flex-wrap gap-2 mt-3">
-                              {BAIRROS_ETIC.filter((b) =>
-                                mobileValues[f.id]
-                                  ? b.toLowerCase().includes(mobileValues[f.id].toLowerCase())
-                                  : false,
-                              )
-                                .slice(0, 5)
-                                .map((b) => (
-                                  <Badge
-                                    key={b}
-                                    variant="outline"
-                                    className="cursor-pointer bg-white h-8 hover:bg-[#F5F5F5]"
-                                    onClick={() => setMobileValues((p) => ({ ...p, [f.id]: b }))}
-                                  >
-                                    {b}
-                                  </Badge>
-                                ))}
-                            </div>
-                          </div>
+                          <LocationSelector
+                            value={selectedLocations}
+                            onChange={setSelectedLocations}
+                          />
                         ) : (
                           <div className="grid grid-cols-2 gap-3">
                             {f.options.map((o) => {
@@ -233,13 +254,14 @@ export function StickyFilterBar({
         {filters.map((f) => {
           if (f.isSearch) {
             return (
-              <div key={f.id} className="relative w-[220px]">
-                <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#999999]" />
-                <Input
-                  placeholder="Buscar bairro..."
-                  className="pl-9 h-[44px] bg-[#F5F5F5] border-transparent focus-visible:ring-[#1A3A52] font-medium transition-all"
-                  value={values[f.id] || ''}
-                  onChange={(e) => onChange({ ...values, [f.id]: e.target.value })}
+              <div key={f.id} className="w-[300px]">
+                <LocationSelector
+                  value={
+                    values.bairro && values.bairro !== '' && values.bairro !== 'all'
+                      ? values.bairro.split(',')
+                      : []
+                  }
+                  onChange={(val) => onChange({ ...values, bairro: val.join(',') })}
                 />
               </div>
             )
@@ -254,7 +276,7 @@ export function StickyFilterBar({
                 <Button
                   variant="outline"
                   className={cn(
-                    'h-[44px] font-bold border-[2px] transition-all px-4',
+                    'h-[48px] font-bold border-[2px] transition-all px-4',
                     isActive
                       ? 'bg-[#1A3A52] text-white border-[#1A3A52] shadow-[0_2px_8px_rgba(26,58,82,0.2)]'
                       : 'bg-white text-[#333333] border-[#E5E5E5] hover:border-[#1A3A52]/30 hover:bg-[#F5F5F5]',
@@ -292,7 +314,7 @@ export function StickyFilterBar({
           <Button
             variant="ghost"
             onClick={handleClearAll}
-            className="ml-auto font-bold text-[#F44336] hover:bg-[#F44336]/10 h-[44px] px-4 rounded-[8px]"
+            className="ml-auto font-bold text-[#F44336] hover:bg-[#F44336]/10 h-[48px] px-4 rounded-[8px]"
           >
             <X className="w-4 h-4 mr-2" /> Limpar filtros
           </Button>
