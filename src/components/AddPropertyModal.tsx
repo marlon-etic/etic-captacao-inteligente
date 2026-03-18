@@ -133,6 +133,9 @@ export function AddPropertyModal({ isOpen, onClose }: Props) {
       })
       onClose()
     } else {
+      if (res?.message === 'Código já cadastrado') {
+        setErrors({ code: 'Código já cadastrado' })
+      }
       toast({
         title: 'Erro',
         description: res?.message || 'Falha ao cadastrar imóvel',

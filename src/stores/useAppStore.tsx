@@ -2269,12 +2269,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
             allDemands.some((d) => d.capturedProperties?.some((p) => p.code === code))
           if (isDuplicate) {
             logSystemEvent('Imóvel duplicado', 'warning', `Code: ${code}`)
-            toast({
-              title: 'Erro',
-              description: 'Este imóvel já foi cadastrado',
-              variant: 'destructive',
-            })
-            return { success: false, message: 'Este imóvel já foi cadastrado' }
+            return { success: false, message: 'Código já cadastrado' }
           }
 
           try {
@@ -2375,7 +2370,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
               allDemands.some((d) => d.capturedProperties?.some((p) => p.code === code))
             if (isDuplicate) {
               logSystemEvent('Imóvel duplicado detectado', 'warning', `Code: ${code}`)
-              return { success: false, message: 'Este imóvel já foi cadastrado' }
+              return { success: false, message: 'Código já cadastrado' }
             }
 
             const seq = existingProps.length + 1
@@ -2538,7 +2533,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
             allDemands.some((d) => d.capturedProperties?.some((p) => p.code === code))
           if (isDuplicate) {
             logSystemEvent('Imóvel duplicado', 'warning', `Code: ${code}`)
-            return { success: false, message: 'Este imóvel já foi cadastrado' }
+            return { success: false, message: 'Código já cadastrado' }
           }
 
           const hAction = createAction('captacao', 'Imóvel captado como disponível para todos')

@@ -8,6 +8,7 @@ import { UserManuals } from '@/components/help/UserManuals'
 import { DatabaseStructure } from '@/components/help/DatabaseStructure'
 import { BusinessRules } from '@/components/help/BusinessRules'
 import { Troubleshooting } from '@/components/help/Troubleshooting'
+import { CertificationReport } from '@/components/help/CertificationReport'
 import useAppStore from '@/stores/useAppStore'
 
 export default function Ajuda() {
@@ -32,10 +33,10 @@ export default function Ajuda() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8 print:hidden border-b border-[#2E5F8A]/20 pb-6">
         <div>
           <h1 className="text-[28px] md:text-[32px] font-black text-[#1A3A52] flex items-center gap-3">
-            <BookOpen className="w-8 h-8 text-[#2E5F8A]" /> Central de Ajuda
+            <BookOpen className="w-8 h-8 text-[#2E5F8A]" /> Central de Ajuda & Certificação
           </h1>
           <p className="text-[14px] text-[#999999] font-medium mt-1">
-            Manuais, documentação técnica, regras de negócio e guia rápido.
+            Manuais, documentação técnica, regras de negócio e relatório de saúde do sistema.
           </p>
         </div>
         <Button onClick={handlePrint} className="h-[44px] font-bold shrink-0">
@@ -47,11 +48,14 @@ export default function Ajuda() {
       <div className="hidden print:block space-y-12">
         <div className="text-center border-b pb-6 mb-8">
           <h1 className="text-3xl font-black text-[#1A3A52]">
-            Documentação do Sistema Étic Imóveis
+            Documentação & Certificação - Étic Imóveis
           </h1>
           <p className="text-gray-500 mt-2">Exportado do Painel Administrativo</p>
         </div>
         <div className="break-inside-avoid">
+          <CertificationReport />
+        </div>
+        <div className="break-inside-avoid pt-8">
           <SystemOverview />
         </div>
         <div className="break-inside-avoid pt-8">
@@ -70,9 +74,12 @@ export default function Ajuda() {
 
       {/* Visão Normal de Tela */}
       <div className="print:hidden">
-        <Tabs defaultValue="visao_geral" className="w-full">
+        <Tabs defaultValue="certificacao" className="w-full">
           <div className="overflow-x-auto pb-2 mb-4 scrollbar-hide">
             <TabsList className="inline-flex min-w-max w-full md:w-auto h-[56px] p-1 bg-[#F5F5F5] border-[2px] border-[#2E5F8A]/20 rounded-xl">
+              <TabsTrigger value="certificacao" className="h-full px-6 text-[14px]">
+                Certificação Go-Live
+              </TabsTrigger>
               <TabsTrigger value="visao_geral" className="h-full px-6 text-[14px]">
                 Visão Geral
               </TabsTrigger>
@@ -92,6 +99,9 @@ export default function Ajuda() {
           </div>
 
           <div className="mt-4 bg-white/50 rounded-xl">
+            <TabsContent value="certificacao" className="mt-0 focus-visible:outline-none">
+              <CertificationReport />
+            </TabsContent>
             <TabsContent value="visao_geral" className="mt-0 focus-visible:outline-none">
               <SystemOverview />
             </TabsContent>

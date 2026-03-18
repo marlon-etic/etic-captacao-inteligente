@@ -85,6 +85,9 @@ export function EncontreiGrupoModal({ isOpen, onClose, demandIds }: Props) {
       setParkingSpots('')
       setObs('')
     } else {
+      if (res.message === 'Código já cadastrado') {
+        setErrors({ code: 'Código já cadastrado' })
+      }
       toast({ title: 'Erro', description: res.message, variant: 'destructive' })
     }
   }

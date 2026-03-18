@@ -67,6 +67,7 @@ export function CapturedPropertyCard({
       toast({
         title: 'Link copiado!',
         description: 'A URL do imóvel foi copiada para a área de transferência.',
+        duration: 2000,
       })
     } catch (err) {
       toast({
