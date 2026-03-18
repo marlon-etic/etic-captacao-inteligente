@@ -18,10 +18,10 @@ const buttonVariants = cva(
         link: 'text-[#1A3A52] underline-offset-4 hover:underline shadow-none hover:shadow-none',
       },
       size: {
-        default: 'min-h-[48px] px-[16px] py-[12px]',
-        sm: 'min-h-[48px] rounded-[8px] px-[16px]',
-        lg: 'min-h-[56px] rounded-[8px] px-[24px]',
-        icon: 'min-h-[48px] min-w-[48px] w-[48px] h-[48px] px-0 py-0',
+        default: 'min-h-[44px] px-[16px] py-[10px] md:min-h-[48px] md:py-[12px]',
+        sm: 'min-h-[40px] rounded-[8px] px-[12px] md:min-h-[44px] md:px-[16px]',
+        lg: 'min-h-[52px] rounded-[8px] px-[20px] md:min-h-[56px] md:px-[24px]',
+        icon: 'min-h-[44px] min-w-[44px] w-[44px] h-[44px] md:min-h-[48px] md:min-w-[48px] md:w-[48px] md:h-[48px] px-0 py-0',
       },
     },
     defaultVariants: {

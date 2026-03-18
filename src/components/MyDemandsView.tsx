@@ -1,12 +1,13 @@
 import { useState, useMemo } from 'react'
-import { PlusCircle, Search } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Search } from 'lucide-react'
 import useAppStore from '@/stores/useAppStore'
 import { DemandCard } from '@/components/DemandCard'
 import { StickyFilterBar, FilterDef } from '@/components/StickyFilterBar'
+import { FilterSidebar } from '@/components/FilterSidebar'
 import { useViewFilters } from '@/hooks/useViewFilters'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
 interface Props {
   filterType?: 'Venda' | 'Aluguel'
@@ -74,61 +75,109 @@ export function MyDemandsView({ filterType }: Props) {
     (v) => v !== 'Todos' && v !== '' && v !== 'Ativos',
   )
 
+  const MOBILE_CHIPS = [
+    { label: 'Ativos', apply: { status: 'Ativos', prazo: 'Todos', bairro: '' } },
+    { label: 'Urgente', apply: { status: 'Ativos', prazo: 'Urgente', bairro: '' } },
+    { label: 'Até 15d', apply: { status: 'Ativos', prazo: 'Até 15 dias', bairro: '' } },
+    { label: 'Até 30d', apply: { status: 'Ativos', prazo: 'Até 30 dias', bairro: '' } },
+    { label: 'Todos', apply: { status: 'Todos', prazo: 'Todos', bairro: '' } },
+  ]
+
   return (
-    <div className="flex flex-col gap-[16px] animate-fade-in w-full">
-      <StickyFilterBar
+    <div className="flex flex-col lg:flex-row gap-[24px] items-start w-full animate-fade-in transition-opacity duration-150 ease-in">
+      <FilterSidebar
         filters={FILTERS}
         values={filters}
         onChange={handleFilterChange}
         resultsCount={filteredDemands.length}
-        stickyTop="top-[128px] sm:top-[136px]"
       />
 
-      {isFiltering ? (
-        <div className="grid gap-[12px] grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-          {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-[250px] w-full rounded-[12px]" />
-          ))}
-        </div>
-      ) : filteredDemands.length === 0 ? (
-        <div className="text-center py-[48px] px-4 bg-[#FFFFFF] border-[2px] rounded-[12px] border-dashed border-[#E5E5E5] flex flex-col items-center">
-          {isAnyFilterActive ? (
-            <>
-              <Search className="w-12 h-12 text-[#999999]/30 mb-3" />
-              <p className="text-[16px] font-bold text-[#333333]">
-                Nenhuma demanda com estes filtros.
-              </p>
-              <div className="mt-4 flex flex-col sm:flex-row gap-3">
-                <Button variant="outline" onClick={handleClear}>
-                  Limpar filtros
-                </Button>
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="text-[64px] leading-none mb-4">📋</div>
-              <h3 className="text-[20px] font-bold text-[#333333]">Nenhuma demanda ativa</h3>
-              <p className="text-[14px] text-[#999999] mt-1 mb-6 max-w-[300px]">
-                Clique em '+ Nova Demanda' para criar sua primeira demanda
-              </p>
-              <div className="w-full max-w-sm">
-                <Button
-                  className="w-full h-[48px] bg-[#4CAF50] hover:bg-[#388E3C] text-white font-bold text-[16px]"
-                  onClick={() => document.getElementById('btn-add-demand-trigger')?.click()}
+      <div className="flex-1 w-full flex flex-col gap-[16px] min-w-0">
+        <div className="lg:hidden w-full space-y-3">
+          <div className="flex overflow-x-auto gap-2 pb-1 scrollbar-hide">
+            {MOBILE_CHIPS.map((chip) => {
+              const isActive =
+                JSON.stringify(filters) === JSON.stringify(chip.apply) ||
+                (chip.label === 'Ativos' &&
+                  filters.status === 'Ativos' &&
+                  filters.prazo === 'Todos' &&
+                  filters.bairro === '')
+
+              return (
+                <button
+                  key={chip.label}
+                  onClick={() => handleFilterChange(chip.apply)}
+                  className={cn(
+                    'h-[36px] px-[16px] rounded-[18px] whitespace-nowrap font-bold text-[13px] border shadow-sm transition-all flex items-center justify-center shrink-0',
+                    isActive
+                      ? 'bg-[#1A3A52] text-white border-[#1A3A52]'
+                      : 'bg-white text-[#333333] border-[#E5E5E5] hover:border-[#1A3A52]/30',
+                  )}
                 >
-                  ➕ Criar Nova Demanda
-                </Button>
-              </div>
-            </>
-          )}
+                  {chip.label}
+                </button>
+              )
+            })}
+          </div>
+          <StickyFilterBar
+            filters={FILTERS}
+            values={filters}
+            onChange={handleFilterChange}
+            resultsCount={filteredDemands.length}
+            stickyTop="top-[128px] sm:top-[136px]"
+          />
         </div>
-      ) : (
-        <div className="grid gap-[12px] grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredDemands.map((demand) => (
-            <DemandCard key={demand.id} demand={demand} />
-          ))}
-        </div>
-      )}
+
+        {isFiltering ? (
+          <div className="grid gap-[16px] grid-cols-1 md:grid-cols-2 2xl:grid-cols-3">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-[250px] w-full rounded-[12px] animate-fast-pulse" />
+            ))}
+          </div>
+        ) : filteredDemands.length === 0 ? (
+          <div className="text-center py-[48px] px-4 bg-[#FFFFFF] border-[2px] rounded-[12px] border-dashed border-[#E5E5E5] flex flex-col items-center justify-center">
+            {isAnyFilterActive ? (
+              <>
+                <Search className="w-12 h-12 text-[#999999]/30 mb-3" />
+                <p className="text-[16px] font-bold text-[#333333]">
+                  Nenhuma demanda com estes filtros.
+                </p>
+                <div className="mt-4 flex flex-col sm:flex-row gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={handleClear}
+                    className="font-bold min-h-[44px]"
+                  >
+                    Limpar filtros
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="text-[64px] leading-none mb-4">📋</div>
+                <h3 className="text-[20px] font-bold text-[#333333]">Nenhuma demanda ativa</h3>
+                <p className="text-[14px] text-[#999999] mt-1 mb-6 max-w-[300px]">
+                  Clique em '+ Nova Demanda' para criar sua primeira demanda
+                </p>
+                <div className="w-full max-w-sm">
+                  <Button
+                    className="w-full h-[48px] bg-[#4CAF50] hover:bg-[#388E3C] text-white font-bold text-[16px]"
+                    onClick={() => document.getElementById('btn-add-demand-trigger')?.click()}
+                  >
+                    ➕ Criar Nova Demanda
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
+        ) : (
+          <div className="grid gap-[16px] grid-cols-1 md:grid-cols-2 2xl:grid-cols-3">
+            {filteredDemands.map((demand, index) => (
+              <DemandCard key={demand.id} demand={demand} index={index} />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

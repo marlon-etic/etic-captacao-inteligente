@@ -103,7 +103,7 @@ export function CapturedPropertyCard({
     : 'text-[#333333]'
 
   return (
-    <Card className="w-full min-h-[160px] rounded-[12px] mb-[12px] border-[2px] border-[#2E5F8A] hover:shadow-[0_8px_16px_rgba(26,58,82,0.15)] flex flex-col bg-[#FFFFFF] transition-all duration-200 p-[16px]">
+    <Card className="w-full h-full min-h-[160px] rounded-[12px] border-[2px] border-[#2E5F8A] hover:shadow-[0_8px_16px_rgba(26,58,82,0.15)] flex flex-col bg-[#FFFFFF] transition-all duration-200 p-[16px]">
       <CardContent className="p-0 flex flex-col flex-1">
         <div className="flex justify-between items-start mb-[12px] gap-[8px]">
           <Badge className="font-bold text-[10px] text-white px-2 py-1 bg-[#1A3A52]">
@@ -189,7 +189,7 @@ export function CapturedPropertyCard({
               <TooltipTrigger asChild>
                 <Button
                   className={cn(
-                    'flex-1 font-bold h-[40px] md:h-[44px]',
+                    'flex-1 font-bold min-h-[44px]',
                     publicUrl
                       ? 'bg-[#1A3A52] hover:bg-[#153045] text-white'
                       : 'bg-[#E5E5E5] text-[#999999] hover:bg-[#E5E5E5] cursor-not-allowed',
@@ -214,7 +214,7 @@ export function CapturedPropertyCard({
             <Button
               variant="outline"
               className={cn(
-                'w-[40px] md:w-[44px] h-[40px] md:h-[44px] p-0 shrink-0 border-[2px]',
+                'w-[44px] h-[44px] p-0 shrink-0 border-[2px]',
                 publicUrl
                   ? 'border-[#2E5F8A] text-[#1A3A52] hover:bg-[#F5F5F5]'
                   : 'border-[#E5E5E5] text-[#999999] hover:bg-transparent cursor-not-allowed',
@@ -234,7 +234,7 @@ export function CapturedPropertyCard({
               <>
                 <Button
                   variant="outline"
-                  className="flex-1 h-[40px] border-[#2E5F8A] text-[#1A3A52] hover:bg-[#F5F5F5] font-bold text-[12px] px-2"
+                  className="flex-1 min-h-[44px] border-[#2E5F8A] text-[#1A3A52] hover:bg-[#F5F5F5] font-bold text-[12px] px-2"
                   onClick={() => handleAction('edit')}
                 >
                   <Edit2 className="w-[14px] h-[14px] mr-[4px]" />
@@ -242,14 +242,14 @@ export function CapturedPropertyCard({
                 </Button>
                 <Button
                   variant="outline"
-                  className="flex-1 h-[40px] border-[#2E5F8A] text-[#1A3A52] hover:bg-[#F5F5F5] font-bold text-[12px] px-2"
+                  className="flex-1 min-h-[44px] border-[#2E5F8A] text-[#1A3A52] hover:bg-[#F5F5F5] font-bold text-[12px] px-2"
                   onClick={() => handleAction('details')}
                 >
                   <BookOpen className="w-[14px] h-[14px] mr-[4px]" />
                   Ver Detalhes
                 </Button>
                 <Button
-                  className="w-full h-[40px] bg-[#25D366] hover:bg-[#128C7E] text-white font-bold text-[12px] px-2"
+                  className="w-full min-h-[44px] bg-[#25D366] hover:bg-[#128C7E] text-white font-bold text-[12px] px-2"
                   onClick={handleWhatsApp}
                 >
                   <MessageCircle className="w-[14px] h-[14px] mr-[4px]" />
@@ -262,7 +262,7 @@ export function CapturedPropertyCard({
               <>
                 {!isClosed && !isVisita && (
                   <Button
-                    className="flex-1 h-[40px] bg-[#FF9800] hover:bg-[#F57C00] text-white font-bold text-[12px] px-2 shadow-sm"
+                    className="flex-1 min-h-[44px] bg-[#FF9800] hover:bg-[#F57C00] text-white font-bold text-[12px] px-2 shadow-sm"
                     onClick={() => handleAction('visita')}
                   >
                     <Eye className="w-[14px] h-[14px] sm:mr-[4px]" />
@@ -272,7 +272,7 @@ export function CapturedPropertyCard({
                 )}
                 {isVisita && (
                   <Button
-                    className="flex-1 h-[40px] bg-[#4CAF50] hover:bg-[#388E3C] text-white font-bold text-[12px] px-2 shadow-sm"
+                    className="flex-1 min-h-[44px] bg-[#4CAF50] hover:bg-[#388E3C] text-white font-bold text-[12px] px-2 shadow-sm"
                     onClick={() => handleAction('negocio')}
                   >
                     <Handshake className="w-[14px] h-[14px] sm:mr-[4px]" />
@@ -282,7 +282,7 @@ export function CapturedPropertyCard({
                 )}
                 <Button
                   variant="outline"
-                  className="flex-1 h-[40px] border-[#2E5F8A] text-[#1A3A52] hover:bg-[#F5F5F5] font-bold text-[12px] px-2"
+                  className="flex-1 min-h-[44px] border-[#2E5F8A] text-[#1A3A52] hover:bg-[#F5F5F5] font-bold text-[12px] px-2"
                   onClick={() => handleAction('details')}
                 >
                   <BookOpen className="w-[14px] h-[14px] sm:mr-[4px]" />

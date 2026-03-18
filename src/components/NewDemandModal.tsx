@@ -98,7 +98,7 @@ export function NewDemandModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
       'etic_filters_my_demands_view_all',
       JSON.stringify({ status: 'Ativos', prazo: 'Todos', bairro: '' }),
     )
-    navigate('/app?tab=minhas-demandas')
+    navigate('/app/demandas?tab=minhas-demandas')
   }
 
   return (
@@ -182,15 +182,21 @@ export function NewDemandModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
                         value={field.value}
                         className="flex gap-6"
                       >
-                        <div className="flex items-center space-x-2 bg-[#F5F5F5] px-4 py-2 rounded-[8px] border border-[#E5E5E5]">
+                        <div className="flex items-center space-x-2 bg-[#F5F5F5] px-4 py-2 rounded-[8px] border border-[#E5E5E5] h-[48px]">
                           <RadioGroupItem value="Venda" id="venda-modal" />
-                          <Label htmlFor="venda-modal" className="font-bold cursor-pointer">
+                          <Label
+                            htmlFor="venda-modal"
+                            className="font-bold cursor-pointer h-full flex items-center"
+                          >
                             Venda
                           </Label>
                         </div>
-                        <div className="flex items-center space-x-2 bg-[#F5F5F5] px-4 py-2 rounded-[8px] border border-[#E5E5E5]">
+                        <div className="flex items-center space-x-2 bg-[#F5F5F5] px-4 py-2 rounded-[8px] border border-[#E5E5E5] h-[48px]">
                           <RadioGroupItem value="Aluguel" id="aluguel-modal" />
-                          <Label htmlFor="aluguel-modal" className="font-bold cursor-pointer">
+                          <Label
+                            htmlFor="aluguel-modal"
+                            className="font-bold cursor-pointer h-full flex items-center"
+                          >
                             Aluguel
                           </Label>
                         </div>
@@ -294,14 +300,14 @@ export function NewDemandModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
           <Button
             type="submit"
             form="new-demand-form"
-            className="w-full h-[48px] bg-[#4CAF50] hover:bg-[#388E3C] text-white font-bold text-[16px] shadow-[0_4px_12px_rgba(76,175,80,0.3)]"
+            className="w-full min-h-[48px] bg-[#4CAF50] hover:bg-[#388E3C] text-white font-bold text-[16px] shadow-[0_4px_12px_rgba(76,175,80,0.3)]"
           >
             ✅ Criar Demanda
           </Button>
           <Button
             variant="ghost"
             onClick={onClose}
-            className="w-full h-[48px] text-[#999999] hover:text-[#333333] font-bold bg-transparent border-none"
+            className="w-full min-h-[48px] text-[#999999] hover:text-[#333333] font-bold bg-transparent border-none"
           >
             Cancelar
           </Button>

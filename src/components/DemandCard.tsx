@@ -264,45 +264,47 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
             isLost ? 'border-[#999999]/30 opacity-80 grayscale' : 'border-[#2E5F8A]/20',
           )}
         >
-          <Button
-            className={cn(
-              'h-[48px] w-full font-bold whitespace-normal break-words text-[14px]',
-              btnSoft,
-            )}
-            onClick={() => setShowDetails(true)}
-          >
-            <Eye className="w-4 h-4 mr-2" /> Ver Detalhes
-          </Button>
-
-          {currentUser?.role === 'captador' && (
-            <div className="flex flex-col sm:flex-row w-full gap-2">
-              <Button
-                className={cn(
-                  'h-[48px] flex-1 font-bold whitespace-normal break-words text-[14px] px-2',
-                  btnSolid,
-                )}
-                onClick={() => onAction?.(demand.id, 'encontrei')}
-                disabled={isLost}
-              >
-                ✅ Encontrei
-              </Button>
-              <Button
-                className={cn(
-                  'h-[48px] flex-1 font-bold whitespace-normal break-words text-[14px] px-2',
-                  btnOutline,
-                )}
-                onClick={() => onAction?.(demand.id, 'nao_encontrei')}
-                disabled={isLost}
-              >
-                ❌ Não Encontrei
-              </Button>
-            </div>
-          )}
-
-          <div className="flex flex-col sm:flex-row w-full gap-2">
+          <div className="flex flex-col xl:flex-row gap-[8px] w-full">
             <Button
               className={cn(
-                'h-[44px] flex-1 font-bold whitespace-normal break-words text-[14px]',
+                'min-h-[44px] w-full xl:w-auto flex-1 font-bold whitespace-normal break-words text-[14px]',
+                btnSoft,
+              )}
+              onClick={() => setShowDetails(true)}
+            >
+              <Eye className="w-4 h-4 mr-2" /> Ver Detalhes
+            </Button>
+
+            {currentUser?.role === 'captador' && (
+              <div className="flex flex-row gap-[8px] w-full xl:w-auto flex-1">
+                <Button
+                  className={cn(
+                    'min-h-[44px] flex-1 font-bold whitespace-normal break-words text-[14px] px-2',
+                    btnSolid,
+                  )}
+                  onClick={() => onAction?.(demand.id, 'encontrei')}
+                  disabled={isLost}
+                >
+                  ✅ Encontrei
+                </Button>
+                <Button
+                  className={cn(
+                    'min-h-[44px] flex-1 font-bold whitespace-normal break-words text-[14px] px-2',
+                    btnOutline,
+                  )}
+                  onClick={() => onAction?.(demand.id, 'nao_encontrei')}
+                  disabled={isLost}
+                >
+                  ❌ Não Encontrei
+                </Button>
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-row w-full gap-[8px]">
+            <Button
+              className={cn(
+                'min-h-[44px] flex-1 font-bold whitespace-normal break-words text-[14px]',
                 'bg-transparent text-[#1A3A52] hover:bg-[#F5F5F5] border-[2px] border-[#1A3A52]',
               )}
               onClick={() =>
@@ -318,7 +320,7 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
             {canMarkLost && (
               <Button
                 variant="destructive"
-                className="h-[44px] flex-1 font-bold whitespace-normal break-words text-[14px]"
+                className="min-h-[44px] flex-1 font-bold whitespace-normal break-words text-[14px]"
                 onClick={() => setShowLostModal(true)}
               >
                 ❌ Perdida

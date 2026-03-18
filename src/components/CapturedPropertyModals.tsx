@@ -132,65 +132,115 @@ export function CapturedPropertyModals({
   return (
     <>
       <Dialog open={actionType === 'visita'} onOpenChange={(v) => !v && onClose()}>
-        <DialogContent>
+        <DialogContent className="w-full max-w-[90vw] sm:max-w-md rounded-[12px] p-6">
           <DialogHeader>
-            <DialogTitle>Agendar Visita</DialogTitle>
+            <DialogTitle className="text-[20px] font-bold text-[#1A3A52]">
+              Agendar Visita
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Data</Label>
-                <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+                <Label className="font-bold text-[#333333]">Data</Label>
+                <Input
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="min-h-[48px]"
+                />
               </div>
               <div>
-                <Label>Hora</Label>
-                <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+                <Label className="font-bold text-[#333333]">Hora</Label>
+                <Input
+                  type="time"
+                  value={time}
+                  onChange={(e) => setTime(e.target.value)}
+                  className="min-h-[48px]"
+                />
               </div>
             </div>
             <div>
-              <Label>Observações</Label>
-              <Textarea value={obs} onChange={(e) => setObs(e.target.value)} />
+              <Label className="font-bold text-[#333333]">Observações</Label>
+              <Textarea
+                value={obs}
+                onChange={(e) => setObs(e.target.value)}
+                className="min-h-[80px]"
+              />
             </div>
           </div>
-          <DialogFooter>
-            <Button onClick={handleVisita}>Confirmar Visita</Button>
+          <DialogFooter className="mt-6 flex gap-2">
+            <Button variant="outline" onClick={onClose} className="min-h-[48px] w-full font-bold">
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleVisita}
+              className="min-h-[48px] w-full bg-[#1A3A52] text-white font-bold"
+            >
+              Confirmar Visita
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       <Dialog open={actionType === 'negocio'} onOpenChange={(v) => !v && onClose()}>
-        <DialogContent>
+        <DialogContent className="w-full max-w-[90vw] sm:max-w-md rounded-[12px] p-6">
           <DialogHeader>
-            <DialogTitle>Fechar Negócio</DialogTitle>
+            <DialogTitle className="text-[20px] font-bold text-[#1A3A52]">
+              Fechar Negócio
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label>Data do Fechamento</Label>
-              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+              <Label className="font-bold text-[#333333]">Data do Fechamento</Label>
+              <Input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className="min-h-[48px]"
+              />
             </div>
             <div>
-              <Label>Valor do Fechamento (R$)</Label>
-              <Input type="number" value={val} onChange={(e) => setVal(e.target.value)} />
+              <Label className="font-bold text-[#333333]">Valor do Fechamento (R$)</Label>
+              <Input
+                type="number"
+                value={val}
+                onChange={(e) => setVal(e.target.value)}
+                className="min-h-[48px]"
+              />
             </div>
             <div>
-              <Label>Tipo de Negócio</Label>
+              <Label className="font-bold text-[#333333]">Tipo de Negócio</Label>
               <Select value={dealType} onValueChange={setDealType}>
-                <SelectTrigger>
+                <SelectTrigger className="min-h-[48px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Venda">Venda</SelectItem>
-                  <SelectItem value="Aluguel">Aluguel</SelectItem>
+                  <SelectItem value="Venda" className="min-h-[48px]">
+                    Venda
+                  </SelectItem>
+                  <SelectItem value="Aluguel" className="min-h-[48px]">
+                    Aluguel
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <Label>Observações</Label>
-              <Textarea value={obs} onChange={(e) => setObs(e.target.value)} />
+              <Label className="font-bold text-[#333333]">Observações</Label>
+              <Textarea
+                value={obs}
+                onChange={(e) => setObs(e.target.value)}
+                className="min-h-[80px]"
+              />
             </div>
           </div>
-          <DialogFooter>
-            <Button onClick={handleNegocio} className="bg-emerald-600 hover:bg-emerald-700">
+          <DialogFooter className="mt-6 flex gap-2">
+            <Button variant="outline" onClick={onClose} className="min-h-[48px] w-full font-bold">
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleNegocio}
+              className="min-h-[48px] w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+            >
               Registrar Negócio
             </Button>
           </DialogFooter>
@@ -198,56 +248,99 @@ export function CapturedPropertyModals({
       </Dialog>
 
       <Dialog open={actionType === 'proposta'} onOpenChange={(v) => !v && onClose()}>
-        <DialogContent>
+        <DialogContent className="w-full max-w-[90vw] sm:max-w-md rounded-[12px] p-6">
           <DialogHeader>
-            <DialogTitle>Registrar Proposta</DialogTitle>
+            <DialogTitle className="text-[20px] font-bold text-[#1A3A52]">
+              Registrar Proposta
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label>Data</Label>
-              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+              <Label className="font-bold text-[#333333]">Data</Label>
+              <Input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className="min-h-[48px]"
+              />
             </div>
             <div>
-              <Label>Valor da Proposta (R$)</Label>
-              <Input type="number" value={val} onChange={(e) => setVal(e.target.value)} />
+              <Label className="font-bold text-[#333333]">Valor da Proposta (R$)</Label>
+              <Input
+                type="number"
+                value={val}
+                onChange={(e) => setVal(e.target.value)}
+                className="min-h-[48px]"
+              />
             </div>
             <div>
-              <Label>Observações</Label>
-              <Textarea value={obs} onChange={(e) => setObs(e.target.value)} />
+              <Label className="font-bold text-[#333333]">Observações</Label>
+              <Textarea
+                value={obs}
+                onChange={(e) => setObs(e.target.value)}
+                className="min-h-[80px]"
+              />
             </div>
           </div>
-          <DialogFooter>
-            <Button onClick={handleProposta}>Salvar Proposta</Button>
+          <DialogFooter className="mt-6 flex gap-2">
+            <Button variant="outline" onClick={onClose} className="min-h-[48px] w-full font-bold">
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleProposta}
+              className="min-h-[48px] w-full bg-[#1A3A52] hover:bg-[#2E5F8A] text-white font-bold"
+            >
+              Salvar Proposta
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       <Dialog open={actionType === 'lost'} onOpenChange={(v) => !v && onClose()}>
-        <DialogContent>
+        <DialogContent className="w-full max-w-[90vw] sm:max-w-md rounded-[12px] p-6">
           <DialogHeader>
-            <DialogTitle>Dispensar Imóvel</DialogTitle>
+            <DialogTitle className="text-[20px] font-bold text-[#1A3A52]">
+              Dispensar Imóvel
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label>Motivo</Label>
+              <Label className="font-bold text-[#333333]">Motivo</Label>
               <Select value={reason} onValueChange={setReason}>
-                <SelectTrigger>
+                <SelectTrigger className="min-h-[48px]">
                   <SelectValue placeholder="Selecione..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Não gostou">Cliente não gostou</SelectItem>
-                  <SelectItem value="Caro">Muito caro</SelectItem>
-                  <SelectItem value="Localização">Localização ruim</SelectItem>
+                  <SelectItem value="Não gostou" className="min-h-[48px]">
+                    Cliente não gostou
+                  </SelectItem>
+                  <SelectItem value="Caro" className="min-h-[48px]">
+                    Muito caro
+                  </SelectItem>
+                  <SelectItem value="Localização" className="min-h-[48px]">
+                    Localização ruim
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <Label>Observações</Label>
-              <Textarea value={obs} onChange={(e) => setObs(e.target.value)} />
+              <Label className="font-bold text-[#333333]">Observações</Label>
+              <Textarea
+                value={obs}
+                onChange={(e) => setObs(e.target.value)}
+                className="min-h-[80px]"
+              />
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="destructive" onClick={handleLost}>
+          <DialogFooter className="mt-6 flex gap-2">
+            <Button variant="outline" onClick={onClose} className="min-h-[48px] w-full font-bold">
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleLost}
+              className="min-h-[48px] w-full font-bold bg-[#F44336]"
+            >
               Dispensar
             </Button>
           </DialogFooter>

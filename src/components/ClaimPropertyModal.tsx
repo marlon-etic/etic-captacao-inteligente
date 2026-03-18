@@ -88,21 +88,21 @@ export function ClaimPropertyModal({
               name="demandId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Selecione seu Cliente</FormLabel>
+                  <FormLabel className="font-bold text-[#333333]">Selecione seu Cliente</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
-                      <SelectTrigger>
+                      <SelectTrigger className="min-h-[48px]">
                         <SelectValue placeholder="Selecione uma demanda" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
                       {myOpenDemands.length === 0 ? (
-                        <SelectItem value="none" disabled>
+                        <SelectItem value="none" disabled className="min-h-[48px]">
                           Você não possui demandas ativas
                         </SelectItem>
                       ) : (
                         myOpenDemands.map((d) => (
-                          <SelectItem key={d.id} value={d.id}>
+                          <SelectItem key={d.id} value={d.id} className="min-h-[48px]">
                             {d.clientName} - {d.location}
                           </SelectItem>
                         ))
@@ -113,11 +113,19 @@ export function ClaimPropertyModal({
                 </FormItem>
               )}
             />
-            <DialogFooter className="pt-4">
-              <Button type="button" variant="outline" onClick={onClose}>
+            <DialogFooter className="pt-4 flex flex-col sm:flex-row gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onClose}
+                className="min-h-[48px] w-full sm:w-auto font-bold"
+              >
                 Cancelar
               </Button>
-              <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">
+              <Button
+                type="submit"
+                className="min-h-[48px] w-full sm:w-auto bg-[#1A3A52] hover:bg-[#2E5F8A] text-white font-bold"
+              >
                 Vincular ao Cliente
               </Button>
             </DialogFooter>

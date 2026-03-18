@@ -1,172 +1,107 @@
-import React, { useState } from 'react'
-import { MapPin, Circle, Check, X, Search, ChevronDown } from 'lucide-react'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { useState, useMemo } from 'react'
 import {
-  Drawer,
-  DrawerContent,
-  DrawerTrigger,
-  DrawerTitle,
-  DrawerHeader,
-} from '@/components/ui/drawer'
-import { Command, CommandGroup, CommandItem, CommandList } from '@/components/ui/command'
-import { Button } from '@/components/ui/button'
-import { useIsMobile } from '@/hooks/use-mobile'
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command'
+import { Badge } from '@/components/ui/badge'
+import { Check, ChevronsUpDown, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { regionsData } from '@/lib/regions'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { BAIRROS_ETIC } from '@/lib/bairros'
+import { useIsMobile } from '@/hooks/use-mobile'
 
 interface LocationSelectorProps {
   value: string[]
   onChange: (value: string[]) => void
 }
 
-export function LocationSelector({ value = [], onChange }: LocationSelectorProps) {
+export function LocationSelector({ value, onChange }: LocationSelectorProps) {
   const [open, setOpen] = useState(false)
   const isMobile = useIsMobile()
-  const [search, setSearch] = useState('')
 
-  const handleSelectAnchor = (anchor: string, satellites: string[]) => {
-    const allItems = [anchor, ...satellites]
-    const isAllSelected = allItems.every((i) => value.includes(i))
-    if (isAllSelected) {
-      onChange(value.filter((i) => !allItems.includes(i)))
-    } else {
-      onChange(Array.from(new Set([...value, ...allItems])))
-    }
+  const handleSelect = (currentValue: string) => {
+    const selected = value.includes(currentValue)
+      ? value.filter((v) => v !== currentValue)
+      : [...value, currentValue]
+    onChange(selected)
   }
 
-  const handleSelect = (item: string) => {
-    if (value.includes(item)) onChange(value.filter((i) => i !== item))
-    else onChange([...value, item])
-  }
-
-  const clearAll = (e: React.MouseEvent) => {
+  const handleRemove = (itemToRemove: string, e: React.MouseEvent) => {
     e.stopPropagation()
-    onChange([])
-  }
-
-  const ListContent = () => (
-    <Command shouldFilter={false} className="border-0">
-      <div className="flex items-center border-b px-3">
-        <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
-        <input
-          className="flex h-11 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
-          placeholder="Buscar bairros..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-      </div>
-      <CommandList className="max-h-[50vh] overflow-y-auto pb-2">
-        {search.length > 0 &&
-          regionsData.every(
-            (r) =>
-              !r.anchor.toLowerCase().includes(search.toLowerCase()) &&
-              !r.satellites.some((s) => s.toLowerCase().includes(search.toLowerCase())),
-          ) && (
-            <div className="py-6 text-center text-sm text-muted-foreground">
-              Nenhum bairro encontrado para '{search}'
-            </div>
-          )}
-
-        {regionsData.map((region) => {
-          const matchAnchor = region.anchor.toLowerCase().includes(search.toLowerCase())
-          const matchedSatellites = region.satellites.filter((s) =>
-            s.toLowerCase().includes(search.toLowerCase()),
-          )
-
-          if (search && !matchAnchor && matchedSatellites.length === 0) return null
-
-          const allRegionItems = [region.anchor, ...region.satellites]
-          const isAnchorSelected = allRegionItems.every((i) => value.includes(i))
-
-          return (
-            <CommandGroup key={region.anchor} className="mt-2">
-              {(!search || matchAnchor) && (
-                <CommandItem
-                  onSelect={() => handleSelectAnchor(region.anchor, region.satellites)}
-                  className="flex items-center gap-2 font-semibold text-primary/90 mb-1 cursor-pointer"
-                >
-                  <MapPin className="h-4 w-4" />
-                  <span>{region.anchor} (Região Completa)</span>
-                  {isAnchorSelected && <Check className="h-4 w-4 text-primary ml-auto" />}
-                </CommandItem>
-              )}
-              {(search ? matchedSatellites : region.satellites).map((satellite) => (
-                <CommandItem
-                  key={satellite}
-                  onSelect={() => handleSelect(satellite)}
-                  className="pl-8 flex items-center gap-2 cursor-pointer"
-                >
-                  <Circle className="h-2 w-2 opacity-50" />
-                  <span>{satellite}</span>
-                  {value.includes(satellite) && <Check className="h-4 w-4 text-primary ml-auto" />}
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          )
-        })}
-      </CommandList>
-    </Command>
-  )
-
-  const triggerText =
-    value.length > 0 ? `${value.length} bairro(s) selecionado(s)` : 'Selecione os bairros'
-
-  if (isMobile) {
-    return (
-      <Drawer open={open} onOpenChange={setOpen}>
-        <DrawerTrigger asChild>
-          <Button
-            variant="outline"
-            className="w-full justify-between h-auto min-h-[2.5rem] py-2 bg-background"
-          >
-            <span className={cn('truncate', !value.length && 'text-muted-foreground')}>
-              {triggerText}
-            </span>
-            <div className="flex items-center gap-2">
-              {value.length > 0 && (
-                <X className="h-4 w-4 opacity-50 hover:opacity-100" onClick={clearAll} />
-              )}
-              <ChevronDown className="h-4 w-4 opacity-50" />
-            </div>
-          </Button>
-        </DrawerTrigger>
-        <DrawerContent className="h-[85vh]">
-          <DrawerHeader className="border-b pb-4">
-            <DrawerTitle>Bairros de Interesse</DrawerTitle>
-          </DrawerHeader>
-          <div className="flex-1 overflow-hidden flex flex-col">
-            <ListContent />
-          </div>
-          <div className="p-4 border-t mt-auto">
-            <Button className="w-full" onClick={() => setOpen(false)}>
-              Confirmar
-            </Button>
-          </div>
-        </DrawerContent>
-      </Drawer>
-    )
+    onChange(value.filter((v) => v !== itemToRemove))
   }
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          className="w-full justify-between h-auto min-h-[2.5rem] py-2 bg-background hover:bg-background"
+        <button
+          role="combobox"
+          aria-expanded={open}
+          className="flex min-h-[48px] w-full items-center justify-between rounded-[8px] border-[1.5px] border-[#2E5F8A]/30 bg-[#FFFFFF] px-3 py-2 text-[14px] text-[#1A3A52] hover:border-[#2E5F8A]/60 transition-colors focus:outline-none focus:ring-2 focus:ring-[#1A3A52] focus:ring-offset-0 relative"
         >
-          <span className={cn('truncate', !value.length && 'text-muted-foreground')}>
-            {triggerText}
-          </span>
-          <div className="flex items-center gap-2">
-            {value.length > 0 && (
-              <X className="h-4 w-4 opacity-50 hover:opacity-100" onClick={clearAll} />
+          <div className="flex flex-wrap gap-1 pr-6 flex-1 h-full items-center">
+            {value.length === 0 ? (
+              <span className="text-[#999999] font-medium ml-1">
+                Selecione um ou mais bairros...
+              </span>
+            ) : (
+              value.map((v) => (
+                <Badge
+                  key={v}
+                  variant="secondary"
+                  className="bg-[#1A3A52] text-white hover:bg-[#1A3A52] px-2 py-0.5 h-[28px] rounded-md text-[12px] font-bold"
+                >
+                  {v}
+                  <X
+                    className="ml-1.5 h-3.5 w-3.5 cursor-pointer text-white/70 hover:text-white"
+                    onClick={(e) => handleRemove(v, e)}
+                  />
+                </Badge>
+              ))
             )}
-            <ChevronDown className="h-4 w-4 opacity-50" />
           </div>
-        </Button>
+          <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50 text-[#1A3A52] absolute right-3" />
+        </button>
       </PopoverTrigger>
-      <PopoverContent className="w-[400px] p-0" align="start">
-        <ListContent />
+      <PopoverContent
+        className={cn(
+          'w-full p-0 border-[#2E5F8A]/20',
+          isMobile ? 'w-[calc(100vw-48px)]' : 'w-[400px]',
+        )}
+        align="start"
+      >
+        <Command>
+          <CommandInput placeholder="Buscar bairro..." className="h-12 text-[14px]" />
+          <CommandList className="max-h-[300px]">
+            <CommandEmpty className="py-6 text-center text-sm text-[#999999]">
+              Nenhum bairro encontrado.
+            </CommandEmpty>
+            <CommandGroup>
+              {BAIRROS_ETIC.map((bairro) => (
+                <CommandItem
+                  key={bairro}
+                  value={bairro}
+                  onSelect={() => handleSelect(bairro)}
+                  className="flex items-center gap-2 py-3 px-4 cursor-pointer hover:bg-[#F5F5F5] aria-selected:bg-[#F5F5F5] min-h-[48px]"
+                >
+                  <div
+                    className={cn(
+                      'flex h-5 w-5 items-center justify-center rounded-md border border-[#2E5F8A]/30',
+                      value.includes(bairro) ? 'bg-[#1A3A52] border-[#1A3A52]' : 'bg-transparent',
+                    )}
+                  >
+                    {value.includes(bairro) && <Check className="h-3.5 w-3.5 text-white" />}
+                  </div>
+                  <span className="font-medium text-[#1A3A52] text-[14px]">{bairro}</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
       </PopoverContent>
     </Popover>
   )

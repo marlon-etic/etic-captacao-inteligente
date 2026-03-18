@@ -144,7 +144,7 @@ export function LoosePropertyCard({
             <TooltipTrigger asChild>
               <Button
                 className={cn(
-                  'flex-1 font-bold h-[40px] md:h-[44px]',
+                  'flex-1 font-bold min-h-[44px]',
                   publicUrl
                     ? 'bg-[#1A3A52] hover:bg-[#153045] text-white'
                     : 'bg-[#E5E5E5] text-[#999999] hover:bg-[#E5E5E5] cursor-not-allowed',
@@ -169,7 +169,7 @@ export function LoosePropertyCard({
           <Button
             variant="outline"
             className={cn(
-              'w-[40px] md:w-[44px] h-[40px] md:h-[44px] p-0 shrink-0 border-[2px]',
+              'w-[44px] h-[44px] p-0 shrink-0 border-[2px]',
               publicUrl
                 ? 'border-[#2E5F8A] text-[#1A3A52] hover:bg-[#F5F5F5]'
                 : 'border-[#E5E5E5] text-[#999999] hover:bg-transparent cursor-not-allowed',
@@ -187,7 +187,7 @@ export function LoosePropertyCard({
         {onLink ? (
           <Button
             size="sm"
-            className="w-full bg-[#1A3A52] hover:bg-[#2E5F8A] text-white shadow-[0_2px_4px_rgba(26,58,82,0.1)] font-bold h-[44px]"
+            className="w-full bg-[#1A3A52] hover:bg-[#2E5F8A] text-white shadow-[0_2px_4px_rgba(26,58,82,0.1)] font-bold min-h-[44px]"
             onClick={() => onLink(property)}
           >
             🔗 VINCULAR A UM CLIENTE
@@ -195,10 +195,10 @@ export function LoosePropertyCard({
         ) : onClaim ? (
           <Button
             size="sm"
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white shadow-sm font-semibold h-[44px]"
+            className="w-full bg-[#1A3A52] hover:bg-[#2E5F8A] text-white shadow-sm font-semibold min-h-[44px]"
             onClick={() => onClaim(property)}
           >
-            ✅ Usar para meu cliente
+            🔗 Vincular a um Cliente
           </Button>
         ) : null}
 
@@ -206,7 +206,7 @@ export function LoosePropertyCard({
           <Button
             size="sm"
             variant="outline"
-            className="w-full h-[44px] font-bold"
+            className="w-full min-h-[44px] font-bold border-[#E5E5E5] text-[#333333] hover:bg-[#F5F5F5]"
             onClick={() => onIgnore(property.code)}
           >
             ❌ Não me interessa

@@ -156,14 +156,14 @@ export function GroupedDemandCard({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
               <Button
-                className="w-full min-h-[48px] bg-[#FFFFFF] border border-[#E5E5E5] text-[#333333] hover:bg-[#F5F5F5] font-bold text-[14px] px-4 whitespace-normal break-words"
+                className="w-full min-h-[44px] bg-[#FFFFFF] border border-[#E5E5E5] text-[#333333] hover:bg-[#F5F5F5] font-bold text-[14px] px-4 whitespace-normal break-words"
                 onClick={() => setShowModal(true)}
               >
                 <Users className="w-5 h-5 mr-2 shrink-0 text-[#1A3A52]" />
                 Ver {clientCount} Clientes
               </Button>
               <Button
-                className="w-full min-h-[48px] bg-[#FFFFFF] hover:bg-[#F5F5F5] border border-[#E5E5E5] text-[#F44336] font-bold text-[14px] px-4 whitespace-normal break-words"
+                className="w-full min-h-[44px] bg-[#FFFFFF] hover:bg-[#F5F5F5] border border-[#E5E5E5] text-[#F44336] font-bold text-[14px] px-4 whitespace-normal break-words"
                 onClick={() => handleGroupAction('nao_encontrei')}
               >
                 <X className="w-5 h-5 mr-2 shrink-0" /> Não Encontrei
@@ -255,7 +255,7 @@ export function GroupedDemandCard({
                       </div>
                       <Button
                         variant="outline"
-                        className="w-full sm:w-auto border-[2px] border-[#1A3A52] text-[#1A3A52] hover:bg-[#F5F5F5] font-bold min-h-[48px]"
+                        className="w-full sm:w-auto border-[2px] border-[#1A3A52] text-[#1A3A52] hover:bg-[#F5F5F5] font-bold min-h-[44px]"
                         onClick={() => setSelectedDemand(d)}
                       >
                         Ver Detalhes

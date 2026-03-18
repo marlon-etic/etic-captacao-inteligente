@@ -5,6 +5,7 @@ import { LoosePropertyCard } from './LoosePropertyCard'
 import { ClaimPropertyModal } from './ClaimPropertyModal'
 import { CapturedProperty } from '@/types'
 import { StickyFilterBar, FilterDef } from '@/components/StickyFilterBar'
+import { FilterSidebar } from '@/components/FilterSidebar'
 import { useViewFilters } from '@/hooks/useViewFilters'
 import { Skeleton } from '@/components/ui/skeleton'
 
@@ -105,40 +106,51 @@ export function LoosePropertiesView({ filterType }: { filterType?: 'Venda' | 'Al
   }, [looseProperties, currentUser, ignoredCodes, filters, filterType])
 
   return (
-    <div className="flex flex-col gap-[16px] animate-fade-in w-full">
-      <StickyFilterBar
+    <div className="flex flex-col lg:flex-row gap-[24px] items-start w-full animate-fade-in transition-opacity duration-150 ease-in">
+      <FilterSidebar
         filters={FILTERS}
         values={filters}
         onChange={handleFilterChange}
         resultsCount={sortedProperties.length}
-        stickyTop="top-[128px] sm:top-[136px]"
       />
 
-      {isFiltering ? (
-        <div className="grid gap-[16px] grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-          {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-[250px] w-full rounded-[12px]" />
-          ))}
+      <div className="flex-1 w-full flex flex-col gap-[16px] min-w-0">
+        <div className="lg:hidden w-full">
+          <StickyFilterBar
+            filters={FILTERS}
+            values={filters}
+            onChange={handleFilterChange}
+            resultsCount={sortedProperties.length}
+            stickyTop="top-[128px] sm:top-[136px]"
+          />
         </div>
-      ) : sortedProperties.length === 0 ? (
-        <div className="text-center p-12 bg-background border rounded-xl border-dashed flex flex-col items-center justify-center min-h-[250px]">
-          <Search className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
-          <p className="text-muted-foreground font-medium text-[16px]">
-            Nenhum imóvel disponível encontrado.
-          </p>
-        </div>
-      ) : (
-        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-          {sortedProperties.map((property) => (
-            <LoosePropertyCard
-              key={property.code}
-              property={property}
-              onClaim={setClaimProperty}
-              onIgnore={() => setIgnoredCodes((prev) => [...prev, property.code])}
-            />
-          ))}
-        </div>
-      )}
+
+        {isFiltering ? (
+          <div className="grid gap-[16px] grid-cols-1 md:grid-cols-2 2xl:grid-cols-3">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-[250px] w-full rounded-[12px] animate-fast-pulse" />
+            ))}
+          </div>
+        ) : sortedProperties.length === 0 ? (
+          <div className="text-center p-12 bg-white border rounded-[12px] border-dashed flex flex-col items-center justify-center min-h-[250px] border-[#E5E5E5]">
+            <div className="text-[64px] leading-none mb-4">🔓</div>
+            <p className="text-[#333333] font-bold text-[18px]">
+              Nenhum imóvel disponível no momento
+            </p>
+          </div>
+        ) : (
+          <div className="grid gap-[16px] grid-cols-1 md:grid-cols-2 2xl:grid-cols-3">
+            {sortedProperties.map((property) => (
+              <LoosePropertyCard
+                key={property.code}
+                property={property}
+                onClaim={setClaimProperty}
+                onIgnore={() => setIgnoredCodes((prev) => [...prev, property.code])}
+              />
+            ))}
+          </div>
+        )}
+      </div>
 
       <ClaimPropertyModal
         isOpen={!!claimProperty}

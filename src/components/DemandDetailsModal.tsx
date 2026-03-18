@@ -1,4 +1,4 @@
-import { X } from 'lucide-react'
+import { X, RefreshCw } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -26,16 +26,28 @@ export function DemandDetailsModal({ open, onOpenChange, demand, onPrioritize, o
   if (!demand) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="p-[16px] bg-[#FFFFFF] border-[2px] border-[#2E5F8A] rounded-[12px]">
-          <div className="text-center text-[14px] leading-[20px] text-[#F44336] font-bold">
+        <DialogContent className="p-[24px] bg-[#FFFFFF] border-[2px] border-[#E5E5E5] rounded-[12px] flex flex-col items-center justify-center min-h-[200px]">
+          <div className="text-center text-[16px] leading-[24px] text-[#F44336] font-bold flex flex-col items-center gap-3">
+            <span className="text-[32px] opacity-80">⚠️</span>
             Erro ao carregar. Tente novamente.
           </div>
-          <Button
-            onClick={() => onOpenChange(false)}
-            className="mt-[16px] min-h-[44px] text-[14px] font-bold"
-          >
-            Fechar
-          </Button>
+          <div className="flex gap-3 mt-[24px] w-full max-w-[200px]">
+            <Button
+              onClick={() => onOpenChange(false)}
+              className="flex-1 min-h-[44px] text-[14px] font-bold bg-[#F5F5F5] text-[#333333] hover:bg-[#E5E5E5]"
+            >
+              Fechar
+            </Button>
+            <Button
+              onClick={() => {
+                onOpenChange(false)
+                setTimeout(() => onOpenChange(true), 300)
+              }}
+              className="flex-1 min-h-[44px] text-[14px] font-bold bg-[#1A3A52] text-white hover:bg-[#2E5F8A] gap-2"
+            >
+              <RefreshCw className="w-4 h-4" /> Tentar
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     )

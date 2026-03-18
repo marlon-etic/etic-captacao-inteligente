@@ -26,7 +26,7 @@ const TabsTrigger = React.forwardRef<
   <TabsPrimitive.Trigger
     ref={ref}
     className={cn(
-      'inline-flex min-h-[48px] items-center justify-center whitespace-nowrap rounded-[6px] px-[16px] py-[8px] text-[14px] font-bold ring-offset-background transition-all duration-200 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1A3A52] focus-visible:ring-offset-0 disabled:pointer-events-none disabled:opacity-50 data-[state=inactive]:text-[#333333] data-[state=inactive]:bg-transparent data-[state=inactive]:hover:bg-[#FFFFFF] data-[state=active]:bg-[#1A3A52] data-[state=active]:text-[#FFFFFF] data-[state=active]:shadow-[0_2px_4px_rgba(26,58,82,0.15)] data-[state=active]:border-b-[2px] data-[state=active]:border-[#FFFFFF]',
+      'inline-flex min-h-[44px] md:min-h-[48px] items-center justify-center whitespace-nowrap rounded-[6px] px-[16px] py-[8px] text-[14px] font-bold ring-offset-background transition-all duration-200 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1A3A52] focus-visible:ring-offset-0 disabled:pointer-events-none disabled:opacity-50 data-[state=inactive]:text-[#333333] data-[state=inactive]:bg-transparent data-[state=inactive]:hover:bg-[#FFFFFF] data-[state=active]:bg-[#1A3A52] data-[state=active]:text-[#FFFFFF] data-[state=active]:shadow-[0_2px_4px_rgba(26,58,82,0.15)] data-[state=active]:border-b-[2px] data-[state=active]:border-[#FFFFFF]',
       className,
     )}
     {...props}

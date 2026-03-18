@@ -4,13 +4,14 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { CapturedProperty, Demand } from '@/types'
-import { MapPin, DollarSign, Home, Check, X, Search } from 'lucide-react'
+import { MapPin, DollarSign, Home, Search } from 'lucide-react'
 import { CapturedPropertyModals } from './CapturedPropertyModals'
 import { getPropertyPublicUrl } from '@/lib/propertyUrl'
 import { useToast } from '@/hooks/use-toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import { StickyFilterBar, FilterDef } from '@/components/StickyFilterBar'
+import { FilterSidebar } from '@/components/FilterSidebar'
 import { useViewFilters } from '@/hooks/useViewFilters'
 import { Skeleton } from '@/components/ui/skeleton'
 
@@ -95,193 +96,207 @@ export function MyClientsCapturedView({ filterType }: { filterType?: 'Venda' | '
   }, [demands, currentUser, filterType, filters])
 
   return (
-    <div className="flex flex-col gap-[16px] animate-fade-in w-full">
-      <StickyFilterBar
+    <div className="flex flex-col lg:flex-row gap-[24px] items-start w-full animate-fade-in transition-opacity duration-150 ease-in">
+      <FilterSidebar
         filters={FILTERS}
         values={filters}
         onChange={handleFilterChange}
         resultsCount={propertyGroups.length}
-        stickyTop="top-[128px] sm:top-[136px]"
       />
 
-      {isFiltering ? (
-        <div className="space-y-4">
-          {[1, 2].map((i) => (
-            <Skeleton key={i} className="h-[250px] w-full rounded-[12px]" />
-          ))}
+      <div className="flex-1 w-full flex flex-col gap-[16px] min-w-0">
+        <div className="lg:hidden w-full">
+          <StickyFilterBar
+            filters={FILTERS}
+            values={filters}
+            onChange={handleFilterChange}
+            resultsCount={propertyGroups.length}
+            stickyTop="top-[128px] sm:top-[136px]"
+          />
         </div>
-      ) : propertyGroups.length === 0 ? (
-        <div className="text-center py-16 bg-[#FFFFFF] border-[2px] rounded-[12px] border-dashed border-[#E5E5E5] w-full animate-fade-in">
-          <Search className="w-12 h-12 text-[#999999]/30 mx-auto mb-3" />
-          <p className="text-[16px] font-bold text-[#333333]">
-            Nenhum imóvel captado para seus clientes
-          </p>
-        </div>
-      ) : (
-        <div className="grid gap-[16px] grid-cols-1 md:grid-cols-2">
-          {propertyGroups.map((group) => {
-            const publicUrl = getPropertyPublicUrl(group.property.code)
-            const captadorName =
-              users.find((u) => u.id === group.property.captador_id)?.name || 'Não informado'
-            const captadorPhone = users.find((u) => u.id === group.property.captador_id)?.phone
-            const isVisita = !!group.property.visitaDate && !group.property.fechamentoDate
-            const isFechado = !!group.property.fechamentoDate
 
-            return (
-              <Card
-                key={group.property.code}
-                className="border-[2px] border-[#2E5F8A] shadow-sm flex flex-col h-full"
-              >
-                <CardContent className="p-[16px] flex flex-col gap-4 flex-1">
-                  <div className="flex flex-col space-y-2">
-                    <div className="flex items-center gap-2 mb-1 justify-between flex-wrap">
-                      <div className="flex items-center gap-2">
-                        <Badge className="bg-[#1A3A52] font-bold text-[14px]">
-                          {group.property.code}
-                        </Badge>
-                        <Badge variant="outline" className="font-bold border-[#E5E5E5] text-[12px]">
-                          {group.property.propertyType}
+        {isFiltering ? (
+          <div className="grid gap-[16px] grid-cols-1 md:grid-cols-2 2xl:grid-cols-3">
+            {[1, 2].map((i) => (
+              <Skeleton key={i} className="h-[250px] w-full rounded-[12px] animate-fast-pulse" />
+            ))}
+          </div>
+        ) : propertyGroups.length === 0 ? (
+          <div className="text-center py-16 bg-[#FFFFFF] border-[2px] rounded-[12px] border-dashed border-[#E5E5E5] w-full animate-fade-in flex flex-col items-center justify-center">
+            <div className="text-[64px] leading-none mb-4">🏠</div>
+            <p className="text-[18px] font-bold text-[#333333]">
+              Nenhum imóvel captado para seus clientes
+            </p>
+          </div>
+        ) : (
+          <div className="grid gap-[16px] grid-cols-1 md:grid-cols-2 2xl:grid-cols-3">
+            {propertyGroups.map((group) => {
+              const publicUrl = getPropertyPublicUrl(group.property.code)
+              const captadorName =
+                users.find((u) => u.id === group.property.captador_id)?.name || 'Não informado'
+              const captadorPhone = users.find((u) => u.id === group.property.captador_id)?.phone
+              const isVisita = !!group.property.visitaDate && !group.property.fechamentoDate
+              const isFechado = !!group.property.fechamentoDate
+
+              return (
+                <Card
+                  key={group.property.code}
+                  className="border-[2px] border-[#2E5F8A] shadow-sm flex flex-col h-full rounded-[12px]"
+                >
+                  <CardContent className="p-[16px] flex flex-col gap-4 flex-1">
+                    <div className="flex flex-col space-y-2">
+                      <div className="flex items-center gap-2 mb-1 justify-between flex-wrap">
+                        <div className="flex items-center gap-2">
+                          <Badge className="bg-[#1A3A52] font-bold text-[14px]">
+                            {group.property.code}
+                          </Badge>
+                          <Badge
+                            variant="outline"
+                            className="font-bold border-[#E5E5E5] text-[12px]"
+                          >
+                            {group.property.propertyType}
+                          </Badge>
+                        </div>
+                        <Badge
+                          className={cn(
+                            'font-bold border-none text-white text-[12px]',
+                            isFechado ? 'bg-[#4CAF50]' : isVisita ? 'bg-[#FF9800]' : 'bg-[#9C27B0]',
+                          )}
+                        >
+                          {isFechado ? '🟢 Negócio' : isVisita ? '🟠 Visita' : '🟣 Captado'}
                         </Badge>
                       </div>
-                      <Badge
-                        className={cn(
-                          'font-bold border-none text-white text-[12px]',
-                          isFechado ? 'bg-[#4CAF50]' : isVisita ? 'bg-[#FF9800]' : 'bg-[#9C27B0]',
-                        )}
-                      >
-                        {isFechado ? '🟢 Negócio' : isVisita ? '🟠 Visita' : '🟣 Captado'}
-                      </Badge>
+
+                      <p className="flex items-center gap-2 text-[14px] text-[#333333] font-medium leading-tight mt-2">
+                        <MapPin className="w-4 h-4 text-[#1A3A52] shrink-0" />{' '}
+                        <span className="truncate">{group.property.neighborhood}</span>
+                      </p>
+                      <p className="flex items-center gap-2 text-[16px] font-bold text-[#1A3A52] leading-tight">
+                        <DollarSign className="w-4 h-4 text-[#1A3A52] shrink-0" /> R${' '}
+                        {group.property.value?.toLocaleString('pt-BR')}
+                      </p>
+                      <div className="flex items-center justify-between">
+                        <p className="flex items-center gap-2 text-[14px] text-[#333333] font-medium leading-tight">
+                          <Home className="w-4 h-4 text-[#1A3A52] shrink-0" />{' '}
+                          {group.property.bedrooms} dorm, {group.property.bathrooms} banh,{' '}
+                          {group.property.parkingSpots} vagas
+                        </p>
+                      </div>
+                      <div className="flex flex-col gap-1 border-t border-[#E5E5E5] pt-2 mt-2">
+                        <p className="text-[12px] text-[#999999] leading-tight">
+                          👤 Captador:{' '}
+                          <span className="font-medium text-[#333333]">{captadorName}</span>
+                        </p>
+                        <p className="text-[12px] text-[#999999] leading-tight">
+                          📅 Captação:{' '}
+                          <span className="font-medium text-[#333333]">
+                            {new Date(group.property.capturedAt || '').toLocaleDateString('pt-BR')}
+                          </span>
+                        </p>
+                      </div>
                     </div>
 
-                    <p className="flex items-center gap-2 text-[14px] text-[#333333] font-medium leading-tight mt-2">
-                      <MapPin className="w-4 h-4 text-[#1A3A52] shrink-0" />{' '}
-                      <span className="truncate">{group.property.neighborhood}</span>
-                    </p>
-                    <p className="flex items-center gap-2 text-[16px] font-bold text-[#1A3A52] leading-tight">
-                      <DollarSign className="w-4 h-4 text-[#1A3A52] shrink-0" /> R${' '}
-                      {group.property.value?.toLocaleString('pt-BR')}
-                    </p>
-                    <div className="flex items-center justify-between">
-                      <p className="flex items-center gap-2 text-[14px] text-[#333333] font-medium leading-tight">
-                        <Home className="w-4 h-4 text-[#1A3A52] shrink-0" />{' '}
-                        {group.property.bedrooms} dorm, {group.property.bathrooms} banh,{' '}
-                        {group.property.parkingSpots} vagas
-                      </p>
-                    </div>
-                    <div className="flex flex-col gap-1 border-t border-[#E5E5E5] pt-2 mt-2">
-                      <p className="text-[12px] text-[#999999] leading-tight">
-                        👤 Captador:{' '}
-                        <span className="font-medium text-[#333333]">{captadorName}</span>
-                      </p>
-                      <p className="text-[12px] text-[#999999] leading-tight">
-                        📅 Captação:{' '}
-                        <span className="font-medium text-[#333333]">
-                          {new Date(group.property.capturedAt || '').toLocaleDateString('pt-BR')}
-                        </span>
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="bg-[#F5F5F5] p-3 rounded-[8px] space-y-3 border border-[#E5E5E5] mt-auto">
-                    <h4 className="font-bold text-[13px] text-[#999999] uppercase tracking-wider">
-                      Clientes Interessados
-                    </h4>
-                    <div className="space-y-4">
-                      {group.demands.map((d) => (
-                        <div
-                          key={d.id}
-                          className="flex flex-col gap-2 border-b border-[#E5E5E5]/50 pb-3 last:border-0 last:pb-0"
-                        >
-                          <div className="flex flex-col gap-1">
-                            <div className="flex items-center justify-between">
-                              <p className="font-bold text-[14px] text-[#1A3A52] leading-tight break-words">
-                                👤 {d.clientName}
-                              </p>
-                              <span className="text-[12px] font-bold text-[#999999] shrink-0 ml-2">
-                                {d.status}
-                              </span>
+                    <div className="bg-[#F5F5F5] p-3 rounded-[8px] space-y-3 border border-[#E5E5E5] mt-auto">
+                      <h4 className="font-bold text-[13px] text-[#999999] uppercase tracking-wider">
+                        Clientes Interessados
+                      </h4>
+                      <div className="space-y-4">
+                        {group.demands.map((d) => (
+                          <div
+                            key={d.id}
+                            className="flex flex-col gap-2 border-b border-[#E5E5E5]/50 pb-3 last:border-0 last:pb-0"
+                          >
+                            <div className="flex flex-col gap-1">
+                              <div className="flex items-center justify-between">
+                                <p className="font-bold text-[14px] text-[#1A3A52] leading-tight break-words">
+                                  👤 {d.clientName}
+                                </p>
+                                <span className="text-[12px] font-bold text-[#999999] shrink-0 ml-2">
+                                  {d.status}
+                                </span>
+                              </div>
                             </div>
-                          </div>
 
-                          <div className="flex flex-col gap-2 w-full mt-1">
-                            <div className="flex flex-col sm:flex-row gap-2 w-full">
+                            <div className="flex flex-col gap-2 w-full mt-1">
+                              <div className="flex flex-row gap-[8px] w-full">
+                                <Button
+                                  className="flex-1 bg-[#FF9800] hover:bg-[#F57C00] text-white font-bold min-h-[44px] text-[14px] px-2 shadow-[0_2px_4px_rgba(255,152,0,0.2)]"
+                                  onClick={() => {
+                                    setActionDemand(d)
+                                    setActionProperty(group.property)
+                                    setActionType('visita')
+                                  }}
+                                >
+                                  👁️ Visita
+                                </Button>
+                                <Button
+                                  className="flex-1 bg-[#4CAF50] hover:bg-[#388E3C] text-white font-bold min-h-[44px] text-[14px] px-2 shadow-[0_2px_4px_rgba(76,175,80,0.2)]"
+                                  onClick={() => {
+                                    setActionDemand(d)
+                                    setActionProperty(group.property)
+                                    setActionType('negocio')
+                                  }}
+                                >
+                                  💰 Negócio
+                                </Button>
+                              </div>
+                              <div className="flex flex-row gap-[8px] w-full">
+                                <Button
+                                  variant="outline"
+                                  className={cn(
+                                    'flex-1 font-bold min-h-[44px] border-[#2E5F8A] text-[#1A3A52] text-[14px] bg-white hover:bg-[#F5F5F5] px-2',
+                                    !publicUrl && 'opacity-50 cursor-not-allowed',
+                                  )}
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    if (publicUrl) window.open(publicUrl, '_blank')
+                                  }}
+                                >
+                                  🔗 Ver Imóvel
+                                </Button>
+                                <Button
+                                  className="flex-1 bg-[#25D366] hover:bg-[#128C7E] text-white font-bold min-h-[44px] text-[14px] px-2"
+                                  onClick={() => {
+                                    if (captadorPhone) {
+                                      window.open(
+                                        `https://wa.me/${captadorPhone.replace(/\D/g, '')}`,
+                                        '_blank',
+                                      )
+                                    } else {
+                                      toast({
+                                        title: 'Telefone indisponível',
+                                        description: 'O captador não possui número cadastrado.',
+                                        variant: 'destructive',
+                                      })
+                                    }
+                                  }}
+                                >
+                                  💬 WhatsApp
+                                </Button>
+                              </div>
                               <Button
-                                className="flex-1 bg-[#FF9800] hover:bg-[#F57C00] text-white font-bold h-[48px] text-[14px]"
+                                variant="destructive"
+                                className="w-full font-bold min-h-[44px] text-[14px] bg-[#F44336] hover:bg-[#d32f2f] text-white"
                                 onClick={() => {
                                   setActionDemand(d)
                                   setActionProperty(group.property)
-                                  setActionType('visita')
+                                  setActionType('lost')
                                 }}
                               >
-                                👁️ Visita
-                              </Button>
-                              <Button
-                                className="flex-1 bg-[#4CAF50] hover:bg-[#388E3C] text-white font-bold h-[48px] text-[14px]"
-                                onClick={() => {
-                                  setActionDemand(d)
-                                  setActionProperty(group.property)
-                                  setActionType('negocio')
-                                }}
-                              >
-                                💰 Negócio
+                                ❌ Perdido
                               </Button>
                             </div>
-                            <div className="flex flex-col sm:flex-row gap-2 w-full">
-                              <Button
-                                variant="outline"
-                                className={cn(
-                                  'flex-1 font-bold h-[48px] border-[#2E5F8A] text-[#1A3A52] text-[14px] bg-white hover:bg-[#F5F5F5]',
-                                  !publicUrl && 'opacity-50 cursor-not-allowed',
-                                )}
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  if (publicUrl) window.open(publicUrl, '_blank')
-                                }}
-                              >
-                                🔗 Ver Imóvel
-                              </Button>
-                              <Button
-                                className="flex-1 bg-[#25D366] hover:bg-[#128C7E] text-white font-bold h-[48px] text-[14px]"
-                                onClick={() => {
-                                  if (captadorPhone) {
-                                    window.open(
-                                      `https://wa.me/${captadorPhone.replace(/\D/g, '')}`,
-                                      '_blank',
-                                    )
-                                  } else {
-                                    toast({
-                                      title: 'Telefone indisponível',
-                                      description: 'O captador não possui número cadastrado.',
-                                      variant: 'destructive',
-                                    })
-                                  }
-                                }}
-                              >
-                                💬 WhatsApp
-                              </Button>
-                            </div>
-                            <Button
-                              variant="destructive"
-                              className="w-full font-bold h-[48px] text-[14px]"
-                              onClick={() => {
-                                setActionDemand(d)
-                                setActionProperty(group.property)
-                                setActionType('lost')
-                              }}
-                            >
-                              ❌ Perdido
-                            </Button>
                           </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )
-          })}
-        </div>
-      )}
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </div>
+        )}
+      </div>
 
       <CapturedPropertyModals
         demand={actionDemand}
