@@ -63,7 +63,7 @@ export default function Layout() {
           onAddPropertyClick={() => setAddPropertyModalOpen(true)}
           onAddDemandClick={() => setNewDemandModalOpen(true)}
         />
-        <main className="flex-1 overflow-y-auto w-full max-w-[1400px] mx-auto px-[16px] min-[480px]:px-[24px] md:px-[32px] pt-[16px] pb-[72px] md:py-[24px] animate-fade-in-up">
+        <main className="flex-1 overflow-y-auto w-full max-w-[1400px] mx-auto px-[16px] min-[480px]:px-[24px] md:px-[32px] pt-[16px] pb-[72px] md:pb-[24px] animate-fade-in-up">
           <Outlet />
         </main>
 
@@ -71,7 +71,7 @@ export default function Layout() {
           <>
             <button
               onClick={() => setAddPropertyModalOpen(true)}
-              className="md:hidden fixed bottom-[80px] right-[16px] w-[56px] h-[56px] bg-[#4CAF50] text-white rounded-full flex items-center justify-center shadow-[0_4px_12px_rgba(76,175,80,0.4)] z-[1000] active:scale-95 transition-transform"
+              className="md:hidden fixed bottom-[72px] right-[16px] w-[56px] h-[56px] bg-[#4CAF50] text-white rounded-full flex items-center justify-center shadow-[0_4px_12px_rgba(76,175,80,0.4)] z-[1000] active:scale-95 transition-transform"
               aria-label="Adicionar Imóvel"
             >
               <Plus className="w-8 h-8" />
@@ -92,7 +92,7 @@ export default function Layout() {
           <>
             <button
               onClick={() => setNewDemandModalOpen(true)}
-              className="md:hidden fixed bottom-[80px] right-[16px] w-[56px] h-[56px] bg-[#4CAF50] text-white rounded-full flex items-center justify-center shadow-[0_4px_12px_rgba(76,175,80,0.4)] z-[1000] animate-pulse-subtle active:scale-95 transition-transform group"
+              className="md:hidden fixed bottom-[72px] right-[16px] w-[56px] h-[56px] bg-[#4CAF50] text-white rounded-full flex items-center justify-center shadow-[0_4px_12px_rgba(76,175,80,0.4)] z-[1000] animate-pulse-subtle active:scale-95 transition-transform group"
               aria-label="Nova Demanda"
               title="Nova Demanda"
             >
