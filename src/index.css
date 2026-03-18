@@ -113,6 +113,14 @@
     animation: fade-in-up 0.2s ease-in-out;
   }
 
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+  }
+
   @keyframes fade-in {
     from {
       opacity: 0;

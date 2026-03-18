@@ -20,6 +20,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from '@/components/ui/sidebar'
 import useAppStore from '@/stores/useAppStore'
 import { cn } from '@/lib/utils'
@@ -27,6 +28,7 @@ import { cn } from '@/lib/utils'
 export function AppSidebar() {
   const { currentUser } = useAppStore()
   const location = useLocation()
+  const { isMobile, setOpenMobile } = useSidebar()
 
   if (!currentUser) return null
 
@@ -72,6 +74,9 @@ export function AppSidebar() {
                   <SidebarMenuButton
                     asChild
                     isActive={location.pathname === item.url}
+                    onClick={() => {
+                      if (isMobile) setOpenMobile(false)
+                    }}
                     className={cn(
                       'transition-all duration-200 ease-in-out font-bold text-[14px] px-[16px] py-[12px] min-h-[48px] rounded-[8px] h-auto border border-transparent',
                       location.pathname === item.url
