@@ -28,7 +28,20 @@ CREATE TABLE IF NOT EXISTS public.users (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 2. Alter Demandas Locacao
+-- 2. Create and Alter Demandas Locacao
+CREATE TABLE IF NOT EXISTS public.demandas_locacao (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    cliente_nome VARCHAR(255),
+    localizacoes TEXT[] DEFAULT '{}',
+    orcamento_max DECIMAL(12,2) DEFAULT 0,
+    quartos INTEGER DEFAULT 0,
+    banheiros INTEGER DEFAULT 0,
+    vagas INTEGER DEFAULT 0,
+    urgencia VARCHAR(50),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 ALTER TABLE public.demandas_locacao
 ADD COLUMN IF NOT EXISTS sdr_id UUID REFERENCES public.users(id) ON DELETE SET NULL,
 ADD COLUMN IF NOT EXISTS nome_cliente VARCHAR(255),
@@ -49,7 +62,20 @@ BEGIN
     END IF;
 END $$;
 
--- 3. Alter Demandas Vendas
+-- 3. Create and Alter Demandas Vendas
+CREATE TABLE IF NOT EXISTS public.demandas_vendas (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    cliente_nome VARCHAR(255),
+    localizacoes TEXT[] DEFAULT '{}',
+    orcamento_max DECIMAL(12,2) DEFAULT 0,
+    quartos INTEGER DEFAULT 0,
+    banheiros INTEGER DEFAULT 0,
+    vagas INTEGER DEFAULT 0,
+    urgencia VARCHAR(50),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 ALTER TABLE public.demandas_vendas
 ADD COLUMN IF NOT EXISTS corretor_id UUID REFERENCES public.users(id) ON DELETE SET NULL,
 ADD COLUMN IF NOT EXISTS tipo_imovel VARCHAR(50) CHECK (tipo_imovel IN ('Casa', 'Apartamento', 'Terreno')),
@@ -71,7 +97,18 @@ BEGIN
     END IF;
 END $$;
 
--- 4. Alter Imoveis Captados
+-- 4. Create and Alter Imoveis Captados
+CREATE TABLE IF NOT EXISTS public.imoveis_captados (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    captador_id UUID,
+    endereco TEXT,
+    valor DECIMAL(12,2),
+    demanda_locacao_id UUID REFERENCES public.demandas_locacao(id) ON DELETE SET NULL,
+    demanda_venda_id UUID REFERENCES public.demandas_vendas(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 ALTER TABLE public.imoveis_captados
 ADD COLUMN IF NOT EXISTS user_captador_id UUID REFERENCES public.users(id) ON DELETE SET NULL,
 ADD COLUMN IF NOT EXISTS codigo_imovel VARCHAR(100) UNIQUE,
@@ -113,6 +150,15 @@ CREATE TABLE IF NOT EXISTS public.audit_log (
 -- 7. Triggers for updated_at
 DROP TRIGGER IF EXISTS update_users_updated_at ON public.users;
 CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON public.users FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+DROP TRIGGER IF EXISTS update_demandas_locacao_updated_at ON public.demandas_locacao;
+CREATE TRIGGER update_demandas_locacao_updated_at BEFORE UPDATE ON public.demandas_locacao FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+DROP TRIGGER IF EXISTS update_demandas_vendas_updated_at ON public.demandas_vendas;
+CREATE TRIGGER update_demandas_vendas_updated_at BEFORE UPDATE ON public.demandas_vendas FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+DROP TRIGGER IF EXISTS update_imoveis_captados_updated_at ON public.imoveis_captados;
+CREATE TRIGGER update_imoveis_captados_updated_at BEFORE UPDATE ON public.imoveis_captados FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
 DROP TRIGGER IF EXISTS update_respostas_captador_updated_at ON public.respostas_captador;
 CREATE TRIGGER update_respostas_captador_updated_at BEFORE UPDATE ON public.respostas_captador FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
@@ -176,6 +222,9 @@ CREATE INDEX IF NOT EXISTS idx_respostas_captador_cap_id ON public.respostas_cap
 
 -- 10. Enable RLS
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.demandas_locacao ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.demandas_vendas ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.imoveis_captados ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.respostas_captador ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.audit_log ENABLE ROW LEVEL SECURITY;
 
@@ -369,4 +418,3 @@ BEGIN
   WHERE id = '77777777-7777-7777-7777-777777777773'::uuid;
 
 END $$;
-
