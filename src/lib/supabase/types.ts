@@ -1,17 +1,11 @@
 // AVOID UPDATING THIS FILE DIRECTLY. It is automatically generated.
-export type Json =
-  | string
-  | number
-  | boolean
-  | null
-  | { [key: string]: Json | undefined }
-  | Json[]
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
 
 export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.4"
+    PostgrestVersion: '14.4'
   }
   public: {
     Tables: {
@@ -48,11 +42,11 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "audit_log_usuario_id_fkey"
-            columns: ["usuario_id"]
+            foreignKeyName: 'audit_log_usuario_id_fkey'
+            columns: ['usuario_id']
             isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
+            referencedRelation: 'users'
+            referencedColumns: ['id']
           },
         ]
       }
@@ -134,11 +128,11 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "demandas_locacao_sdr_id_fkey"
-            columns: ["sdr_id"]
+            foreignKeyName: 'demandas_locacao_sdr_id_fkey'
+            columns: ['sdr_id']
             isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
+            referencedRelation: 'users'
+            referencedColumns: ['id']
           },
         ]
       }
@@ -217,11 +211,11 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "demandas_vendas_corretor_id_fkey"
-            columns: ["corretor_id"]
+            foreignKeyName: 'demandas_vendas_corretor_id_fkey'
+            columns: ['corretor_id']
             isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
+            referencedRelation: 'users'
+            referencedColumns: ['id']
           },
         ]
       }
@@ -279,25 +273,25 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "imoveis_captados_demanda_locacao_id_fkey"
-            columns: ["demanda_locacao_id"]
+            foreignKeyName: 'imoveis_captados_demanda_locacao_id_fkey'
+            columns: ['demanda_locacao_id']
             isOneToOne: false
-            referencedRelation: "demandas_locacao"
-            referencedColumns: ["id"]
+            referencedRelation: 'demandas_locacao'
+            referencedColumns: ['id']
           },
           {
-            foreignKeyName: "imoveis_captados_demanda_venda_id_fkey"
-            columns: ["demanda_venda_id"]
+            foreignKeyName: 'imoveis_captados_demanda_venda_id_fkey'
+            columns: ['demanda_venda_id']
             isOneToOne: false
-            referencedRelation: "demandas_vendas"
-            referencedColumns: ["id"]
+            referencedRelation: 'demandas_vendas'
+            referencedColumns: ['id']
           },
           {
-            foreignKeyName: "imoveis_captados_user_captador_id_fkey"
-            columns: ["user_captador_id"]
+            foreignKeyName: 'imoveis_captados_user_captador_id_fkey'
+            columns: ['user_captador_id']
             isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
+            referencedRelation: 'users'
+            referencedColumns: ['id']
           },
         ]
       }
@@ -334,25 +328,25 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "respostas_captador_captador_id_fkey"
-            columns: ["captador_id"]
+            foreignKeyName: 'respostas_captador_captador_id_fkey'
+            columns: ['captador_id']
             isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
+            referencedRelation: 'users'
+            referencedColumns: ['id']
           },
           {
-            foreignKeyName: "respostas_captador_demanda_locacao_id_fkey"
-            columns: ["demanda_locacao_id"]
+            foreignKeyName: 'respostas_captador_demanda_locacao_id_fkey'
+            columns: ['demanda_locacao_id']
             isOneToOne: false
-            referencedRelation: "demandas_locacao"
-            referencedColumns: ["id"]
+            referencedRelation: 'demandas_locacao'
+            referencedColumns: ['id']
           },
           {
-            foreignKeyName: "respostas_captador_demanda_venda_id_fkey"
-            columns: ["demanda_venda_id"]
+            foreignKeyName: 'respostas_captador_demanda_venda_id_fkey'
+            columns: ['demanda_venda_id']
             isOneToOne: false
-            referencedRelation: "demandas_vendas"
-            referencedColumns: ["id"]
+            referencedRelation: 'demandas_vendas'
+            referencedColumns: ['id']
           },
         ]
       }
@@ -363,7 +357,7 @@ export type Database = {
           email: string
           id: string
           nome: string
-          role: Database["public"]["Enums"]["user_role"]
+          role: Database['public']['Enums']['user_role']
           status: string | null
           updated_at: string | null
         }
@@ -373,7 +367,7 @@ export type Database = {
           email: string
           id: string
           nome: string
-          role?: Database["public"]["Enums"]["user_role"]
+          role?: Database['public']['Enums']['user_role']
           status?: string | null
           updated_at?: string | null
         }
@@ -383,7 +377,7 @@ export type Database = {
           email?: string
           id?: string
           nome?: string
-          role?: Database["public"]["Enums"]["user_role"]
+          role?: Database['public']['Enums']['user_role']
           status?: string | null
           updated_at?: string | null
         }
@@ -397,7 +391,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      user_role: "admin" | "sdr" | "corretor" | "captador"
+      user_role: 'admin' | 'sdr' | 'corretor' | 'captador'
     }
     CompositeTypes: {
       [_ in never]: never
@@ -405,33 +399,31 @@ export type Database = {
   }
 }
 
-type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+type DatabaseWithoutInternals = Omit<Database, '__InternalSupabase'>
 
-type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, 'public'>]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
-    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | keyof (DefaultSchema['Tables'] & DefaultSchema['Views'])
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Views'])
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Views'])[TableName] extends {
       Row: infer R
     }
     ? R
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])
-    ? (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema['Tables'] & DefaultSchema['Views'])
+    ? (DefaultSchema['Tables'] & DefaultSchema['Views'])[DefaultSchemaTableNameOrOptions] extends {
         Row: infer R
       }
       ? R
@@ -440,23 +432,23 @@ export type Tables<
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
+    | keyof DefaultSchema['Tables']
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables']
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'][TableName] extends {
       Insert: infer I
     }
     ? I
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema['Tables']
+    ? DefaultSchema['Tables'][DefaultSchemaTableNameOrOptions] extends {
         Insert: infer I
       }
       ? I
@@ -465,23 +457,23 @@ export type TablesInsert<
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
+    | keyof DefaultSchema['Tables']
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables']
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'][TableName] extends {
       Update: infer U
     }
     ? U
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema['Tables']
+    ? DefaultSchema['Tables'][DefaultSchemaTableNameOrOptions] extends {
         Update: infer U
       }
       ? U
@@ -490,46 +482,45 @@ export type TablesUpdate<
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
-    | keyof DefaultSchema["Enums"]
+    | keyof DefaultSchema['Enums']
     | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions['schema']]['Enums']
     : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
-  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
-    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions['schema']]['Enums'][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema['Enums']
+    ? DefaultSchema['Enums'][DefaultSchemaEnumNameOrOptions]
     : never
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-    | keyof DefaultSchema["CompositeTypes"]
+    | keyof DefaultSchema['CompositeTypes']
     | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions['schema']]['CompositeTypes']
     : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
-  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
-    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions['schema']]['CompositeTypes'][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema['CompositeTypes']
+    ? DefaultSchema['CompositeTypes'][PublicCompositeTypeNameOrOptions]
     : never
 
 export const Constants = {
   public: {
     Enums: {
-      user_role: ["admin", "sdr", "corretor", "captador"],
+      user_role: ['admin', 'sdr', 'corretor', 'captador'],
     },
   },
 } as const
-
 
 // ====== DATABASE EXTENDED CONTEXT (auto-generated) ======
 // This section contains actual PostgreSQL column types, constraints, RLS policies,
@@ -644,20 +635,17 @@ export const Constants = {
 //   PRIMARY KEY demandas_locacao_pkey: PRIMARY KEY (id)
 //   FOREIGN KEY demandas_locacao_sdr_id_fkey: FOREIGN KEY (sdr_id) REFERENCES users(id) ON DELETE SET NULL
 //   CHECK demandas_locacao_status_demanda_check: CHECK (((status_demanda)::text = ANY ((ARRAY['aberta'::character varying, 'atendida'::character varying, 'impossivel'::character varying, 'sem_resposta_24h'::character varying])::text[])))
-//   CHECK demandas_locacao_telefone_check: CHECK (((telefone)::text ~ '^\([0-9]{2}\) 9[0-9]{4}-[0-9]{4}
-::text))
+//   CHECK demandas_locacao_telefone_check: CHECK (((telefone)::text ~ '^\([0-9]{2}\) 9[0-9]{4}-[0-9]{4}$'::text))
 //   CHECK demandas_locacao_vagas_estacionamento_check: CHECK (((vagas_estacionamento >= 0) AND (vagas_estacionamento <= 10)))
 // Table: demandas_vendas
 //   CHECK check_valor_min_max_vendas: CHECK ((valor_maximo >= valor_minimo))
 //   FOREIGN KEY demandas_vendas_corretor_id_fkey: FOREIGN KEY (corretor_id) REFERENCES users(id) ON DELETE SET NULL
 //   CHECK demandas_vendas_dormitorios_check: CHECK (((dormitorios >= 0) AND (dormitorios <= 10)))
-//   CHECK demandas_vendas_email_check: CHECK (((email)::text ~ '^[A-Za-z0-9._%-]+@[A-Za-z0-9.-]+[.][A-Za-z]+
-::text))
+//   CHECK demandas_vendas_email_check: CHECK (((email)::text ~ '^[A-Za-z0-9._%-]+@[A-Za-z0-9.-]+[.][A-Za-z]+$'::text))
 //   CHECK demandas_vendas_nivel_urgencia_check: CHECK (((nivel_urgencia)::text = ANY ((ARRAY['Baixa'::character varying, 'Média'::character varying, 'Alta'::character varying])::text[])))
 //   PRIMARY KEY demandas_vendas_pkey: PRIMARY KEY (id)
 //   CHECK demandas_vendas_status_demanda_check: CHECK (((status_demanda)::text = ANY ((ARRAY['aberta'::character varying, 'atendida'::character varying, 'impossivel'::character varying, 'sem_resposta_24h'::character varying])::text[])))
-//   CHECK demandas_vendas_telefone_check: CHECK (((telefone)::text ~ '^\([0-9]{2}\) 9[0-9]{4}-[0-9]{4}
-::text))
+//   CHECK demandas_vendas_telefone_check: CHECK (((telefone)::text ~ '^\([0-9]{2}\) 9[0-9]{4}-[0-9]{4}$'::text))
 //   CHECK demandas_vendas_tipo_imovel_check: CHECK (((tipo_imovel)::text = ANY ((ARRAY['Casa'::character varying, 'Apartamento'::character varying, 'Terreno'::character varying])::text[])))
 //   CHECK demandas_vendas_vagas_estacionamento_check: CHECK (((vagas_estacionamento >= 0) AND (vagas_estacionamento <= 10)))
 // Table: imoveis_captados
@@ -678,8 +666,7 @@ export const Constants = {
 //   PRIMARY KEY respostas_captador_pkey: PRIMARY KEY (id)
 //   CHECK respostas_captador_resposta_check: CHECK (((resposta)::text = ANY ((ARRAY['encontrei'::character varying, 'nao_encontrei'::character varying])::text[])))
 // Table: users
-//   CHECK users_email_check: CHECK (((email)::text ~ '^[A-Za-z0-9._%-]+@[A-Za-z0-9.-]+[.][A-Za-z]+
-::text))
+//   CHECK users_email_check: CHECK (((email)::text ~ '^[A-Za-z0-9._%-]+@[A-Za-z0-9.-]+[.][A-Za-z]+$'::text))
 //   UNIQUE users_email_key: UNIQUE (email)
 //   FOREIGN KEY users_id_fkey: FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE
 //   PRIMARY KEY users_pkey: PRIMARY KEY (id)
@@ -738,7 +725,7 @@ export const Constants = {
 //       user_id_val UUID;
 //   BEGIN
 //       user_id_val := auth.uid();
-//       
+//
 //       IF TG_OP = 'INSERT' THEN
 //           INSERT INTO public.audit_log (usuario_id, acao, tabela, registro_id, dados_novos)
 //           VALUES (user_id_val, TG_OP, TG_TABLE_NAME, NEW.id, to_jsonb(NEW));
@@ -755,7 +742,7 @@ export const Constants = {
 //       RETURN NULL;
 //   END;
 //   $function$
-//   
+//
 // FUNCTION rls_auto_enable()
 //   CREATE OR REPLACE FUNCTION public.rls_auto_enable()
 //    RETURNS event_trigger
@@ -786,7 +773,7 @@ export const Constants = {
 //     END LOOP;
 //   END;
 //   $function$
-//   
+//
 // FUNCTION set_updated_at()
 //   CREATE OR REPLACE FUNCTION public.set_updated_at()
 //    RETURNS trigger
@@ -797,7 +784,7 @@ export const Constants = {
 //     RETURN NEW;
 //   END;
 //   $function$
-//   
+//
 
 // --- TRIGGERS ---
 // Table: demandas_locacao
@@ -837,4 +824,3 @@ export const Constants = {
 //   CREATE INDEX idx_users_role ON public.users USING btree (role)
 //   CREATE INDEX idx_users_status ON public.users USING btree (status)
 //   CREATE UNIQUE INDEX users_email_key ON public.users USING btree (email)
-
