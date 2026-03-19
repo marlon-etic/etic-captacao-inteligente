@@ -244,12 +244,20 @@ export function AddPropertyModal({ isOpen, onClose }: Props) {
                       <SelectValue placeholder="Selecione uma demanda pendente..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {pendingDemands.map((d) => (
-                        <SelectItem key={d.id} value={d.id} className="min-h-[48px]">
-                          {d.clientName} - {d.location.slice(0, 2).join(', ')}{' '}
-                          {d.location.length > 2 ? '...' : ''} ({d.type})
-                        </SelectItem>
-                      ))}
+                      {pendingDemands.map((d) => {
+                        const locArray = Array.isArray(d.location)
+                          ? d.location
+                          : typeof d.location === 'string'
+                            ? [d.location]
+                            : []
+
+                        return (
+                          <SelectItem key={d.id} value={d.id} className="min-h-[48px]">
+                            {d.clientName} - {locArray.slice(0, 2).join(', ')}{' '}
+                            {locArray.length > 2 ? '...' : ''} ({d.type})
+                          </SelectItem>
+                        )
+                      })}
                       {pendingDemands.length === 0 && (
                         <SelectItem value="none" disabled className="min-h-[48px]">
                           Nenhuma demanda pendente
