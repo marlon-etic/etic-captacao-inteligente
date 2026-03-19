@@ -1,5 +1,21 @@
 -- supabase/migrations/20260319223750_user_story_schema.sql
 
+-- 0. Create ENUM Types and Utility Functions
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role') THEN
+        CREATE TYPE public.user_role AS ENUM ('admin', 'sdr', 'corretor', 'captador');
+    END IF;
+END $$;
+
+CREATE OR REPLACE FUNCTION public.set_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
 -- 1. Create Users Table
 CREATE TABLE IF NOT EXISTS public.users (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -291,13 +307,19 @@ BEGIN
       );
 
       -- Satisfy existing fk for captadores table just in case
-      INSERT INTO public.captadores (id, email, nome, role)
-      VALUES (
-        (u.value->>'id')::uuid,
-        u.value->>'email',
-        u.value->>'nome',
-        (u.value->>'role')::public.user_role
-      ) ON CONFLICT (email) DO NOTHING;
+      IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'captadores') THEN
+          BEGIN
+            INSERT INTO public.captadores (id, email, nome, role)
+            VALUES (
+              (u.value->>'id')::uuid,
+              u.value->>'email',
+              u.value->>'nome',
+              (u.value->>'role')::public.user_role
+            ) ON CONFLICT (email) DO NOTHING;
+          EXCEPTION WHEN undefined_table THEN
+            -- Ignore if table doesn't actually exist
+          END;
+      END IF;
 
       INSERT INTO public.users (id, email, nome, role, status)
       VALUES (
@@ -347,3 +369,4 @@ BEGIN
   WHERE id = '77777777-7777-7777-7777-777777777773'::uuid;
 
 END $$;
+
