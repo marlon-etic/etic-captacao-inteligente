@@ -68,11 +68,13 @@ export type Database = {
           localizacoes: string[] | null
           nivel_urgencia: string | null
           nome_cliente: string | null
+          observacoes: string | null
           orcamento_max: number | null
           quartos: number | null
           sdr_id: string | null
           status_demanda: string | null
           telefone: string | null
+          tipo_demanda: string | null
           updated_at: string | null
           urgencia: string | null
           vagas: number | null
@@ -91,11 +93,13 @@ export type Database = {
           localizacoes?: string[] | null
           nivel_urgencia?: string | null
           nome_cliente?: string | null
+          observacoes?: string | null
           orcamento_max?: number | null
           quartos?: number | null
           sdr_id?: string | null
           status_demanda?: string | null
           telefone?: string | null
+          tipo_demanda?: string | null
           updated_at?: string | null
           urgencia?: string | null
           vagas?: number | null
@@ -114,11 +118,13 @@ export type Database = {
           localizacoes?: string[] | null
           nivel_urgencia?: string | null
           nome_cliente?: string | null
+          observacoes?: string | null
           orcamento_max?: number | null
           quartos?: number | null
           sdr_id?: string | null
           status_demanda?: string | null
           telefone?: string | null
+          tipo_demanda?: string | null
           updated_at?: string | null
           urgencia?: string | null
           vagas?: number | null
@@ -566,6 +572,8 @@ export const Constants = {
 //   vagas_estacionamento: integer (nullable)
 //   nivel_urgencia: character varying (nullable)
 //   status_demanda: character varying (nullable)
+//   observacoes: text (nullable)
+//   tipo_demanda: character varying (nullable, default: 'Aluguel'::character varying)
 // Table: demandas_vendas
 //   id: uuid (not null, default: gen_random_uuid())
 //   cliente_nome: character varying (nullable)
@@ -631,8 +639,7 @@ export const Constants = {
 // Table: demandas_locacao
 //   CHECK check_valor_min_max_locacao: CHECK ((valor_maximo >= valor_minimo))
 //   CHECK demandas_locacao_dormitorios_check: CHECK (((dormitorios >= 0) AND (dormitorios <= 10)))
-//   CHECK demandas_locacao_email_check: CHECK (((email)::text ~ '^[A-Za-z0-9._%-]+@[A-Za-z0-9.-]+[.][A-Za-z]+
-::text))
+//   CHECK demandas_locacao_email_check: CHECK (((email IS NULL) OR ((email)::text = ''::text) OR ((email)::text ~~ '%@%'::text)))
 //   CHECK demandas_locacao_nivel_urgencia_check: CHECK (((nivel_urgencia)::text = ANY ((ARRAY['Baixa'::character varying, 'Média'::character varying, 'Alta'::character varying])::text[])))
 //   PRIMARY KEY demandas_locacao_pkey: PRIMARY KEY (id)
 //   FOREIGN KEY demandas_locacao_sdr_id_fkey: FOREIGN KEY (sdr_id) REFERENCES users(id) ON DELETE SET NULL
@@ -687,6 +694,8 @@ export const Constants = {
 //     USING: (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND (users.role = 'admin'::user_role))))
 //   Policy "Captadores see aberta locacao" (SELECT, PERMISSIVE) roles={public}
 //     USING: (((status_demanda)::text = 'aberta'::text) AND (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND (users.role = 'captador'::user_role)))))
+//   Policy "SDRs insert locacao" (INSERT, PERMISSIVE) roles={authenticated}
+//     WITH CHECK: ((sdr_id = auth.uid()) AND (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND (users.role = 'sdr'::user_role)))))
 //   Policy "SDRs manage own locacao" (ALL, PERMISSIVE) roles={public}
 //     USING: ((sdr_id = auth.uid()) AND (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND (users.role = 'sdr'::user_role)))))
 // Table: demandas_vendas
