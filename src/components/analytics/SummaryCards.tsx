@@ -12,7 +12,13 @@ export function SummaryCards({ demands }: { demands: EnhancedDemand[] }) {
       let convertedCount = 0
 
       demands.forEach((d) => {
-        const b = d.location.split(',')[0].trim() || 'Desconhecido'
+        let b = 'Desconhecido'
+        if (typeof d.location === 'string') {
+          b = d.location.split(',')[0].trim() || 'Desconhecido'
+        } else if (Array.isArray(d.location) && d.location.length > 0) {
+          b = String(d.location[0]).trim() || 'Desconhecido'
+        }
+
         bCount[b] = (bCount[b] || 0) + 1
         tCount[d.tipologia] = (tCount[d.tipologia] || 0) + 1
         if (d.status === 'Negócio') convertedCount++
