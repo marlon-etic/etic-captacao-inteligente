@@ -9,7 +9,7 @@ import { LocationSelector } from '@/components/LocationSelector'
 import { UrgencySelector } from '@/components/UrgencySelector'
 import { CustomInput } from '@/components/CustomInput'
 import { z } from 'zod'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
   Form,
@@ -21,6 +21,8 @@ import {
 } from '@/components/ui/form'
 import { useNavigate } from 'react-router-dom'
 import { cn } from '@/lib/utils'
+import { useKeyboard } from '@/hooks/use-keyboard'
+import { useIsMobile } from '@/hooks/use-mobile'
 
 export const formSchema = z
   .object({
@@ -56,10 +58,50 @@ export const formSchema = z
     path: ['maxBudget'],
   })
 
+function FormSummary({
+  control,
+  isKeyboardOpen,
+  isMobile,
+}: {
+  control: any
+  isKeyboardOpen: boolean
+  isMobile: boolean
+}) {
+  const values = useWatch({ control })
+  if (!isKeyboardOpen || !isMobile) return null
+
+  return (
+    <div className="px-4 pb-3 text-[12px] text-gray-600 animate-in fade-in slide-in-from-top-2 text-left">
+      <div className="bg-[#F5F5F5] rounded-md p-2 border border-[#E0E0E0] space-y-1">
+        <div className="font-semibold text-[#1A3A52] mb-1">Resumo</div>
+        <div className="flex gap-2 truncate">
+          <span className="font-medium shrink-0">👤</span>{' '}
+          <span className="truncate">{values.clientName || '...'}</span>
+        </div>
+        <div className="flex gap-2 truncate">
+          <span className="font-medium shrink-0">📍</span>{' '}
+          <span className="truncate">
+            {values.location?.length ? values.location.join(', ') : '...'}
+          </span>
+        </div>
+        <div className="flex gap-2 truncate">
+          <span className="font-medium shrink-0">💰</span>{' '}
+          <span className="truncate">
+            R$ {values.minBudget || 0} - R$ {values.maxBudget || 0}
+          </span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function NewDemandModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const { addDemand, currentUser } = useAppStore()
   const { toast } = useToast()
   const navigate = useNavigate()
+
+  const { isKeyboardOpen, viewportHeight } = useKeyboard()
+  const isMobile = useIsMobile()
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -116,32 +158,49 @@ export function NewDemandModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay className="fixed inset-0 z-[100] bg-black/60 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
         <DialogPrimitive.Content
-          className="fixed z-[110] flex flex-col bg-white overflow-hidden data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 top-0 left-0 right-0 bottom-0 md:top-[50%] md:left-[50%] md:-translate-x-[50%] md:-translate-y-[50%] md:bottom-auto md:right-auto md:w-[640px] md:max-w-[90vw] md:max-h-[90vh] md:rounded-[12px]"
+          className={cn(
+            'fixed z-[110] flex flex-col bg-white overflow-hidden data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
+            isMobile
+              ? '!fixed !left-0 !right-0 !bottom-0 !top-auto !translate-x-0 !translate-y-0 !w-full !max-w-none rounded-t-[16px] rounded-b-none'
+              : 'top-0 left-0 right-0 bottom-0 md:top-[50%] md:left-[50%] md:-translate-x-[50%] md:-translate-y-[50%] md:bottom-auto md:right-auto md:w-[640px] md:max-w-[90vw] md:max-h-[90vh] md:rounded-[12px]',
+          )}
+          style={{
+            height: isMobile ? (viewportHeight ? `${viewportHeight}px` : '100dvh') : undefined,
+            maxHeight: isMobile ? '100dvh' : undefined,
+          }}
           aria-describedby={undefined}
         >
-          <div className="h-[56px] shrink-0 border-b border-[#E0E0E0] flex items-center justify-between px-4 bg-white">
-            <DialogPrimitive.Title className="text-[18px] font-bold text-[#1A3A52]">
-              Nova Demanda
-            </DialogPrimitive.Title>
-            <DialogPrimitive.Close className="h-8 w-8 flex items-center justify-center rounded-full bg-[#E0E0E0] text-[#333333] hover:bg-[#D0D0D0]">
-              <span className="sr-only">Fechar</span>
-              <svg
-                width="15"
-                height="15"
-                viewBox="0 0 15 15"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M11.7816 4.03157C12.0062 3.80702 12.0062 3.44295 11.7816 3.2184C11.5571 2.99385 11.193 2.99385 10.9685 3.2184L7.50005 6.68682L4.03164 3.2184C3.80708 2.99385 3.44301 2.99385 3.21846 3.2184C2.99391 3.44295 2.99391 3.80702 3.21846 4.03157L6.68688 7.49999L3.21846 10.9684C2.99391 11.193 2.99391 11.557 3.21846 11.7816C3.44301 12.0061 3.80708 12.0061 4.03164 11.7816L7.50005 8.31316L10.9685 11.7816C11.193 12.0061 11.5571 12.0061 11.7816 11.7816C12.0062 11.557 12.0062 11.193 11.7816 10.9684L8.31322 7.49999L11.7816 4.03157Z"
-                  fill="currentColor"
-                  fillRule="evenodd"
-                  clipRule="evenodd"
-                ></path>
-              </svg>
-            </DialogPrimitive.Close>
+          <div className="shrink-0 border-b border-[#E0E0E0] bg-white z-10 sticky top-0">
+            <div className="h-[56px] flex items-center justify-between px-4">
+              <DialogPrimitive.Title className="text-[18px] font-bold text-[#1A3A52]">
+                Nova Demanda
+              </DialogPrimitive.Title>
+              <DialogPrimitive.Close className="h-8 w-8 flex items-center justify-center rounded-full bg-[#E0E0E0] text-[#333333] hover:bg-[#D0D0D0]">
+                <span className="sr-only">Fechar</span>
+                <svg
+                  width="15"
+                  height="15"
+                  viewBox="0 0 15 15"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M11.7816 4.03157C12.0062 3.80702 12.0062 3.44295 11.7816 3.2184C11.5571 2.99385 11.193 2.99385 10.9685 3.2184L7.50005 6.68682L4.03164 3.2184C3.80708 2.99385 3.44301 2.99385 3.21846 3.2184C2.99391 3.44295 2.99391 3.80702 3.21846 4.03157L6.68688 7.49999L3.21846 10.9684C2.99391 11.193 2.99391 11.557 3.21846 11.7816C3.44301 12.0061 3.80708 12.0061 4.03164 11.7816L7.50005 8.31316L10.9685 11.7816C11.193 12.0061 11.5571 12.0061 11.7816 11.7816C12.0062 11.557 12.0062 11.193 11.7816 10.9684L8.31322 7.49999L11.7816 4.03157Z"
+                    fill="currentColor"
+                    fillRule="evenodd"
+                    clipRule="evenodd"
+                  ></path>
+                </svg>
+              </DialogPrimitive.Close>
+            </div>
+            <FormSummary
+              control={form.control}
+              isKeyboardOpen={isKeyboardOpen}
+              isMobile={isMobile}
+            />
           </div>
-          <div className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col">
+
+          <div className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col relative">
             <Form {...form}>
               <form id="new-demand-form" onSubmit={form.handleSubmit(onSubmit)}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 px-4 py-6">
@@ -293,12 +352,23 @@ export function NewDemandModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
               </form>
             </Form>
           </div>
-          <div className="sticky bottom-0 bg-white border-t border-[#E0E0E0] p-4 shrink-0 flex flex-col md:flex-row md:justify-end gap-3 z-50">
+
+          <div
+            className={cn(
+              'sticky bottom-0 bg-white border-t border-[#E0E0E0] p-3 md:p-4 shrink-0 flex z-50 gap-3',
+              isMobile && isKeyboardOpen ? 'flex-row' : 'flex-col md:flex-row md:justify-end',
+            )}
+          >
             <Button
               type="button"
               variant="ghost"
               onClick={onClose}
-              className="w-full md:w-auto min-h-[44px] md:min-h-[48px] text-[#666666] hover:text-[#333333] hover:bg-transparent font-bold text-[16px] rounded-[8px] order-2 md:order-1 border border-[#E0E0E0] md:border-transparent"
+              className={cn(
+                'min-h-[44px] md:min-h-[48px] text-[#666666] hover:text-[#333333] hover:bg-transparent font-bold text-[16px] rounded-[8px] border border-[#E0E0E0] md:border-transparent',
+                isMobile && isKeyboardOpen
+                  ? 'flex-1 order-1'
+                  : 'w-full md:w-auto order-2 md:order-1',
+              )}
             >
               Cancelar
             </Button>
@@ -306,9 +376,14 @@ export function NewDemandModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
               type="submit"
               form="new-demand-form"
               disabled={form.formState.isSubmitting}
-              className="w-full md:w-[160px] min-h-[48px] bg-[#4CAF50] hover:bg-[#388E3C] text-white font-bold text-[16px] rounded-[8px] order-1 md:order-2"
+              className={cn(
+                'min-h-[44px] md:min-h-[48px] bg-[#4CAF50] hover:bg-[#388E3C] text-white font-bold text-[16px] rounded-[8px]',
+                isMobile && isKeyboardOpen
+                  ? 'flex-1 order-2'
+                  : 'w-full md:w-[160px] order-1 md:order-2',
+              )}
             >
-              ✅ Criar Demanda
+              {isMobile && isKeyboardOpen ? '✅ Criar' : '✅ Criar Demanda'}
             </Button>
           </div>
         </DialogPrimitive.Content>

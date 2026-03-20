@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { z } from 'zod'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Check, X, ChevronDown } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -30,6 +30,8 @@ import { useToast } from '@/hooks/use-toast'
 import useAppStore from '@/stores/useAppStore'
 import { supabase } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
+import { useKeyboard } from '@/hooks/use-keyboard'
+import { useIsMobile } from '@/hooks/use-mobile'
 
 const BAIRROS_OPCOES = [
   'Vila Mariana',
@@ -81,10 +83,48 @@ interface Props {
   onClose: () => void
 }
 
+function FormSummary({
+  control,
+  isKeyboardOpen,
+  isMobile,
+}: {
+  control: any
+  isKeyboardOpen: boolean
+  isMobile: boolean
+}) {
+  const values = useWatch({ control })
+  if (!isKeyboardOpen || !isMobile) return null
+
+  return (
+    <div className="mt-3 text-[12px] text-gray-600 bg-gray-50 p-2 rounded-md border border-gray-200 animate-in fade-in slide-in-from-top-2 text-left font-normal">
+      <div className="font-semibold text-gray-800 mb-1">Resumo</div>
+      <div className="flex gap-2 truncate">
+        <span className="font-medium shrink-0">👤</span>{' '}
+        <span className="truncate">{values.nome_cliente || '...'}</span>
+      </div>
+      <div className="flex gap-2 truncate">
+        <span className="font-medium shrink-0">📍</span>{' '}
+        <span className="truncate">
+          {values.bairros?.length ? values.bairros.join(', ') : '...'}
+        </span>
+      </div>
+      <div className="flex gap-2 truncate">
+        <span className="font-medium shrink-0">💰</span>{' '}
+        <span className="truncate">
+          R$ {values.valor_minimo || 0} - R$ {values.valor_maximo || 0}
+        </span>
+      </div>
+    </div>
+  )
+}
+
 export function ModalDemandaLocacao({ isOpen, onClose }: Props) {
   const { toast } = useToast()
   const { currentUser } = useAppStore()
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const { isKeyboardOpen, viewportHeight } = useKeyboard()
+  const isMobile = useIsMobile()
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -150,13 +190,30 @@ export function ModalDemandaLocacao({ isOpen, onClose }: Props) {
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && !isSubmitting && onClose()}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto p-0 gap-0 bg-[#F9FAFB] rounded-xl border-none">
-        <DialogHeader className="p-6 pb-4 border-b border-gray-200 bg-white sticky top-0 z-10">
+      <DialogContent
+        className={cn(
+          'max-w-3xl flex flex-col gap-0 p-0 bg-[#F9FAFB] border-none overflow-hidden',
+          isMobile
+            ? '!fixed !left-0 !right-0 !bottom-0 !top-auto !translate-x-0 !translate-y-0 !w-full !max-w-none rounded-t-xl rounded-b-none'
+            : 'max-h-[90vh] rounded-xl',
+        )}
+        style={{
+          height: isMobile ? (viewportHeight ? `${viewportHeight}px` : '100dvh') : undefined,
+          maxHeight: isMobile ? '100dvh' : undefined,
+        }}
+      >
+        <DialogHeader className="p-4 md:p-6 pb-4 border-b border-gray-200 bg-white shrink-0 sticky top-0 z-10 text-left">
           <DialogTitle className="text-2xl font-bold text-[#1A3A52]">Nova Demanda</DialogTitle>
+          <FormSummary control={form.control} isKeyboardOpen={isKeyboardOpen} isMobile={isMobile} />
         </DialogHeader>
-        <div className="p-6 bg-white">
+
+        <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-white relative">
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-6">
+            <form
+              id="locacao-form"
+              onSubmit={form.handleSubmit(onSubmit)}
+              className="flex flex-col gap-6"
+            >
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 gap-y-6">
                 <FormField
                   control={form.control}
@@ -430,27 +487,42 @@ export function ModalDemandaLocacao({ isOpen, onClose }: Props) {
                   )}
                 />
               </div>
-              <div className="flex justify-between items-center pt-6 border-t border-gray-100">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={onClose}
-                  disabled={isSubmitting}
-                  className="text-gray-500 font-semibold px-6 hover:bg-gray-100"
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="bg-green-600 hover:bg-green-700 text-white font-bold h-[48px] px-8"
-                >
-                  <Check className="mr-2 h-5 w-5" />
-                  {isSubmitting ? 'Salvando...' : 'Criar Demanda'}
-                </Button>
-              </div>
             </form>
           </Form>
+        </div>
+
+        <div
+          className={cn(
+            'p-4 border-t border-gray-100 bg-white shrink-0 z-20 flex gap-3',
+            isMobile && isKeyboardOpen
+              ? 'flex-row'
+              : 'flex-col sm:flex-row sm:justify-between items-center',
+          )}
+        >
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={onClose}
+            disabled={isSubmitting}
+            className={cn(
+              'text-gray-500 font-semibold hover:bg-gray-100',
+              isMobile && isKeyboardOpen ? 'flex-1 px-4 order-1' : 'px-6 order-2 sm:order-1',
+            )}
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="submit"
+            form="locacao-form"
+            disabled={isSubmitting}
+            className={cn(
+              'bg-green-600 hover:bg-green-700 text-white font-bold h-[48px]',
+              isMobile && isKeyboardOpen ? 'flex-1 px-4 order-2' : 'px-8 order-1 sm:order-2',
+            )}
+          >
+            <Check className="mr-2 h-5 w-5" />
+            {isSubmitting ? 'Salvando...' : isMobile && isKeyboardOpen ? 'Criar' : 'Criar Demanda'}
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
