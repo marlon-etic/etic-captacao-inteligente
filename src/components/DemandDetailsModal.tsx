@@ -20,6 +20,12 @@ interface Props {
   onLost?: () => void
 }
 
+const formatLocation = (loc: any) => {
+  if (!loc) return '-'
+  if (Array.isArray(loc)) return loc.join(', ')
+  return String(loc)
+}
+
 export function DemandDetailsModal({ open, onOpenChange, demand, onPrioritize, onLost }: Props) {
   const { getSimilarDemands, users } = useAppStore()
 
@@ -113,7 +119,9 @@ export function DemandDetailsModal({ open, onOpenChange, demand, onPrioritize, o
                   <span className="text-[12px] text-[#333333] font-medium block mb-1">
                     Localização
                   </span>
-                  <span className="text-[16px] text-[#1A3A52] font-bold">{demand.location}</span>
+                  <span className="text-[16px] text-[#1A3A52] font-bold">
+                    {formatLocation(demand.location)}
+                  </span>
                 </div>
                 <div>
                   <span className="text-[12px] text-[#333333] font-medium block mb-1">
@@ -230,7 +238,7 @@ export function DemandDetailsModal({ open, onOpenChange, demand, onPrioritize, o
                 <ul className="list-disc pl-[20px] text-[16px] text-[#333333]">
                   {similarDemands.map((d) => (
                     <li key={d.id} className="mb-[4px]">
-                      {d.clientName} ({d.location})
+                      {d.clientName} ({formatLocation(d.location)})
                     </li>
                   ))}
                 </ul>

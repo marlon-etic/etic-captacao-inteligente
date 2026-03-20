@@ -131,6 +131,20 @@ export const defaultPreferences: UserPreferences = {
   },
 }
 
+const formatLocStr = (loc: any): string => {
+  if (!loc) return ''
+  return Array.isArray(loc) ? loc.join(', ') : String(loc)
+}
+
+const getLocsArray = (loc: any): string[] => {
+  if (!loc) return []
+  if (Array.isArray(loc)) return loc.map((s) => String(s).toLowerCase().trim())
+  return String(loc)
+    .toLowerCase()
+    .split(',')
+    .map((s) => s.trim())
+}
+
 const mockUsers: User[] = [
   {
     id: '1',
@@ -242,13 +256,13 @@ const createHistoryItem = (
 const createDem = (
   id: string,
   name: string,
-  loc: string,
+  loc: string | string[],
   hrs: number,
   timeframe: string = 'Até 30 dias',
 ): Demand => ({
   id,
   clientName: name,
-  location: loc,
+  location: Array.isArray(loc) ? loc : [loc],
   budget: 850000,
   minBudget: 800000,
   maxBudget: 1000000,
@@ -502,7 +516,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const [inactiveGroups] = useState<InactiveGroup[]>([
     {
       id: 'ig1',
-      location: 'Moema',
+      location: ['Moema'],
       type: 'Venda',
       bedrooms: 3,
       bathrooms: 2,
@@ -1540,17 +1554,19 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         return next
       })
 
+      const displayLoc = formatLocStr(demand.location)
+
       const drafts: Partial<AppNotification>[] = []
       usersRef.current.forEach((u) => {
         if (u.role === 'captador' && u.status === 'ativo') {
           drafts.push({
             usuario_id: u.id,
             tipo_notificacao: 'novo_imovel',
-            titulo: `🔴 DEMANDA PRIORIZADA! ${demand.clientName} em ${demand.location}`,
-            corpo: `${demand.clientName} em ${demand.location} - ${count} clientes interessados`,
+            titulo: `🔴 DEMANDA PRIORIZADA! ${demand.clientName} em ${displayLoc}`,
+            corpo: `${demand.clientName} em ${displayLoc} - ${count} clientes interessados`,
             detalhes: {
               código: demand.id,
-              bairro: demand.location,
+              bairro: displayLoc,
               valor: demand.maxBudget ? `Até R$ ${demand.maxBudget}` : '-',
               perfil: `${demand.bedrooms || 0} dorms`,
             },
@@ -2008,17 +2024,13 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           : allDemands
       const d = listToSearch.find((x) => x.id === id)
       if (!d) return []
-      const dLocs = d.location
-        .toLowerCase()
-        .split(',')
-        .map((s) => s.trim())
+
+      const dLocs = getLocsArray(d.location)
+
       return listToSearch.filter((x) => {
         if (x.id === d.id || x.type !== d.type) return false
-        return x.location
-          .toLowerCase()
-          .split(',')
-          .map((s) => s.trim())
-          .some((l) => dLocs.includes(l))
+        const xLocs = getLocsArray(x.location)
+        return xLocs.some((l) => dLocs.includes(l))
       })
     },
     [allDemands, currentUser],
@@ -2288,11 +2300,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
                 return null
               let score = 0
               const pLoc = property.neighborhood?.toLowerCase() || ''
-              const dLocs =
-                demand.location
-                  ?.toLowerCase()
-                  .split(',')
-                  .map((s) => s.trim()) || []
+
+              const dLocs = getLocsArray(demand.location)
+
               if (dLocs.some((dLoc) => dLoc.includes(pLoc) || pLoc.includes(dLoc))) score += 40
               const budgetMax = (demand.maxBudget || demand.budget || 0) * 1.1
               const budgetMin = (demand.minBudget || 0) * 0.9
@@ -2381,7 +2391,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           let matchedGroupId = null
           const dMin = d.minBudget || d.budget || 0
           const dMax = d.maxBudget || d.budget || 0
-          const targetLoc = Array.isArray(d.location) ? d.location.join(', ') : d.location
+          const targetLoc = formatLocStr(d.location)
 
           // Unification Logic: find group within ±10% price range and matching criteria
           for (const existingDemand of allDemandsRef.current) {
@@ -2389,7 +2399,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
               continue
 
             if (
-              existingDemand.location === targetLoc &&
+              formatLocStr(existingDemand.location) === targetLoc &&
               existingDemand.type === d.type &&
               existingDemand.bedrooms === d.bedrooms &&
               existingDemand.parkingSpots === d.parkingSpots
@@ -2583,11 +2593,17 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
               `Imóvel captado e associado à demanda (${seq}º imóvel)`,
             )
 
+            const neighborhoodFromLoc =
+              Array.isArray(demand.location) && demand.location.length > 0
+                ? demand.location[0]
+                : typeof demand.location === 'string'
+                  ? demand.location.split(',')[0]
+                  : 'Desconhecido'
+
             const newProp: CapturedProperty = {
               code,
               value: payload?.value || demand.budget || demand.maxBudget,
-              neighborhood:
-                payload?.neighborhood || demand.location.split(',')[0] || 'Desconhecido',
+              neighborhood: payload?.neighborhood || neighborhoodFromLoc,
               bairro_tipo: payload?.bairro_tipo || 'listado',
               docCompleta: payload?.docCompleta || false,
               obs: payload?.obs,
@@ -2623,7 +2639,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
                 usuario_id: demand.createdBy,
                 tipo_notificacao: 'demanda_respondida',
                 titulo: `✅ IMÓVEL CAPTADO! ${code} para ${demand.clientName}`,
-                corpo: `Um novo imóvel foi captado para ${demand.clientName} em ${demand.location}`,
+                corpo: `Um novo imóvel foi captado para ${demand.clientName} em ${formatLocStr(demand.location)}`,
                 detalhes: { captador: currentUser?.name, codigo: code },
                 acao_url: `/app/demandas`,
                 urgencia: 'alta',
@@ -2707,7 +2723,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
                   {
                     usuario_id: demand.createdBy,
                     tipo_notificacao: 'perdido',
-                    titulo: `⏳ Prazo Estendido: ${demand.clientName} em ${demand.location}`,
+                    titulo: `⏳ Prazo Estendido: ${demand.clientName} em ${formatLocStr(demand.location)}`,
                     corpo: `Captador pediu extensão para ${demand.clientName}`,
                     detalhes: { motivo: payload.reason },
                     urgencia: 'baixa',
