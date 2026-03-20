@@ -648,8 +648,7 @@ export const Constants = {
 //   PRIMARY KEY demandas_locacao_pkey: PRIMARY KEY (id)
 //   FOREIGN KEY demandas_locacao_sdr_id_fkey: FOREIGN KEY (sdr_id) REFERENCES users(id) ON DELETE SET NULL
 //   CHECK demandas_locacao_status_demanda_check: CHECK (((status_demanda)::text = ANY ((ARRAY['aberta'::character varying, 'atendida'::character varying, 'impossivel'::character varying, 'sem_resposta_24h'::character varying])::text[])))
-//   CHECK demandas_locacao_telefone_check: CHECK (((telefone)::text ~ '^\([0-9]{2}\) 9[0-9]{4}-[0-9]{4}
-::text))
+//   CHECK demandas_locacao_telefone_check: CHECK (((telefone IS NULL) OR (((telefone)::text ~ '^\([0-9]{2}\) 9[0-9]{4}-[0-9]{4}'::text) AND (length((telefone)::text) = 15))))
 //   CHECK demandas_locacao_vagas_estacionamento_check: CHECK (((vagas_estacionamento >= 0) AND (vagas_estacionamento <= 10)))
 // Table: demandas_vendas
 //   CHECK check_valor_min_max_vendas: CHECK ((valor_maximo >= valor_minimo))
