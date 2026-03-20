@@ -115,13 +115,82 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
 
     const channel = supabase
       .channel(`demands_changes_${type}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table }, () => debouncedFetch(true))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'imoveis_captados' }, () =>
-        debouncedFetch(true),
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table }, (payload) => {
+        if (payload.eventType === 'INSERT') {
+          const d = payload.new
+          setDemands((prev) => {
+            if (prev.some((x) => x.id === d.id)) return prev
+            return [
+              {
+                id: d.id,
+                nome_cliente: d.nome_cliente || d.cliente_nome || 'Cliente',
+                bairros: d.bairros || d.localizacoes || [],
+                valor_minimo: d.valor_minimo || 0,
+                valor_maximo: d.valor_maximo || d.orcamento_max || 0,
+                nivel_urgencia: d.nivel_urgencia || d.urgencia || 'Média',
+                status_demanda: d.status_demanda || 'aberta',
+                created_at: d.created_at || new Date().toISOString(),
+                tipo: type,
+                imoveis_captados: [],
+              },
+              ...prev,
+            ]
+          })
+        } else if (payload.eventType === 'UPDATE') {
+          const d = payload.new
+          setDemands((prev) =>
+            prev.map((x) =>
+              x.id === d.id
+                ? {
+                    ...x,
+                    status_demanda: d.status_demanda || x.status_demanda,
+                    nome_cliente: d.nome_cliente || d.cliente_nome || x.nome_cliente,
+                    bairros: d.bairros || d.localizacoes || x.bairros,
+                    valor_minimo: d.valor_minimo || x.valor_minimo,
+                    valor_maximo: d.valor_maximo || d.orcamento_max || x.valor_maximo,
+                    nivel_urgencia: d.nivel_urgencia || d.urgencia || x.nivel_urgencia,
+                  }
+                : x,
+            ),
+          )
+        } else if (payload.eventType === 'DELETE') {
+          setDemands((prev) => prev.filter((x) => x.id !== payload.old.id))
+        }
+        debouncedFetch(true)
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'imoveis_captados' }, () => {
+        debouncedFetch(true)
+      })
       .subscribe()
 
-    const handleEvent = () => debouncedFetch(true)
+    const handleEvent = (e: Event) => {
+      const customEvent = e as CustomEvent
+      if (customEvent.detail && customEvent.detail.tipo === type) {
+        const d = customEvent.detail.data
+        if (d) {
+          setDemands((prev) => {
+            if (prev.some((x) => x.id === d.id)) return prev
+            return [
+              {
+                id: d.id,
+                nome_cliente: d.nome_cliente || d.cliente_nome || 'Cliente',
+                bairros: d.bairros || d.localizacoes || [],
+                valor_minimo: d.valor_minimo || 0,
+                valor_maximo: d.valor_maximo || d.orcamento_max || 0,
+                nivel_urgencia: d.nivel_urgencia || d.urgencia || 'Média',
+                status_demanda: d.status_demanda || 'aberta',
+                created_at: d.created_at || new Date().toISOString(),
+                tipo: type,
+                imoveis_captados: [],
+              },
+              ...prev,
+            ]
+          })
+        }
+      }
+      debouncedFetch(true)
+    }
+
     window.addEventListener('demanda-created', handleEvent)
     window.addEventListener('demanda-updated', handleEvent)
 

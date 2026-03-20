@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { z } from 'zod'
-import { useForm, useWatch } from 'react-hook-form'
+import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Check, ChevronDown } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -142,18 +142,28 @@ export function ModalDemandaVenda({ isOpen, onClose }: Props) {
           status_demanda: 'aberta',
           corretor_id: authData.user.id,
         })
-        .select('id')
+        .select('*')
         .single()
 
       if (error) throw error
 
-      window.dispatchEvent(new Event('demanda-created'))
+      window.dispatchEvent(new CustomEvent('demanda-created', { detail: { tipo: 'Venda', data } }))
 
       toast({
         title: `✅ Demanda de venda criada!`,
         className: 'bg-emerald-600 text-white border-emerald-600',
         duration: 3000,
       })
+
+      sessionStorage.setItem(
+        'etic_filters_my_demands_view_supabase_Venda',
+        JSON.stringify({ status: 'Todos', urgencia: 'Todos', data: 'Todos', bairro: '' }),
+      )
+      sessionStorage.setItem(
+        'etic_filters_my_demands_view_supabase_Aluguel',
+        JSON.stringify({ status: 'Todos', urgencia: 'Todos', data: 'Todos', bairro: '' }),
+      )
+      window.dispatchEvent(new Event('filters-updated'))
 
       setTimeout(() => {
         form.reset()
@@ -300,10 +310,12 @@ export function ModalDemandaVenda({ isOpen, onClose }: Props) {
                           </div>
 
                           {bairrosOpen && (
-                            <div className="absolute top-full left-0 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl z-[9999] overflow-hidden flex flex-col">
+                            <div className="absolute top-full left-0 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-[0_10px_40px_-10px_rgba(0,0,0,0.3)] z-[99999] flex flex-col overflow-hidden">
                               <div
-                                className="max-h-[250px] overflow-y-auto overscroll-contain"
+                                className="max-h-[250px] overflow-y-auto"
                                 style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
+                                onWheel={(e) => e.stopPropagation()}
+                                onTouchMove={(e) => e.stopPropagation()}
                               >
                                 {BAIRROS_OPCOES.map((b) => {
                                   const isSelected = field.value.includes(b)
@@ -314,7 +326,9 @@ export function ModalDemandaVenda({ isOpen, onClose }: Props) {
                                         'flex items-center gap-3 px-4 py-3 cursor-pointer border-b border-gray-50 last:border-0 transition-colors',
                                         isSelected ? 'bg-[#F5F8FA]' : 'hover:bg-gray-50',
                                       )}
-                                      onClick={() => {
+                                      onClick={(e) => {
+                                        e.preventDefault()
+                                        e.stopPropagation()
                                         field.onChange(
                                           isSelected
                                             ? field.value.filter((v: string) => v !== b)
@@ -480,6 +494,8 @@ export function ModalDemandaVenda({ isOpen, onClose }: Props) {
                     </FormItem>
                   )}
                 />
+                {/* Spacer for mobile to avoid the fixed footer covering last input */}
+                {isMobile && <div className="h-[80px] md:hidden w-full shrink-0 md:col-span-2" />}
               </div>
             </form>
           </Form>

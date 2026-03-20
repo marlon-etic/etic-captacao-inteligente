@@ -18,5 +18,20 @@ export function useViewFilters<T extends Record<string, string>>(
     sessionStorage.setItem(`etic_filters_${viewId}`, JSON.stringify(filters))
   }, [filters, viewId])
 
+  useEffect(() => {
+    const handleReset = () => {
+      try {
+        const stored = sessionStorage.getItem(`etic_filters_${viewId}`)
+        if (stored) {
+          setFilters(JSON.parse(stored))
+        }
+      } catch {
+        // ignore
+      }
+    }
+    window.addEventListener('filters-updated', handleReset)
+    return () => window.removeEventListener('filters-updated', handleReset)
+  }, [viewId])
+
   return [filters, setFilters] as const
 }

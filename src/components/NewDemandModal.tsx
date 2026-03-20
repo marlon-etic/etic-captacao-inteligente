@@ -164,39 +164,60 @@ export function NewDemandModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
 
       if (authData?.user) {
         if (values.type === 'Aluguel') {
-          await supabase.from('demandas_locacao').insert({
-            nome_cliente: values.clientName,
-            telefone: values.clientPhone || null,
-            email: values.clientEmail || null,
-            bairros: values.location,
-            valor_minimo: values.minBudget,
-            valor_maximo: values.maxBudget,
-            dormitorios: values.bedrooms,
-            vagas_estacionamento: values.parkingSpots,
-            nivel_urgencia: values.timeframe,
-            observacoes: values.description || null,
-            status_demanda: 'aberta',
-            sdr_id: authData.user.id,
-          })
+          const { data, error } = await supabase
+            .from('demandas_locacao')
+            .insert({
+              nome_cliente: values.clientName,
+              telefone: values.clientPhone || null,
+              email: values.clientEmail || null,
+              bairros: values.location,
+              valor_minimo: values.minBudget,
+              valor_maximo: values.maxBudget,
+              dormitorios: values.bedrooms,
+              vagas_estacionamento: values.parkingSpots,
+              nivel_urgencia: values.timeframe,
+              observacoes: values.description || null,
+              status_demanda: 'aberta',
+              sdr_id: authData.user.id,
+            })
+            .select('*')
+            .single()
+
+          if (!error && data) {
+            window.dispatchEvent(
+              new CustomEvent('demanda-created', { detail: { tipo: 'Aluguel', data } }),
+            )
+          }
         } else {
-          await supabase.from('demandas_vendas').insert({
-            nome_cliente: values.clientName,
-            telefone: values.clientPhone || null,
-            email: values.clientEmail || null,
-            bairros: values.location,
-            valor_minimo: values.minBudget,
-            valor_maximo: values.maxBudget,
-            dormitorios: values.bedrooms,
-            vagas_estacionamento: values.parkingSpots,
-            nivel_urgencia: values.timeframe,
-            necessidades_especificas: values.description || null,
-            status_demanda: 'aberta',
-            tipo_imovel: 'Casa', // default
-            corretor_id: authData.user.id,
-          })
+          const { data, error } = await supabase
+            .from('demandas_vendas')
+            .insert({
+              nome_cliente: values.clientName,
+              telefone: values.clientPhone || null,
+              email: values.clientEmail || null,
+              bairros: values.location,
+              valor_minimo: values.minBudget,
+              valor_maximo: values.maxBudget,
+              dormitorios: values.bedrooms,
+              vagas_estacionamento: values.parkingSpots,
+              nivel_urgencia: values.timeframe,
+              necessidades_especificas: values.description || null,
+              status_demanda: 'aberta',
+              tipo_imovel: 'Casa', // default
+              corretor_id: authData.user.id,
+            })
+            .select('*')
+            .single()
+
+          if (!error && data) {
+            window.dispatchEvent(
+              new CustomEvent('demanda-created', { detail: { tipo: 'Venda', data } }),
+            )
+          }
         }
       }
 
+      // Keep local store for mock compat
       addDemand({
         clientName: values.clientName,
         phone: values.clientPhone,
@@ -212,8 +233,6 @@ export function NewDemandModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
         description: values.description || 'Nova demanda via modal rápido',
       })
 
-      window.dispatchEvent(new Event('demanda-created'))
-
       toast({
         title: '✅ Demanda cadastrada com sucesso!',
         className: 'bg-emerald-600 text-white border-emerald-600',
@@ -222,9 +241,14 @@ export function NewDemandModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
 
       onClose()
       sessionStorage.setItem(
-        'etic_filters_my_demands_view_all',
-        JSON.stringify({ status: 'Ativos', prazo: 'Todos', bairro: '' }),
+        'etic_filters_my_demands_view_supabase_Venda',
+        JSON.stringify({ status: 'Todos', urgencia: 'Todos', data: 'Todos', bairro: '' }),
       )
+      sessionStorage.setItem(
+        'etic_filters_my_demands_view_supabase_Aluguel',
+        JSON.stringify({ status: 'Todos', urgencia: 'Todos', data: 'Todos', bairro: '' }),
+      )
+      window.dispatchEvent(new Event('filters-updated'))
       navigate('/app?tab=minhas-demandas')
     } catch (e: any) {
       toast({
