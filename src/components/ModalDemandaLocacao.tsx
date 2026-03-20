@@ -1,8 +1,8 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import { z } from 'zod'
 import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Check, ChevronDown } from 'lucide-react'
+import { Check, ChevronDown, X } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import {
   Form,
@@ -24,8 +24,6 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Command, CommandGroup, CommandItem, CommandList } from '@/components/ui/command'
 import { useToast } from '@/hooks/use-toast'
 import { supabase } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
@@ -112,46 +110,11 @@ function ProgressBar({ control }: { control: any }) {
   )
 }
 
-function FormSummary({
-  control,
-  isKeyboardOpen,
-  isMobile,
-}: {
-  control: any
-  isKeyboardOpen: boolean
-  isMobile: boolean
-}) {
-  const values = useWatch({ control })
-  if (!isKeyboardOpen || !isMobile) return null
-
-  return (
-    <div className="mt-2 text-[12px] text-gray-600 bg-[#F5F5F5] p-2.5 rounded-[8px] border border-[#E0E0E0] animate-in fade-in slide-in-from-top-2 text-left font-normal shadow-[inset_0_1px_2px_rgba(0,0,0,0.05)]">
-      <div className="font-bold text-[#1A3A52] mb-1.5 uppercase tracking-wider text-[10px]">
-        Resumo
-      </div>
-      <div className="flex gap-2 truncate items-center">
-        <span className="font-medium shrink-0 text-[14px]">👤</span>{' '}
-        <span className="truncate font-medium">{values.nome_cliente || '...'}</span>
-      </div>
-      <div className="flex gap-2 truncate items-center">
-        <span className="font-medium shrink-0 text-[14px]">📍</span>{' '}
-        <span className="truncate font-medium">
-          {values.bairros?.length ? values.bairros.join(', ') : '...'}
-        </span>
-      </div>
-      <div className="flex gap-2 truncate items-center">
-        <span className="font-medium shrink-0 text-[14px]">💰</span>{' '}
-        <span className="truncate font-medium">
-          R$ {values.valor_minimo || 0} - R$ {values.valor_maximo || 0}
-        </span>
-      </div>
-    </div>
-  )
-}
-
 export function ModalDemandaLocacao({ isOpen, onClose }: Props) {
   const { toast } = useToast()
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [bairrosOpen, setBairrosOpen] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
 
   const { isKeyboardOpen, viewportHeight } = useKeyboard()
   const isMobile = useIsMobile()
@@ -173,6 +136,18 @@ export function ModalDemandaLocacao({ isOpen, onClose }: Props) {
     },
     mode: 'onTouched',
   })
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setBairrosOpen(false)
+      }
+    }
+    if (bairrosOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [bairrosOpen])
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>, onChange: any) => {
     let v = e.target.value.replace(/\D/g, '')
@@ -207,7 +182,7 @@ export function ModalDemandaLocacao({ isOpen, onClose }: Props) {
       window.dispatchEvent(new Event('demanda-created'))
 
       toast({
-        title: `✅ Demanda criada com sucesso! ID: ${data.id}`,
+        title: `✅ Demanda criada com sucesso!`,
         className: 'bg-emerald-600 text-white border-emerald-600',
         duration: 3000,
       })
@@ -216,7 +191,7 @@ export function ModalDemandaLocacao({ isOpen, onClose }: Props) {
         form.reset()
         onClose()
         setIsSubmitting(false)
-      }, 1500)
+      }, 1000)
     } catch (error: any) {
       toast({ title: 'Erro ao criar demanda', description: error.message, variant: 'destructive' })
       setIsSubmitting(false)
@@ -241,10 +216,9 @@ export function ModalDemandaLocacao({ isOpen, onClose }: Props) {
 
         <DialogHeader className="p-4 md:p-6 pb-4 border-b border-gray-200 bg-white shrink-0 sticky top-0 z-10 text-left mt-[4px]">
           <DialogTitle className="text-xl font-bold text-[#1A3A52]">Nova Demanda</DialogTitle>
-          <FormSummary control={form.control} isKeyboardOpen={isKeyboardOpen} isMobile={isMobile} />
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-white relative">
+        <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-white relative" id="modal-scroll-area">
           <Form {...form}>
             <form
               id="locacao-form"
@@ -362,52 +336,92 @@ export function ModalDemandaLocacao({ isOpen, onClose }: Props) {
                     <FormItem className="md:col-span-2">
                       <FormLabel className="text-gray-800 font-bold">Bairros</FormLabel>
                       <FormControl>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button
-                              variant="outline"
-                              className={cn(
-                                'w-full justify-between bg-white border-gray-300 font-normal min-h-[48px]',
-                                !field.value.length && 'text-muted-foreground',
-                                form.formState.errors.bairros && 'border-red-500',
+                        <div className="relative" ref={dropdownRef}>
+                          <div
+                            className={cn(
+                              'w-full min-h-[48px] border rounded-lg px-4 py-3 flex justify-between items-center bg-white cursor-pointer transition-colors',
+                              form.formState.errors.bairros
+                                ? 'border-red-500'
+                                : 'border-gray-300 hover:border-[#1A3A52]',
+                              bairrosOpen && 'border-[#1A3A52] ring-2 ring-[#1A3A52] ring-offset-0',
+                            )}
+                            onClick={() => setBairrosOpen(!bairrosOpen)}
+                          >
+                            <div className="flex flex-wrap gap-1 items-center flex-1">
+                              {field.value.length ? (
+                                <span className="font-semibold text-[#1A3A52]">
+                                  {field.value.length} bairros selecionados
+                                </span>
+                              ) : (
+                                <span className="text-gray-400">Selecione os bairros alvo...</span>
                               )}
-                            >
-                              {field.value.length
-                                ? `${field.value.length} bairros selecionados`
-                                : 'Selecione os bairros alvo...'}
-                              <ChevronDown className="h-4 w-4 opacity-50" />
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-[400px] p-0 z-[1050]" align="start">
-                            <Command>
-                              <CommandList className="max-h-[200px]">
-                                <CommandGroup>
-                                  {BAIRROS_OPCOES.map((b) => (
-                                    <CommandItem
+                            </div>
+                            <ChevronDown className="h-4 w-4 opacity-50 shrink-0 ml-2" />
+                          </div>
+
+                          {bairrosOpen && (
+                            <div className="absolute top-full left-0 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl z-[9999] overflow-hidden flex flex-col">
+                              <div
+                                className="max-h-[250px] overflow-y-auto overscroll-contain"
+                                style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
+                              >
+                                {BAIRROS_OPCOES.map((b) => {
+                                  const isSelected = field.value.includes(b)
+                                  return (
+                                    <div
                                       key={b}
-                                      onSelect={() =>
+                                      className={cn(
+                                        'flex items-center gap-3 px-4 py-3 cursor-pointer border-b border-gray-50 last:border-0 transition-colors',
+                                        isSelected ? 'bg-[#F5F8FA]' : 'hover:bg-gray-50',
+                                      )}
+                                      onClick={() => {
                                         field.onChange(
-                                          field.value.includes(b)
+                                          isSelected
                                             ? field.value.filter((v: string) => v !== b)
                                             : [...field.value, b],
                                         )
-                                      }
-                                      className="min-h-[44px]"
+                                      }}
                                     >
-                                      <Check
+                                      <div
                                         className={cn(
-                                          'mr-2 h-4 w-4',
-                                          field.value.includes(b) ? 'opacity-100' : 'opacity-0',
+                                          'h-5 w-5 border rounded flex items-center justify-center transition-colors shrink-0',
+                                          isSelected
+                                            ? 'bg-[#1A3A52] border-[#1A3A52]'
+                                            : 'border-gray-300',
                                         )}
-                                      />
-                                      {b}
-                                    </CommandItem>
-                                  ))}
-                                </CommandGroup>
-                              </CommandList>
-                            </Command>
-                          </PopoverContent>
-                        </Popover>
+                                      >
+                                        {isSelected && <Check className="h-3 w-3 text-white" />}
+                                      </div>
+                                      <span
+                                        className={cn(
+                                          'text-[14px]',
+                                          isSelected
+                                            ? 'text-[#1A3A52] font-semibold'
+                                            : 'text-gray-800',
+                                        )}
+                                      >
+                                        {b}
+                                      </span>
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                              <div className="p-3 border-t border-gray-100 bg-gray-50 flex justify-between items-center">
+                                <span className="text-xs text-gray-500 font-medium">
+                                  {field.value.length} selecionados
+                                </span>
+                                <Button
+                                  size="sm"
+                                  type="button"
+                                  onClick={() => setBairrosOpen(false)}
+                                  className="bg-[#1A3A52] text-white hover:bg-[#1A3A52]/90"
+                                >
+                                  Concluir
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </FormControl>
                       <FormMessage />
                     </FormItem>

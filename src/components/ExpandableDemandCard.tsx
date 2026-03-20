@@ -109,6 +109,7 @@ export function ExpandableDemandCard({
   }
 
   const capturedCount = demand.imoveis_captados?.length || 0
+  const isBrandNew = new Date().getTime() - new Date(demand.created_at).getTime() < 1000 * 60 * 5 // 5 minutes
 
   return (
     <Card
@@ -123,6 +124,11 @@ export function ExpandableDemandCard({
       >
         <div className="flex flex-col gap-2 flex-1 w-full">
           <div className="flex items-center gap-2 flex-wrap">
+            {isBrandNew && (
+              <Badge className="bg-pink-500 hover:bg-pink-600 text-white animate-pulse shadow-sm border-none uppercase tracking-wide px-2">
+                NOVA
+              </Badge>
+            )}
             <Badge className={cn('border-none', getStatusColor(demand.status_demanda))}>
               {getStatusLabel(demand.status_demanda)}
             </Badge>
@@ -187,7 +193,7 @@ export function ExpandableDemandCard({
               {demand.imoveis_captados.map((imovel) => (
                 <div
                   key={imovel.id}
-                  className="bg-white p-3 rounded-lg border border-[#E5E5E5] shadow-sm flex flex-col lg:flex-row gap-4 items-start lg:items-center"
+                  className="bg-white p-3 rounded-lg border border-[#E5E5E5] shadow-sm flex flex-col lg:flex-row gap-4 items-start lg:items-center animate-in fade-in slide-in-from-top-2"
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">

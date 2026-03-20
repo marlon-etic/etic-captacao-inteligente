@@ -353,4 +353,3 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
     </div>
   )
 }
-
