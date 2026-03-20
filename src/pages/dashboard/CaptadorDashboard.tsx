@@ -47,12 +47,15 @@ export function CaptadorDashboard() {
                 key={tab.id}
                 onClick={(e) => {
                   setMainTab(tab.id)
+                  const target = e.currentTarget
                   setTimeout(() => {
-                    e.currentTarget.scrollIntoView({
-                      behavior: 'smooth',
-                      block: 'nearest',
-                      inline: 'center',
-                    })
+                    if (target) {
+                      target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'nearest',
+                        inline: 'center',
+                      })
+                    }
                   }, 50)
                 }}
                 className={cn(
