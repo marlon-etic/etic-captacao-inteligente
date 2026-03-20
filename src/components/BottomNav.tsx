@@ -15,8 +15,8 @@ export function BottomNav() {
 
   if (isSDRCorretor) {
     navItems = [
-      { icon: Users, label: 'Clientes', path: '/app?tab=minhas-demandas' },
-      { icon: Building, label: 'Imóveis', path: '/app?tab=disponiveis-geral' },
+      { icon: Users, label: 'Clientes', path: '/app' },
+      { icon: Building, label: 'Imóveis', path: '/app/disponivel-geral' },
       { icon: User, label: 'Perfil', path: '/app/perfil' },
     ]
   } else {
@@ -28,18 +28,14 @@ export function BottomNav() {
   }
 
   const checkIsActive = (itemPath: string) => {
-    if (itemPath.includes('?tab=')) {
-      const tab = itemPath.split('?tab=')[1]
-      return (
-        location.search.includes(`tab=${tab}`) ||
-        (location.pathname === '/app' && !location.search && tab === 'minhas-demandas')
-      )
+    if (itemPath === '/app') {
+      return location.pathname === '/app'
     }
-    return location.pathname === itemPath && !location.search
+    return location.pathname.startsWith(itemPath)
   }
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 h-[64px] bg-[#FFFFFF] border-t border-[#E0E0E0] flex items-center justify-around px-2 z-40 pb-safe shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 h-[64px] bg-[#FFFFFF] border-t border-[#E0E0E0] flex items-center justify-around px-2 z-[40] pb-safe shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
       {navItems.map((item) => {
         const isActive = checkIsActive(item.path)
 

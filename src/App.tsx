@@ -23,6 +23,8 @@ import { Auditoria } from '@/pages/admin/Auditoria'
 import PontuacaoPage from '@/pages/dashboard/PontuacaoPage'
 import HistoricoPage from '@/pages/dashboard/HistoricoPage'
 import PerdidosPage from '@/pages/dashboard/PerdidosPage'
+import DisponivelGeralPage from '@/pages/dashboard/DisponivelGeralPage'
+import TodosCaptadosPage from '@/pages/dashboard/TodosCaptadosPage'
 
 const App = () => (
   <AppStoreProvider>
@@ -57,6 +59,8 @@ const App = () => (
             <Route path="pontuacao" element={<PontuacaoPage />} />
             <Route path="historico" element={<HistoricoPage />} />
             <Route path="perdidos" element={<PerdidosPage />} />
+            <Route path="disponivel-geral" element={<DisponivelGeralPage />} />
+            <Route path="todos-captados" element={<TodosCaptadosPage />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>

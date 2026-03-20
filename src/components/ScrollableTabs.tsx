@@ -13,12 +13,16 @@ export function ScrollableTabs({ tabs, activeTab, onTabChange, className }: Scro
   const scrollRef = useRef<HTMLDivElement>(null)
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(true)
+  const [hasScrolled, setHasScrolled] = useState(false)
 
   const checkScroll = () => {
     if (scrollRef.current) {
       const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current
       setCanScrollLeft(scrollLeft > 0)
       setCanScrollRight(Math.ceil(scrollLeft + clientWidth) < scrollWidth)
+      if (scrollLeft > 20) {
+        setHasScrolled(true)
+      }
     }
   }
 
@@ -55,7 +59,7 @@ export function ScrollableTabs({ tabs, activeTab, onTabChange, className }: Scro
       {canScrollLeft && (
         <div
           className="absolute left-0 top-0 bottom-0 w-[32px] z-10 pointer-events-none"
-          style={{ background: 'linear-gradient(to right, rgba(0,0,0,0.15), transparent)' }}
+          style={{ background: 'linear-gradient(to right, rgba(245,245,245,0.9), transparent)' }}
         />
       )}
 
@@ -87,10 +91,13 @@ export function ScrollableTabs({ tabs, activeTab, onTabChange, className }: Scro
       </div>
 
       {canScrollRight && (
-        <div
-          className="absolute right-0 top-0 bottom-0 w-[32px] z-10 pointer-events-none"
-          style={{ background: 'linear-gradient(to left, rgba(0,0,0,0.15), transparent)' }}
-        />
+        <div className="absolute right-0 top-1/2 -translate-y-1/2 pr-2 pointer-events-none z-20 flex items-center bg-gradient-to-l from-[#F5F5F5] via-[#F5F5F5] to-transparent pl-8 h-full pb-2">
+          {!hasScrolled && (
+            <span className="text-[#10B981] font-bold text-[12px] animate-pulse whitespace-nowrap bg-white px-2 py-1 rounded-full shadow-[0_2px_4px_rgba(0,0,0,0.1)] border border-[#10B981]/20">
+              Deslize &rarr;
+            </span>
+          )}
+        </div>
       )}
     </div>
   )

@@ -61,21 +61,27 @@ export function AppSidebar() {
   if (isSDRCorretor) {
     navItems = [
       {
-        title: 'Meus Clientes',
+        title: 'Minhas Demandas',
         icon: Users,
-        url: '/app?tab=minhas-demandas',
+        url: '/app',
         badge: myActiveDemandsCount > 0 ? myActiveDemandsCount : undefined,
       },
       {
-        title: 'Propriedades Disponíveis',
+        title: 'Disponível Geral',
         icon: Building,
-        url: '/app?tab=disponiveis-geral',
+        url: '/app/disponivel-geral',
         badge: myAvailablePropsCount > 0 ? myAvailablePropsCount : undefined,
+      },
+      {
+        title: 'Todos Captados',
+        icon: Building,
+        url: '/app/todos-captados',
+        badge: undefined,
       },
       {
         title: 'Histórico',
         icon: History,
-        url: '/app?tab=historico',
+        url: '/app/historico',
         badge: historyCount > 0 ? historyCount : undefined,
       },
       { title: 'Notificações', icon: Bell, url: '/app/notificacoes' },
@@ -109,21 +115,14 @@ export function AppSidebar() {
   }
 
   const checkIsActive = (itemUrl: string) => {
-    if (itemUrl.includes('?tab=')) {
-      const tab = itemUrl.split('?tab=')[1]
-      return (
-        location.search.includes(`tab=${tab}`) ||
-        (location.pathname === '/app' && !location.search && tab === 'minhas-demandas')
-      )
-    }
     if (itemUrl === '/app') {
-      return location.pathname === '/app' && !location.search
+      return location.pathname === '/app'
     }
     return location.pathname.startsWith(itemUrl)
   }
 
   return (
-    <Sidebar className="border-r-[2px] border-[#2E5F8A]/20 hidden md:flex bg-[#F5F5F5]">
+    <Sidebar className="border-r-[2px] border-[#2E5F8A]/20 hidden md:flex bg-[#F5F5F5] z-[100]">
       <SidebarContent className="bg-[#F5F5F5]">
         <div className="p-[24px]">
           <h1 className="text-[20px] font-bold text-[#1A3A52] tracking-tight flex items-center gap-[8px]">

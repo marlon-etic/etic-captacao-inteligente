@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { Button } from '@/components/ui/button'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
@@ -71,22 +71,24 @@ function FormSummary({
   if (!isKeyboardOpen || !isMobile) return null
 
   return (
-    <div className="px-4 pb-3 text-[12px] text-gray-600 animate-in fade-in slide-in-from-top-2 text-left">
-      <div className="bg-[#F5F5F5] rounded-md p-2 border border-[#E0E0E0] space-y-1">
-        <div className="font-semibold text-[#1A3A52] mb-1">Resumo</div>
-        <div className="flex gap-2 truncate">
-          <span className="font-medium shrink-0">👤</span>{' '}
-          <span className="truncate">{values.clientName || '...'}</span>
+    <div className="px-4 pb-3 text-[12px] text-gray-600 animate-in fade-in slide-in-from-top-2 text-left mt-2">
+      <div className="bg-[#F5F5F5] rounded-[8px] p-2.5 border border-[#E0E0E0] space-y-1 shadow-[inset_0_1px_2px_rgba(0,0,0,0.05)]">
+        <div className="font-bold text-[#1A3A52] mb-1.5 uppercase tracking-wider text-[10px]">
+          Resumo
         </div>
-        <div className="flex gap-2 truncate">
-          <span className="font-medium shrink-0">📍</span>{' '}
-          <span className="truncate">
+        <div className="flex gap-2 truncate items-center">
+          <span className="font-medium shrink-0 text-[14px]">👤</span>{' '}
+          <span className="truncate font-medium">{values.clientName || '...'}</span>
+        </div>
+        <div className="flex gap-2 truncate items-center">
+          <span className="font-medium shrink-0 text-[14px]">📍</span>{' '}
+          <span className="truncate font-medium">
             {values.location?.length ? values.location.join(', ') : '...'}
           </span>
         </div>
-        <div className="flex gap-2 truncate">
-          <span className="font-medium shrink-0">💰</span>{' '}
-          <span className="truncate">
+        <div className="flex gap-2 truncate items-center">
+          <span className="font-medium shrink-0 text-[14px]">💰</span>{' '}
+          <span className="truncate font-medium">
             R$ {values.minBudget || 0} - R$ {values.maxBudget || 0}
           </span>
         </div>
@@ -100,7 +102,7 @@ export function NewDemandModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
   const { toast } = useToast()
   const navigate = useNavigate()
 
-  const { isKeyboardOpen, viewportHeight } = useKeyboard()
+  const { isKeyboardOpen, viewportHeight, keyboardHeight } = useKeyboard()
   const isMobile = useIsMobile()
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -120,6 +122,20 @@ export function NewDemandModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
       description: '',
     },
   })
+
+  const values = useWatch({ control: form.control })
+  const progress = useMemo(() => {
+    let filled = 0
+    const total = 7
+    if (values.clientName) filled++
+    if (values.type) filled++
+    if (values.location && values.location.length > 0) filled++
+    if (values.minBudget) filled++
+    if (values.maxBudget) filled++
+    if (values.bedrooms) filled++
+    if (values.timeframe) filled++
+    return Math.round((filled / total) * 100)
+  }, [values])
 
   useEffect(() => {
     if (!isOpen) form.reset()
@@ -150,16 +166,16 @@ export function NewDemandModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
       'etic_filters_my_demands_view_all',
       JSON.stringify({ status: 'Ativos', prazo: 'Todos', bairro: '' }),
     )
-    navigate('/app/demandas?tab=minhas-demandas')
+    navigate('/app?tab=minhas-demandas')
   }
 
   return (
     <DialogPrimitive.Root open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay className="fixed inset-0 z-[100] bg-black/60 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+        <DialogPrimitive.Overlay className="fixed inset-0 z-[1000] bg-black/60 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
         <DialogPrimitive.Content
           className={cn(
-            'fixed z-[110] flex flex-col bg-white overflow-hidden data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
+            'fixed z-[1010] flex flex-col bg-white overflow-hidden data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 shadow-2xl',
             isMobile
               ? '!fixed !left-0 !right-0 !bottom-0 !top-auto !translate-x-0 !translate-y-0 !w-full !max-w-none rounded-t-[16px] rounded-b-none'
               : 'top-0 left-0 right-0 bottom-0 md:top-[50%] md:left-[50%] md:-translate-x-[50%] md:-translate-y-[50%] md:bottom-auto md:right-auto md:w-[640px] md:max-w-[90vw] md:max-h-[90vh] md:rounded-[12px]',
@@ -170,7 +186,19 @@ export function NewDemandModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
           }}
           aria-describedby={undefined}
         >
-          <div className="shrink-0 border-b border-[#E0E0E0] bg-white z-10 sticky top-0">
+          {progress > 0 && progress < 100 && (
+            <div className="absolute top-0 left-0 w-full h-[4px] bg-[#E0E0E0] z-[1020]">
+              <div
+                className="h-full bg-[#10B981] transition-all duration-300 ease-out"
+                style={{ width: `${progress}%` }}
+              />
+              <span className="absolute top-[8px] right-[16px] text-[10px] font-bold text-[#10B981] bg-white px-2 py-0.5 rounded-full shadow-sm border border-[#E0E0E0]">
+                {progress}% completo
+              </span>
+            </div>
+          )}
+
+          <div className="shrink-0 border-b border-[#E0E0E0] bg-white z-10 sticky top-0 mt-[4px]">
             <div className="h-[56px] flex items-center justify-between px-4">
               <DialogPrimitive.Title className="text-[18px] font-bold text-[#1A3A52]">
                 Nova Demanda
@@ -200,10 +228,10 @@ export function NewDemandModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
             />
           </div>
 
-          <div className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col relative">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col relative bg-[#F9FAFB]">
             <Form {...form}>
               <form id="new-demand-form" onSubmit={form.handleSubmit(onSubmit)}>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 px-4 py-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3 px-4 py-6">
                   <CustomInput
                     control={form.control}
                     name="clientName"
@@ -215,14 +243,14 @@ export function NewDemandModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
                     control={form.control}
                     name="clientPhone"
                     label="Telefone do Cliente"
-                    placeholder="(11) 99999-9999 (opcional)"
+                    placeholder="(11) 99999-9999"
                     optional
                   />
                   <CustomInput
                     control={form.control}
                     name="clientEmail"
                     label="Email do Cliente"
-                    placeholder="email@exemplo.com (opcional)"
+                    placeholder="email@exemplo.com"
                     type="email"
                     optional
                   />
@@ -242,8 +270,11 @@ export function NewDemandModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
                           >
                             <div
                               className={cn(
-                                'flex-1 flex items-center space-x-2 bg-[#F5F5F5] px-4 rounded-[8px] border',
-                                fieldState.error ? 'border-[#FF4444] border-2' : 'border-[#E0E0E0]',
+                                'flex-1 flex items-center space-x-2 bg-[#FFFFFF] px-4 rounded-[8px] border',
+                                fieldState.error
+                                  ? 'border-[#FF4444] border-2'
+                                  : 'border-[#E0E0E0] hover:border-[#1A3A52]',
+                                field.value === 'Venda' && 'border-[#1A3A52] bg-[#E8F0F8]',
                               )}
                             >
                               <RadioGroupItem value="Venda" id="venda-modal" />
@@ -256,8 +287,11 @@ export function NewDemandModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
                             </div>
                             <div
                               className={cn(
-                                'flex-1 flex items-center space-x-2 bg-[#F5F5F5] px-4 rounded-[8px] border',
-                                fieldState.error ? 'border-[#FF4444] border-2' : 'border-[#E0E0E0]',
+                                'flex-1 flex items-center space-x-2 bg-[#FFFFFF] px-4 rounded-[8px] border',
+                                fieldState.error
+                                  ? 'border-[#FF4444] border-2'
+                                  : 'border-[#E0E0E0] hover:border-[#1A3A52]',
+                                field.value === 'Aluguel' && 'border-[#1A3A52] bg-[#E8F0F8]',
                               )}
                             >
                               <RadioGroupItem value="Aluguel" id="aluguel-modal" />
@@ -348,6 +382,9 @@ export function NewDemandModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
                     className="md:col-span-2"
                     multiline
                   />
+
+                  {/* Spacer for mobile to avoid the fixed footer covering last input */}
+                  {isMobile && <div className="h-[80px] md:hidden w-full shrink-0" />}
                 </div>
               </form>
             </Form>
@@ -355,9 +392,13 @@ export function NewDemandModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
 
           <div
             className={cn(
-              'sticky bottom-0 bg-white border-t border-[#E0E0E0] p-3 md:p-4 shrink-0 flex z-50 gap-3',
-              isMobile && isKeyboardOpen ? 'flex-row' : 'flex-col md:flex-row md:justify-end',
+              'bg-white border-t border-[#E0E0E0] p-3 md:p-4 flex gap-3 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] z-[1050]',
+              isMobile ? 'fixed left-0 right-0' : 'shrink-0 flex-col md:flex-row md:justify-end',
+              isMobile && isKeyboardOpen ? 'flex-row' : '',
             )}
+            style={{
+              bottom: isMobile ? `${keyboardHeight}px` : 'auto',
+            }}
           >
             <Button
               type="button"
@@ -377,13 +418,13 @@ export function NewDemandModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
               form="new-demand-form"
               disabled={form.formState.isSubmitting}
               className={cn(
-                'min-h-[44px] md:min-h-[48px] bg-[#4CAF50] hover:bg-[#388E3C] text-white font-bold text-[16px] rounded-[8px]',
+                'min-h-[44px] md:min-h-[48px] bg-[#10B981] hover:bg-[#059669] text-white font-bold text-[16px] rounded-[8px] shadow-[0_4px_12px_rgba(16,185,129,0.3)]',
                 isMobile && isKeyboardOpen
                   ? 'flex-1 order-2'
                   : 'w-full md:w-[160px] order-1 md:order-2',
               )}
             >
-              {isMobile && isKeyboardOpen ? '✅ Criar' : '✅ Criar Demanda'}
+              {isMobile && isKeyboardOpen ? '✅ Confirmar' : '✅ Criar Demanda'}
             </Button>
           </div>
         </DialogPrimitive.Content>

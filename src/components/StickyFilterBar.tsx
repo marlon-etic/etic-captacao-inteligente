@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 import { useIsMobile } from '@/hooks/use-mobile'
+import { useKeyboard } from '@/hooks/use-keyboard'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { LocationSelector } from '@/components/LocationSelector'
 
@@ -43,6 +44,7 @@ export function StickyFilterBar({
   stickyTop = 'top-[72px]',
 }: Props) {
   const isMobile = useIsMobile()
+  const { isKeyboardOpen, keyboardHeight } = useKeyboard()
   const [isOpen, setIsOpen] = useState(false)
   const [mobileValues, setMobileValues] = useState(values)
   const [selectedLocations, setSelectedLocations] = useState<string[]>(() => {
@@ -156,7 +158,7 @@ export function StickyFilterBar({
 
   if (isMobile) {
     return (
-      <div className={cn('sticky z-30 bg-[#F5F5F5] pb-2 -mx-4 px-4 sm:mx-0 sm:px-0', stickyTop)}>
+      <div className={cn('sticky z-[50] bg-[#F5F5F5] pb-2 -mx-4 px-4 sm:mx-0 sm:px-0', stickyTop)}>
         <div className="flex flex-col gap-2">
           <div className="bg-white border border-[#E5E5E5] rounded-[12px] p-2 flex items-center gap-3 shadow-[0_2px_8px_rgba(26,58,82,0.05)] min-h-[60px] w-full">
             <Drawer open={isOpen} onOpenChange={setIsOpen}>
@@ -173,13 +175,13 @@ export function StickyFilterBar({
                   </span>
                 </Button>
               </DrawerTrigger>
-              <DrawerContent className="max-h-[85vh] h-[85vh] flex flex-col rounded-t-[24px] bg-[#F5F5F5] outline-none">
+              <DrawerContent className="max-h-[85vh] h-[85vh] flex flex-col rounded-t-[24px] bg-[#F5F5F5] outline-none z-[100]">
                 <DrawerHeader className="px-6 py-4 text-left border-b border-[#E5E5E5] shrink-0 bg-[#F5F5F5]">
                   <DrawerTitle className="text-[20px] font-black text-[#1A3A52]">
                     Filtros
                   </DrawerTitle>
                 </DrawerHeader>
-                <ScrollArea className="flex-1 px-6 py-4 bg-white">
+                <ScrollArea className="flex-1 px-6 py-4 bg-white mb-[80px]">
                   <div className="space-y-8 pb-6">
                     {filters.map((f) => (
                       <div key={f.id} className="space-y-3">
@@ -220,19 +222,22 @@ export function StickyFilterBar({
                     ))}
                   </div>
                 </ScrollArea>
-                <div className="p-4 bg-white border-t border-[#E5E5E5] flex items-center justify-between gap-4 shrink-0 pb-safe shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
+                <div
+                  className="fixed left-0 right-0 p-4 bg-white border-t border-[#E5E5E5] flex items-center justify-between gap-4 shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] z-[999] transition-transform duration-100"
+                  style={{ bottom: isKeyboardOpen ? `${keyboardHeight}px` : '0px' }}
+                >
                   <Button
                     variant="ghost"
                     onClick={handleClearAll}
                     className="font-bold text-[#999999] hover:bg-[#F5F5F5] hover:text-[#333333] h-12 px-2"
                   >
-                    Limpar tudo
+                    Limpar
                   </Button>
                   <Button
                     onClick={handleMobileApply}
-                    className="bg-[#1A3A52] hover:bg-[#2E5F8A] text-white font-bold h-12 flex-1 shadow-[0_4px_12px_rgba(26,58,82,0.2)]"
+                    className="bg-[#10B981] hover:bg-[#059669] text-white font-bold h-12 flex-1 shadow-[0_4px_12px_rgba(16,185,129,0.3)]"
                   >
-                    Ver resultados ({resultsCount})
+                    Aplicar Filtros ({resultsCount})
                   </Button>
                 </div>
               </DrawerContent>
@@ -245,7 +250,7 @@ export function StickyFilterBar({
   }
 
   return (
-    <div className={cn('sticky z-30 bg-[#F5F5F5] pb-4 -mx-4 px-4 sm:mx-0 sm:px-0', stickyTop)}>
+    <div className={cn('sticky z-[50] bg-[#F5F5F5] pb-4 -mx-4 px-4 sm:mx-0 sm:px-0', stickyTop)}>
       <div className="bg-white border border-[#E5E5E5] rounded-[12px] p-3 flex items-center gap-3 shadow-[0_4px_12px_rgba(26,58,82,0.05)] min-h-[56px] flex-wrap">
         <span className="font-black text-[#1A3A52] mr-2 flex items-center gap-2 uppercase tracking-wide text-[14px]">
           <Filter className="w-4 h-4" /> Filtros
@@ -288,7 +293,7 @@ export function StickyFilterBar({
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 align="start"
-                className="w-[220px] p-2 border-[#E5E5E5] shadow-lg rounded-xl"
+                className="w-[220px] p-2 border-[#E5E5E5] shadow-lg rounded-xl z-[100]"
               >
                 {f.options.map((o) => (
                   <DropdownMenuItem
