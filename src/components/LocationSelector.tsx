@@ -2,7 +2,13 @@ import { useState, useMemo, useEffect } from 'react'
 import { Check, ChevronDown, X, Search as SearchIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogClose,
+} from '@/components/ui/dialog'
 import { REGIONS_DATA, normalizeString } from '@/lib/regions'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { ScrollArea } from '@/components/ui/scroll-area'
