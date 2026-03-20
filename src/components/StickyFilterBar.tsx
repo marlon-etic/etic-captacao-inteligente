@@ -17,7 +17,6 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 import { useIsMobile } from '@/hooks/use-mobile'
-import { useKeyboard } from '@/hooks/use-keyboard'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { LocationSelector } from '@/components/LocationSelector'
 
@@ -44,7 +43,6 @@ export function StickyFilterBar({
   stickyTop = 'top-[72px]',
 }: Props) {
   const isMobile = useIsMobile()
-  const { isKeyboardOpen, keyboardHeight } = useKeyboard()
   const [isOpen, setIsOpen] = useState(false)
   const [mobileValues, setMobileValues] = useState(values)
   const [selectedLocations, setSelectedLocations] = useState<string[]>(() => {
@@ -175,13 +173,13 @@ export function StickyFilterBar({
                   </span>
                 </Button>
               </DrawerTrigger>
-              <DrawerContent className="max-h-[85vh] h-[85vh] flex flex-col rounded-t-[24px] bg-[#F5F5F5] outline-none z-[100]">
+              <DrawerContent className="max-h-[85dvh] h-[85dvh] flex flex-col rounded-t-[24px] bg-[#F5F5F5] outline-none z-[110]">
                 <DrawerHeader className="px-6 py-4 text-left border-b border-[#E5E5E5] shrink-0 bg-[#F5F5F5]">
                   <DrawerTitle className="text-[20px] font-black text-[#1A3A52]">
                     Filtros
                   </DrawerTitle>
                 </DrawerHeader>
-                <ScrollArea className="flex-1 px-6 py-4 bg-white mb-[80px]">
+                <ScrollArea className="flex-1 px-6 py-4 bg-white">
                   <div className="space-y-8 pb-6">
                     {filters.map((f) => (
                       <div key={f.id} className="space-y-3">
@@ -222,10 +220,7 @@ export function StickyFilterBar({
                     ))}
                   </div>
                 </ScrollArea>
-                <div
-                  className="fixed left-0 right-0 p-4 bg-white border-t border-[#E5E5E5] flex items-center justify-between gap-4 shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] z-[999] transition-transform duration-100"
-                  style={{ bottom: isKeyboardOpen ? `${keyboardHeight}px` : '0px' }}
-                >
+                <div className="p-4 bg-white border-t border-[#E5E5E5] flex items-center justify-between gap-4 shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] mt-auto z-[101]">
                   <Button
                     variant="ghost"
                     onClick={handleClearAll}

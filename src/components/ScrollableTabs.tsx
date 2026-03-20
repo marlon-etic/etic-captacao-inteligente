@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect, ReactNode } from 'react'
 import { TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
+import { ArrowRight } from 'lucide-react'
 
 interface ScrollableTabsProps {
   tabs: { value: string; label: ReactNode }[]
@@ -93,8 +94,8 @@ export function ScrollableTabs({ tabs, activeTab, onTabChange, className }: Scro
       {canScrollRight && (
         <div className="absolute right-0 top-1/2 -translate-y-1/2 pr-2 pointer-events-none z-20 flex items-center bg-gradient-to-l from-[#F5F5F5] via-[#F5F5F5] to-transparent pl-8 h-full pb-2">
           {!hasScrolled && (
-            <span className="text-[#10B981] font-bold text-[12px] animate-pulse whitespace-nowrap bg-white px-2 py-1 rounded-full shadow-[0_2px_4px_rgba(0,0,0,0.1)] border border-[#10B981]/20">
-              Deslize &rarr;
+            <span className="text-[#1A3A52] font-black text-[13px] animate-bounce whitespace-nowrap bg-white px-3 py-1.5 rounded-full shadow-[0_4px_12px_rgba(26,58,82,0.15)] border border-[#1A3A52]/20 flex items-center gap-1.5">
+              Deslize <ArrowRight className="w-4 h-4" />
             </span>
           )}
         </div>
