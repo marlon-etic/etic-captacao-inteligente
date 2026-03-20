@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import { z } from 'zod'
 import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -82,6 +82,36 @@ interface Props {
   onClose: () => void
 }
 
+function ProgressBar({ control }: { control: any }) {
+  const values = useWatch({ control })
+  const progress = useMemo(() => {
+    let filled = 0
+    const total = 7
+    if (values.nome_cliente) filled++
+    if (values.tipo_demanda) filled++
+    if (values.bairros && values.bairros.length > 0) filled++
+    if (values.valor_minimo || values.valor_maximo) filled++
+    if (values.dormitorios) filled++
+    if (values.vagas_estacionamento) filled++
+    if (values.nivel_urgencia) filled++
+    return Math.round((filled / total) * 100)
+  }, [values])
+
+  if (progress <= 0 || progress >= 100) return null
+
+  return (
+    <div className="absolute top-0 left-0 w-full h-[4px] bg-[#E0E0E0] z-[1020]">
+      <div
+        className="h-full bg-[#10B981] transition-all duration-300 ease-out"
+        style={{ width: `${progress}%` }}
+      />
+      <span className="absolute top-[8px] right-[16px] text-[10px] font-bold text-[#10B981] bg-white px-2 py-0.5 rounded-full shadow-sm border border-[#E0E0E0]">
+        {progress}% completo
+      </span>
+    </div>
+  )
+}
+
 function FormSummary({
   control,
   isKeyboardOpen,
@@ -123,7 +153,7 @@ export function ModalDemandaLocacao({ isOpen, onClose }: Props) {
   const { toast } = useToast()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const { isKeyboardOpen, viewportHeight, keyboardHeight } = useKeyboard()
+  const { isKeyboardOpen, viewportHeight } = useKeyboard()
   const isMobile = useIsMobile()
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -141,22 +171,8 @@ export function ModalDemandaLocacao({ isOpen, onClose }: Props) {
       nivel_urgencia: 'Média',
       observacoes: '',
     },
-    mode: 'onChange',
+    mode: 'onTouched',
   })
-
-  const values = useWatch({ control: form.control })
-  const progress = useMemo(() => {
-    let filled = 0
-    const total = 7
-    if (values.nome_cliente) filled++
-    if (values.tipo_demanda) filled++
-    if (values.bairros && values.bairros.length > 0) filled++
-    if (values.valor_minimo || values.valor_maximo) filled++
-    if (values.dormitorios) filled++
-    if (values.vagas_estacionamento) filled++
-    if (values.nivel_urgencia) filled++
-    return Math.round((filled / total) * 100)
-  }, [values])
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>, onChange: any) => {
     let v = e.target.value.replace(/\D/g, '')
@@ -213,7 +229,7 @@ export function ModalDemandaLocacao({ isOpen, onClose }: Props) {
         className={cn(
           'max-w-3xl flex flex-col gap-0 p-0 bg-[#F9FAFB] border-none overflow-hidden shadow-2xl z-[1010]',
           isMobile
-            ? '!fixed !left-0 !right-0 !bottom-0 !top-auto !translate-x-0 !translate-y-0 !w-full !max-w-none rounded-t-xl rounded-b-none'
+            ? '!fixed !left-0 !right-0 !top-0 !bottom-auto !translate-x-0 !translate-y-0 !w-full !max-w-none rounded-none'
             : 'max-h-[90vh] rounded-xl',
         )}
         style={{
@@ -221,17 +237,7 @@ export function ModalDemandaLocacao({ isOpen, onClose }: Props) {
           maxHeight: isMobile ? '100dvh' : undefined,
         }}
       >
-        {progress > 0 && progress < 100 && (
-          <div className="absolute top-0 left-0 w-full h-[4px] bg-[#E0E0E0] z-[1020]">
-            <div
-              className="h-full bg-[#10B981] transition-all duration-300 ease-out"
-              style={{ width: `${progress}%` }}
-            />
-            <span className="absolute top-[8px] right-[16px] text-[10px] font-bold text-[#10B981] bg-white px-2 py-0.5 rounded-full shadow-sm border border-[#E0E0E0]">
-              {progress}% completo
-            </span>
-          </div>
-        )}
+        <ProgressBar control={form.control} />
 
         <DialogHeader className="p-4 md:p-6 pb-4 border-b border-gray-200 bg-white shrink-0 sticky top-0 z-10 text-left mt-[4px]">
           <DialogTitle className="text-xl font-bold text-[#1A3A52]">Nova Demanda</DialogTitle>
@@ -527,13 +533,9 @@ export function ModalDemandaLocacao({ isOpen, onClose }: Props) {
 
         <div
           className={cn(
-            'bg-white border-t border-[#E0E0E0] p-3 md:p-4 flex gap-3 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] z-[1050]',
-            isMobile ? 'fixed left-0 right-0' : 'shrink-0 flex-col md:flex-row md:justify-end',
-            isMobile && isKeyboardOpen ? 'flex-row' : '',
+            'bg-white border-t border-[#E0E0E0] p-3 md:p-4 flex gap-3 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] z-[1050] shrink-0',
+            isMobile && isKeyboardOpen ? 'flex-row' : 'flex-col md:flex-row md:justify-end',
           )}
-          style={{
-            bottom: isMobile ? `${keyboardHeight}px` : 'auto',
-          }}
         >
           <Button
             type="button"

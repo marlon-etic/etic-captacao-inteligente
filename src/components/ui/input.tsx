@@ -17,7 +17,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
         onFocus={(e) => {
           props.onFocus?.(e)
           setTimeout(() => {
-            e.target.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            e.target.scrollIntoView({ behavior: 'auto', block: 'center' })
           }, 300)
         }}
         {...props}

@@ -59,6 +59,36 @@ export const formSchema = z
     path: ['maxBudget'],
   })
 
+function ProgressBar({ control }: { control: any }) {
+  const values = useWatch({ control })
+  const progress = useMemo(() => {
+    let filled = 0
+    const total = 7
+    if (values.clientName) filled++
+    if (values.type) filled++
+    if (values.location && values.location.length > 0) filled++
+    if (values.minBudget) filled++
+    if (values.maxBudget) filled++
+    if (values.bedrooms) filled++
+    if (values.timeframe) filled++
+    return Math.round((filled / total) * 100)
+  }, [values])
+
+  if (progress <= 0 || progress >= 100) return null
+
+  return (
+    <div className="absolute top-0 left-0 w-full h-[4px] bg-[#E0E0E0] z-[1020]">
+      <div
+        className="h-full bg-[#10B981] transition-all duration-300 ease-out"
+        style={{ width: `${progress}%` }}
+      />
+      <span className="absolute top-[8px] right-[16px] text-[10px] font-bold text-[#10B981] bg-white px-2 py-0.5 rounded-full shadow-sm border border-[#E0E0E0]">
+        {progress}% completo
+      </span>
+    </div>
+  )
+}
+
 function FormSummary({
   control,
   isKeyboardOpen,
@@ -103,12 +133,12 @@ export function NewDemandModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
   const { toast } = useToast()
   const navigate = useNavigate()
 
-  const { isKeyboardOpen, viewportHeight, keyboardHeight } = useKeyboard()
+  const { isKeyboardOpen, viewportHeight } = useKeyboard()
   const isMobile = useIsMobile()
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    mode: 'onBlur',
+    mode: 'onTouched',
     defaultValues: {
       clientName: '',
       clientPhone: '',
@@ -123,20 +153,6 @@ export function NewDemandModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
       description: '',
     },
   })
-
-  const values = useWatch({ control: form.control })
-  const progress = useMemo(() => {
-    let filled = 0
-    const total = 7
-    if (values.clientName) filled++
-    if (values.type) filled++
-    if (values.location && values.location.length > 0) filled++
-    if (values.minBudget) filled++
-    if (values.maxBudget) filled++
-    if (values.bedrooms) filled++
-    if (values.timeframe) filled++
-    return Math.round((filled / total) * 100)
-  }, [values])
 
   useEffect(() => {
     if (!isOpen) form.reset()
@@ -227,7 +243,7 @@ export function NewDemandModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
           className={cn(
             'fixed z-[1010] flex flex-col bg-white overflow-hidden data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 shadow-2xl',
             isMobile
-              ? '!fixed !left-0 !right-0 !bottom-0 !top-auto !translate-x-0 !translate-y-0 !w-full !max-w-none rounded-t-[16px] rounded-b-none'
+              ? '!fixed !left-0 !right-0 !top-0 !bottom-auto !translate-x-0 !translate-y-0 !w-full !max-w-none rounded-none'
               : 'top-0 left-0 right-0 bottom-0 md:top-[50%] md:left-[50%] md:-translate-x-[50%] md:-translate-y-[50%] md:bottom-auto md:right-auto md:w-[640px] md:max-w-[90vw] md:max-h-[90vh] md:rounded-[12px]',
           )}
           style={{
@@ -236,17 +252,7 @@ export function NewDemandModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
           }}
           aria-describedby={undefined}
         >
-          {progress > 0 && progress < 100 && (
-            <div className="absolute top-0 left-0 w-full h-[4px] bg-[#E0E0E0] z-[1020]">
-              <div
-                className="h-full bg-[#10B981] transition-all duration-300 ease-out"
-                style={{ width: `${progress}%` }}
-              />
-              <span className="absolute top-[8px] right-[16px] text-[10px] font-bold text-[#10B981] bg-white px-2 py-0.5 rounded-full shadow-sm border border-[#E0E0E0]">
-                {progress}% completo
-              </span>
-            </div>
-          )}
+          <ProgressBar control={form.control} />
 
           <div className="shrink-0 border-b border-[#E0E0E0] bg-white z-10 sticky top-0 mt-[4px]">
             <div className="h-[56px] flex items-center justify-between px-4">
@@ -442,13 +448,9 @@ export function NewDemandModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
 
           <div
             className={cn(
-              'bg-white border-t border-[#E0E0E0] p-3 md:p-4 flex gap-3 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] z-[1050]',
-              isMobile ? 'fixed left-0 right-0' : 'shrink-0 flex-col md:flex-row md:justify-end',
-              isMobile && isKeyboardOpen ? 'flex-row' : '',
+              'bg-white border-t border-[#E0E0E0] p-3 md:p-4 flex gap-3 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] z-[1050] shrink-0',
+              isMobile && isKeyboardOpen ? 'flex-row' : 'flex-col md:flex-row md:justify-end',
             )}
-            style={{
-              bottom: isMobile ? `${keyboardHeight}px` : 'auto',
-            }}
           >
             <Button
               type="button"

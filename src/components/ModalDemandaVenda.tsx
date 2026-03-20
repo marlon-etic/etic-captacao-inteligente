@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { z } from 'zod'
 import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Check, X, ChevronDown } from 'lucide-react'
+import { Check, ChevronDown } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import {
   Form,
@@ -14,8 +14,6 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
-import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
@@ -141,7 +139,7 @@ export function ModalDemandaVenda({ isOpen, onClose }: Props) {
       nivel_urgencia: 'Média',
       necessidades_especificas: '',
     },
-    mode: 'onChange',
+    mode: 'onTouched',
   })
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>, onChange: any) => {
@@ -194,7 +192,7 @@ export function ModalDemandaVenda({ isOpen, onClose }: Props) {
         className={cn(
           'max-w-3xl flex flex-col gap-0 p-0 bg-[#F9FAFB] border-none overflow-hidden',
           isMobile
-            ? '!fixed !left-0 !right-0 !bottom-0 !top-auto !translate-x-0 !translate-y-0 !w-full !max-w-none rounded-t-xl rounded-b-none'
+            ? '!fixed !left-0 !right-0 !top-0 !bottom-auto !translate-x-0 !translate-y-0 !w-full !max-w-none rounded-none'
             : 'max-h-[90vh] rounded-xl',
         )}
         style={{

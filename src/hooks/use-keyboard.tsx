@@ -12,7 +12,7 @@ export function useKeyboard() {
     setTimeout(() => {
       const activeField = document.activeElement
       if (activeField && (activeField.tagName === 'INPUT' || activeField.tagName === 'TEXTAREA')) {
-        activeField.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        activeField.scrollIntoView({ behavior: 'auto', block: 'center' })
       }
     }, 150)
   }, [])
