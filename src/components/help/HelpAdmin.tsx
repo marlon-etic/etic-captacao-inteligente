@@ -6,31 +6,23 @@ export function HelpAdmin() {
   const troubleshooting = [
     {
       q: '1. Grouping Issues (Demandas não agrupam)',
-      a: 'Verifique se o bairro tem a escrita idêntica. O orçamento deve cruzar na margem de ±10%. Tipologias diferentes nunca agrupam.',
+      a: 'Verifique se o bairro tem a escrita idêntica. O orçamento deve cruzar na margem de ±10%. Tipologias (Venda x Aluguel) e Perfil (Qtd Quartos) diferentes nunca se agrupam.',
     },
     {
-      q: '2. WhatsApp Failures (Integração Evolux)',
-      a: 'Consulte a aba Auditoria. O rate limit é 30 msg/min. Falhas entram em retry automático (5m, 15m) gerenciado pelo N8n.',
+      q: '2. WhatsApp Failures (Integração N8n)',
+      a: 'Consulte a tela "Auditoria Logs" para verificar a fila de Webhooks enviada para o N8n. Se houver falha de API ou erro 500, o endpoint no N8n deve estar indisponível.',
     },
     {
-      q: '3. RLS Visibility (Visibilidade restrita)',
-      a: 'Captadores não podem ler nomes de clientes (RLS Level). Se um Corretor não vê uma demanda, confirme se a role e o created_by estão corretos.',
+      q: '3. RLS Visibility (Acesso negado em massa)',
+      a: 'Acesse o "Teste de RLS" (RLS Tester) no painel. O Supabase é blindado. Se corretores alegam não ver demandas, confirme as políticas das roles na documentação de banco de dados.',
     },
     {
-      q: '4. Points Calculation (Erro de Gamificação)',
-      a: 'Verifique os logs de sistema. O multiplicador de grupo exige que as demandas ativas não estejam com status "Perdida".',
+      q: '4. Dashboard Loading (Demora de Perf.)',
+      a: 'Utilize a aba de "Teste Perf." para avaliar a latência. Reduza o volume de logs armazenados na tabela de auditoria local ou implemente restrições de tempo (ex: últimos 30 dias).',
     },
     {
-      q: '5. Links (404 no Imóvel)',
-      a: 'Evite barras (/) no código do imóvel durante o cadastro, pois isso quebra a rota da URL gerada.',
-    },
-    {
-      q: '6. Performance (Lentidão no Dashboard)',
-      a: 'Ajuste os filtros de período no Analytics para "7 dias" em vez de "Todas" para aliviar processamento client-side.',
-    },
-    {
-      q: '7. Mobile Keyboard (UX no Celular)',
-      a: 'O Input principal tem uma função scrollIntoView. Se falhar, verifique o z-index do modal flutuante.',
+      q: '5. Missing Environment Variables',
+      a: 'O sistema inteiro pode retornar erro de CORS ou Falha de Rede se as credenciais VITE_SUPABASE_URL estiverem incorretas no build.',
     },
   ]
 
@@ -39,82 +31,70 @@ export function HelpAdmin() {
       <Tabs defaultValue="manual" className="w-full">
         <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 bg-[#F5F5F5]">
           <TabsTrigger value="manual">Manual Admin</TabsTrigger>
-          <TabsTrigger value="trouble">Troubleshooting</TabsTrigger>
-          <TabsTrigger value="tech">Tech Docs</TabsTrigger>
-          <TabsTrigger value="env">Variáveis (Env)</TabsTrigger>
+          <TabsTrigger value="trouble">Solução (Erros)</TabsTrigger>
+          <TabsTrigger value="tech">Arquitetura</TabsTrigger>
+          <TabsTrigger value="env">Váriaveis</TabsTrigger>
         </TabsList>
 
         <TabsContent value="manual" className="mt-4 space-y-6">
-          <SectionCard title="Manual do Administrador" icon={Settings}>
+          <SectionCard title="Painel Administrativo" icon={Settings}>
             <p>
-              <strong>Gestão de Usuários:</strong> Altere roles, bloqueie e ative usuários em
-              "Usuários".
+              <strong>Gestão de Perfis:</strong> Você possui controle absoluto através do menu
+              "Usuários". Pode alterar papéis, redefinir acesso ou inativar contas antigas.
             </p>
             <p>
-              <strong>Monitoramento:</strong> O Dashboard Admin centraliza erros. A fila de webhooks
-              (<CodeBlock>webhook_queue</CodeBlock>) mostra falhas de disparo para o N8n.
+              <strong>Ferramentas de Teste:</strong> Na barra lateral estão localizadas as
+              ferramentas técnicas de simulação de carga (Perf Tester), Invasão/Blindagem de dados
+              (RLS Tester) e testes de fluxo End-to-End.
             </p>
             <p>
-              <strong>Regras de Negócio Core:</strong>
-              <br />- Agrupamento ocorre em real-time na criação da demanda.
-              <br />- Aluguel vai para SDRs, Venda para Corretores.
-              <br />- O sistema garante exclusividade do código do imóvel via restrição do banco.
+              <strong>Monitoramento Logs:</strong> Qualquer evento atípico (Falha de webhook,
+              deleção forçada, negação de login) constará na seção de "Auditoria Logs". Acompanhe-o
+              diariamente.
             </p>
           </SectionCard>
         </TabsContent>
 
         <TabsContent value="trouble" className="mt-4 space-y-6">
-          <SectionCard title="Solução de Problemas (7 Cenários)" icon={ShieldAlert}>
+          <SectionCard title="Troubleshooting Avançado e APIs" icon={ShieldAlert}>
             <FAQList faqs={troubleshooting} />
           </SectionCard>
         </TabsContent>
 
         <TabsContent value="tech" className="mt-4 space-y-6">
-          <SectionCard title="Documentação Técnica (Supabase & Integrations)" icon={Database}>
+          <SectionCard title="Supabase e Modelo de Dados" icon={Database}>
             <ul className="list-disc pl-5 space-y-2">
               <li>
                 <strong>Tabelas Core:</strong> <CodeBlock>demandas_locacao</CodeBlock>,{' '}
                 <CodeBlock>demandas_vendas</CodeBlock>, <CodeBlock>imoveis_captados</CodeBlock>,{' '}
-                <CodeBlock>grupos_demandas</CodeBlock>.
+                <CodeBlock>respostas_captador</CodeBlock>.
               </li>
               <li>
-                <strong>RLS (Row Level Security):</strong> Políticas estritas aplicadas. Ex:
-                Captadores não conseguem dar <CodeBlock>SELECT</CodeBlock> no{' '}
-                <CodeBlock>client_name</CodeBlock>.
+                <strong>Row Level Security (RLS):</strong> Segurança implementada a nível de linha.
+                Impedindo totalmente consultas como <CodeBlock>SELECT *</CodeBlock> para perfis não
+                autenticados ou fora do escopo.
               </li>
               <li>
-                <strong>Integração N8n:</strong> Ouve a tabela de eventos e dispara para a API da
-                Evolux (WhatsApp).
-              </li>
-              <li>
-                <strong>Frontend:</strong> React + Vite + Zustand (Estado) implementado via
-                plataforma GoSkip.
+                <strong>Estado Frontend:</strong> React 19 + Vite com gerenciamento de estado Global
+                (Zustand + Context API). WebSockets abertos para Broadcast Sync e atualizações em
+                tempo real.
               </li>
             </ul>
           </SectionCard>
         </TabsContent>
 
         <TabsContent value="env" className="mt-4 space-y-6">
-          <SectionCard title="Variáveis de Ambiente (Environment)" icon={Terminal}>
-            <p className="mb-2">Configurações necessárias no servidor (.env):</p>
+          <SectionCard title="Segredos do Ambiente (Env Vars)" icon={Terminal}>
+            <p className="mb-2">Assegure a presença e validade das variáveis de Build (.env):</p>
             <ul className="space-y-2">
               <li>
-                <CodeBlock>VITE_N8N_WEBHOOK_URL</CodeBlock>: Endpoint de recepção do N8n.
+                <CodeBlock>VITE_N8N_WEBHOOK_URL</CodeBlock>: Endpoint de comunicação externa.
               </li>
               <li>
-                <CodeBlock>VITE_SUPABASE_URL</CodeBlock>: URL base do projeto no Supabase.
+                <CodeBlock>VITE_SUPABASE_URL</CodeBlock>: URL raiz do DB no provedor.
               </li>
               <li>
-                <CodeBlock>VITE_SUPABASE_ANON_KEY</CodeBlock>: Chave pública.
-              </li>
-              <li>
-                <CodeBlock>SUPABASE_SERVICE_KEY</CodeBlock>: Apenas backend/Edge Functions.
-              </li>
-              <li>
-                <CodeBlock>EVOLUX_API_KEY</CodeBlock>: Token de disparo WhatsApp.
-              </li>
-              <li>
-                <CodeBlock>SITE_BASE_URL</CodeBlock>: Raiz para geração de links.
+                <CodeBlock>VITE_SUPABASE_PUBLISHABLE_KEY</CodeBlock>: Token de anon key.
               </li>
             </ul>
           </SectionCard>

@@ -13,6 +13,9 @@ import {
   ArchiveX,
   Building,
   LayoutDashboard,
+  ShieldAlert,
+  CheckSquare,
+  Activity,
 } from 'lucide-react'
 import {
   Sidebar,
@@ -109,7 +112,12 @@ export function AppSidebar() {
       { title: 'Notificações', icon: Bell, url: '/app/notificacoes' },
       { title: 'Ajuda', icon: HelpCircle, url: '/app/ajuda' },
       ...(isAdmin ? [{ title: 'Usuários', icon: UserCog, url: '/app/usuarios' }] : []),
-      ...(isAdmin ? [{ title: 'Auditoria', icon: Shield, url: '/app/auditoria' }] : []),
+      ...(isAdmin ? [{ title: 'Auditoria Logs', icon: Shield, url: '/app/auditoria' }] : []),
+      ...(isAdmin ? [{ title: 'Teste de RLS', icon: ShieldAlert, url: '/app/rls-tester' }] : []),
+      ...(isAdmin ? [{ title: 'Teste E2E', icon: CheckSquare, url: '/app/e2e-tester' }] : []),
+      ...(isAdmin
+        ? [{ title: 'Teste Perf.', icon: Activity, url: '/app/performance-tester' }]
+        : []),
       { title: 'Perfil', icon: UserCircle, url: '/app/perfil' },
     ]
   }

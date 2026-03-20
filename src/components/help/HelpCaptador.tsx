@@ -1,26 +1,7 @@
 import { SectionCard, FAQList, CodeBlock } from '@/components/help/SharedHelp'
-import { Rocket, CheckCircle, Users, Trophy, HelpCircle } from 'lucide-react'
+import { Rocket, CheckCircle, Users, Trophy, AlertTriangle } from 'lucide-react'
 
 export function HelpCaptador() {
-  const faqs = [
-    {
-      q: 'Como vejo as demandas disponíveis?',
-      a: "Acesse a aba 'Demandas Abertas' na página de Demandas. Você verá os pedidos agrupados por bairro e perfil.",
-    },
-    {
-      q: 'E se o imóvel não for exatamente o que pediram?',
-      a: 'Você pode cadastrar o imóvel usando o botão flutuante ➕ e marcá-lo como "Sem Demanda Específica". Assim ele fica disponível para todos os corretores e você ganha 35 pontos.',
-    },
-    {
-      q: 'O que acontece se eu marcar "Não Encontrei"?',
-      a: 'A demanda entra em contagem regressiva. Se não houver captação em 24h, ela pode ser perdida ou repassada, dependendo das regras ativas.',
-    },
-    {
-      q: 'Como ganho pontos no Ranking?',
-      a: 'Seus pontos são creditados automaticamente quando você capta um imóvel, quando um corretor agenda visita e quando o negócio é fechado.',
-    },
-  ]
-
   return (
     <div className="space-y-6 animate-fade-in-up">
       <SectionCard title="1. Primeiros Passos" icon={Rocket}>
@@ -89,19 +70,25 @@ export function HelpCaptador() {
             <p className="text-sm font-bold">Grupo 7+ Clientes</p>
             <p className="text-lg text-[#4CAF50] font-black">+150 pts</p>
           </div>
-          <div className="bg-[#F5F5F5] p-3 rounded-lg border border-[#E0E0E0]">
-            <p className="text-sm font-bold">Visita Agendada (Bônus)</p>
-            <p className="text-lg text-[#2E5F8A] font-black">+25 pts</p>
-          </div>
-          <div className="bg-[#F5F5F5] p-3 rounded-lg border border-[#E0E0E0]">
-            <p className="text-sm font-bold">Negócio Fechado (Bônus)</p>
-            <p className="text-lg text-[#2E5F8A] font-black">+50 pts</p>
-          </div>
         </div>
       </SectionCard>
 
-      <SectionCard title="5. Dúvidas Frequentes (FAQ)" icon={HelpCircle}>
-        <FAQList faqs={faqs} />
+      <SectionCard title="Troubleshooting (Problemas Comuns)" icon={AlertTriangle}>
+        <ul className="list-disc pl-5 space-y-2 text-[#333333]">
+          <li>
+            <strong>"Não consigo ver demandas no feed":</strong> Verifique se você aplicou algum
+            filtro acidentalmente na barra de filtros lateral. Caso tenha ocultado a aba de filtros
+            no celular, recarregue a página ou clique em Limpar Filtros.
+          </li>
+          <li>
+            <strong>"Botão de captar sumiu":</strong> Atualize a página do seu navegador. O botão
+            verde deve sempre estar flutuando visivelmente no canto inferior direito da tela.
+          </li>
+          <li>
+            <strong>"Erro de Código Duplicado":</strong> Cada imóvel no sistema necessita de um
+            código exclusivo. Se você tentar cadastrar um código já usado, precisará alterá-lo.
+          </li>
+        </ul>
       </SectionCard>
     </div>
   )
