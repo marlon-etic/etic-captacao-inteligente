@@ -1,10 +1,8 @@
 import { Link, useLocation } from 'react-router-dom'
 import {
-  LayoutDashboard,
   Users,
   Trophy,
   UserCircle,
-  PlusCircle,
   LineChart,
   Bell,
   HelpCircle,
@@ -13,6 +11,8 @@ import {
   Star,
   History,
   ArchiveX,
+  Building,
+  LayoutDashboard,
 } from 'lucide-react'
 import {
   Sidebar,
@@ -27,41 +27,100 @@ import {
 } from '@/components/ui/sidebar'
 import useAppStore from '@/stores/useAppStore'
 import { cn } from '@/lib/utils'
+import { Badge } from '@/components/ui/badge'
 
 export function AppSidebar() {
-  const { currentUser } = useAppStore()
+  const { currentUser, demands, looseProperties } = useAppStore()
   const location = useLocation()
   const { isMobile, setOpenMobile } = useSidebar()
 
   if (!currentUser) return null
 
-  const canSeeNovaDemanda = ['admin', 'sdr', 'corretor'].includes(currentUser.role)
-  const canSeeDemandas = ['admin', 'sdr', 'corretor', 'captador'].includes(currentUser.role)
-  const canSeeAnalytics = ['admin', 'gestor'].includes(currentUser.role)
   const isAdmin = currentUser.role === 'admin'
+  const isGestor = currentUser.role === 'gestor'
   const isCaptador = currentUser.role === 'captador'
+  const isSDRCorretor = currentUser.role === 'sdr' || currentUser.role === 'corretor'
 
-  const navItems = [
-    { title: 'Dashboard', icon: LayoutDashboard, url: '/app' },
-    ...(canSeeNovaDemanda
-      ? [{ title: 'Nova Demanda', icon: PlusCircle, url: '/app/nova-demanda' }]
-      : []),
-    ...(canSeeDemandas ? [{ title: 'Demandas', icon: Users, url: '/app/demandas' }] : []),
-    ...(isCaptador
-      ? [
-          { title: 'Pontuação', icon: Star, url: '/app/pontuacao' },
-          { title: 'Histórico', icon: History, url: '/app/historico' },
-          { title: 'Perdidos', icon: ArchiveX, url: '/app/perdidos' },
-        ]
-      : []),
-    ...(canSeeAnalytics ? [{ title: 'Analytics', icon: LineChart, url: '/app/analytics' }] : []),
-    { title: 'Notificações', icon: Bell, url: '/app/notificacoes' },
-    { title: 'Ranking de Captadores', icon: Trophy, url: '/app/ranking' },
-    { title: 'Ajuda', icon: HelpCircle, url: '/app/ajuda' },
-    ...(isAdmin ? [{ title: 'Usuários', icon: UserCog, url: '/app/usuarios' }] : []),
-    ...(isAdmin ? [{ title: 'Auditoria', icon: Shield, url: '/app/auditoria' }] : []),
-    { title: 'Perfil', icon: UserCircle, url: '/app/perfil' },
-  ]
+  // Counters
+  const myActiveDemandsCount = demands.filter(
+    (d) =>
+      d.createdBy === currentUser.id &&
+      !['Perdida', 'Impossível', 'Negócio', 'Arquivado'].includes(d.status),
+  ).length
+
+  const myAvailablePropsCount = looseProperties.filter((p) => {
+    if (currentUser.role === 'sdr') return p.propertyType === 'Aluguel'
+    if (currentUser.role === 'corretor') return p.propertyType === 'Venda'
+    return true
+  }).length
+
+  const historyCount = demands.filter((d) => d.createdBy === currentUser.id).length
+
+  let navItems: any[] = []
+
+  if (isSDRCorretor) {
+    navItems = [
+      {
+        title: 'Meus Clientes',
+        icon: Users,
+        url: '/app?tab=minhas-demandas',
+        badge: myActiveDemandsCount > 0 ? myActiveDemandsCount : undefined,
+      },
+      {
+        title: 'Propriedades Disponíveis',
+        icon: Building,
+        url: '/app?tab=disponiveis-geral',
+        badge: myAvailablePropsCount > 0 ? myAvailablePropsCount : undefined,
+      },
+      {
+        title: 'Histórico',
+        icon: History,
+        url: '/app?tab=historico',
+        badge: historyCount > 0 ? historyCount : undefined,
+      },
+      { title: 'Notificações', icon: Bell, url: '/app/notificacoes' },
+      { title: 'Ajuda', icon: HelpCircle, url: '/app/ajuda' },
+      { title: 'Perfil', icon: UserCircle, url: '/app/perfil' },
+    ]
+  } else if (isCaptador) {
+    navItems = [
+      { title: 'Dashboard', icon: LayoutDashboard, url: '/app' },
+      { title: 'Demandas Abertas', icon: Users, url: '/app/demandas' },
+      { title: 'Pontuação', icon: Star, url: '/app/pontuacao' },
+      { title: 'Ranking', icon: Trophy, url: '/app/ranking' },
+      { title: 'Histórico', icon: History, url: '/app/historico' },
+      { title: 'Perdidos', icon: ArchiveX, url: '/app/perdidos' },
+      { title: 'Notificações', icon: Bell, url: '/app/notificacoes' },
+      { title: 'Ajuda', icon: HelpCircle, url: '/app/ajuda' },
+      { title: 'Perfil', icon: UserCircle, url: '/app/perfil' },
+    ]
+  } else if (isAdmin || isGestor) {
+    navItems = [
+      { title: 'Dashboard Geral', icon: LayoutDashboard, url: '/app' },
+      { title: 'Todas as Demandas', icon: Users, url: '/app/demandas' },
+      { title: 'Analytics', icon: LineChart, url: '/app/analytics' },
+      { title: 'Ranking', icon: Trophy, url: '/app/ranking' },
+      { title: 'Notificações', icon: Bell, url: '/app/notificacoes' },
+      { title: 'Ajuda', icon: HelpCircle, url: '/app/ajuda' },
+      ...(isAdmin ? [{ title: 'Usuários', icon: UserCog, url: '/app/usuarios' }] : []),
+      ...(isAdmin ? [{ title: 'Auditoria', icon: Shield, url: '/app/auditoria' }] : []),
+      { title: 'Perfil', icon: UserCircle, url: '/app/perfil' },
+    ]
+  }
+
+  const checkIsActive = (itemUrl: string) => {
+    if (itemUrl.includes('?tab=')) {
+      const tab = itemUrl.split('?tab=')[1]
+      return (
+        location.search.includes(`tab=${tab}`) ||
+        (location.pathname === '/app' && !location.search && tab === 'minhas-demandas')
+      )
+    }
+    if (itemUrl === '/app') {
+      return location.pathname === '/app' && !location.search
+    }
+    return location.pathname.startsWith(itemUrl)
+  }
 
   return (
     <Sidebar className="border-r-[2px] border-[#2E5F8A]/20 hidden md:flex bg-[#F5F5F5]">
@@ -80,34 +139,43 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={
-                      location.pathname === item.url ||
-                      (item.url === '/app/demandas' &&
-                        location.pathname.startsWith('/app/demandas'))
-                    }
-                    onClick={() => {
-                      if (isMobile) setOpenMobile(false)
-                    }}
-                    className={cn(
-                      'transition-all duration-200 ease-in-out font-bold text-[14px] px-[16px] py-[12px] min-h-[48px] rounded-[8px] h-auto border border-transparent',
-                      location.pathname === item.url ||
-                        (item.url === '/app/demandas' &&
-                          location.pathname.startsWith('/app/demandas'))
-                        ? 'bg-[#1A3A52] text-white shadow-[0_2px_4px_rgba(26,58,82,0.15)] hover:bg-[#1f4866]'
-                        : 'bg-transparent text-[#333333] hover:bg-[#FFFFFF] hover:border-[#2E5F8A]/20 shadow-none hover:text-[#1A3A52]',
-                    )}
-                  >
-                    <Link to={item.url} className="flex items-center gap-[12px] w-full">
-                      <item.icon className="w-[20px] h-[20px] shrink-0" />
-                      <span className="truncate">{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {navItems.map((item) => {
+                const isActive = checkIsActive(item.url)
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive}
+                      onClick={() => {
+                        if (isMobile) setOpenMobile(false)
+                      }}
+                      className={cn(
+                        'transition-all duration-200 ease-in-out font-bold text-[14px] px-[16px] py-[12px] min-h-[48px] rounded-[8px] h-auto border border-transparent',
+                        isActive
+                          ? 'bg-[#1A3A52] text-white shadow-[0_2px_4px_rgba(26,58,82,0.15)] hover:bg-[#1f4866]'
+                          : 'bg-transparent text-[#333333] hover:bg-[#FFFFFF] hover:border-[#2E5F8A]/20 shadow-none hover:text-[#1A3A52]',
+                      )}
+                    >
+                      <Link to={item.url} className="flex items-center justify-between w-full">
+                        <div className="flex items-center gap-[12px] min-w-0">
+                          <item.icon className="w-[20px] h-[20px] shrink-0" />
+                          <span className="truncate">{item.title}</span>
+                        </div>
+                        {item.badge !== undefined && (
+                          <Badge
+                            className={cn(
+                              'ml-2 shrink-0 border-none px-1.5 min-w-[20px] flex justify-center text-[11px]',
+                              isActive ? 'bg-white text-[#1A3A52]' : 'bg-[#1A3A52] text-white',
+                            )}
+                          >
+                            {item.badge}
+                          </Badge>
+                        )}
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

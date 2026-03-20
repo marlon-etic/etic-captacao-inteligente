@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
-import { Home, ListTodo, Trophy, User, PlusCircle } from 'lucide-react'
+import { Users, Building, User, LayoutDashboard, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import useAppStore from '@/stores/useAppStore'
 
@@ -9,36 +9,46 @@ export function BottomNav() {
 
   if (!currentUser) return null
 
-  const getCaptadosTab = () => {
-    if (currentUser?.role === 'sdr' || currentUser?.role === 'corretor') return 'todos'
-    return 'captados'
+  const isSDRCorretor = currentUser.role === 'sdr' || currentUser.role === 'corretor'
+
+  let navItems = []
+
+  if (isSDRCorretor) {
+    navItems = [
+      { icon: Users, label: 'Clientes', path: '/app?tab=minhas-demandas' },
+      { icon: Building, label: 'Imóveis', path: '/app?tab=disponiveis-geral' },
+      { icon: User, label: 'Perfil', path: '/app/perfil' },
+    ]
+  } else {
+    navItems = [
+      { icon: LayoutDashboard, label: 'Início', path: '/app' },
+      { icon: Search, label: 'Demandas', path: '/app/demandas' },
+      { icon: User, label: 'Perfil', path: '/app/perfil' },
+    ]
   }
 
-  const navItems = [
-    { icon: Home, label: 'Início', path: '/app' },
-    { icon: ListTodo, label: 'Demandas', path: '/app/demandas' },
-    { icon: PlusCircle, label: 'Captados', path: `/app/demandas?tab=${getCaptadosTab()}` },
-    { icon: Trophy, label: 'Ranking', path: '/app/ranking' },
-    { icon: User, label: 'Perfil', path: '/app/perfil' },
-  ]
+  const checkIsActive = (itemPath: string) => {
+    if (itemPath.includes('?tab=')) {
+      const tab = itemPath.split('?tab=')[1]
+      return (
+        location.search.includes(`tab=${tab}`) ||
+        (location.pathname === '/app' && !location.search && tab === 'minhas-demandas')
+      )
+    }
+    return location.pathname === itemPath && !location.search
+  }
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 h-[64px] bg-[#FFFFFF] border-t border-[#E0E0E0] flex items-center justify-around px-2 z-50 pb-safe shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 h-[64px] bg-[#FFFFFF] border-t border-[#E0E0E0] flex items-center justify-around px-2 z-40 pb-safe shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
       {navItems.map((item) => {
-        const isActive =
-          (location.pathname === item.path.split('?')[0] &&
-            (item.path.includes('?') ? location.search === `?${item.path.split('?')[1]}` : true)) ||
-          (item.path === '/app/demandas' &&
-            location.pathname === '/app/demandas' &&
-            !location.search.includes('tab=todos') &&
-            !location.search.includes('tab=captados'))
+        const isActive = checkIsActive(item.path)
 
         return (
           <Link
             key={item.label}
             to={item.path}
             className={cn(
-              'flex flex-col items-center justify-center w-full h-full space-y-1',
+              'flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors',
               isActive ? 'text-[#1A3A52]' : 'text-[#999999] hover:text-[#333333]',
             )}
           >

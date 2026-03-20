@@ -3,9 +3,12 @@ import { Tabs, TabsContent } from '@/components/ui/tabs'
 import { MyDemandsView } from '@/components/MyDemandsView'
 import { CapturedPropertiesView } from '@/components/CapturedPropertiesView'
 import { ScrollableTabs } from '@/components/ScrollableTabs'
+import { HistoricoTab } from '@/components/dashboard/HistoricoTab'
+import useAppStore from '@/stores/useAppStore'
 
 export function CorretorDashboard() {
   const [searchParams, setSearchParams] = useSearchParams()
+  const { demands, currentUser } = useAppStore()
   const currentTab = searchParams.get('tab') || 'minhas-demandas'
 
   const handleTabChange = (val: string) => {
@@ -13,10 +16,8 @@ export function CorretorDashboard() {
   }
 
   const tabs = [
-    { value: 'minhas-demandas', label: 'Minhas Demandas' },
-    { value: 'cadastrados-meus-clientes', label: 'Cadastrados p/ Meus Clientes' },
-    { value: 'disponiveis-geral', label: 'Disponíveis Geral' },
-    { value: 'todos-captados', label: 'Todos os Captados' },
+    { value: 'minhas-demandas', label: 'Meus Clientes' },
+    { value: 'disponiveis-geral', label: 'Propriedades Disponíveis' },
     { value: 'historico', label: 'Histórico' },
   ]
 
@@ -30,29 +31,22 @@ export function CorretorDashboard() {
           className="sticky top-[64px] lg:top-[72px] bg-[#F5F5F5] pt-2 z-20 -mx-4 px-4 sm:mx-0 sm:px-0"
         />
 
-        <TabsContent value="minhas-demandas" className="mt-4">
-          <MyDemandsView filterType="Venda" />
-        </TabsContent>
-        <TabsContent value="cadastrados-meus-clientes" className="mt-4">
-          <CapturedPropertiesView
-            filterType="Venda"
-            emptyStateText="Nenhum imóvel cadastrado para seus clientes no momento."
-          />
-        </TabsContent>
-        <TabsContent value="disponiveis-geral" className="mt-4">
-          <CapturedPropertiesView
-            filterType="Venda"
-            emptyStateText="Nenhum imóvel solto disponível."
-          />
-        </TabsContent>
-        <TabsContent value="todos-captados" className="mt-4">
-          <CapturedPropertiesView filterType="Venda" emptyStateText="Nenhum imóvel captado." />
-        </TabsContent>
-        <TabsContent value="historico" className="mt-4">
-          <div className="p-8 text-center text-muted-foreground bg-white rounded-xl border border-dashed">
-            <p>Histórico em construção...</p>
-          </div>
-        </TabsContent>
+        <div className="mt-4 transition-opacity duration-300 ease-in animate-in fade-in">
+          <TabsContent value="minhas-demandas" className="m-0 border-none">
+            <MyDemandsView filterType="Venda" />
+          </TabsContent>
+
+          <TabsContent value="disponiveis-geral" className="m-0 border-none">
+            <CapturedPropertiesView
+              filterType="Venda"
+              emptyStateText="Nenhum imóvel solto disponível no momento."
+            />
+          </TabsContent>
+
+          <TabsContent value="historico" className="m-0 border-none">
+            <HistoricoTab userDemands={demands.filter((d) => d.createdBy === currentUser?.id)} />
+          </TabsContent>
+        </div>
       </Tabs>
     </div>
   )

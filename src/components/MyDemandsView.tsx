@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Search } from 'lucide-react'
+import { Users } from 'lucide-react'
 import useAppStore from '@/stores/useAppStore'
 import { DemandCard } from '@/components/DemandCard'
 import { StickyFilterBar, FilterDef } from '@/components/StickyFilterBar'
@@ -18,19 +18,19 @@ const FILTERS: FilterDef[] = [
     id: 'status',
     label: 'Status',
     options: [
-      { value: 'Ativos', label: 'Ativos', icon: '🟢' },
-      { value: 'Todos', label: 'Todos', icon: '⚪' },
+      { value: 'Ativos', label: 'Ativos (Em Aberto)', icon: '🟢' },
+      { value: 'Todos', label: 'Todos os Status', icon: '⚪' },
     ],
   },
   {
     id: 'prazo',
     label: 'Prazo',
     options: [
-      { value: 'Todos', label: 'Todos', icon: '📅' },
+      { value: 'Todos', label: 'Todos os Prazos', icon: '📅' },
       { value: 'Urgente', label: 'Urgente', icon: '⚡' },
       { value: 'Até 15 dias', label: 'Até 15 dias', icon: '⏳' },
       { value: 'Até 30 dias', label: 'Até 30 dias', icon: '⏳' },
-      { value: 'Até 90 dias', label: 'Até 90 dias', icon: '🗓️' },
+      { value: 'Até 90 dias ou +', label: 'Até 90 dias', icon: '🗓️' },
     ],
   },
   { id: 'bairro', label: 'Bairro', isSearch: true, options: [] },
@@ -62,7 +62,10 @@ export function MyDemandsView({ filterType }: Props) {
           if (['Negócio', 'Perdida', 'Impossível', 'Arquivado'].includes(d.status)) return false
         }
         if (filters.prazo !== 'Todos' && d.timeframe !== filters.prazo) return false
-        if (filters.bairro && !d.location.toLowerCase().includes(filters.bairro.toLowerCase()))
+        if (
+          filters.bairro &&
+          !d.location.join(',').toLowerCase().includes(filters.bairro.toLowerCase())
+        )
           return false
         return true
       })
@@ -94,7 +97,7 @@ export function MyDemandsView({ filterType }: Props) {
 
       <div className="flex-1 w-full flex flex-col gap-[16px] min-w-0">
         <div className="lg:hidden w-full space-y-3">
-          <div className="flex overflow-x-auto gap-2 pb-1 scrollbar-hide">
+          <div className="flex overflow-x-auto gap-2 pb-1 scrollbar-hide px-1">
             {MOBILE_CHIPS.map((chip) => {
               const isActive =
                 JSON.stringify(filters) === JSON.stringify(chip.apply) ||
@@ -135,18 +138,18 @@ export function MyDemandsView({ filterType }: Props) {
             ))}
           </div>
         ) : filteredDemands.length === 0 ? (
-          <div className="text-center py-[48px] px-4 bg-[#FFFFFF] border-[2px] rounded-[12px] border-dashed border-[#E5E5E5] flex flex-col items-center justify-center">
+          <div className="text-center py-[64px] px-4 bg-[#FFFFFF] border-[2px] rounded-[12px] border-dashed border-[#E5E5E5] flex flex-col items-center justify-center shadow-sm">
             {isAnyFilterActive ? (
               <>
-                <Search className="w-12 h-12 text-[#999999]/30 mb-3" />
-                <p className="text-[16px] font-bold text-[#333333]">
-                  Nenhuma demanda com estes filtros.
+                <Users className="w-16 h-16 text-[#999999]/30 mb-4" />
+                <p className="text-[18px] font-bold text-[#333333]">
+                  Nenhum cliente com estes filtros.
                 </p>
-                <div className="mt-4 flex flex-col sm:flex-row gap-3">
+                <div className="mt-6 flex flex-col sm:flex-row gap-3 w-full max-w-[200px]">
                   <Button
                     variant="outline"
                     onClick={handleClear}
-                    className="font-bold min-h-[44px]"
+                    className="font-bold min-h-[48px] w-full"
                   >
                     Limpar filtros
                   </Button>
@@ -154,17 +157,20 @@ export function MyDemandsView({ filterType }: Props) {
               </>
             ) : (
               <>
-                <div className="text-[64px] leading-none mb-4">📋</div>
-                <h3 className="text-[20px] font-bold text-[#333333]">Nenhuma demanda ativa</h3>
-                <p className="text-[14px] text-[#999999] mt-1 mb-6 max-w-[300px]">
-                  Clique em '+ Nova Demanda' para criar sua primeira demanda
+                <div className="w-20 h-20 bg-[#E8F0F8] rounded-full flex items-center justify-center mb-4">
+                  <Users className="w-10 h-10 text-[#1A3A52]" />
+                </div>
+                <h3 className="text-[22px] font-black text-[#1A3A52]">Nenhum cliente registrado</h3>
+                <p className="text-[15px] text-[#666666] mt-2 mb-8 max-w-[360px] leading-relaxed">
+                  Você ainda não criou nenhuma demanda. Clique em "Registrar Novo Cliente" para
+                  começar.
                 </p>
-                <div className="w-full max-w-sm">
+                <div className="w-full max-w-[260px]">
                   <Button
-                    className="w-full h-[48px] bg-[#4CAF50] hover:bg-[#388E3C] text-white font-bold text-[16px]"
+                    className="w-full h-[52px] bg-[#4CAF50] hover:bg-[#388E3C] text-white font-bold text-[16px] shadow-[0_4px_12px_rgba(76,175,80,0.3)] rounded-full transition-transform hover:scale-105"
                     onClick={() => document.getElementById('btn-add-demand-trigger')?.click()}
                   >
-                    ➕ Criar Nova Demanda
+                    Registrar Novo Cliente
                   </Button>
                 </div>
               </>
