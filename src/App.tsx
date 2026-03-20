@@ -24,6 +24,7 @@ import { Auditoria } from '@/pages/admin/Auditoria'
 import RLSTester from '@/pages/admin/RLSTester'
 import E2ETester from '@/pages/admin/E2ETester'
 import PerformanceTester from '@/pages/admin/PerformanceTester'
+import RealtimeTester from '@/pages/admin/RealtimeTester'
 import PontuacaoPage from '@/pages/dashboard/PontuacaoPage'
 import HistoricoPage from '@/pages/dashboard/HistoricoPage'
 import PerdidosPage from '@/pages/dashboard/PerdidosPage'
@@ -64,6 +65,7 @@ const App = () => (
               <Route path="rls-tester" element={<RLSTester />} />
               <Route path="e2e-tester" element={<E2ETester />} />
               <Route path="performance-tester" element={<PerformanceTester />} />
+              <Route path="realtime-tester" element={<RealtimeTester />} />
               <Route path="pontuacao" element={<PontuacaoPage />} />
               <Route path="historico" element={<HistoricoPage />} />
               <Route path="perdidos" element={<PerdidosPage />} />
@@ -79,3 +81,4 @@ const App = () => (
 )
 
 export default App
+
