@@ -1,13 +1,13 @@
 import { useState, useMemo } from 'react'
-import { Users } from 'lucide-react'
-import useAppStore from '@/stores/useAppStore'
-import { DemandCard } from '@/components/DemandCard'
-import { StickyFilterBar, FilterDef } from '@/components/StickyFilterBar'
 import { FilterSidebar } from '@/components/FilterSidebar'
+import { StickyFilterBar, FilterDef } from '@/components/StickyFilterBar'
 import { useViewFilters } from '@/hooks/useViewFilters'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Users, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { useSupabaseDemands } from '@/hooks/use-supabase-demands'
+import { ExpandableDemandCard } from '@/components/ExpandableDemandCard'
 
 interface Props {
   filterType?: 'Venda' | 'Aluguel'
@@ -18,32 +18,46 @@ const FILTERS: FilterDef[] = [
     id: 'status',
     label: 'Status',
     options: [
-      { value: 'Ativos', label: 'Ativos (Em Aberto)', icon: '🟢' },
-      { value: 'Todos', label: 'Todos os Status', icon: '⚪' },
+      { value: 'Todos', label: 'Todos os Status' },
+      { value: 'aberta', label: 'Aberta', icon: '🟢' },
+      { value: 'atendida', label: 'Atendida', icon: '🔵' },
+      { value: 'sem_resposta_24h', label: 'Sem Resposta', icon: '🟡' },
+      { value: 'impossivel', label: 'Impossível', icon: '⚪' },
     ],
   },
   {
-    id: 'prazo',
-    label: 'Prazo',
+    id: 'urgencia',
+    label: 'Urgência',
     options: [
-      { value: 'Todos', label: 'Todos os Prazos', icon: '📅' },
-      { value: 'Urgente', label: 'Urgente', icon: '⚡' },
-      { value: 'Até 15 dias', label: 'Até 15 dias', icon: '⏳' },
-      { value: 'Até 30 dias', label: 'Até 30 dias', icon: '⏳' },
-      { value: 'Até 90 dias ou +', label: 'Até 90 dias', icon: '🗓️' },
+      { value: 'Todos', label: 'Todas' },
+      { value: 'Alta', label: 'Alta', icon: '🔴' },
+      { value: 'Média', label: 'Média', icon: '🟡' },
+      { value: 'Baixa', label: 'Baixa', icon: '⚪' },
+    ],
+  },
+  {
+    id: 'data',
+    label: 'Data',
+    options: [
+      { value: 'Todos', label: 'Qualquer data', icon: '📅' },
+      { value: '7', label: 'Últimos 7 dias', icon: '📅' },
+      { value: '30', label: 'Últimos 30 dias', icon: '📅' },
+      { value: '90', label: 'Últimos 90 dias', icon: '📅' },
     ],
   },
   { id: 'bairro', label: 'Bairro', isSearch: true, options: [] },
 ]
 
-export function MyDemandsView({ filterType }: Props) {
-  const { demands, currentUser } = useAppStore()
+export function MyDemandsView({ filterType = 'Aluguel' }: Props) {
+  const { demands, loading, refresh } = useSupabaseDemands(filterType)
 
-  const [filters, setFilters] = useViewFilters('my_demands_view_' + (filterType || 'all'), {
-    status: 'Ativos',
-    prazo: 'Todos',
+  const [filters, setFilters] = useViewFilters('my_demands_view_supabase_' + filterType, {
+    status: 'Todos',
+    urgencia: 'Todos',
+    data: 'Todos',
     bairro: '',
   })
+
   const [isFiltering, setIsFiltering] = useState(false)
 
   const handleFilterChange = (newF: Record<string, string>) => {
@@ -53,37 +67,43 @@ export function MyDemandsView({ filterType }: Props) {
   }
 
   const filteredDemands = useMemo(() => {
-    let result = demands.filter((d) => d.createdBy === currentUser?.id)
-    if (filterType) result = result.filter((d) => d.type === filterType)
+    return demands.filter((d) => {
+      if (filters.status !== 'Todos' && d.status_demanda !== filters.status) return false
+      if (filters.urgencia !== 'Todos' && d.nivel_urgencia !== filters.urgencia) return false
 
-    return result
-      .filter((d) => {
-        if (filters.status === 'Ativos') {
-          if (['Negócio', 'Perdida', 'Impossível', 'Arquivado'].includes(d.status)) return false
-        }
-        if (filters.prazo !== 'Todos' && d.timeframe !== filters.prazo) return false
-        if (
-          filters.bairro &&
-          !d.location.join(',').toLowerCase().includes(filters.bairro.toLowerCase())
-        )
-          return false
-        return true
-      })
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-  }, [demands, currentUser, filterType, filters])
+      if (filters.bairro) {
+        const bArr = filters.bairro.toLowerCase().split(',')
+        const dBairros = d.bairros.map((b) => b.toLowerCase())
+        if (!bArr.some((b) => dBairros.includes(b))) return false
+      }
 
-  const handleClear = () => handleFilterChange({ status: 'Todos', prazo: 'Todos', bairro: '' })
+      if (filters.data !== 'Todos') {
+        const days = parseInt(filters.data)
+        const dateLimit = new Date()
+        dateLimit.setDate(dateLimit.getDate() - days)
+        const dDate = new Date(d.created_at)
+        if (dDate < dateLimit) return false
+      }
+      return true
+    })
+  }, [demands, filters])
 
-  const isAnyFilterActive = Object.values(filters).some(
-    (v) => v !== 'Todos' && v !== '' && v !== 'Ativos',
-  )
+  const handleClear = () =>
+    handleFilterChange({ status: 'Todos', urgencia: 'Todos', data: 'Todos', bairro: '' })
+
+  const isAnyFilterActive = Object.values(filters).some((v) => v !== 'Todos' && v !== '')
 
   const MOBILE_CHIPS = [
-    { label: 'Ativos', apply: { status: 'Ativos', prazo: 'Todos', bairro: '' } },
-    { label: 'Urgente', apply: { status: 'Ativos', prazo: 'Urgente', bairro: '' } },
-    { label: 'Até 15d', apply: { status: 'Ativos', prazo: 'Até 15 dias', bairro: '' } },
-    { label: 'Até 30d', apply: { status: 'Ativos', prazo: 'Até 30 dias', bairro: '' } },
-    { label: 'Todos', apply: { status: 'Todos', prazo: 'Todos', bairro: '' } },
+    { label: 'Abertas', apply: { status: 'aberta', urgencia: 'Todos', data: 'Todos', bairro: '' } },
+    {
+      label: 'Atendidas',
+      apply: { status: 'atendida', urgencia: 'Todos', data: 'Todos', bairro: '' },
+    },
+    {
+      label: 'Alta Urgência',
+      apply: { status: 'Todos', urgencia: 'Alta', data: 'Todos', bairro: '' },
+    },
+    { label: 'Todos', apply: { status: 'Todos', urgencia: 'Todos', data: 'Todos', bairro: '' } },
   ]
 
   return (
@@ -99,13 +119,7 @@ export function MyDemandsView({ filterType }: Props) {
         <div className="lg:hidden w-full space-y-3">
           <div className="flex overflow-x-auto gap-2 pb-1 scrollbar-hide px-1">
             {MOBILE_CHIPS.map((chip) => {
-              const isActive =
-                JSON.stringify(filters) === JSON.stringify(chip.apply) ||
-                (chip.label === 'Ativos' &&
-                  filters.status === 'Ativos' &&
-                  filters.prazo === 'Todos' &&
-                  filters.bairro === '')
-
+              const isActive = JSON.stringify(filters) === JSON.stringify(chip.apply)
               return (
                 <button
                   key={chip.label}
@@ -131,10 +145,16 @@ export function MyDemandsView({ filterType }: Props) {
           />
         </div>
 
-        {isFiltering ? (
-          <div className="grid gap-[16px] grid-cols-1 md:grid-cols-2 2xl:grid-cols-3">
+        {loading ? (
+          <div className="flex flex-col gap-[16px] w-full">
             {[1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-[250px] w-full rounded-[12px] animate-fast-pulse" />
+              <Skeleton key={i} className="h-[140px] w-full rounded-[12px] animate-fast-pulse" />
+            ))}
+          </div>
+        ) : isFiltering ? (
+          <div className="flex flex-col gap-[16px] w-full">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-[140px] w-full rounded-[12px] animate-fast-pulse" />
             ))}
           </div>
         ) : filteredDemands.length === 0 ? (
@@ -143,7 +163,7 @@ export function MyDemandsView({ filterType }: Props) {
               <>
                 <Users className="w-16 h-16 text-[#999999]/30 mb-4" />
                 <p className="text-[18px] font-bold text-[#333333]">
-                  Nenhum cliente com estes filtros.
+                  Nenhuma demanda com estes filtros.
                 </p>
                 <div className="mt-6 flex flex-col sm:flex-row gap-3 w-full max-w-[200px]">
                   <Button
@@ -160,17 +180,22 @@ export function MyDemandsView({ filterType }: Props) {
                 <div className="w-20 h-20 bg-[#E8F0F8] rounded-full flex items-center justify-center mb-4">
                   <Users className="w-10 h-10 text-[#1A3A52]" />
                 </div>
-                <h3 className="text-[22px] font-black text-[#1A3A52]">Nenhum cliente registrado</h3>
+                <h3 className="text-[22px] font-black text-[#1A3A52]">
+                  Nenhuma demanda registrada
+                </h3>
                 <p className="text-[15px] text-[#666666] mt-2 mb-8 max-w-[360px] leading-relaxed">
-                  Você ainda não criou nenhuma demanda. Clique no botão + para começar.
+                  Você ainda não criou nenhuma demanda. Crie uma para acompanhá-la.
                 </p>
+                <Button onClick={refresh} variant="outline" className="gap-2">
+                  <RefreshCw className="w-4 h-4" /> Atualizar
+                </Button>
               </>
             )}
           </div>
         ) : (
-          <div className="grid gap-[16px] grid-cols-1 md:grid-cols-2 2xl:grid-cols-3">
-            {filteredDemands.map((demand, index) => (
-              <DemandCard key={demand.id} demand={demand} index={index} />
+          <div className="flex flex-col gap-[16px] w-full">
+            {filteredDemands.map((demand) => (
+              <ExpandableDemandCard key={demand.id} demand={demand} onUpdate={refresh} />
             ))}
           </div>
         )}

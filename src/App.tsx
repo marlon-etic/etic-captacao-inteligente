@@ -3,6 +3,7 @@ import { Toaster } from '@/components/ui/toaster'
 import { Toaster as Sonner } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { AppStoreProvider } from '@/stores/useAppStore'
+import { AuthProvider } from '@/hooks/use-auth'
 import Layout from '@/components/Layout'
 import Index from '@/pages/Index'
 import EsqueciSenha from '@/pages/EsqueciSenha'
@@ -30,49 +31,51 @@ import DisponivelGeralPage from '@/pages/dashboard/DisponivelGeralPage'
 import TodosCaptadosPage from '@/pages/dashboard/TodosCaptadosPage'
 
 const App = () => (
-  <AppStoreProvider>
-    <BrowserRouter future={{ v7_startTransition: false, v7_relativeSplatPath: false }}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/esqueci-senha" element={<EsqueciSenha />} />
-          <Route path="/redefinir-senha" element={<RedefinirSenha />} />
+  <AuthProvider>
+    <AppStoreProvider>
+      <BrowserRouter future={{ v7_startTransition: false, v7_relativeSplatPath: false }}>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/esqueci-senha" element={<EsqueciSenha />} />
+            <Route path="/redefinir-senha" element={<RedefinirSenha />} />
 
-          {/* Redirects for common root routes to avoid 404s */}
-          <Route path="/demandas" element={<Navigate to="/app/demandas" replace />} />
-          <Route path="/perfil" element={<Navigate to="/app/perfil" replace />} />
-          <Route path="/notificacoes" element={<Navigate to="/app/notificacoes" replace />} />
-          <Route path="/ajuda" element={<Navigate to="/app/ajuda" replace />} />
+            {/* Redirects for common root routes to avoid 404s */}
+            <Route path="/demandas" element={<Navigate to="/app/demandas" replace />} />
+            <Route path="/perfil" element={<Navigate to="/app/perfil" replace />} />
+            <Route path="/notificacoes" element={<Navigate to="/app/notificacoes" replace />} />
+            <Route path="/ajuda" element={<Navigate to="/app/ajuda" replace />} />
 
-          <Route path="/app" element={<Layout />}>
-            <Route index element={<DashboardRedirect />} />
-            <Route path="demandas" element={<Demandas />} />
-            <Route path="nova-demanda" element={<NovaDemanda />} />
-            <Route path="ranking" element={<Ranking />} />
-            <Route path="perfil" element={<Perfil />} />
-            <Route path="notificacoes" element={<Notificacoes />} />
-            <Route path="ajuda" element={<Ajuda />} />
-            <Route path="gestor-dashboard" element={<GestorDashboard />} />
-            <Route path="analytics" element={<AnalyticsDashboard />} />
-            <Route path="performance" element={<PerformanceDashboard />} />
-            <Route path="usuarios" element={<Usuarios />} />
-            <Route path="auditoria" element={<Auditoria />} />
-            <Route path="rls-tester" element={<RLSTester />} />
-            <Route path="e2e-tester" element={<E2ETester />} />
-            <Route path="performance-tester" element={<PerformanceTester />} />
-            <Route path="pontuacao" element={<PontuacaoPage />} />
-            <Route path="historico" element={<HistoricoPage />} />
-            <Route path="perdidos" element={<PerdidosPage />} />
-            <Route path="disponivel-geral" element={<DisponivelGeralPage />} />
-            <Route path="todos-captados" element={<TodosCaptadosPage />} />
-          </Route>
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </TooltipProvider>
-    </BrowserRouter>
-  </AppStoreProvider>
+            <Route path="/app" element={<Layout />}>
+              <Route index element={<DashboardRedirect />} />
+              <Route path="demandas" element={<Demandas />} />
+              <Route path="nova-demanda" element={<NovaDemanda />} />
+              <Route path="ranking" element={<Ranking />} />
+              <Route path="perfil" element={<Perfil />} />
+              <Route path="notificacoes" element={<Notificacoes />} />
+              <Route path="ajuda" element={<Ajuda />} />
+              <Route path="gestor-dashboard" element={<GestorDashboard />} />
+              <Route path="analytics" element={<AnalyticsDashboard />} />
+              <Route path="performance" element={<PerformanceDashboard />} />
+              <Route path="usuarios" element={<Usuarios />} />
+              <Route path="auditoria" element={<Auditoria />} />
+              <Route path="rls-tester" element={<RLSTester />} />
+              <Route path="e2e-tester" element={<E2ETester />} />
+              <Route path="performance-tester" element={<PerformanceTester />} />
+              <Route path="pontuacao" element={<PontuacaoPage />} />
+              <Route path="historico" element={<HistoricoPage />} />
+              <Route path="perdidos" element={<PerdidosPage />} />
+              <Route path="disponivel-geral" element={<DisponivelGeralPage />} />
+              <Route path="todos-captados" element={<TodosCaptadosPage />} />
+            </Route>
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </TooltipProvider>
+      </BrowserRouter>
+    </AppStoreProvider>
+  </AuthProvider>
 )
 
 export default App
