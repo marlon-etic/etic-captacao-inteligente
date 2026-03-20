@@ -22,7 +22,13 @@ export function NeighborhoodsChart({ demands, onBarClick, selected }: Props) {
   const data = useMemo(() => {
     const bMap = new Map<string, { name: string; Venda: number; Aluguel: number; total: number }>()
     demands.forEach((d) => {
-      const b = d.location.split(',')[0].trim() || 'Desconhecido'
+      let b = 'Desconhecido'
+      if (Array.isArray(d.location) && d.location.length > 0) {
+        b = String(d.location[0]).split(',')[0].trim() || 'Desconhecido'
+      } else if (typeof d.location === 'string') {
+        b = (d.location as string).split(',')[0].trim() || 'Desconhecido'
+      }
+
       if (!bMap.has(b)) bMap.set(b, { name: b, Venda: 0, Aluguel: 0, total: 0 })
       const entry = bMap.get(b)!
       if (d.type === 'Venda') entry.Venda++
