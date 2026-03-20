@@ -22,14 +22,6 @@ export default function Demandas() {
   const { demands, notifications, markNotificationAsRead, currentUser } = useAppStore()
   const [searchParams, setSearchParams] = useSearchParams()
 
-  const isSDRCorretor = currentUser?.role === 'sdr' || currentUser?.role === 'corretor'
-
-  // If it's an SDR/Corretor, redirect to dashboard which now acts as the main hub
-  if (isSDRCorretor) {
-    const tab = searchParams.get('tab') || 'minhas-demandas'
-    return <Navigate to={`/app?tab=${tab}`} replace />
-  }
-
   const tabs = [
     { value: 'demandas', label: 'Demandas Abertas' },
     { value: 'captados', label: 'Imóveis Captados' },
@@ -60,6 +52,11 @@ export default function Demandas() {
     }
   }, [currentTab, notifications, markNotificationAsRead])
 
+  const { groupedDemands, ungroupedDemands } = useDemandGrouping({
+    demands,
+    filters: activeFilters,
+  })
+
   const applyFilters = () => {
     startTransition(() => {
       setActiveFilters({
@@ -70,10 +67,13 @@ export default function Demandas() {
     })
   }
 
-  const { groupedDemands, ungroupedDemands } = useDemandGrouping({
-    demands,
-    filters: activeFilters,
-  })
+  const isSDRCorretor = currentUser?.role === 'sdr' || currentUser?.role === 'corretor'
+
+  // If it's an SDR/Corretor, redirect to dashboard which now acts as the main hub
+  if (isSDRCorretor) {
+    const tab = searchParams.get('tab') || 'minhas-demandas'
+    return <Navigate to={`/app?tab=${tab}`} replace />
+  }
 
   const filterHash = JSON.stringify(activeFilters)
 
