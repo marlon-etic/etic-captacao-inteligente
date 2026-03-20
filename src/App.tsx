@@ -21,6 +21,7 @@ import { PerformanceDashboard } from '@/pages/analytics/PerformanceDashboard'
 import { Usuarios } from '@/pages/admin/Usuarios'
 import { Auditoria } from '@/pages/admin/Auditoria'
 import RLSTester from '@/pages/admin/RLSTester'
+import E2ETester from '@/pages/admin/E2ETester'
 import PontuacaoPage from '@/pages/dashboard/PontuacaoPage'
 import HistoricoPage from '@/pages/dashboard/HistoricoPage'
 import PerdidosPage from '@/pages/dashboard/PerdidosPage'
@@ -58,6 +59,7 @@ const App = () => (
             <Route path="usuarios" element={<Usuarios />} />
             <Route path="auditoria" element={<Auditoria />} />
             <Route path="rls-tester" element={<RLSTester />} />
+            <Route path="e2e-tester" element={<E2ETester />} />
             <Route path="pontuacao" element={<PontuacaoPage />} />
             <Route path="historico" element={<HistoricoPage />} />
             <Route path="perdidos" element={<PerdidosPage />} />
