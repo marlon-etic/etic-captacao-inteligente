@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from '@/components/ui/toaster'
 import { Toaster as Sonner } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
@@ -34,6 +34,14 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/esqueci-senha" element={<EsqueciSenha />} />
           <Route path="/redefinir-senha" element={<RedefinirSenha />} />
+
+          {/* Redirects for common root routes to avoid 404s */}
+          <Route path="/ranking" element={<Navigate to="/app/ranking" replace />} />
+          <Route path="/demandas" element={<Navigate to="/app/demandas" replace />} />
+          <Route path="/perfil" element={<Navigate to="/app/perfil" replace />} />
+          <Route path="/notificacoes" element={<Navigate to="/app/notificacoes" replace />} />
+          <Route path="/ajuda" element={<Navigate to="/app/ajuda" replace />} />
+
           <Route path="/app" element={<Layout />}>
             <Route index element={<DashboardRedirect />} />
             <Route path="demandas" element={<Demandas />} />
