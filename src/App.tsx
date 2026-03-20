@@ -20,6 +20,7 @@ import { AnalyticsDashboard } from '@/pages/analytics/AnalyticsDashboard'
 import { PerformanceDashboard } from '@/pages/analytics/PerformanceDashboard'
 import { Usuarios } from '@/pages/admin/Usuarios'
 import { Auditoria } from '@/pages/admin/Auditoria'
+import RLSTester from '@/pages/admin/RLSTester'
 import PontuacaoPage from '@/pages/dashboard/PontuacaoPage'
 import HistoricoPage from '@/pages/dashboard/HistoricoPage'
 import PerdidosPage from '@/pages/dashboard/PerdidosPage'
@@ -56,6 +57,7 @@ const App = () => (
             <Route path="performance" element={<PerformanceDashboard />} />
             <Route path="usuarios" element={<Usuarios />} />
             <Route path="auditoria" element={<Auditoria />} />
+            <Route path="rls-tester" element={<RLSTester />} />
             <Route path="pontuacao" element={<PontuacaoPage />} />
             <Route path="historico" element={<HistoricoPage />} />
             <Route path="perdidos" element={<PerdidosPage />} />
