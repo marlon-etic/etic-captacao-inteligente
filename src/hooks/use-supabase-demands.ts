@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { toast } from '@/hooks/use-toast'
 
@@ -29,75 +29,90 @@ export interface SupabaseDemand {
 export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
   const [demands, setDemands] = useState<SupabaseDemand[]>([])
   const [loading, setLoading] = useState(true)
+  const isFetching = useRef(false)
 
-  const fetchDemands = useCallback(async () => {
-    try {
-      const { data: userData } = await supabase.auth.getUser()
-      if (!userData.user) return
+  const fetchDemands = useCallback(
+    async (isBackground = false) => {
+      if (isFetching.current) return
+      isFetching.current = true
 
-      const { data: usersData } = await supabase.from('users').select('id, nome')
-      const userMap = new Map((usersData || []).map((u) => [u.id, u.nome]))
+      try {
+        if (!isBackground) setLoading(true)
 
-      const table = type === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
+        const { data: userData } = await supabase.auth.getUser()
+        if (!userData.user) return
 
-      const { data, error } = await supabase
-        .from(table)
-        .select('*, imoveis_captados(*)')
-        .order('created_at', { ascending: false })
+        const { data: usersData } = await supabase.from('users').select('id, nome')
+        const userMap = new Map((usersData || []).map((u) => [u.id, u.nome]))
 
-      if (error) throw error
+        const table = type === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
 
-      if (data) {
-        setDemands(
-          data.map((d) => ({
-            id: d.id,
-            nome_cliente: d.nome_cliente || d.cliente_nome || 'Cliente',
-            bairros: d.bairros || d.localizacoes || [],
-            valor_minimo: d.valor_minimo || 0,
-            valor_maximo: d.valor_maximo || d.orcamento_max || 0,
-            nivel_urgencia: d.nivel_urgencia || d.urgencia || 'Média',
-            status_demanda: d.status_demanda || 'aberta',
-            created_at: d.created_at || new Date().toISOString(),
-            tipo: type,
-            imoveis_captados: (d.imoveis_captados || []).map((i: any) => ({
-              ...i,
-              captador_nome: userMap.get(i.user_captador_id) || 'Captador',
+        const { data, error } = await supabase
+          .from(table)
+          .select('*, imoveis_captados(*)')
+          .order('created_at', { ascending: false })
+
+        if (error) throw error
+
+        if (data) {
+          setDemands(
+            data.map((d) => ({
+              id: d.id,
+              nome_cliente: d.nome_cliente || d.cliente_nome || 'Cliente',
+              bairros: d.bairros || d.localizacoes || [],
+              valor_minimo: d.valor_minimo || 0,
+              valor_maximo: d.valor_maximo || d.orcamento_max || 0,
+              nivel_urgencia: d.nivel_urgencia || d.urgencia || 'Média',
+              status_demanda: d.status_demanda || 'aberta',
+              created_at: d.created_at || new Date().toISOString(),
+              tipo: type,
+              imoveis_captados: (d.imoveis_captados || []).map((i: any) => ({
+                ...i,
+                captador_nome: userMap.get(i.user_captador_id) || 'Captador',
+              })),
             })),
-          })),
-        )
+          )
+        }
+      } catch (err: any) {
+        console.error(err)
+        toast({
+          title: 'Erro ao carregar demandas',
+          description: err.message,
+          variant: 'destructive',
+        })
+      } finally {
+        if (!isBackground) setLoading(false)
+        isFetching.current = false
       }
-    } catch (err: any) {
-      console.error(err)
-      toast({
-        title: 'Erro ao carregar demandas',
-        description: err.message,
-        variant: 'destructive',
-      })
-    } finally {
-      setLoading(false)
-    }
-  }, [type])
+    },
+    [type],
+  )
 
   useEffect(() => {
     let mounted = true
-
     if (mounted) fetchDemands()
 
     const table = type === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
 
     const channel = supabase
       .channel(`demands_changes_${type}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table }, () => fetchDemands())
+      .on('postgres_changes', { event: '*', schema: 'public', table }, () => fetchDemands(true))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'imoveis_captados' }, () =>
-        fetchDemands(),
+        fetchDemands(true),
       )
       .subscribe()
+
+    const handleEvent = () => fetchDemands(true)
+    window.addEventListener('demanda-created', handleEvent)
+    window.addEventListener('demanda-updated', handleEvent)
 
     return () => {
       mounted = false
       supabase.removeChannel(channel)
+      window.removeEventListener('demanda-created', handleEvent)
+      window.removeEventListener('demanda-updated', handleEvent)
     }
   }, [fetchDemands, type])
 
-  return { demands, loading, refresh: fetchDemands }
+  return { demands, loading, refresh: () => fetchDemands(true) }
 }

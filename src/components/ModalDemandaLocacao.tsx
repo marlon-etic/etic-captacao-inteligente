@@ -27,7 +27,6 @@ import { Textarea } from '@/components/ui/textarea'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Command, CommandGroup, CommandItem, CommandList } from '@/components/ui/command'
 import { useToast } from '@/hooks/use-toast'
-import useAppStore from '@/stores/useAppStore'
 import { supabase } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import { useKeyboard } from '@/hooks/use-keyboard'
@@ -122,7 +121,6 @@ function FormSummary({
 
 export function ModalDemandaLocacao({ isOpen, onClose }: Props) {
   const { toast } = useToast()
-  const { currentUser } = useAppStore()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const { isKeyboardOpen, viewportHeight, keyboardHeight } = useKeyboard()
@@ -172,6 +170,9 @@ export function ModalDemandaLocacao({ isOpen, onClose }: Props) {
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsSubmitting(true)
     try {
+      const { data: authData } = await supabase.auth.getUser()
+      if (!authData.user) throw new Error('Usuário não autenticado')
+
       const { data, error } = await supabase
         .from('demandas_locacao')
         .insert({
@@ -180,12 +181,14 @@ export function ModalDemandaLocacao({ isOpen, onClose }: Props) {
           email: values.email || null,
           observacoes: values.observacoes || null,
           status_demanda: 'aberta',
-          sdr_id: currentUser?.id,
+          sdr_id: authData.user.id,
         })
         .select('id')
         .single()
 
       if (error) throw error
+
+      window.dispatchEvent(new Event('demanda-created'))
 
       toast({
         title: `✅ Demanda criada com sucesso! ID: ${data.id}`,

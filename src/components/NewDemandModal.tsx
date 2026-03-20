@@ -23,6 +23,7 @@ import { useNavigate } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import { useKeyboard } from '@/hooks/use-keyboard'
 import { useIsMobile } from '@/hooks/use-mobile'
+import { supabase } from '@/lib/supabase/client'
 
 export const formSchema = z
   .object({
@@ -141,32 +142,81 @@ export function NewDemandModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
     if (!isOpen) form.reset()
   }, [isOpen, form])
 
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
-    addDemand({
-      clientName: values.clientName,
-      phone: values.clientPhone,
-      clientEmail: values.clientEmail || undefined,
-      type: values.type,
-      location: values.location,
-      minBudget: values.minBudget,
-      maxBudget: values.maxBudget,
-      budget: values.maxBudget,
-      bedrooms: values.bedrooms,
-      parkingSpots: values.parkingSpots,
-      timeframe: values.timeframe,
-      description: values.description || 'Nova demanda via modal rápido',
-    })
-    toast({
-      title: '✅ Demanda cadastrada com sucesso!',
-      className: 'bg-emerald-600 text-white border-emerald-600',
-      duration: 3000,
-    })
-    onClose()
-    sessionStorage.setItem(
-      'etic_filters_my_demands_view_all',
-      JSON.stringify({ status: 'Ativos', prazo: 'Todos', bairro: '' }),
-    )
-    navigate('/app?tab=minhas-demandas')
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    try {
+      const { data: authData } = await supabase.auth.getUser()
+
+      if (authData?.user) {
+        if (values.type === 'Aluguel') {
+          await supabase.from('demandas_locacao').insert({
+            nome_cliente: values.clientName,
+            telefone: values.clientPhone || null,
+            email: values.clientEmail || null,
+            bairros: values.location,
+            valor_minimo: values.minBudget,
+            valor_maximo: values.maxBudget,
+            dormitorios: values.bedrooms,
+            vagas_estacionamento: values.parkingSpots,
+            nivel_urgencia: values.timeframe,
+            observacoes: values.description || null,
+            status_demanda: 'aberta',
+            sdr_id: authData.user.id,
+          })
+        } else {
+          await supabase.from('demandas_vendas').insert({
+            nome_cliente: values.clientName,
+            telefone: values.clientPhone || null,
+            email: values.clientEmail || null,
+            bairros: values.location,
+            valor_minimo: values.minBudget,
+            valor_maximo: values.maxBudget,
+            dormitorios: values.bedrooms,
+            vagas_estacionamento: values.parkingSpots,
+            nivel_urgencia: values.timeframe,
+            necessidades_especificas: values.description || null,
+            status_demanda: 'aberta',
+            tipo_imovel: 'Casa', // default
+            corretor_id: authData.user.id,
+          })
+        }
+      }
+
+      addDemand({
+        clientName: values.clientName,
+        phone: values.clientPhone,
+        clientEmail: values.clientEmail || undefined,
+        type: values.type,
+        location: values.location,
+        minBudget: values.minBudget,
+        maxBudget: values.maxBudget,
+        budget: values.maxBudget,
+        bedrooms: values.bedrooms,
+        parkingSpots: values.parkingSpots,
+        timeframe: values.timeframe,
+        description: values.description || 'Nova demanda via modal rápido',
+      })
+
+      window.dispatchEvent(new Event('demanda-created'))
+
+      toast({
+        title: '✅ Demanda cadastrada com sucesso!',
+        className: 'bg-emerald-600 text-white border-emerald-600',
+        duration: 3000,
+      })
+
+      onClose()
+      sessionStorage.setItem(
+        'etic_filters_my_demands_view_all',
+        JSON.stringify({ status: 'Ativos', prazo: 'Todos', bairro: '' }),
+      )
+      navigate('/app?tab=minhas-demandas')
+    } catch (e: any) {
+      toast({
+        title: 'Erro',
+        description: e.message || 'Ocorreu um erro ao salvar.',
+        variant: 'destructive',
+      })
+    }
   }
 
   return (

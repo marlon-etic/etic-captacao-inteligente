@@ -96,6 +96,7 @@ export function ExpandableDemandCard({
         description: message,
         className: status === 'fechado' ? 'bg-emerald-600 text-white' : '',
       })
+      window.dispatchEvent(new Event('demanda-updated'))
       if (onUpdate) onUpdate()
     } else {
       toast({ title: 'Erro', description: error.message, variant: 'destructive' })

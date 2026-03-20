@@ -112,6 +112,9 @@ export function ModalDemandaVenda({ isOpen, onClose }: { isOpen: boolean; onClos
         nivel_urgencia: values.nivel_urgencia,
         necessidades_especificas: values.necessidades_especificas || null,
       })
+
+      window.dispatchEvent(new Event('demanda-created'))
+
       toast({ title: '✅ Demanda criada com sucesso!', className: 'bg-emerald-600 text-white' })
       setTimeout(() => {
         onClose()
