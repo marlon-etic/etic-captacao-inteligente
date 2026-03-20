@@ -8,8 +8,7 @@ import { useToast } from '@/hooks/use-toast'
 import useAppStore from '@/stores/useAppStore'
 import { AddPropertyModal } from '@/components/AddPropertyModal'
 import { NewDemandModal } from '@/components/NewDemandModal'
-import { Plus, UserPlus } from 'lucide-react'
-import { Button } from './ui/button'
+import { Plus } from 'lucide-react'
 
 export default function Layout() {
   const { currentUser, sessionExpiresAt, logout } = useAppStore()
@@ -60,10 +59,7 @@ export default function Layout() {
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset className="flex flex-col min-h-[100dvh] overflow-hidden bg-[#F5F5F5] relative">
-        <AppHeader
-          onAddPropertyClick={() => setAddPropertyModalOpen(true)}
-          onAddDemandClick={() => setNewDemandModalOpen(true)}
-        />
+        <AppHeader onAddPropertyClick={() => setAddPropertyModalOpen(true)} />
         <main className="flex-1 overflow-y-auto w-full max-w-[1400px] mx-auto px-[16px] min-[480px]:px-[24px] md:px-[32px] pt-[16px] pb-[100px] md:pb-[32px] animate-fade-in-up">
           <Outlet />
         </main>
@@ -72,7 +68,7 @@ export default function Layout() {
           <>
             <button
               onClick={() => setAddPropertyModalOpen(true)}
-              className="md:hidden fixed bottom-[76px] right-[16px] w-[56px] h-[56px] bg-[#4CAF50] text-white rounded-full flex items-center justify-center shadow-[0_4px_12px_rgba(76,175,80,0.4)] z-[1000] active:scale-95 transition-transform"
+              className="md:hidden fixed bottom-[80px] right-[16px] w-[56px] h-[56px] bg-[#10B981] hover:bg-[#059669] text-white rounded-full flex items-center justify-center shadow-[0_4px_12px_rgba(0,0,0,0.15)] z-[1000] active:scale-95 transition-transform"
               aria-label="Adicionar Imóvel"
             >
               <Plus className="w-8 h-8" />
@@ -91,22 +87,14 @@ export default function Layout() {
 
         {canCreateDemand && (
           <>
-            {/* Desktop Fixed Button */}
-            <Button
+            <button
               onClick={() => setNewDemandModalOpen(true)}
-              className="hidden md:flex fixed bottom-8 right-8 h-14 px-8 rounded-full bg-[#4CAF50] hover:bg-[#388E3C] text-white shadow-[0_4px_12px_rgba(76,175,80,0.4)] z-[1000] text-base font-bold transition-transform hover:scale-105 group"
+              className="fixed bottom-[80px] right-[16px] md:bottom-[32px] md:right-[32px] w-[56px] h-[56px] rounded-full bg-[#10B981] hover:bg-[#059669] text-white shadow-[0_4px_12px_rgba(0,0,0,0.15)] hover:shadow-[0_6px_16px_rgba(0,0,0,0.2)] z-[1000] flex items-center justify-center transition-all duration-300 active:scale-95 group"
+              aria-label="Registrar novo cliente"
+              title="Registrar novo cliente"
             >
-              <UserPlus className="w-5 h-5 mr-2 transition-transform group-hover:scale-110" />{' '}
-              Registrar Novo Cliente
-            </Button>
-
-            {/* Mobile Fixed Button */}
-            <Button
-              onClick={() => setNewDemandModalOpen(true)}
-              className="md:hidden fixed bottom-[76px] left-4 right-4 h-14 rounded-xl bg-[#4CAF50] hover:bg-[#388E3C] text-white shadow-[0_4px_12px_rgba(76,175,80,0.4)] z-[1000] text-base font-bold transition-transform active:scale-95 group"
-            >
-              <UserPlus className="w-5 h-5 mr-2" /> Registrar Novo Cliente
-            </Button>
+              <Plus className="w-8 h-8 group-hover:scale-110 transition-transform duration-300" />
+            </button>
 
             <button
               id="btn-add-demand-trigger"

@@ -162,17 +162,8 @@ export function MyDemandsView({ filterType }: Props) {
                 </div>
                 <h3 className="text-[22px] font-black text-[#1A3A52]">Nenhum cliente registrado</h3>
                 <p className="text-[15px] text-[#666666] mt-2 mb-8 max-w-[360px] leading-relaxed">
-                  Você ainda não criou nenhuma demanda. Clique em "Registrar Novo Cliente" para
-                  começar.
+                  Você ainda não criou nenhuma demanda. Clique no botão + para começar.
                 </p>
-                <div className="w-full max-w-[260px]">
-                  <Button
-                    className="w-full h-[52px] bg-[#4CAF50] hover:bg-[#388E3C] text-white font-bold text-[16px] shadow-[0_4px_12px_rgba(76,175,80,0.3)] rounded-full transition-transform hover:scale-105"
-                    onClick={() => document.getElementById('btn-add-demand-trigger')?.click()}
-                  >
-                    Registrar Novo Cliente
-                  </Button>
-                </div>
               </>
             )}
           </div>

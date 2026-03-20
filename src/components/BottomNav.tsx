@@ -48,7 +48,7 @@ export function BottomNav() {
             key={item.label}
             to={item.path}
             className={cn(
-              'flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors',
+              'flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors relative',
               isActive ? 'text-[#1A3A52]' : 'text-[#999999] hover:text-[#333333]',
             )}
           >

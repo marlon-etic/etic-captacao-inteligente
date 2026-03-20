@@ -43,10 +43,9 @@ const getNotifIcon = (type: string) => {
 
 interface AppHeaderProps {
   onAddPropertyClick?: () => void
-  onAddDemandClick?: () => void
 }
 
-export function AppHeader({ onAddPropertyClick, onAddDemandClick }: AppHeaderProps) {
+export function AppHeader({ onAddPropertyClick }: AppHeaderProps) {
   const store = useAppStore()
   const currentUser = store.currentUser
   const navigate = useNavigate()
@@ -61,9 +60,6 @@ export function AppHeader({ onAddPropertyClick, onAddDemandClick }: AppHeaderPro
     ) || []
   const unreadCount = notifications.filter((n: AppNotification) => !n.lida).length
   const { markNotificationAsRead, markAllNotificationsAsRead } = store
-
-  const canCreateDemand =
-    currentUser?.role === 'sdr' || currentUser?.role === 'corretor' || currentUser?.role === 'admin'
 
   const getTitle = () => {
     if (location.pathname.includes('/app/pontuacao')) return 'Pontuação e Desempenho'
@@ -103,15 +99,6 @@ export function AppHeader({ onAddPropertyClick, onAddDemandClick }: AppHeaderPro
             className="hidden md:flex bg-[#4CAF50] hover:bg-[#388E3C] min-h-[48px] w-auto px-6 text-white font-bold transition-colors shadow-[0_2px_4px_rgba(76,175,80,0.3)] shrink-0 text-[14px]"
           >
             ➕ ADICIONAR IMÓVEL
-          </Button>
-        )}
-
-        {canCreateDemand && onAddDemandClick && (
-          <Button
-            onClick={onAddDemandClick}
-            className="hidden md:flex bg-[#4CAF50] hover:bg-[#388E3C] min-h-[48px] min-w-[180px] px-6 text-white font-bold transition-colors shadow-[0_2px_4px_rgba(76,175,80,0.3)] shrink-0 text-[14px] rounded-[8px]"
-          >
-            ➕ Nova Demanda
           </Button>
         )}
 
