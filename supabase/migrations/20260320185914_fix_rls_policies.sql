@@ -5,7 +5,7 @@ BEGIN
   CREATE POLICY "SDR sees own Locacao demands" ON public.demandas_locacao
   FOR SELECT TO authenticated USING (
     sdr_id = auth.uid() OR
-    EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('admin', 'gestor', 'captador'))
+    EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role::text IN ('admin', 'gestor', 'captador'))
   );
 
   -- Fix Vendas
@@ -13,7 +13,7 @@ BEGIN
   CREATE POLICY "Broker sees own Vendas demands" ON public.demandas_vendas
   FOR SELECT TO authenticated USING (
     corretor_id = auth.uid() OR
-    EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('admin', 'gestor', 'captador'))
+    EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role::text IN ('admin', 'gestor', 'captador'))
   );
 
   -- Fix Imoveis Captados access for SDR
@@ -24,7 +24,7 @@ BEGIN
       SELECT 1 FROM public.demandas_locacao dl 
       WHERE dl.id = imoveis_captados.demanda_locacao_id AND dl.sdr_id = auth.uid()
     ) OR
-    EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('admin', 'gestor', 'captador'))
+    EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role::text IN ('admin', 'gestor', 'captador'))
   );
 
   -- Fix Imoveis Captados access for Broker
@@ -35,7 +35,7 @@ BEGIN
       SELECT 1 FROM public.demandas_vendas dv 
       WHERE dv.id = imoveis_captados.demanda_venda_id AND dv.corretor_id = auth.uid()
     ) OR
-    EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('admin', 'gestor', 'captador'))
+    EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role::text IN ('admin', 'gestor', 'captador'))
   );
 
   -- Allow SDRs to update captures linked to their demands (Validate/Reject functionality)
