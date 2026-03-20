@@ -173,13 +173,4 @@ export function ProfileTable({ demands, selectedNeighborhood, onClearNeighborhoo
           <Button
             onClick={() => setPage((p) => Math.min(pages, p + 1))}
             disabled={page === pages}
-            variant="outline"
-            className="h-[36px]"
-          >
-            Próxima
-          </Button>
-        </div>
-      )}
-    </div>
-  )
-}
+            v
