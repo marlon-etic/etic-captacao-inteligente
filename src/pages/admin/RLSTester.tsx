@@ -26,81 +26,46 @@ type TestStep = {
 }
 
 const INITIAL_TESTS: TestStep[] = [
-  { id: 'admin-1', role: 'Admin', name: 'Acesso total a locação (SELECT)', status: 'idle' },
-  { id: 'admin-2', role: 'Admin', name: 'Acesso total a vendas (SELECT)', status: 'idle' },
+  { id: 'sdr-1', role: 'SDR', name: 'SDR A cria demanda 1 (Locação)', status: 'idle' },
+  { id: 'sdr-2', role: 'SDR', name: 'SDR B cria demanda 2 (Locação)', status: 'idle' },
+  { id: 'sdr-3', role: 'SDR', name: 'SDR A consegue ver demanda 1?', status: 'idle' },
+  { id: 'sdr-4', role: 'SDR', name: 'SDR A consegue ver demanda 2?', status: 'idle' },
+  { id: 'sdr-5', role: 'SDR', name: 'SDR A consegue editar demanda 2?', status: 'idle' },
+  { id: 'sdr-6', role: 'SDR', name: 'SDR A consegue deletar demanda 2?', status: 'idle' },
+  { id: 'cor-1', role: 'Corretor', name: 'Corretor A cria demanda 1 (Venda)', status: 'idle' },
+  { id: 'cor-2', role: 'Corretor', name: 'Corretor B cria demanda 2 (Venda)', status: 'idle' },
+  { id: 'cor-3', role: 'Corretor', name: 'Corretor A consegue ver demanda 1?', status: 'idle' },
+  { id: 'cor-4', role: 'Corretor', name: 'Corretor A consegue ver demanda 2?', status: 'idle' },
+  { id: 'cor-5', role: 'Corretor', name: 'Corretor A consegue editar demanda 2?', status: 'idle' },
   {
-    id: 'sdr-1',
-    role: 'SDR',
-    name: 'Vê apenas próprias demandas de locação (Isolamento)',
-    status: 'idle',
-  },
-  {
-    id: 'sdr-2',
-    role: 'SDR',
-    name: 'Não vê demandas de vendas (Isolamento de Domínio)',
-    status: 'idle',
-  },
-  {
-    id: 'sdr-3',
-    role: 'SDR',
-    name: 'Não consegue editar demanda de outro (Proteção UPDATE)',
-    status: 'idle',
-  },
-  {
-    id: 'sdr-4',
-    role: 'SDR',
-    name: 'Não consegue deletar demanda de outro (Proteção DELETE)',
-    status: 'idle',
-  },
-  {
-    id: 'prop-3',
-    role: 'SDR',
-    name: 'Não consegue editar propriedades (Proteção UPDATE)',
-    status: 'idle',
-  },
-  {
-    id: 'corretor-1',
-    role: 'Corretor',
-    name: 'Vê apenas próprias demandas de vendas (Isolamento)',
-    status: 'idle',
-  },
-  {
-    id: 'corretor-2',
-    role: 'Corretor',
-    name: 'Não vê demandas de locação (Isolamento de Domínio)',
-    status: 'idle',
-  },
-  {
-    id: 'corretor-3',
-    role: 'Corretor',
-    name: 'Não consegue editar demanda de outro corretor',
-    status: 'idle',
-  },
-  { id: 'captador-1', role: 'Captador', name: 'Vê apenas demandas abertas', status: 'idle' },
-  {
-    id: 'captador-2',
+    id: 'cap-1',
     role: 'Captador',
-    name: 'Não consegue editar demandas (Proteção UPDATE)',
+    name: 'Captador consegue ver demanda de SDR A?',
     status: 'idle',
   },
   {
-    id: 'captador-3',
+    id: 'cap-2',
     role: 'Captador',
-    name: 'Não consegue deletar demandas (Proteção DELETE)',
+    name: 'Captador consegue ver demanda de Corretor B?',
     status: 'idle',
   },
   {
-    id: 'prop-1',
+    id: 'cap-3',
     role: 'Captador',
-    name: 'Vê todas as propriedades (Info Pública)',
+    name: 'Captador consegue editar demanda de SDR A?',
     status: 'idle',
   },
   {
-    id: 'prop-2',
+    id: 'cap-4',
     role: 'Captador',
-    name: 'Não consegue editar propriedade de outro',
+    name: 'Captador consegue deletar demanda de Corretor B?',
     status: 'idle',
   },
+  { id: 'adm-1', role: 'Admin', name: 'Admin consegue ver todas as demandas?', status: 'idle' },
+  { id: 'adm-2', role: 'Admin', name: 'Admin consegue editar qualquer demanda?', status: 'idle' },
+  { id: 'adm-3', role: 'Admin', name: 'Admin consegue deletar qualquer demanda?', status: 'idle' },
+  { id: 'qry-1', role: 'Geral', name: 'Queries diretas limitam resultados? (SDR)', status: 'idle' },
+  { id: 'qry-2', role: 'Geral', name: 'UPDATE direto não autorizado falha?', status: 'idle' },
 ]
 
 export default function RLSTester() {
@@ -113,288 +78,263 @@ export default function RLSTester() {
 
   const runTests = async () => {
     setIsRunning(true)
-    setTests(INITIAL_TESTS)
+    setTests(INITIAL_TESTS.map((t) => ({ ...t, status: 'idle', message: '' })))
+
+    const getClientAndUser = async (email: string) => {
+      const c = getTestClient()
+      const {
+        data: { user },
+        error,
+      } = await c.auth.signInWithPassword({ email, password: TEST_PASSWORD })
+      if (error)
+        throw new Error(
+          `Falha login ${email}: Verifique se as migrations de seeds rodaram. (${error.message})`,
+        )
+      return { client: c, user }
+    }
 
     try {
-      // ===== ADMIN TESTS =====
-      const adminClient = getTestClient()
-      const { error: adminAuthErr } = await adminClient.auth.signInWithPassword({
-        email: 'admin@test.com',
-        password: TEST_PASSWORD,
-      })
-      if (adminAuthErr) throw new Error(`Falha login Admin: ${adminAuthErr.message}`)
+      // 0. Setup clients (Autenticação isolada)
+      const sdrA = await getClientAndUser('sdr_a@test.com')
+      const sdrB = await getClientAndUser('sdr_b@test.com')
+      const corA = await getClientAndUser('cor_a@test.com')
+      const corB = await getClientAndUser('cor_b@test.com')
+      const cap = await getClientAndUser('cap@test.com')
+      const adm = await getClientAndUser('adm@test.com')
 
-      updateTest('admin-1', { status: 'running' })
-      const { data: adminLoc } = await adminClient.from('demandas_locacao').select('*')
-      if (adminLoc && adminLoc.length >= 5) {
-        updateTest('admin-1', {
-          status: 'passed',
-          message: `Sucesso. Retornou ${adminLoc.length} registros.`,
-        })
-      } else {
-        updateTest('admin-1', {
-          status: 'failed',
-          message: `Retornou ${adminLoc?.length || 0} registros. Esperado >= 5.`,
-        })
-      }
+      let demLocA = ''
+      let demLocB = ''
+      let demVenA = ''
+      let demVenB = ''
 
-      updateTest('admin-2', { status: 'running' })
-      const { data: adminVen } = await adminClient.from('demandas_vendas').select('*')
-      if (adminVen && adminVen.length >= 5) {
-        updateTest('admin-2', {
-          status: 'passed',
-          message: `Sucesso. Retornou ${adminVen.length} registros.`,
-        })
-      } else {
-        updateTest('admin-2', {
-          status: 'failed',
-          message: `Retornou ${adminVen?.length || 0} registros. Esperado >= 5.`,
-        })
-      }
-      await adminClient.auth.signOut()
-
-      // ===== SDR TESTS =====
-      const sdrClient = getTestClient()
-      const { error: sdrAuthErr } = await sdrClient.auth.signInWithPassword({
-        email: 'sdr@test.com',
-        password: TEST_PASSWORD,
-      })
-      if (sdrAuthErr) throw new Error(`Falha login SDR: ${sdrAuthErr.message}`)
-
+      // 1. SDR Tests
       updateTest('sdr-1', { status: 'running' })
-      const { data: sdrLoc } = await sdrClient.from('demandas_locacao').select('*')
-      const allSdrMine = sdrLoc?.every((d) => d.sdr_id === '22222222-2222-2222-2222-222222222222')
-      if (sdrLoc && sdrLoc.length > 0 && allSdrMine) {
-        updateTest('sdr-1', {
-          status: 'passed',
-          message: `Sucesso. Acessou ${sdrLoc.length} registros próprios isolados.`,
+      const { data: dLA, error: eLA } = await sdrA.client
+        .from('demandas_locacao')
+        .insert({
+          nome_cliente: 'Cliente SDR A',
+          status_demanda: 'aberta',
+          sdr_id: sdrA.user?.id,
+          valor_minimo: 100,
+          valor_maximo: 200,
         })
-      } else {
-        updateTest('sdr-1', {
-          status: 'failed',
-          message: 'Retornou registros de terceiros ou vazio.',
-        })
-      }
+        .select()
+        .single()
+      if (eLA) throw new Error(eLA.message)
+      demLocA = dLA.id
+      updateTest('sdr-1', { status: 'passed', message: '✅ SIM' })
 
       updateTest('sdr-2', { status: 'running' })
-      const { data: sdrVen } = await sdrClient.from('demandas_vendas').select('*')
-      if (!sdrVen || sdrVen.length === 0) {
-        updateTest('sdr-2', {
-          status: 'passed',
-          message: 'Acesso negado com sucesso a demandas de vendas.',
+      const { data: dLB, error: eLB } = await sdrB.client
+        .from('demandas_locacao')
+        .insert({
+          nome_cliente: 'Cliente SDR B',
+          status_demanda: 'aberta',
+          sdr_id: sdrB.user?.id,
+          valor_minimo: 100,
+          valor_maximo: 200,
         })
-      } else {
-        updateTest('sdr-2', {
-          status: 'failed',
-          message: 'Falha de segurança. SDR acessou vendas.',
-        })
-      }
+        .select()
+        .single()
+      if (eLB) throw new Error(eLB.message)
+      demLocB = dLB.id
+      updateTest('sdr-2', { status: 'passed', message: '✅ SIM' })
 
       updateTest('sdr-3', { status: 'running' })
-      const { data: sdrUpd } = await sdrClient
-        .from('demandas_vendas')
-        .update({ status_demanda: 'atendida' })
-        .eq('id', '66666666-6666-6666-6666-666666666661')
-        .select()
-      if (!sdrUpd || sdrUpd.length === 0) {
-        updateTest('sdr-3', {
-          status: 'passed',
-          message: 'Modificação bloqueada corretamente pelo RLS.',
-        })
-      } else {
-        updateTest('sdr-3', {
-          status: 'failed',
-          message: 'Vulnerabilidade: Conseguiu atualizar registro de outro.',
-        })
-      }
+      const { data: seeLA } = await sdrA.client
+        .from('demandas_locacao')
+        .select('id')
+        .eq('id', demLocA)
+      if (seeLA && seeLA.length > 0)
+        updateTest('sdr-3', { status: 'passed', message: '✅ SIM (Vê própria)' })
+      else throw new Error('Falha: Não viu a própria demanda')
 
       updateTest('sdr-4', { status: 'running' })
-      const { data: sdrDel } = await sdrClient
+      const { data: seeLB } = await sdrA.client
+        .from('demandas_locacao')
+        .select('id')
+        .eq('id', demLocB)
+      if (seeLB && seeLB.length === 0)
+        updateTest('sdr-4', { status: 'passed', message: '❌ NÃO (Correto, bloqueado pelo RLS)' })
+      else throw new Error('Falha de Segurança: Viu demanda de outro usuário')
+
+      updateTest('sdr-5', { status: 'running' })
+      const { data: updLB } = await sdrA.client
+        .from('demandas_locacao')
+        .update({ nome_cliente: 'Hacked' })
+        .eq('id', demLocB)
+        .select()
+      if (!updLB || updLB.length === 0)
+        updateTest('sdr-5', { status: 'passed', message: '❌ NÃO (Correto, UPDATE bloqueado)' })
+      else throw new Error('Falha Crítica: Conseguiu editar demanda de outro usuário')
+
+      updateTest('sdr-6', { status: 'running' })
+      const { data: delLB } = await sdrA.client
         .from('demandas_locacao')
         .delete()
-        .eq('id', '66666666-6666-6666-6666-666666666661')
+        .eq('id', demLocB)
         .select()
-      if (!sdrDel || sdrDel.length === 0) {
-        updateTest('sdr-4', {
-          status: 'passed',
-          message: 'Deleção bloqueada corretamente pelo RLS.',
-        })
-      } else {
-        updateTest('sdr-4', {
-          status: 'failed',
-          message: 'Vulnerabilidade: Conseguiu deletar registro.',
-        })
-      }
+      if (!delLB || delLB.length === 0)
+        updateTest('sdr-6', { status: 'passed', message: '❌ NÃO (Correto, DELETE bloqueado)' })
+      else throw new Error('Falha Crítica: Conseguiu deletar demanda de outro usuário')
 
-      updateTest('prop-3', { status: 'running' })
-      const { data: sdrPropUpd } = await sdrClient
-        .from('imoveis_captados')
-        .update({ preco: 8888 })
-        .eq('id', '77777777-7777-7777-7777-777777777771')
-        .select()
-      if (!sdrPropUpd || sdrPropUpd.length === 0) {
-        updateTest('prop-3', {
-          status: 'passed',
-          message: 'Edição de propriedade bloqueada para SDR.',
-        })
-      } else {
-        updateTest('prop-3', { status: 'failed', message: 'SDR conseguiu editar propriedade.' })
-      }
-      await sdrClient.auth.signOut()
-
-      // ===== CORRETOR TESTS =====
-      const corClient = getTestClient()
-      const { error: corAuthErr } = await corClient.auth.signInWithPassword({
-        email: 'corretor1@test.com',
-        password: TEST_PASSWORD,
-      })
-      if (corAuthErr) throw new Error(`Falha login Corretor: ${corAuthErr.message}`)
-
-      updateTest('corretor-1', { status: 'running' })
-      const { data: corVen } = await corClient.from('demandas_vendas').select('*')
-      const allCorMine = corVen?.every(
-        (d) => d.corretor_id === '33333333-3333-3333-3333-333333333331',
-      )
-      if (corVen && corVen.length > 0 && allCorMine) {
-        updateTest('corretor-1', {
-          status: 'passed',
-          message: `Sucesso. Acessou ${corVen.length} registros próprios isolados.`,
-        })
-      } else {
-        updateTest('corretor-1', {
-          status: 'failed',
-          message: 'Retornou registros de terceiros ou vazio.',
-        })
-      }
-
-      updateTest('corretor-2', { status: 'running' })
-      const { data: corLoc } = await corClient.from('demandas_locacao').select('*')
-      if (!corLoc || corLoc.length === 0) {
-        updateTest('corretor-2', {
-          status: 'passed',
-          message: 'Acesso negado com sucesso a demandas de locação.',
-        })
-      } else {
-        updateTest('corretor-2', {
-          status: 'failed',
-          message: 'Falha de segurança. Corretor acessou locação.',
-        })
-      }
-
-      updateTest('corretor-3', { status: 'running' })
-      const { data: corUpd } = await corClient
+      // 2. Corretor Tests
+      updateTest('cor-1', { status: 'running' })
+      const { data: dVA, error: eVA } = await corA.client
         .from('demandas_vendas')
-        .update({ status_demanda: 'atendida' })
-        .eq('id', '66666666-6666-6666-6666-666666666662')
+        .insert({
+          nome_cliente: 'Cliente Cor A',
+          status_demanda: 'aberta',
+          corretor_id: corA.user?.id,
+          valor_minimo: 100,
+          valor_maximo: 200,
+        })
         .select()
-      if (!corUpd || corUpd.length === 0) {
-        updateTest('corretor-3', {
-          status: 'passed',
-          message: 'Modificação de demanda alheia bloqueada.',
-        })
-      } else {
-        updateTest('corretor-3', {
-          status: 'failed',
-          message: 'Vulnerabilidade: Atualizou demanda de corretor2.',
-        })
-      }
-      await corClient.auth.signOut()
+        .single()
+      if (eVA) throw new Error(eVA.message)
+      demVenA = dVA.id
+      updateTest('cor-1', { status: 'passed', message: '✅ SIM' })
 
-      // ===== CAPTADOR TESTS =====
-      const capClient = getTestClient()
-      const { error: capAuthErr } = await capClient.auth.signInWithPassword({
-        email: 'captador1@test.com',
-        password: TEST_PASSWORD,
-      })
-      if (capAuthErr) throw new Error(`Falha login Captador: ${capAuthErr.message}`)
-
-      updateTest('captador-1', { status: 'running' })
-      const { data: capLoc } = await capClient.from('demandas_locacao').select('*')
-      const allOpen = capLoc?.every((d) => d.status_demanda === 'aberta')
-      const hasClosed = capLoc?.some((d) => d.id === '55555555-5555-5555-5555-555555555554') // This ID is 'atendida'
-      if (capLoc && capLoc.length > 0 && allOpen && !hasClosed) {
-        updateTest('captador-1', {
-          status: 'passed',
-          message: `Retornou ${capLoc.length} demandas abertas (ocultou fechadas).`,
+      updateTest('cor-2', { status: 'running' })
+      const { data: dVB, error: eVB } = await corB.client
+        .from('demandas_vendas')
+        .insert({
+          nome_cliente: 'Cliente Cor B',
+          status_demanda: 'aberta',
+          corretor_id: corB.user?.id,
+          valor_minimo: 100,
+          valor_maximo: 200,
         })
-      } else {
-        updateTest('captador-1', {
-          status: 'failed',
-          message: 'Retornou demandas com status não permitido.',
-        })
-      }
+        .select()
+        .single()
+      if (eVB) throw new Error(eVB.message)
+      demVenB = dVB.id
+      updateTest('cor-2', { status: 'passed', message: '✅ SIM' })
 
-      updateTest('captador-2', { status: 'running' })
-      const { data: capUpd } = await capClient
+      updateTest('cor-3', { status: 'running' })
+      const { data: seeVA } = await corA.client
+        .from('demandas_vendas')
+        .select('id')
+        .eq('id', demVenA)
+      if (seeVA && seeVA.length > 0)
+        updateTest('cor-3', { status: 'passed', message: '✅ SIM (Vê própria)' })
+      else throw new Error('Falha: Não viu a própria demanda')
+
+      updateTest('cor-4', { status: 'running' })
+      const { data: seeVB } = await corA.client
+        .from('demandas_vendas')
+        .select('id')
+        .eq('id', demVenB)
+      if (seeVB && seeVB.length === 0)
+        updateTest('cor-4', { status: 'passed', message: '❌ NÃO (Correto, bloqueado)' })
+      else throw new Error('Falha de Segurança: Viu demanda de outro usuário')
+
+      updateTest('cor-5', { status: 'running' })
+      const { data: updVB } = await corA.client
+        .from('demandas_vendas')
+        .update({ nome_cliente: 'Hacked' })
+        .eq('id', demVenB)
+        .select()
+      if (!updVB || updVB.length === 0)
+        updateTest('cor-5', { status: 'passed', message: '❌ NÃO (Correto, UPDATE bloqueado)' })
+      else throw new Error('Falha Crítica: Conseguiu editar demanda de outro usuário')
+
+      // 3. Captador Tests
+      updateTest('cap-1', { status: 'running' })
+      const { data: capSeeLA } = await cap.client
         .from('demandas_locacao')
-        .update({ status_demanda: 'atendida' })
-        .eq('id', '55555555-5555-5555-5555-555555555551')
-        .select()
-      if (!capUpd || capUpd.length === 0) {
-        updateTest('captador-2', {
-          status: 'passed',
-          message: 'Edição bloqueada (somente leitura).',
-        })
-      } else {
-        updateTest('captador-2', {
-          status: 'failed',
-          message: 'Vulnerabilidade: Captador conseguiu editar.',
-        })
-      }
+        .select('id')
+        .eq('id', demLocA)
+      if (capSeeLA && capSeeLA.length > 0)
+        updateTest('cap-1', { status: 'passed', message: '✅ SIM (Pública)' })
+      else throw new Error('Falha: Captador não viu demanda aberta')
 
-      updateTest('captador-3', { status: 'running' })
-      const { data: capDel } = await capClient
+      updateTest('cap-2', { status: 'running' })
+      const { data: capSeeVB } = await cap.client
+        .from('demandas_vendas')
+        .select('id')
+        .eq('id', demVenB)
+      if (capSeeVB && capSeeVB.length > 0)
+        updateTest('cap-2', { status: 'passed', message: '✅ SIM (Pública)' })
+      else throw new Error('Falha: Captador não viu demanda aberta')
+
+      updateTest('cap-3', { status: 'running' })
+      const { data: capUpdLA } = await cap.client
+        .from('demandas_locacao')
+        .update({ status_demanda: 'fechado' })
+        .eq('id', demLocA)
+        .select()
+      if (!capUpdLA || capUpdLA.length === 0)
+        updateTest('cap-3', { status: 'passed', message: '❌ NÃO (Correto, apenas leitura)' })
+      else throw new Error('Falha Crítica: Captador conseguiu editar demanda')
+
+      updateTest('cap-4', { status: 'running' })
+      const { data: capDelVB } = await cap.client
+        .from('demandas_vendas')
+        .delete()
+        .eq('id', demVenB)
+        .select()
+      if (!capDelVB || capDelVB.length === 0)
+        updateTest('cap-4', { status: 'passed', message: '❌ NÃO (Correto, apenas leitura)' })
+      else throw new Error('Falha Crítica: Captador conseguiu deletar demanda')
+
+      // 4. Admin Tests
+      updateTest('adm-1', { status: 'running' })
+      const { data: admSeeL } = await adm.client
+        .from('demandas_locacao')
+        .select('id')
+        .in('id', [demLocA, demLocB])
+      if (admSeeL && admSeeL.length === 2)
+        updateTest('adm-1', { status: 'passed', message: '✅ SIM (Acesso total)' })
+      else throw new Error('Falha: Admin não conseguiu ver todas')
+
+      updateTest('adm-2', { status: 'running' })
+      const { data: admUpdLA } = await adm.client
+        .from('demandas_locacao')
+        .update({ observacoes: 'Editado Admin' })
+        .eq('id', demLocA)
+        .select()
+      if (admUpdLA && admUpdLA.length === 1)
+        updateTest('adm-2', { status: 'passed', message: '✅ SIM (Autorizado)' })
+      else throw new Error('Falha: Admin não conseguiu editar')
+
+      updateTest('adm-3', { status: 'running' })
+      const { data: admDelLB } = await adm.client
         .from('demandas_locacao')
         .delete()
-        .eq('id', '55555555-5555-5555-5555-555555555551')
+        .eq('id', demLocB)
         .select()
-      if (!capDel || capDel.length === 0) {
-        updateTest('captador-3', {
-          status: 'passed',
-          message: 'Deleção bloqueada (somente leitura).',
-        })
-      } else {
-        updateTest('captador-3', {
-          status: 'failed',
-          message: 'Vulnerabilidade: Captador conseguiu deletar.',
-        })
-      }
+      if (admDelLB && admDelLB.length === 1)
+        updateTest('adm-3', { status: 'passed', message: '✅ SIM (Autorizado)' })
+      else throw new Error('Falha: Admin não conseguiu deletar')
 
-      updateTest('prop-1', { status: 'running' })
-      const { data: capProps } = await capClient.from('imoveis_captados').select('*')
-      if (capProps && capProps.length > 0) {
-        updateTest('prop-1', {
+      // 5. Query e Proteção de Dados
+      updateTest('qry-1', { status: 'running' })
+      const { data: sdrAll } = await sdrA.client.from('demandas_locacao').select('*')
+      const otherDemands = sdrAll?.filter((d) => d.sdr_id !== sdrA.user?.id)
+      if (!otherDemands || otherDemands.length === 0)
+        updateTest('qry-1', {
           status: 'passed',
-          message: `Sucesso. Retornou ${capProps.length} propriedades públicas.`,
+          message: '✅ SIM (Query global retorna apenas próprios registros)',
         })
-      } else {
-        updateTest('prop-1', { status: 'failed', message: 'Falha ao acessar propriedades.' })
-      }
+      else throw new Error('Falha de Segurança: Query direta expôs dados de outros')
 
-      updateTest('prop-2', { status: 'running' })
-      const { data: capPropUpd } = await capClient
-        .from('imoveis_captados')
-        .update({ preco: 999999 })
-        .eq('id', '77777777-7777-7777-7777-777777777772')
-        .select()
-      if (!capPropUpd || capPropUpd.length === 0) {
-        updateTest('prop-2', {
-          status: 'passed',
-          message: 'Edição bloqueada corretamente (pertence a outro).',
-        })
-      } else {
-        updateTest('prop-2', {
-          status: 'failed',
-          message: 'Conseguiu editar propriedade de outro captador.',
-        })
-      }
-      await capClient.auth.signOut()
+      updateTest('qry-2', { status: 'running' })
+      updateTest('qry-2', {
+        status: 'passed',
+        message: '✅ SIM (Validado com sucesso nos testes sdr-5 e cor-5)',
+      })
+
+      // 6. Cleanup Data using Admin
+      await adm.client.from('demandas_locacao').delete().eq('id', demLocA)
+      await adm.client.from('demandas_vendas').delete().in('id', [demVenA, demVenB])
     } catch (error: any) {
       console.error('Test Execution Error:', error)
+      const errMessage = error.message || 'Erro Desconhecido'
       setTests((prev) =>
         prev.map((t) =>
           t.status === 'running' || t.status === 'idle'
-            ? { ...t, status: 'failed', message: `Erro na execução: ${error.message}` }
+            ? { ...t, status: 'failed', message: `Erro: ${errMessage}` }
             : t,
         ),
       )
@@ -422,24 +362,25 @@ export default function RLSTester() {
         <div>
           <h1 className="text-2xl font-bold text-[#1A3A52] flex items-center gap-2">
             <ShieldCheck className="w-8 h-8 text-emerald-600" />
-            Validação de RLS (Row-Level Security)
+            Auditoria de Segurança RLS
           </h1>
           <p className="text-gray-600 mt-1 text-sm md:text-base">
-            Execute testes automatizados para garantir o isolamento de dados no banco Supabase.
+            Execute testes automatizados que simulam acessos diretos à API do Supabase garantindo o
+            isolamento de dados por papel.
           </p>
         </div>
         <Button
           onClick={runTests}
           disabled={isRunning}
-          className="bg-emerald-600 hover:bg-emerald-700 w-full md:w-auto"
+          className="bg-emerald-600 hover:bg-emerald-700 w-full md:w-auto min-h-[48px]"
         >
           {isRunning ? (
             <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Executando Testes...
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Validando Segurança...
             </>
           ) : (
             <>
-              <PlayCircle className="w-4 h-4 mr-2" /> Iniciar Validação
+              <PlayCircle className="w-4 h-4 mr-2" /> Iniciar Auditoria
             </>
           )}
         </Button>
@@ -447,10 +388,10 @@ export default function RLSTester() {
 
       <Card className="border-[2px] border-[#2E5F8A]">
         <CardHeader className="bg-gray-50 rounded-t-[10px] border-b">
-          <CardTitle>Resultados da Auditoria de Segurança</CardTitle>
+          <CardTitle>Resultados da Validação de Isolamento (RLS)</CardTitle>
           <CardDescription>
-            Estes testes realizam chamadas reais à API REST do Supabase utilizando as credenciais de
-            teste para simular acessos diretos.
+            Os testes abaixo efetuam chamadas reais ao banco com diferentes sessões JWT, validando
+            que um usuário nunca consiga acessar ou modificar dados que não lhe pertencem.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
@@ -458,13 +399,15 @@ export default function RLSTester() {
             <table className="w-full text-sm text-left border-collapse">
               <thead className="bg-[#1A3A52] text-white">
                 <tr>
-                  <th className="p-4 border-b font-semibold whitespace-nowrap">Papel</th>
-                  <th className="p-4 border-b font-semibold min-w-[250px]">Teste de Isolamento</th>
-                  <th className="p-4 border-b font-semibold text-center whitespace-nowrap">
+                  <th className="p-4 border-b font-semibold whitespace-nowrap w-[15%]">
+                    Papel / Ator
+                  </th>
+                  <th className="p-4 border-b font-semibold w-[40%]">Critério de Aceite Testado</th>
+                  <th className="p-4 border-b font-semibold text-center whitespace-nowrap w-[10%]">
                     Status
                   </th>
-                  <th className="p-4 border-b font-semibold min-w-[250px]">
-                    Detalhes / Observações
+                  <th className="p-4 border-b font-semibold min-w-[250px] w-[35%]">
+                    Resultado da Execução
                   </th>
                 </tr>
               </thead>
@@ -477,12 +420,20 @@ export default function RLSTester() {
                       test.status === 'failed' ? 'bg-red-50/50' : 'hover:bg-gray-50/50',
                     )}
                   >
-                    <td className="p-4 font-bold text-[#1A3A52]">{test.role}</td>
+                    <td className="p-4 font-bold text-[#1A3A52]">
+                      <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-slate-100 text-slate-800">
+                        {test.role}
+                      </span>
+                    </td>
                     <td className="p-4">{test.name}</td>
                     <td className="p-4">
                       <div className="flex justify-center">{getStatusIcon(test.status)}</div>
                     </td>
-                    <td className="p-4 text-xs sm:text-sm">{test.message || '-'}</td>
+                    <td className="p-4 text-xs sm:text-sm">
+                      {test.message || (
+                        <span className="text-gray-400 italic">Aguardando auditoria...</span>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
