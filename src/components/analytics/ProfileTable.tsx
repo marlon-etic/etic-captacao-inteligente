@@ -26,19 +26,20 @@ export function ProfileTable({ demands, selectedNeighborhood, onClearNeighborhoo
   const grouped = useMemo(() => {
     const map = new Map<string, any>()
     const filtered = demands.filter((d) => {
-      if (selectedNeighborhood && d.location.split(',')[0].trim() !== selectedNeighborhood)
-        return false
+      const loc = typeof d.location === 'string' ? d.location : ''
+      if (selectedNeighborhood && loc.split(',')[0].trim() !== selectedNeighborhood) return false
       if (search) {
         const term = search.toLowerCase()
-        const b = d.location.toLowerCase()
-        const t = d.tipologia.toLowerCase()
+        const b = loc.toLowerCase()
+        const t = typeof d.tipologia === 'string' ? d.tipologia.toLowerCase() : ''
         if (!b.includes(term) && !t.includes(term)) return false
       }
       return true
     })
 
     filtered.forEach((d) => {
-      const b = d.location.split(',')[0].trim() || 'Desconhecido'
+      const loc = typeof d.location === 'string' ? d.location : ''
+      const b = loc.split(',')[0].trim() || 'Desconhecido'
       const key = `${b}-${d.tipologia}-${d.faixaValor}-${d.bedrooms}-${d.parkingSpots}-${d.type}`
       if (!map.has(key)) {
         map.set(key, {
