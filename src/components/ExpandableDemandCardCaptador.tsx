@@ -30,6 +30,7 @@ import { toast } from '@/hooks/use-toast'
 import useAppStore from '@/stores/useAppStore'
 import { DemandDetailModal } from './DemandDetailModal'
 import { CapturePropertyModal } from './CapturePropertyModal'
+import { NaoEncontreiModal } from './NaoEncontreiModal'
 
 export function ExpandableDemandCardCaptador({
   demand,
@@ -41,6 +42,7 @@ export function ExpandableDemandCardCaptador({
   const [expanded, setExpanded] = useState(false)
   const [detailsModalOpen, setDetailsModalOpen] = useState(false)
   const [captureModalOpen, setCaptureModalOpen] = useState(false)
+  const [naoEncontreiModalOpen, setNaoEncontreiModalOpen] = useState(false)
 
   const { currentUser } = useAppStore()
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -72,8 +74,46 @@ export function ExpandableDemandCardCaptador({
     setCaptureModalOpen(true)
   }
 
-  const handleNaoEncontrei = async (e: React.MouseEvent) => {
+  const handleNaoEncontrei = (e: React.MouseEvent) => {
     e.stopPropagation()
+    setNaoEncontreiModalOpen(true)
+  }
+
+  const handleNaoEncontreiConfirm = async (reason: string, obs: string) => {
+    if (isSubmitting) return
+    setIsSubmitting(true)
+
+    try {
+      const payload = {
+        captador_id: currentUser?.id,
+        resposta: 'nao_encontrei',
+        motivo: reason,
+        observacao: obs,
+        demanda_locacao_id: demand.tipo === 'Aluguel' ? demand.id : null,
+        demanda_venda_id: demand.tipo === 'Venda' ? demand.id : null,
+      }
+
+      const { error } = await supabase.from('respostas_captador').insert(payload)
+
+      if (error) throw error
+
+      toast({
+        title: 'Feedback Enviado',
+        description: `Sua resposta foi registrada e o solicitante notificado.`,
+        className: 'bg-[#10B981] text-white border-none',
+      })
+
+      setNaoEncontreiModalOpen(false)
+      if (onUpdate) onUpdate()
+    } catch (err: any) {
+      toast({
+        title: 'Erro ao enviar',
+        description: err.message || 'Tente novamente.',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const capturedCount = demand.imoveis_captados?.length || 0
@@ -195,15 +235,15 @@ export function ExpandableDemandCardCaptador({
               <Button
                 onClick={handleEncontrei}
                 disabled={isSubmitting}
-                className="w-full min-h-[44px] bg-[#10B981] hover:bg-[#059669] text-white font-black text-[11px] lg:text-[12px] px-1 lg:px-2 shadow-[0_4px_12px_rgba(16,185,129,0.3)]"
+                className="w-full min-h-[44px] bg-[#10B981] hover:bg-[#059669] text-white font-black text-[11px] lg:text-[12px] px-1 lg:px-2 shadow-[0_4px_12px_rgba(16,185,129,0.3)] transition-transform hover:scale-[1.02]"
               >
                 <CheckCircle className="w-3.5 h-3.5 lg:w-4 lg:h-4 mr-1 lg:mr-1.5 shrink-0" />{' '}
                 <span className="truncate">ENCONTREI</span>
               </Button>
               <Button
                 onClick={handleNaoEncontrei}
-                variant="outline"
-                className="w-full min-h-[44px] text-[#EF4444] border-[#EF4444]/30 hover:bg-[#FEF2F2] font-bold text-[11px] lg:text-[12px] px-1 lg:px-2"
+                disabled={isSubmitting}
+                className="w-full min-h-[44px] bg-[#EF4444] hover:bg-[#DC2626] text-white font-black text-[11px] lg:text-[12px] px-1 lg:px-2 shadow-[0_4px_12px_rgba(239,68,68,0.3)] transition-transform hover:scale-[1.02]"
               >
                 <XCircle className="w-3.5 h-3.5 lg:w-4 lg:h-4 mr-1 lg:mr-1.5 shrink-0" />{' '}
                 <span className="truncate">NÃO ENCONTREI</span>
@@ -292,6 +332,12 @@ export function ExpandableDemandCardCaptador({
         onSuccess={() => {
           if (onUpdate) onUpdate()
         }}
+      />
+
+      <NaoEncontreiModal
+        isOpen={naoEncontreiModalOpen}
+        onClose={() => setNaoEncontreiModalOpen(false)}
+        onConfirm={handleNaoEncontreiConfirm}
       />
     </>
   )

@@ -24,6 +24,7 @@ export interface SupabaseDemand {
   created_at: string
   tipo: 'Aluguel' | 'Venda'
   imoveis_captados: SupabaseCapturedProperty[]
+  respostas_captador?: any[]
   telefone?: string
   email?: string
   dormitorios?: number
@@ -52,7 +53,7 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
 
         const query = supabase
           .from(table)
-          .select('*, imoveis_captados(*)')
+          .select('*, imoveis_captados(*), respostas_captador(*)')
           .order('created_at', { ascending: false })
 
         const { data: usersData } = await supabase.from('users').select('id, nome')
@@ -86,6 +87,7 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
               tipo: type,
               sdr_id: d.sdr_id,
               corretor_id: d.corretor_id,
+              respostas_captador: d.respostas_captador || [],
               imoveis_captados: (d.imoveis_captados || [])
                 .map((i: any) => ({
                   ...i,
@@ -162,6 +164,7 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
               sdr_id: d.sdr_id,
               corretor_id: d.corretor_id,
               imoveis_captados: [],
+              respostas_captador: [],
             }
             return [newDemand, ...prev]
           })
@@ -244,6 +247,9 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
           debouncedFetch(true)
         },
       )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'respostas_captador' }, () => {
+        debouncedFetch(true)
+      })
       .subscribe()
 
     return () => {

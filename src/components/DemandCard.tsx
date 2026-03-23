@@ -89,6 +89,13 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
   else if (isPrioritized) cardBg = 'bg-[#ffebee]'
   else if (isNew) cardBg = 'bg-[#e8f5e9] border-[#4CAF50]'
 
+  // Get the latest 'nao_encontrei' response if available
+  const latestNaoEncontrei = (demand as any).respostas_captador
+    ?.filter((r: any) => r.resposta === 'nao_encontrei')
+    .sort(
+      (a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+    )[0]
+
   let statusBadge = null
   if (isLost) {
     statusBadge = (
@@ -124,9 +131,27 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
     } else if (demand.status === 'Negócio') {
       bgCol = 'bg-[#388E3C]'
     } else if (isPending) {
-      if (slaLevel === 'red') bgCol = 'bg-[#F44336]'
-      else if (slaLevel === 'yellow') bgCol = 'bg-[#FF9800]'
-      else bgCol = 'bg-[#4CAF50]'
+      if (latestNaoEncontrei) {
+        if (latestNaoEncontrei.motivo === 'Buscando outras opções') {
+          bgCol = 'bg-[#FF9800]'
+        } else {
+          bgCol = 'bg-[#EF4444]'
+        }
+      } else {
+        if (slaLevel === 'red') bgCol = 'bg-[#F44336]'
+        else if (slaLevel === 'yellow') bgCol = 'bg-[#FF9800]'
+        else bgCol = 'bg-[#4CAF50]'
+      }
+    }
+
+    let badgeContent = isPending ? slaBadgeText || '⏳ Pendente' : demand.status
+
+    if (isPending && latestNaoEncontrei) {
+      if (latestNaoEncontrei.motivo === 'Buscando outras opções') {
+        badgeContent = '🟠 Buscando outras opções'
+      } else {
+        badgeContent = `🔴 Não encontrado: ${latestNaoEncontrei.motivo}`
+      }
     }
 
     statusBadge = (
@@ -136,8 +161,13 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
           bgCol,
           textCol,
         )}
+        title={
+          latestNaoEncontrei?.observacao
+            ? `Observação: ${latestNaoEncontrei.observacao}`
+            : undefined
+        }
       >
-        {isPending ? slaBadgeText || '⏳ Pendente' : demand.status}
+        {badgeContent}
       </Badge>
     )
   }
@@ -302,8 +332,7 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
                 </Button>
                 <Button
                   className={cn(
-                    'min-h-[44px] flex-1 font-bold whitespace-normal break-words text-[14px] px-2',
-                    btnOutline,
+                    'min-h-[44px] flex-1 font-bold whitespace-normal break-words text-[14px] px-2 shadow-md transition-transform hover:scale-[1.02] bg-[#EF4444] hover:bg-[#DC2626] text-white border-none',
                   )}
                   onClick={() => onAction?.(demand.id, 'nao_encontrei')}
                   disabled={isLost}

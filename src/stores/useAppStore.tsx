@@ -447,6 +447,65 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     }
   }, [currentUser?.id]) // Run once after user logs in
 
+  // Real-time SDR/Corretor Notifications for Respostas Captador
+  useEffect(() => {
+    let mounted = true
+    if (!currentUser || (currentUser.role !== 'sdr' && currentUser.role !== 'corretor')) return
+
+    const subRespostas = supabase
+      .channel('notif_respostas_sdr')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'respostas_captador' },
+        async (payload) => {
+          if (!mounted) return
+          const resp = payload.new
+          if (resp.resposta === 'nao_encontrei') {
+            try {
+              const isLocacao = !!resp.demanda_locacao_id
+              const table = isLocacao ? 'demandas_locacao' : 'demandas_vendas'
+              const id = isLocacao ? resp.demanda_locacao_id : resp.demanda_venda_id
+
+              const { data: dData } = await supabase
+                .from(table)
+                .select(
+                  isLocacao
+                    ? 'sdr_id, nome_cliente, cliente_nome'
+                    : 'corretor_id, nome_cliente, cliente_nome',
+                )
+                .eq('id', id)
+                .single()
+
+              const ownerId = isLocacao ? dData?.sdr_id : dData?.corretor_id
+              const clientName = dData?.nome_cliente || dData?.cliente_nome
+
+              if (dData && ownerId === currentUser.id) {
+                const { data: uData } = await supabase
+                  .from('users')
+                  .select('nome')
+                  .eq('id', resp.captador_id)
+                  .single()
+
+                toast({
+                  title: '📢 Feedback de Busca',
+                  description: `Captador ${uData?.nome || 'Desconhecido'} não encontrou imóvel para ${clientName}. Motivo: ${resp.motivo}`,
+                  className: 'bg-[#FF9800] text-white border-none',
+                })
+              }
+            } catch (err) {
+              console.error('Error fetching notification data', err)
+            }
+          }
+        },
+      )
+      .subscribe()
+
+    return () => {
+      mounted = false
+      supabase.removeChannel(subRespostas)
+    }
+  }, [currentUser?.id, currentUser?.role])
+
   const logSystemEvent = useCallback(
     (message: string, type: 'error' | 'info' | 'warning' = 'info', context?: string) => {
       setSystemLogs((prev) => [
