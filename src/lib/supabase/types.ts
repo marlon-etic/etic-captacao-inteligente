@@ -310,6 +310,58 @@ export type Database = {
           },
         ]
       }
+      pontuacao_captador: {
+        Row: {
+          captador_id: string
+          created_at: string | null
+          demanda_locacao_id: string | null
+          demanda_venda_id: string | null
+          id: string
+          pontos: number
+          tipo_pontuacao: string
+        }
+        Insert: {
+          captador_id: string
+          created_at?: string | null
+          demanda_locacao_id?: string | null
+          demanda_venda_id?: string | null
+          id?: string
+          pontos: number
+          tipo_pontuacao: string
+        }
+        Update: {
+          captador_id?: string
+          created_at?: string | null
+          demanda_locacao_id?: string | null
+          demanda_venda_id?: string | null
+          id?: string
+          pontos?: number
+          tipo_pontuacao?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pontuacao_captador_captador_id_fkey"
+            columns: ["captador_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pontuacao_captador_demanda_locacao_id_fkey"
+            columns: ["demanda_locacao_id"]
+            isOneToOne: false
+            referencedRelation: "demandas_locacao"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pontuacao_captador_demanda_venda_id_fkey"
+            columns: ["demanda_venda_id"]
+            isOneToOne: false
+            referencedRelation: "demandas_vendas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       prazos_captacao: {
         Row: {
           captador_id: string | null
@@ -683,6 +735,14 @@ export const Constants = {
 //   fotos: _text (nullable, default: '{}'::text[])
 //   comissao_percentual: numeric (nullable)
 //   status_captacao: character varying (nullable)
+// Table: pontuacao_captador
+//   id: uuid (not null, default: gen_random_uuid())
+//   captador_id: uuid (not null)
+//   demanda_locacao_id: uuid (nullable)
+//   demanda_venda_id: uuid (nullable)
+//   tipo_pontuacao: text (not null)
+//   pontos: integer (not null)
+//   created_at: timestamp with time zone (nullable, default: now())
 // Table: prazos_captacao
 //   id: uuid (not null, default: gen_random_uuid())
 //   demanda_locacao_id: uuid (nullable)
@@ -723,7 +783,7 @@ export const Constants = {
 //   CHECK demandas_locacao_nivel_urgencia_check: CHECK (((nivel_urgencia)::text = ANY ((ARRAY['Baixa'::character varying, 'Média'::character varying, 'Alta'::character varying, 'Urgente'::character varying, 'Até 15 dias'::character varying, 'Até 30 dias'::character varying, 'Até 90 dias ou +'::character varying])::text[])))
 //   PRIMARY KEY demandas_locacao_pkey: PRIMARY KEY (id)
 //   FOREIGN KEY demandas_locacao_sdr_id_fkey: FOREIGN KEY (sdr_id) REFERENCES users(id) ON DELETE SET NULL
-//   CHECK demandas_locacao_status_demanda_check: CHECK (((status_demanda)::text = ANY ((ARRAY['aberta'::character varying, 'atendida'::character varying, 'impossivel'::character varying, 'sem_resposta_24h'::character varying])::text[])))
+//   CHECK demandas_locacao_status_demanda_check: CHECK (((status_demanda)::text = ANY ((ARRAY['aberta'::character varying, 'atendida'::character varying, 'impossivel'::character varying, 'sem_resposta_24h'::character varying, 'ganho'::character varying])::text[])))
 //   CHECK demandas_locacao_telefone_check: CHECK (((telefone IS NULL) OR (((telefone)::text ~ '^\([0-9]{2}\) 9[0-9]{4}-[0-9]{4}'::text) AND (length((telefone)::text) = 15))))
 //   CHECK demandas_locacao_vagas_estacionamento_check: CHECK (((vagas_estacionamento >= 0) AND (vagas_estacionamento <= 10)))
 // Table: demandas_vendas
@@ -734,7 +794,7 @@ export const Constants = {
 ::text))
 //   CHECK demandas_vendas_nivel_urgencia_check: CHECK (((nivel_urgencia)::text = ANY ((ARRAY['Baixa'::character varying, 'Média'::character varying, 'Alta'::character varying, 'Urgente'::character varying, 'Até 15 dias'::character varying, 'Até 30 dias'::character varying, 'Até 90 dias ou +'::character varying])::text[])))
 //   PRIMARY KEY demandas_vendas_pkey: PRIMARY KEY (id)
-//   CHECK demandas_vendas_status_demanda_check: CHECK (((status_demanda)::text = ANY ((ARRAY['aberta'::character varying, 'atendida'::character varying, 'impossivel'::character varying, 'sem_resposta_24h'::character varying])::text[])))
+//   CHECK demandas_vendas_status_demanda_check: CHECK (((status_demanda)::text = ANY ((ARRAY['aberta'::character varying, 'atendida'::character varying, 'impossivel'::character varying, 'sem_resposta_24h'::character varying, 'ganho'::character varying])::text[])))
 //   CHECK demandas_vendas_telefone_check: CHECK (((telefone)::text ~ '^\([0-9]{2}\) 9[0-9]{4}-[0-9]{4}
 ::text))
 //   CHECK demandas_vendas_tipo_imovel_check: CHECK (((tipo_imovel)::text = ANY ((ARRAY['Casa'::character varying, 'Apartamento'::character varying, 'Terreno'::character varying])::text[])))
@@ -748,6 +808,12 @@ export const Constants = {
 //   CHECK imoveis_captados_preco_check: CHECK ((preco > (0)::numeric))
 //   CHECK imoveis_captados_status_captacao_check: CHECK (((status_captacao)::text = ANY ((ARRAY['pendente'::character varying, 'capturado'::character varying, 'visitado'::character varying, 'fechado'::character varying, 'perdido'::character varying])::text[])))
 //   FOREIGN KEY imoveis_captados_user_captador_id_fkey: FOREIGN KEY (user_captador_id) REFERENCES users(id) ON DELETE SET NULL
+// Table: pontuacao_captador
+//   FOREIGN KEY pontuacao_captador_captador_id_fkey: FOREIGN KEY (captador_id) REFERENCES users(id) ON DELETE CASCADE
+//   FOREIGN KEY pontuacao_captador_demanda_locacao_id_fkey: FOREIGN KEY (demanda_locacao_id) REFERENCES demandas_locacao(id) ON DELETE CASCADE
+//   FOREIGN KEY pontuacao_captador_demanda_venda_id_fkey: FOREIGN KEY (demanda_venda_id) REFERENCES demandas_vendas(id) ON DELETE CASCADE
+//   PRIMARY KEY pontuacao_captador_pkey: PRIMARY KEY (id)
+//   CHECK pontuacao_captador_tipo_pontuacao_check: CHECK ((tipo_pontuacao = ANY (ARRAY['captura_com_demanda'::text, 'captura_sem_demanda'::text, 'ganho_confirmado'::text])))
 // Table: prazos_captacao
 //   CHECK check_demanda_link_prazos: CHECK ((((demanda_locacao_id IS NOT NULL) AND (demanda_venda_id IS NULL)) OR ((demanda_locacao_id IS NULL) AND (demanda_venda_id IS NOT NULL))))
 //   FOREIGN KEY prazos_captacao_captador_id_fkey: FOREIGN KEY (captador_id) REFERENCES users(id) ON DELETE SET NULL
@@ -814,6 +880,9 @@ export const Constants = {
 //   Policy "SDRs update captures linked to own locacao demands" (UPDATE, PERMISSIVE) roles={authenticated}
 //     USING: true
 //     WITH CHECK: true
+// Table: pontuacao_captador
+//   Policy "Authenticated users can read pontuacao" (SELECT, PERMISSIVE) roles={authenticated}
+//     USING: true
 // Table: prazos_captacao
 //   Policy "All users can read prazos" (SELECT, PERMISSIVE) roles={public}
 //     USING: true
@@ -994,19 +1063,93 @@ export const Constants = {
 //   END;
 //   $function$
 //   
+// FUNCTION trg_pontuacao_ganho_locacao()
+//   CREATE OR REPLACE FUNCTION public.trg_pontuacao_ganho_locacao()
+//    RETURNS trigger
+//    LANGUAGE plpgsql
+//    SECURITY DEFINER
+//   AS $function$
+//   BEGIN
+//       IF NEW.status_demanda = 'ganho' AND OLD.status_demanda != 'ganho' THEN
+//           INSERT INTO public.pontuacao_captador (captador_id, demanda_locacao_id, tipo_pontuacao, pontos)
+//           SELECT DISTINCT COALESCE(user_captador_id, captador_id), NEW.id, 'ganho_confirmado', 30
+//           FROM public.imoveis_captados
+//           WHERE demanda_locacao_id = NEW.id AND COALESCE(user_captador_id, captador_id) IS NOT NULL;
+//       END IF;
+//       RETURN NEW;
+//   END;
+//   $function$
+//   
+// FUNCTION trg_pontuacao_ganho_vendas()
+//   CREATE OR REPLACE FUNCTION public.trg_pontuacao_ganho_vendas()
+//    RETURNS trigger
+//    LANGUAGE plpgsql
+//    SECURITY DEFINER
+//   AS $function$
+//   BEGIN
+//       IF NEW.status_demanda = 'ganho' AND OLD.status_demanda != 'ganho' THEN
+//           INSERT INTO public.pontuacao_captador (captador_id, demanda_venda_id, tipo_pontuacao, pontos)
+//           SELECT DISTINCT COALESCE(user_captador_id, captador_id), NEW.id, 'ganho_confirmado', 30
+//           FROM public.imoveis_captados
+//           WHERE demanda_venda_id = NEW.id AND COALESCE(user_captador_id, captador_id) IS NOT NULL;
+//       END IF;
+//       RETURN NEW;
+//   END;
+//   $function$
+//   
+// FUNCTION trg_pontuacao_imovel()
+//   CREATE OR REPLACE FUNCTION public.trg_pontuacao_imovel()
+//    RETURNS trigger
+//    LANGUAGE plpgsql
+//    SECURITY DEFINER
+//   AS $function$
+//   DECLARE
+//       cid UUID;
+//   BEGIN
+//       -- Captura o ID do captador (tentando dois campos para maior segurança)
+//       cid := COALESCE(NEW.user_captador_id, NEW.captador_id);
+//       
+//       -- Se não houver captador associado, ignora
+//       IF cid IS NULL THEN
+//           RETURN NEW;
+//       END IF;
+//   
+//       -- Se tem demanda de locação vinculada (+10 pontos)
+//       IF NEW.demanda_locacao_id IS NOT NULL THEN
+//           INSERT INTO public.pontuacao_captador (captador_id, demanda_locacao_id, tipo_pontuacao, pontos)
+//           VALUES (cid, NEW.demanda_locacao_id, 'captura_com_demanda', 10);
+//           
+//       -- Se tem demanda de venda vinculada (+10 pontos)
+//       ELSIF NEW.demanda_venda_id IS NOT NULL THEN
+//           INSERT INTO public.pontuacao_captador (captador_id, demanda_venda_id, tipo_pontuacao, pontos)
+//           VALUES (cid, NEW.demanda_venda_id, 'captura_com_demanda', 10);
+//           
+//       -- Sem demanda vinculada (+3 pontos)
+//       ELSE
+//           INSERT INTO public.pontuacao_captador (captador_id, tipo_pontuacao, pontos)
+//           VALUES (cid, 'captura_sem_demanda', 3);
+//       END IF;
+//       
+//       RETURN NEW;
+//   END;
+//   $function$
+//   
 
 // --- TRIGGERS ---
 // Table: demandas_locacao
 //   audit_demandas_locacao: CREATE TRIGGER audit_demandas_locacao AFTER INSERT OR DELETE OR UPDATE ON public.demandas_locacao FOR EACH ROW EXECUTE FUNCTION audit_log_function()
 //   criar_prazo_locacao_trigger: CREATE TRIGGER criar_prazo_locacao_trigger AFTER INSERT ON public.demandas_locacao FOR EACH ROW EXECUTE FUNCTION criar_prazo_captacao()
+//   pontuacao_ganho_locacao_trigger: CREATE TRIGGER pontuacao_ganho_locacao_trigger AFTER UPDATE ON public.demandas_locacao FOR EACH ROW EXECUTE FUNCTION trg_pontuacao_ganho_locacao()
 //   update_demandas_locacao_updated_at: CREATE TRIGGER update_demandas_locacao_updated_at BEFORE UPDATE ON public.demandas_locacao FOR EACH ROW EXECUTE FUNCTION set_updated_at()
 // Table: demandas_vendas
 //   audit_demandas_vendas: CREATE TRIGGER audit_demandas_vendas AFTER INSERT OR DELETE OR UPDATE ON public.demandas_vendas FOR EACH ROW EXECUTE FUNCTION audit_log_function()
 //   criar_prazo_vendas_trigger: CREATE TRIGGER criar_prazo_vendas_trigger AFTER INSERT ON public.demandas_vendas FOR EACH ROW EXECUTE FUNCTION criar_prazo_captacao()
+//   pontuacao_ganho_vendas_trigger: CREATE TRIGGER pontuacao_ganho_vendas_trigger AFTER UPDATE ON public.demandas_vendas FOR EACH ROW EXECUTE FUNCTION trg_pontuacao_ganho_vendas()
 //   update_demandas_vendas_updated_at: CREATE TRIGGER update_demandas_vendas_updated_at BEFORE UPDATE ON public.demandas_vendas FOR EACH ROW EXECUTE FUNCTION set_updated_at()
 // Table: imoveis_captados
 //   audit_imoveis_captados: CREATE TRIGGER audit_imoveis_captados AFTER INSERT OR DELETE OR UPDATE ON public.imoveis_captados FOR EACH ROW EXECUTE FUNCTION audit_log_function()
 //   marcar_prazo_imovel_trigger: CREATE TRIGGER marcar_prazo_imovel_trigger AFTER INSERT ON public.imoveis_captados FOR EACH ROW EXECUTE FUNCTION marcar_prazo_respondido_imovel()
+//   pontuacao_imovel_trigger: CREATE TRIGGER pontuacao_imovel_trigger AFTER INSERT ON public.imoveis_captados FOR EACH ROW EXECUTE FUNCTION trg_pontuacao_imovel()
 //   update_imoveis_captados_updated_at: CREATE TRIGGER update_imoveis_captados_updated_at BEFORE UPDATE ON public.imoveis_captados FOR EACH ROW EXECUTE FUNCTION set_updated_at()
 // Table: respostas_captador
 //   marcar_prazo_resposta_trigger: CREATE TRIGGER marcar_prazo_resposta_trigger AFTER INSERT ON public.respostas_captador FOR EACH ROW EXECUTE FUNCTION marcar_prazo_respondido_resposta()
