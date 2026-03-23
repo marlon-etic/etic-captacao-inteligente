@@ -721,30 +721,22 @@ export const Constants = {
 //   Policy "Corretores manage own vendas" (ALL, PERMISSIVE) roles={public}
 //     USING: ((corretor_id = auth.uid()) AND (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND (users.role = 'corretor'::user_role)))))
 // Table: imoveis_captados
-//   Policy "Admin sees all captures" (ALL, PERMISSIVE) roles={public}
-//     USING: (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND (users.role = 'admin'::user_role))))
-//   Policy "Captadores see own captures" (ALL, PERMISSIVE) roles={public}
-//     USING: ((user_captador_id = auth.uid()) AND (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND (users.role = 'captador'::user_role)))))
-//   Policy "Corretores see captures linked to own vendas demands" (SELECT, PERMISSIVE) roles={authenticated}
-//     USING: ((EXISTS ( SELECT 1    FROM demandas_vendas dv   WHERE ((dv.id = imoveis_captados.demanda_venda_id) AND (dv.corretor_id = auth.uid())))) OR (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND ((users.role)::text = ANY (ARRAY['admin'::text, 'gestor'::text, 'captador'::text]))))))
+//   Policy "Authenticated users can read all captures" (SELECT, PERMISSIVE) roles={authenticated}
+//     USING: true
+//   Policy "Captadores insert captures" (INSERT, PERMISSIVE) roles={authenticated}
+//     WITH CHECK: true
 //   Policy "Corretores update captures linked to own vendas demands" (UPDATE, PERMISSIVE) roles={authenticated}
-//     USING: (EXISTS ( SELECT 1    FROM demandas_vendas dv   WHERE ((dv.id = imoveis_captados.demanda_venda_id) AND (dv.corretor_id = auth.uid()))))
-//     WITH CHECK: (EXISTS ( SELECT 1    FROM demandas_vendas dv   WHERE ((dv.id = imoveis_captados.demanda_venda_id) AND (dv.corretor_id = auth.uid()))))
-//   Policy "SDRs see captures linked to own locacao demands" (SELECT, PERMISSIVE) roles={authenticated}
-//     USING: ((EXISTS ( SELECT 1    FROM demandas_locacao dl   WHERE ((dl.id = imoveis_captados.demanda_locacao_id) AND (dl.sdr_id = auth.uid())))) OR (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND ((users.role)::text = ANY (ARRAY['admin'::text, 'gestor'::text, 'captador'::text]))))))
+//     USING: true
+//     WITH CHECK: true
 //   Policy "SDRs update captures linked to own locacao demands" (UPDATE, PERMISSIVE) roles={authenticated}
-//     USING: (EXISTS ( SELECT 1    FROM demandas_locacao dl   WHERE ((dl.id = imoveis_captados.demanda_locacao_id) AND (dl.sdr_id = auth.uid()))))
-//     WITH CHECK: (EXISTS ( SELECT 1    FROM demandas_locacao dl   WHERE ((dl.id = imoveis_captados.demanda_locacao_id) AND (dl.sdr_id = auth.uid()))))
+//     USING: true
+//     WITH CHECK: true
 // Table: respostas_captador
 //   Policy "Admin sees all respostas" (ALL, PERMISSIVE) roles={public}
 //     USING: (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND (users.role = 'admin'::user_role))))
 //   Policy "Captadores manage own respostas" (ALL, PERMISSIVE) roles={public}
 //     USING: (captador_id = auth.uid())
 // Table: users
-//   Policy "Admin sees all users" (ALL, PERMISSIVE) roles={authenticated}
-//     USING: ((((current_setting('request.jwt.claims'::text, true))::jsonb -> 'user_metadata'::text) ->> 'role'::text) = ANY (ARRAY['admin'::text, 'gestor'::text]))
-//   Policy "Anon can read users" (SELECT, PERMISSIVE) roles={anon}
-//     USING: true
 //   Policy "Authenticated users can read users" (SELECT, PERMISSIVE) roles={authenticated}
 //     USING: true
 //   Policy "Users see own profile" (SELECT, PERMISSIVE) roles={public}
