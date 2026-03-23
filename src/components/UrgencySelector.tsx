@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Command, CommandGroup, CommandItem, CommandList } from '@/components/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Zap, Clock, CalendarDays, Calendar, ChevronDown } from 'lucide-react'
+import { Zap, Clock, CalendarDays, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useIsMobile } from '@/hooks/use-mobile'
 
@@ -11,17 +11,28 @@ interface UrgencySelectorProps {
   error?: boolean
 }
 
+// Mapeado para os valores aceitos pelo banco de dados (Alta, Média, Baixa)
 const OPTIONS = [
-  { value: 'Urgente', label: 'Urgente (Imediato)', icon: Zap, color: 'text-red-500' },
-  { value: 'Até 15 dias', label: 'Até 15 dias', icon: Clock, color: 'text-orange-500' },
-  { value: 'Até 30 dias', label: 'Até 30 dias', icon: CalendarDays, color: 'text-blue-500' },
-  { value: 'Até 90 dias ou +', label: 'Até 90 dias ou +', icon: Calendar, color: 'text-gray-500' },
+  { value: 'Alta', label: 'Urgente (Imediato)', icon: Zap, color: 'text-red-500' },
+  { value: 'Média', label: 'Até 15 dias', icon: Clock, color: 'text-orange-500' },
+  { value: 'Baixa', label: 'Até 30 dias ou +', icon: CalendarDays, color: 'text-blue-500' },
 ]
 
 export function UrgencySelector({ value, onChange, error }: UrgencySelectorProps) {
   const [open, setOpen] = useState(false)
   const isMobile = useIsMobile()
-  const selected = OPTIONS.find((o) => o.value === value)
+
+  // Encontra a opção selecionada, garantindo fallback para valores antigos caso existam no state
+  const selected =
+    OPTIONS.find((o) => o.value === value) ||
+    (value === 'Urgente'
+      ? OPTIONS[0]
+      : value === 'Até 15 dias'
+        ? OPTIONS[1]
+        : value === 'Até 30 dias' || value === 'Até 90 dias ou +'
+          ? OPTIONS[2]
+          : null)
+
   const Icon = selected?.icon
 
   return (
