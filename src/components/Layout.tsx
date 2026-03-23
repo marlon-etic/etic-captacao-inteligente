@@ -8,15 +8,28 @@ import { useToast } from '@/hooks/use-toast'
 import useAppStore from '@/stores/useAppStore'
 import { AddPropertyModal } from '@/components/AddPropertyModal'
 import { NewDemandModal } from '@/components/NewDemandModal'
-import { Plus } from 'lucide-react'
+import { Plus, Loader2 } from 'lucide-react'
+import { useAuth } from '@/hooks/use-auth'
 
 export default function Layout() {
   const { currentUser, sessionExpiresAt, logout } = useAppStore()
+  const { session, loading } = useAuth()
   const location = useLocation()
   const { toast } = useToast()
 
   const [isAddPropertyModalOpen, setAddPropertyModalOpen] = useState(false)
   const [isNewDemandModalOpen, setNewDemandModalOpen] = useState(false)
+
+  useEffect(() => {
+    if (!loading && !session && currentUser) {
+      toast({
+        title: 'Sessão inválida',
+        description: 'Sua sessão expirou. Faça login novamente.',
+        variant: 'destructive',
+      })
+      logout()
+    }
+  }, [loading, session, currentUser, logout, toast])
 
   useEffect(() => {
     if (currentUser && sessionExpiresAt && Date.now() > sessionExpiresAt) {
@@ -39,6 +52,14 @@ export default function Layout() {
       logout()
     }
   }, [currentUser, logout, toast])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#F5F5F5]">
+        <Loader2 className="w-10 h-10 animate-spin text-[#1A3A52]" />
+      </div>
+    )
+  }
 
   if (!currentUser && location.pathname !== '/') {
     return <Navigate to="/" replace />

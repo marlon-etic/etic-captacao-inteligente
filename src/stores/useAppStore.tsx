@@ -803,12 +803,23 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       const demand = allDemands.find((d) => d.id === id)
       if (!demand) return
 
-      supabase.auth.getUser().then(({ data: authData }) => {
-        if (authData?.user) {
-          const table = demand.type === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
-          supabase.from(table).update({ status_demanda: 'impossivel' }).eq('id', demand.id).then()
-        }
-      })
+      supabase.auth
+        .getUser()
+        .then(({ data: authData, error: authErr }) => {
+          if (authErr) console.error('[useAppStore] Error getting user:', authErr)
+          if (authData?.user) {
+            const table = demand.type === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
+            supabase
+              .from(table)
+              .update({ status_demanda: 'impossivel' })
+              .eq('id', demand.id)
+              .then(({ error: updErr }) => {
+                if (updErr) console.error('[Diagnostic] Erro update demanda:', updErr)
+              })
+              .catch(console.error)
+          }
+        })
+        .catch(console.error)
 
       const action = createAction('perdido', `Demanda perdida: ${reason}`, obs)
       setAllDemands((prev) => {
@@ -833,15 +844,22 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const markPropertyLost = useCallback(
     (code: string, demandId: string, reason: string, obs?: string) => {
       // Mock implementation sync with supabase
-      supabase.auth.getUser().then(({ data: authData }) => {
-        if (authData?.user) {
-          supabase
-            .from('imoveis_captados')
-            .update({ status_captacao: 'perdido' })
-            .eq('codigo_imovel', code)
-            .then()
-        }
-      })
+      supabase.auth
+        .getUser()
+        .then(({ data: authData, error: authErr }) => {
+          if (authErr) console.error('[useAppStore] Error getting user:', authErr)
+          if (authData?.user) {
+            supabase
+              .from('imoveis_captados')
+              .update({ status_captacao: 'perdido' })
+              .eq('codigo_imovel', code)
+              .then(({ error: updErr }) => {
+                if (updErr) console.error('[Diagnostic] Erro update imóvel:', updErr)
+              })
+              .catch(console.error)
+          }
+        })
+        .catch(console.error)
     },
     [],
   )
@@ -941,7 +959,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           setCurrentUser(null)
           setSessionExpiresAt(null)
           localStorage.removeItem('etic_session')
-          supabase.auth.signOut().then()
+          supabase.auth.signOut().catch(console.error)
         },
         requestPasswordReset: async (email) => {},
         resetPassword: async (password, token) => {},
@@ -977,34 +995,42 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           if (action === 'encontrei') {
             const code = payload?.code || `IMV-${Math.floor(Math.random() * 1000)}`
 
-            supabase.auth.getUser().then(({ data: authData }) => {
-              if (authData?.user) {
-                supabase
-                  .from('imoveis_captados')
-                  .insert({
-                    codigo_imovel: code,
-                    endereco: payload?.neighborhood || demand.location?.[0] || 'Não informado',
-                    preco: payload?.value || demand.budget || demand.maxBudget || 0,
-                    status_captacao: 'pendente',
-                    user_captador_id: authData.user.id,
-                    captador_id: authData.user.id,
-                    demanda_locacao_id: demand.type === 'Aluguel' ? demand.id : null,
-                    demanda_venda_id: demand.type === 'Venda' ? demand.id : null,
-                  })
-                  .then(({ error }) => {
-                    if (error) console.error('[Diagnostic] Erro insert imóvel:', error)
-                    else {
-                      const table =
-                        demand.type === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
-                      supabase
-                        .from(table)
-                        .update({ status_demanda: 'atendida' })
-                        .eq('id', demand.id)
-                        .then()
-                    }
-                  })
-              }
-            })
+            supabase.auth
+              .getUser()
+              .then(({ data: authData, error: authErr }) => {
+                if (authErr) console.error('[useAppStore] Error getting user:', authErr)
+                if (authData?.user) {
+                  supabase
+                    .from('imoveis_captados')
+                    .insert({
+                      codigo_imovel: code,
+                      endereco: payload?.neighborhood || demand.location?.[0] || 'Não informado',
+                      preco: payload?.value || demand.budget || demand.maxBudget || 0,
+                      status_captacao: 'pendente',
+                      user_captador_id: authData.user.id,
+                      captador_id: authData.user.id,
+                      demanda_locacao_id: demand.type === 'Aluguel' ? demand.id : null,
+                      demanda_venda_id: demand.type === 'Venda' ? demand.id : null,
+                    })
+                    .then(({ error }) => {
+                      if (error) console.error('[Diagnostic] Erro insert imóvel:', error)
+                      else {
+                        const table =
+                          demand.type === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
+                        supabase
+                          .from(table)
+                          .update({ status_demanda: 'atendida' })
+                          .eq('id', demand.id)
+                          .then(({ error: updErr }) => {
+                            if (updErr) console.error('[Diagnostic] Erro update demanda:', updErr)
+                          })
+                          .catch(console.error)
+                      }
+                    })
+                    .catch(console.error)
+                }
+              })
+              .catch(console.error)
 
             // update local fallback
             const newProp: CapturedProperty = {
