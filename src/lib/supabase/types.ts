@@ -310,6 +310,61 @@ export type Database = {
           },
         ]
       }
+      prazos_captacao: {
+        Row: {
+          captador_id: string | null
+          data_criacao: string | null
+          demanda_locacao_id: string | null
+          demanda_venda_id: string | null
+          id: string
+          prazo_resposta: string
+          prorrogacoes_usadas: number | null
+          status: string | null
+        }
+        Insert: {
+          captador_id?: string | null
+          data_criacao?: string | null
+          demanda_locacao_id?: string | null
+          demanda_venda_id?: string | null
+          id?: string
+          prazo_resposta: string
+          prorrogacoes_usadas?: number | null
+          status?: string | null
+        }
+        Update: {
+          captador_id?: string | null
+          data_criacao?: string | null
+          demanda_locacao_id?: string | null
+          demanda_venda_id?: string | null
+          id?: string
+          prazo_resposta?: string
+          prorrogacoes_usadas?: number | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prazos_captacao_captador_id_fkey"
+            columns: ["captador_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prazos_captacao_demanda_locacao_id_fkey"
+            columns: ["demanda_locacao_id"]
+            isOneToOne: false
+            referencedRelation: "demandas_locacao"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prazos_captacao_demanda_venda_id_fkey"
+            columns: ["demanda_venda_id"]
+            isOneToOne: false
+            referencedRelation: "demandas_vendas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       respostas_captador: {
         Row: {
           captador_id: string
@@ -406,7 +461,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      atualizar_prazos_vencidos: { Args: never; Returns: undefined }
     }
     Enums: {
       user_role: "admin" | "sdr" | "corretor" | "captador"
@@ -628,6 +683,15 @@ export const Constants = {
 //   fotos: _text (nullable, default: '{}'::text[])
 //   comissao_percentual: numeric (nullable)
 //   status_captacao: character varying (nullable)
+// Table: prazos_captacao
+//   id: uuid (not null, default: gen_random_uuid())
+//   demanda_locacao_id: uuid (nullable)
+//   demanda_venda_id: uuid (nullable)
+//   captador_id: uuid (nullable)
+//   data_criacao: timestamp with time zone (nullable, default: now())
+//   prazo_resposta: timestamp with time zone (not null)
+//   prorrogacoes_usadas: integer (nullable, default: 0)
+//   status: character varying (nullable, default: 'ativo'::character varying)
 // Table: respostas_captador
 //   id: uuid (not null, default: gen_random_uuid())
 //   demanda_locacao_id: uuid (nullable)
@@ -684,6 +748,13 @@ export const Constants = {
 //   CHECK imoveis_captados_preco_check: CHECK ((preco > (0)::numeric))
 //   CHECK imoveis_captados_status_captacao_check: CHECK (((status_captacao)::text = ANY ((ARRAY['pendente'::character varying, 'capturado'::character varying, 'visitado'::character varying, 'fechado'::character varying, 'perdido'::character varying])::text[])))
 //   FOREIGN KEY imoveis_captados_user_captador_id_fkey: FOREIGN KEY (user_captador_id) REFERENCES users(id) ON DELETE SET NULL
+// Table: prazos_captacao
+//   CHECK check_demanda_link_prazos: CHECK ((((demanda_locacao_id IS NOT NULL) AND (demanda_venda_id IS NULL)) OR ((demanda_locacao_id IS NULL) AND (demanda_venda_id IS NOT NULL))))
+//   FOREIGN KEY prazos_captacao_captador_id_fkey: FOREIGN KEY (captador_id) REFERENCES users(id) ON DELETE SET NULL
+//   FOREIGN KEY prazos_captacao_demanda_locacao_id_fkey: FOREIGN KEY (demanda_locacao_id) REFERENCES demandas_locacao(id) ON DELETE CASCADE
+//   FOREIGN KEY prazos_captacao_demanda_venda_id_fkey: FOREIGN KEY (demanda_venda_id) REFERENCES demandas_vendas(id) ON DELETE CASCADE
+//   PRIMARY KEY prazos_captacao_pkey: PRIMARY KEY (id)
+//   CHECK prazos_captacao_status_check: CHECK (((status)::text = ANY ((ARRAY['ativo'::character varying, 'vencido'::character varying, 'respondido'::character varying, 'sem_resposta_24h'::character varying, 'sem_resposta_final'::character varying])::text[])))
 // Table: respostas_captador
 //   CHECK check_demanda_link_respostas: CHECK ((((demanda_locacao_id IS NOT NULL) AND (demanda_venda_id IS NULL)) OR ((demanda_locacao_id IS NULL) AND (demanda_venda_id IS NOT NULL))))
 //   CHECK check_motivo_nao_encontrei: CHECK ((((resposta)::text = 'encontrei'::text) OR (((resposta)::text = 'nao_encontrei'::text) AND (motivo IS NOT NULL) AND (TRIM(BOTH FROM motivo) <> ''::text))))
@@ -743,6 +814,13 @@ export const Constants = {
 //   Policy "SDRs update captures linked to own locacao demands" (UPDATE, PERMISSIVE) roles={authenticated}
 //     USING: true
 //     WITH CHECK: true
+// Table: prazos_captacao
+//   Policy "All users can read prazos" (SELECT, PERMISSIVE) roles={public}
+//     USING: true
+//   Policy "Captadores can insert prazos" (INSERT, PERMISSIVE) roles={public}
+//     WITH CHECK: true
+//   Policy "Captadores can update prazos" (UPDATE, PERMISSIVE) roles={public}
+//     USING: true
 // Table: respostas_captador
 //   Policy "Admin sees all respostas" (ALL, PERMISSIVE) roles={public}
 //     USING: (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND (users.role = 'admin'::user_role))))
@@ -761,6 +839,37 @@ export const Constants = {
 //     USING: (id = auth.uid())
 
 // --- DATABASE FUNCTIONS ---
+// FUNCTION atualizar_prazos_vencidos()
+//   CREATE OR REPLACE FUNCTION public.atualizar_prazos_vencidos()
+//    RETURNS void
+//    LANGUAGE plpgsql
+//    SECURITY DEFINER
+//   AS $function$
+//   BEGIN
+//       UPDATE public.prazos_captacao
+//       SET status = 'sem_resposta_24h'
+//       WHERE status = 'ativo' AND prazo_resposta <= NOW() AND prorrogacoes_usadas = 0;
+//       
+//       UPDATE public.prazos_captacao
+//       SET status = 'sem_resposta_final'
+//       WHERE status = 'ativo' AND prazo_resposta <= NOW() AND prorrogacoes_usadas >= 3;
+//   
+//       UPDATE public.prazos_captacao
+//       SET status = 'vencido'
+//       WHERE status = 'ativo' AND prazo_resposta <= NOW() AND prorrogacoes_usadas > 0 AND prorrogacoes_usadas < 3;
+//   
+//       UPDATE public.demandas_locacao dl
+//       SET status_demanda = 'sem_resposta_24h'
+//       FROM public.prazos_captacao pc
+//       WHERE dl.id = pc.demanda_locacao_id AND pc.status IN ('sem_resposta_24h', 'sem_resposta_final') AND dl.status_demanda = 'aberta';
+//   
+//       UPDATE public.demandas_vendas dv
+//       SET status_demanda = 'sem_resposta_24h'
+//       FROM public.prazos_captacao pc
+//       WHERE dv.id = pc.demanda_venda_id AND pc.status IN ('sem_resposta_24h', 'sem_resposta_final') AND dv.status_demanda = 'aberta';
+//   END;
+//   $function$
+//   
 // FUNCTION audit_log_function()
 //   CREATE OR REPLACE FUNCTION public.audit_log_function()
 //    RETURNS trigger
@@ -786,6 +895,60 @@ export const Constants = {
 //           RETURN OLD;
 //       END IF;
 //       RETURN NULL;
+//   END;
+//   $function$
+//   
+// FUNCTION criar_prazo_captacao()
+//   CREATE OR REPLACE FUNCTION public.criar_prazo_captacao()
+//    RETURNS trigger
+//    LANGUAGE plpgsql
+//    SECURITY DEFINER
+//   AS $function$
+//   BEGIN
+//       IF TG_TABLE_NAME = 'demandas_locacao' THEN
+//           INSERT INTO public.prazos_captacao (demanda_locacao_id, prazo_resposta)
+//           VALUES (NEW.id, NOW() + INTERVAL '24 hours');
+//       ELSIF TG_TABLE_NAME = 'demandas_vendas' THEN
+//           INSERT INTO public.prazos_captacao (demanda_venda_id, prazo_resposta)
+//           VALUES (NEW.id, NOW() + INTERVAL '24 hours');
+//       END IF;
+//       RETURN NEW;
+//   END;
+//   $function$
+//   
+// FUNCTION marcar_prazo_respondido_imovel()
+//   CREATE OR REPLACE FUNCTION public.marcar_prazo_respondido_imovel()
+//    RETURNS trigger
+//    LANGUAGE plpgsql
+//    SECURITY DEFINER
+//   AS $function$
+//   BEGIN
+//       IF NEW.demanda_locacao_id IS NOT NULL THEN
+//           UPDATE public.prazos_captacao SET status = 'respondido' WHERE demanda_locacao_id = NEW.demanda_locacao_id;
+//       ELSIF NEW.demanda_venda_id IS NOT NULL THEN
+//           UPDATE public.prazos_captacao SET status = 'respondido' WHERE demanda_venda_id = NEW.demanda_venda_id;
+//       END IF;
+//       RETURN NEW;
+//   END;
+//   $function$
+//   
+// FUNCTION marcar_prazo_respondido_resposta()
+//   CREATE OR REPLACE FUNCTION public.marcar_prazo_respondido_resposta()
+//    RETURNS trigger
+//    LANGUAGE plpgsql
+//    SECURITY DEFINER
+//   AS $function$
+//   BEGIN
+//       -- Se for fora do perfil, fora do mercado ou outro, nós consideramos respondido.
+//       -- Se for 'Buscando outras opções', continua contando.
+//       IF NEW.resposta = 'encontrei' OR (NEW.resposta = 'nao_encontrei' AND NEW.motivo != 'Buscando outras opções') THEN
+//           IF NEW.demanda_locacao_id IS NOT NULL THEN
+//               UPDATE public.prazos_captacao SET status = 'respondido' WHERE demanda_locacao_id = NEW.demanda_locacao_id;
+//           ELSIF NEW.demanda_venda_id IS NOT NULL THEN
+//               UPDATE public.prazos_captacao SET status = 'respondido' WHERE demanda_venda_id = NEW.demanda_venda_id;
+//           END IF;
+//       END IF;
+//       RETURN NEW;
 //   END;
 //   $function$
 //   
@@ -835,14 +998,18 @@ export const Constants = {
 // --- TRIGGERS ---
 // Table: demandas_locacao
 //   audit_demandas_locacao: CREATE TRIGGER audit_demandas_locacao AFTER INSERT OR DELETE OR UPDATE ON public.demandas_locacao FOR EACH ROW EXECUTE FUNCTION audit_log_function()
+//   criar_prazo_locacao_trigger: CREATE TRIGGER criar_prazo_locacao_trigger AFTER INSERT ON public.demandas_locacao FOR EACH ROW EXECUTE FUNCTION criar_prazo_captacao()
 //   update_demandas_locacao_updated_at: CREATE TRIGGER update_demandas_locacao_updated_at BEFORE UPDATE ON public.demandas_locacao FOR EACH ROW EXECUTE FUNCTION set_updated_at()
 // Table: demandas_vendas
 //   audit_demandas_vendas: CREATE TRIGGER audit_demandas_vendas AFTER INSERT OR DELETE OR UPDATE ON public.demandas_vendas FOR EACH ROW EXECUTE FUNCTION audit_log_function()
+//   criar_prazo_vendas_trigger: CREATE TRIGGER criar_prazo_vendas_trigger AFTER INSERT ON public.demandas_vendas FOR EACH ROW EXECUTE FUNCTION criar_prazo_captacao()
 //   update_demandas_vendas_updated_at: CREATE TRIGGER update_demandas_vendas_updated_at BEFORE UPDATE ON public.demandas_vendas FOR EACH ROW EXECUTE FUNCTION set_updated_at()
 // Table: imoveis_captados
 //   audit_imoveis_captados: CREATE TRIGGER audit_imoveis_captados AFTER INSERT OR DELETE OR UPDATE ON public.imoveis_captados FOR EACH ROW EXECUTE FUNCTION audit_log_function()
+//   marcar_prazo_imovel_trigger: CREATE TRIGGER marcar_prazo_imovel_trigger AFTER INSERT ON public.imoveis_captados FOR EACH ROW EXECUTE FUNCTION marcar_prazo_respondido_imovel()
 //   update_imoveis_captados_updated_at: CREATE TRIGGER update_imoveis_captados_updated_at BEFORE UPDATE ON public.imoveis_captados FOR EACH ROW EXECUTE FUNCTION set_updated_at()
 // Table: respostas_captador
+//   marcar_prazo_resposta_trigger: CREATE TRIGGER marcar_prazo_resposta_trigger AFTER INSERT ON public.respostas_captador FOR EACH ROW EXECUTE FUNCTION marcar_prazo_respondido_resposta()
 //   update_respostas_captador_updated_at: CREATE TRIGGER update_respostas_captador_updated_at BEFORE UPDATE ON public.respostas_captador FOR EACH ROW EXECUTE FUNCTION set_updated_at()
 // Table: users
 //   audit_users: CREATE TRIGGER audit_users AFTER INSERT OR DELETE OR UPDATE ON public.users FOR EACH ROW EXECUTE FUNCTION audit_log_function()
