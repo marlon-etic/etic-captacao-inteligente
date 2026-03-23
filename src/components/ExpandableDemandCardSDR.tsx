@@ -299,12 +299,12 @@ export function ExpandableDemandCardSDR({
           </div>
 
           <div className="flex flex-col gap-2 mt-2">
-            <div className="flex gap-2">
+            <div className="grid grid-cols-2 gap-2">
               <Button
                 variant="outline"
                 size="sm"
                 className={cn(
-                  'flex-1 min-h-[40px] shadow-sm transition-all font-bold',
+                  'w-full min-h-[40px] shadow-sm transition-all font-bold text-[11px] lg:text-[12px] px-1 lg:px-2',
                   demand.is_prioritaria
                     ? 'bg-[#FFFBEB] border-[#FCD34D] text-[#854D0E] hover:bg-[#FEF3C7]'
                     : 'bg-white border-[#E5E5E5] text-[#333333] hover:bg-[#F5F5F5]',
@@ -313,7 +313,7 @@ export function ExpandableDemandCardSDR({
               >
                 <Star
                   className={cn(
-                    'w-4 h-4 mr-1.5',
+                    'w-3.5 h-3.5 lg:w-4 lg:h-4 mr-1 lg:mr-1.5 shrink-0',
                     demand.is_prioritaria ? 'fill-[#FCD34D] text-[#FCD34D]' : 'text-[#999999]',
                   )}
                 />
@@ -324,41 +324,41 @@ export function ExpandableDemandCardSDR({
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-1 min-h-[40px] border-[#E5E5E5] bg-white hover:bg-[#F5F5F5] text-[#333333] shadow-sm font-bold"
+                className="w-full min-h-[40px] border-[#E5E5E5] bg-white hover:bg-[#F5F5F5] text-[#333333] shadow-sm font-bold text-[11px] lg:text-[12px] px-1 lg:px-2"
                 onClick={(e) => {
                   e.stopPropagation()
                   setEditOpen(true)
                 }}
               >
-                <Edit className="w-4 h-4 mr-1.5 text-[#1A3A52]" />{' '}
+                <Edit className="w-3.5 h-3.5 lg:w-4 lg:h-4 mr-1 lg:mr-1.5 text-[#1A3A52] shrink-0" />{' '}
                 <span className="truncate">Editar</span>
               </Button>
             </div>
 
             {demand.status_demanda === 'aberta' && (
-              <div className="flex gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 <Button
                   variant="outline"
                   size="sm"
-                  className="flex-1 min-h-[40px] bg-[#E8F5E9] text-[#065F46] border-[#A7F3D0] hover:bg-[#D1FAE5] shadow-sm font-bold"
+                  className="w-full min-h-[40px] bg-[#E8F5E9] text-[#065F46] border-[#A7F3D0] hover:bg-[#D1FAE5] shadow-sm font-bold text-[11px] lg:text-[12px] px-1 lg:px-2"
                   onClick={(e) => {
                     e.stopPropagation()
                     setWonOpen(true)
                   }}
                 >
-                  <CheckCircle className="w-4 h-4 mr-1.5" />{' '}
+                  <CheckCircle className="w-3.5 h-3.5 lg:w-4 lg:h-4 mr-1 lg:mr-1.5 shrink-0" />{' '}
                   <span className="truncate">Marcar Ganho</span>
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
-                  className="flex-1 min-h-[40px] bg-[#FEF2F2] text-[#EF4444] border-[#FECACA] hover:bg-[#FEE2E2] shadow-sm font-bold"
+                  className="w-full min-h-[40px] bg-[#FEF2F2] text-[#EF4444] border-[#FECACA] hover:bg-[#FEE2E2] shadow-sm font-bold text-[11px] lg:text-[12px] px-1 lg:px-2"
                   onClick={(e) => {
                     e.stopPropagation()
                     setLostOpen(true)
                   }}
                 >
-                  <XCircle className="w-4 h-4 mr-1.5" />{' '}
+                  <XCircle className="w-3.5 h-3.5 lg:w-4 lg:h-4 mr-1 lg:mr-1.5 shrink-0" />{' '}
                   <span className="truncate">Marcar Perdido</span>
                 </Button>
               </div>

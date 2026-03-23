@@ -131,27 +131,29 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
 
         <div className="flex items-start gap-2.5 bg-[#E8F5E9] text-[#065F46] p-3 rounded-lg text-[13px] mt-1 border border-[#A7F3D0] shadow-sm">
           <Info className="w-4 h-4 shrink-0 mt-0.5 text-[#10B981]" />
-          <p className="leading-snug font-medium">
+          <p className="leading-snug font-medium line-clamp-3">
             {demand.observacoes ||
               'Nenhum cliente específico — qualquer imóvel que se encaixe serve!'}
           </p>
         </div>
 
         {demand.status_demanda === 'aberta' && currentUser?.role === 'captador' && (
-          <div className="flex flex-col sm:flex-row gap-2 mt-3 pt-3 border-t border-[#E5E5E5]">
+          <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-[#E5E5E5]">
             <Button
               onClick={handleEncontrei}
               disabled={isSubmitting}
-              className="w-full sm:flex-1 min-h-[48px] bg-[#10B981] hover:bg-[#059669] text-white font-black shadow-[0_4px_12px_rgba(16,185,129,0.3)]"
+              className="w-full min-h-[44px] bg-[#10B981] hover:bg-[#059669] text-white font-black text-[11px] lg:text-[12px] px-1 lg:px-2 shadow-[0_4px_12px_rgba(16,185,129,0.3)]"
             >
-              <CheckCircle className="w-5 h-5 mr-2" /> ENCONTREI IMÓVEL
+              <CheckCircle className="w-3.5 h-3.5 lg:w-4 lg:h-4 mr-1 lg:mr-1.5 shrink-0" />{' '}
+              <span className="truncate">ENCONTREI</span>
             </Button>
             <Button
               onClick={handleNaoEncontrei}
               variant="outline"
-              className="w-full sm:flex-1 min-h-[48px] text-[#EF4444] border-[#EF4444]/30 hover:bg-[#FEF2F2] font-bold"
+              className="w-full min-h-[44px] text-[#EF4444] border-[#EF4444]/30 hover:bg-[#FEF2F2] font-bold text-[11px] lg:text-[12px] px-1 lg:px-2"
             >
-              <XCircle className="w-5 h-5 mr-2" /> Não Encontrei
+              <XCircle className="w-3.5 h-3.5 lg:w-4 lg:h-4 mr-1 lg:mr-1.5 shrink-0" />{' '}
+              <span className="truncate">NÃO ENCONTREI</span>
             </Button>
           </div>
         )}
