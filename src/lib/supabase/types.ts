@@ -318,6 +318,7 @@ export type Database = {
           demanda_venda_id: string | null
           id: string
           motivo: string | null
+          observacao: string | null
           resposta: string
           updated_at: string | null
         }
@@ -328,6 +329,7 @@ export type Database = {
           demanda_venda_id?: string | null
           id?: string
           motivo?: string | null
+          observacao?: string | null
           resposta: string
           updated_at?: string | null
         }
@@ -338,6 +340,7 @@ export type Database = {
           demanda_venda_id?: string | null
           id?: string
           motivo?: string | null
+          observacao?: string | null
           resposta?: string
           updated_at?: string | null
         }
@@ -634,6 +637,7 @@ export const Constants = {
 //   motivo: text (nullable)
 //   created_at: timestamp with time zone (nullable, default: now())
 //   updated_at: timestamp with time zone (nullable, default: now())
+//   observacao: text (nullable)
 // Table: users
 //   id: uuid (not null)
 //   email: character varying (not null)
@@ -742,6 +746,10 @@ export const Constants = {
 // Table: respostas_captador
 //   Policy "Admin sees all respostas" (ALL, PERMISSIVE) roles={public}
 //     USING: (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND (users.role = 'admin'::user_role))))
+//   Policy "Authenticated read respostas" (SELECT, PERMISSIVE) roles={authenticated}
+//     USING: true
+//   Policy "Captadores insert respostas" (INSERT, PERMISSIVE) roles={authenticated}
+//     WITH CHECK: (captador_id = auth.uid())
 //   Policy "Captadores manage own respostas" (ALL, PERMISSIVE) roles={public}
 //     USING: (captador_id = auth.uid())
 // Table: users
