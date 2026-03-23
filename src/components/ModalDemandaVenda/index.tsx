@@ -20,14 +20,111 @@ import {
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
-import { Check, CheckSquare } from 'lucide-react'
+import { Check, CheckSquare, ChevronDown } from 'lucide-react'
 import { insertDemandaVenda } from '@/services/demandas_vendas'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
 import { formSchema, FormValues, BAIRROS_LIST } from './schema'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useRef } from 'react'
 import { useKeyboard } from '@/hooks/use-keyboard'
 import { useIsMobile } from '@/hooks/use-mobile'
+
+function BairrosDropdownVenda({ field }: { field: any }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (ref.current && !ref.current.contains(event.target as Node)) {
+        setOpen(false)
+      }
+    }
+    if (open) document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [open])
+
+  return (
+    <div className="relative" ref={ref}>
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => setOpen(!open)}
+        className={cn(
+          'w-full justify-between bg-white border-gray-300 font-normal min-h-[48px]',
+          !field.value?.length && 'text-muted-foreground',
+          open && 'border-[#1A3A52] ring-2 ring-[#1A3A52] ring-offset-0',
+        )}
+      >
+        <span className="truncate">
+          {field.value?.length > 0
+            ? `${field.value.length} bairros selecionados`
+            : 'Selecione os bairros...'}
+        </span>
+        <ChevronDown className="h-4 w-4 opacity-50 shrink-0 ml-2" />
+      </Button>
+
+      {open && (
+        <div className="absolute top-full left-0 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl z-[9999] overflow-hidden flex flex-col">
+          <div
+            className="max-h-[250px] overflow-y-auto overscroll-contain"
+            style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
+            onTouchMove={(e) => e.stopPropagation()}
+            onWheel={(e) => e.stopPropagation()}
+          >
+            {BAIRROS_LIST.map((b) => {
+              const isSelected = field.value?.includes(b)
+              return (
+                <div
+                  key={b}
+                  onClick={() => {
+                    const cur = field.value || []
+                    field.onChange(isSelected ? cur.filter((x: string) => x !== b) : [...cur, b])
+                  }}
+                  className={cn(
+                    'flex items-center gap-3 px-4 py-3 cursor-pointer border-b border-gray-50 last:border-0 transition-colors',
+                    isSelected ? 'bg-[#F5F8FA]' : 'hover:bg-gray-50',
+                  )}
+                >
+                  <div
+                    className={cn(
+                      'h-5 w-5 border rounded flex items-center justify-center shrink-0 transition-colors',
+                      isSelected ? 'bg-[#1A3A52] border-[#1A3A52]' : 'border-gray-300',
+                    )}
+                  >
+                    {isSelected && <Check className="h-3 w-3 text-white" />}
+                  </div>
+                  <span
+                    className={cn(
+                      'text-[14px]',
+                      isSelected ? 'text-[#1A3A52] font-semibold' : 'text-gray-800',
+                    )}
+                  >
+                    {b}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+          <div className="p-3 border-t border-gray-100 bg-gray-50 flex justify-between items-center">
+            <span className="text-xs text-gray-500 font-medium">
+              {field.value?.length || 0} selecionados
+            </span>
+            <Button
+              size="sm"
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                setOpen(false)
+              }}
+              className="bg-[#1A3A52] text-white hover:bg-[#1A3A52]/90"
+            >
+              Concluir
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
 
 function FormSummary({
   control,
@@ -98,7 +195,7 @@ export function ModalDemandaVenda({ isOpen, onClose }: { isOpen: boolean; onClos
   const onSubmit = async (values: FormValues) => {
     setIsSubmitting(true)
     try {
-      await insertDemandaVenda({
+      const result = await insertDemandaVenda({
         nome_cliente: values.nome_cliente,
         telefone: values.telefone || null,
         tipo_imovel: values.tipo_imovel,
@@ -113,13 +210,15 @@ export function ModalDemandaVenda({ isOpen, onClose }: { isOpen: boolean; onClos
         necessidades_especificas: values.necessidades_especificas || null,
       })
 
-      window.dispatchEvent(new Event('demanda-created'))
+      console.log('[Diagnostic] Disparando evento demanda-created:', result)
+      window.dispatchEvent(
+        new CustomEvent('demanda-created', { detail: { tipo: 'Venda', data: result } }),
+      )
 
       toast({ title: '✅ Demanda criada com sucesso!', className: 'bg-emerald-600 text-white' })
-      setTimeout(() => {
-        onClose()
-        setIsSubmitting(false)
-      }, 1500)
+      form.reset()
+      onClose()
+      setIsSubmitting(false)
     } catch (err: any) {
       toast({
         title: 'Erro',
@@ -236,53 +335,9 @@ export function ModalDemandaVenda({ isOpen, onClose }: { isOpen: boolean; onClos
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-gray-800 font-bold">Bairros *</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant="outline"
-                              className={cn(
-                                'w-full justify-between bg-white border-gray-300 font-normal min-h-[48px]',
-                                !field.value?.length && 'text-muted-foreground',
-                              )}
-                            >
-                              {field.value?.length > 0
-                                ? `${field.value.length} selecionados`
-                                : 'Selecione...'}
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[300px] p-0 z-[1050]">
-                          <div className="max-h-[200px] overflow-y-auto p-2 space-y-1">
-                            {BAIRROS_LIST.map((b) => (
-                              <div
-                                key={b}
-                                onClick={() => {
-                                  const cur = field.value || []
-                                  field.onChange(
-                                    cur.includes(b) ? cur.filter((x) => x !== b) : [...cur, b],
-                                  )
-                                }}
-                                className="flex items-center gap-2 p-2 hover:bg-slate-100 cursor-pointer text-sm rounded border border-transparent min-h-[44px]"
-                              >
-                                <div
-                                  className={cn(
-                                    'h-4 w-4 border rounded flex items-center justify-center',
-                                    field.value?.includes(b)
-                                      ? 'bg-[#1A3A52] border-[#1A3A52]'
-                                      : 'border-gray-400',
-                                  )}
-                                >
-                                  {field.value?.includes(b) && (
-                                    <Check className="h-3 w-3 text-white" />
-                                  )}
-                                </div>
-                                {b}
-                              </div>
-                            ))}
-                          </div>
-                        </PopoverContent>
-                      </Popover>
+                      <FormControl>
+                        <BairrosDropdownVenda field={field} />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}

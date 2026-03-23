@@ -80,6 +80,107 @@ interface Props {
   onClose: () => void
 }
 
+function BairrosDropdownLocacao({ field }: { field: any }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (ref.current && !ref.current.contains(event.target as Node)) {
+        setOpen(false)
+      }
+    }
+    if (open) document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [open])
+
+  return (
+    <div className="relative" ref={ref}>
+      <div
+        className={cn(
+          'w-full min-h-[48px] border rounded-lg px-4 py-3 flex justify-between items-center bg-white cursor-pointer transition-colors',
+          open
+            ? 'border-[#1A3A52] ring-2 ring-[#1A3A52] ring-offset-0'
+            : 'border-gray-300 hover:border-[#1A3A52]',
+        )}
+        onClick={() => setOpen(!open)}
+      >
+        <div className="flex flex-wrap gap-1 items-center flex-1">
+          {field.value?.length ? (
+            <span className="font-semibold text-[#1A3A52]">
+              {field.value.length} bairros selecionados
+            </span>
+          ) : (
+            <span className="text-gray-400">Selecione os bairros alvo...</span>
+          )}
+        </div>
+        <ChevronDown className="h-4 w-4 opacity-50 shrink-0 ml-2" />
+      </div>
+
+      {open && (
+        <div className="absolute top-full left-0 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl z-[9999] overflow-hidden flex flex-col">
+          <div
+            className="max-h-[250px] overflow-y-auto overscroll-contain"
+            style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
+            onTouchMove={(e) => e.stopPropagation()}
+            onWheel={(e) => e.stopPropagation()}
+          >
+            {BAIRROS_OPCOES.map((b) => {
+              const isSelected = field.value?.includes(b)
+              return (
+                <div
+                  key={b}
+                  className={cn(
+                    'flex items-center gap-3 px-4 py-3 cursor-pointer border-b border-gray-50 last:border-0 transition-colors',
+                    isSelected ? 'bg-[#F5F8FA]' : 'hover:bg-gray-50',
+                  )}
+                  onClick={() => {
+                    const cur = field.value || []
+                    field.onChange(isSelected ? cur.filter((v: string) => v !== b) : [...cur, b])
+                  }}
+                >
+                  <div
+                    className={cn(
+                      'h-5 w-5 border rounded flex items-center justify-center transition-colors shrink-0',
+                      isSelected ? 'bg-[#1A3A52] border-[#1A3A52]' : 'border-gray-300',
+                    )}
+                  >
+                    {isSelected && <Check className="h-3 w-3 text-white" />}
+                  </div>
+                  <span
+                    className={cn(
+                      'text-[14px]',
+                      isSelected ? 'text-[#1A3A52] font-semibold' : 'text-gray-800',
+                    )}
+                  >
+                    {b}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+          <div className="p-3 border-t border-gray-100 bg-gray-50 flex justify-between items-center">
+            <span className="text-xs text-gray-500 font-medium">
+              {field.value?.length || 0} selecionados
+            </span>
+            <Button
+              size="sm"
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                setOpen(false)
+              }}
+              className="bg-[#1A3A52] text-white hover:bg-[#1A3A52]/90"
+            >
+              Concluir
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function ProgressBar({ control }: { control: any }) {
   const values = useWatch({ control })
   const progress = useMemo(() => {
@@ -113,8 +214,6 @@ function ProgressBar({ control }: { control: any }) {
 export function ModalDemandaLocacao({ isOpen, onClose }: Props) {
   const { toast } = useToast()
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [bairrosOpen, setBairrosOpen] = useState(false)
-  const dropdownRef = useRef<HTMLDivElement>(null)
 
   const { isKeyboardOpen, viewportHeight } = useKeyboard()
   const isMobile = useIsMobile()
@@ -136,18 +235,6 @@ export function ModalDemandaLocacao({ isOpen, onClose }: Props) {
     },
     mode: 'onTouched',
   })
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setBairrosOpen(false)
-      }
-    }
-    if (bairrosOpen) {
-      document.addEventListener('mousedown', handleClickOutside)
-    }
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [bairrosOpen])
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>, onChange: any) => {
     let v = e.target.value.replace(/\D/g, '')
@@ -174,12 +261,15 @@ export function ModalDemandaLocacao({ isOpen, onClose }: Props) {
           status_demanda: 'aberta',
           sdr_id: authData.user.id,
         })
-        .select('id')
+        .select('*')
         .single()
 
       if (error) throw error
 
-      window.dispatchEvent(new Event('demanda-created'))
+      console.log('[Diagnostic] Disparando evento demanda-created:', data)
+      window.dispatchEvent(
+        new CustomEvent('demanda-created', { detail: { tipo: 'Aluguel', data } }),
+      )
 
       toast({
         title: `✅ Demanda criada com sucesso!`,
@@ -187,11 +277,9 @@ export function ModalDemandaLocacao({ isOpen, onClose }: Props) {
         duration: 3000,
       })
 
-      setTimeout(() => {
-        form.reset()
-        onClose()
-        setIsSubmitting(false)
-      }, 1000)
+      form.reset()
+      onClose()
+      setIsSubmitting(false)
     } catch (error: any) {
       toast({ title: 'Erro ao criar demanda', description: error.message, variant: 'destructive' })
       setIsSubmitting(false)
@@ -336,92 +424,7 @@ export function ModalDemandaLocacao({ isOpen, onClose }: Props) {
                     <FormItem className="md:col-span-2">
                       <FormLabel className="text-gray-800 font-bold">Bairros</FormLabel>
                       <FormControl>
-                        <div className="relative" ref={dropdownRef}>
-                          <div
-                            className={cn(
-                              'w-full min-h-[48px] border rounded-lg px-4 py-3 flex justify-between items-center bg-white cursor-pointer transition-colors',
-                              form.formState.errors.bairros
-                                ? 'border-red-500'
-                                : 'border-gray-300 hover:border-[#1A3A52]',
-                              bairrosOpen && 'border-[#1A3A52] ring-2 ring-[#1A3A52] ring-offset-0',
-                            )}
-                            onClick={() => setBairrosOpen(!bairrosOpen)}
-                          >
-                            <div className="flex flex-wrap gap-1 items-center flex-1">
-                              {field.value.length ? (
-                                <span className="font-semibold text-[#1A3A52]">
-                                  {field.value.length} bairros selecionados
-                                </span>
-                              ) : (
-                                <span className="text-gray-400">Selecione os bairros alvo...</span>
-                              )}
-                            </div>
-                            <ChevronDown className="h-4 w-4 opacity-50 shrink-0 ml-2" />
-                          </div>
-
-                          {bairrosOpen && (
-                            <div className="absolute top-full left-0 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl z-[9999] overflow-hidden flex flex-col">
-                              <div
-                                className="max-h-[250px] overflow-y-auto overscroll-contain"
-                                style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
-                              >
-                                {BAIRROS_OPCOES.map((b) => {
-                                  const isSelected = field.value.includes(b)
-                                  return (
-                                    <div
-                                      key={b}
-                                      className={cn(
-                                        'flex items-center gap-3 px-4 py-3 cursor-pointer border-b border-gray-50 last:border-0 transition-colors',
-                                        isSelected ? 'bg-[#F5F8FA]' : 'hover:bg-gray-50',
-                                      )}
-                                      onClick={() => {
-                                        field.onChange(
-                                          isSelected
-                                            ? field.value.filter((v: string) => v !== b)
-                                            : [...field.value, b],
-                                        )
-                                      }}
-                                    >
-                                      <div
-                                        className={cn(
-                                          'h-5 w-5 border rounded flex items-center justify-center transition-colors shrink-0',
-                                          isSelected
-                                            ? 'bg-[#1A3A52] border-[#1A3A52]'
-                                            : 'border-gray-300',
-                                        )}
-                                      >
-                                        {isSelected && <Check className="h-3 w-3 text-white" />}
-                                      </div>
-                                      <span
-                                        className={cn(
-                                          'text-[14px]',
-                                          isSelected
-                                            ? 'text-[#1A3A52] font-semibold'
-                                            : 'text-gray-800',
-                                        )}
-                                      >
-                                        {b}
-                                      </span>
-                                    </div>
-                                  )
-                                })}
-                              </div>
-                              <div className="p-3 border-t border-gray-100 bg-gray-50 flex justify-between items-center">
-                                <span className="text-xs text-gray-500 font-medium">
-                                  {field.value.length} selecionados
-                                </span>
-                                <Button
-                                  size="sm"
-                                  type="button"
-                                  onClick={() => setBairrosOpen(false)}
-                                  className="bg-[#1A3A52] text-white hover:bg-[#1A3A52]/90"
-                                >
-                                  Concluir
-                                </Button>
-                              </div>
-                            </div>
-                          )}
-                        </div>
+                        <BairrosDropdownLocacao field={field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

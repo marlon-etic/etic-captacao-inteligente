@@ -188,6 +188,43 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
         { event: '*', schema: 'public', table: 'imoveis_captados' },
         (payload) => {
           console.log('[Diagnostic] Realtime payload for imoveis_captados:', payload)
+          if (payload.eventType === 'INSERT') {
+            const imv = payload.new
+            setDemands((prev) =>
+              prev.map((d) => {
+                if (d.id === imv.demanda_locacao_id || d.id === imv.demanda_venda_id) {
+                  const exists = d.imoveis_captados?.some((i: any) => i.id === imv.id)
+                  if (exists) return d
+                  console.log('[Diagnostic] Atualizando demanda via nova captacao:', d.id)
+                  return {
+                    ...d,
+                    status_demanda: 'atendida',
+                    imoveis_captados: [
+                      ...(d.imoveis_captados || []),
+                      { ...imv, captador_nome: 'Sincronizando...' },
+                    ],
+                  }
+                }
+                return d
+              }),
+            )
+          } else if (payload.eventType === 'UPDATE') {
+            const imv = payload.new
+            setDemands((prev) =>
+              prev.map((d) => {
+                if (d.id === imv.demanda_locacao_id || d.id === imv.demanda_venda_id) {
+                  return {
+                    ...d,
+                    status_demanda: d.imoveis_captados?.length > 0 ? 'atendida' : d.status_demanda,
+                    imoveis_captados: (d.imoveis_captados || []).map((i: any) =>
+                      i.id === imv.id ? { ...i, ...imv } : i,
+                    ),
+                  }
+                }
+                return d
+              }),
+            )
+          }
           debouncedFetch(true)
         },
       )
