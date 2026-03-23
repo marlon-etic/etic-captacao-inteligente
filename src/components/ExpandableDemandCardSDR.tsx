@@ -12,6 +12,7 @@ import {
   CheckCircle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { PrazoCounter } from './PrazoCounter'
 
 interface Props {
   demand: SupabaseDemand
@@ -27,8 +28,13 @@ export function ExpandableDemandCardSDR({ demand }: Props) {
     return new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 }).format(val)
   }
 
-  // Animation keys to trigger visual bump when a property is captured in real-time
   const cardAnimation = hasProperties ? 'animate-pulse-green' : ''
+
+  const prazo = demand.prazos_captacao?.[0]
+  const isPrazoExpired =
+    prazo?.status === 'vencido' ||
+    prazo?.status === 'sem_resposta_24h' ||
+    prazo?.status === 'sem_resposta_final'
 
   return (
     <Card
@@ -47,7 +53,7 @@ export function ExpandableDemandCardSDR({ demand }: Props) {
           hasProperties ? 'border-[#4CAF50]/20' : 'border-[#E5E5E5]',
         )}
       >
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-1 pr-4">
           <div className="flex items-center gap-2">
             <Badge
               className={cn(
@@ -62,26 +68,57 @@ export function ExpandableDemandCardSDR({ demand }: Props) {
             </span>
           </div>
           <h3
-            className="text-[18px] font-black text-[#1A3A52] leading-tight mt-1 line-clamp-1"
+            className="text-[18px] font-black text-[#1A3A52] leading-tight mt-1 line-clamp-2"
             title={demand.nome_cliente}
           >
             {demand.nome_cliente}
           </h3>
         </div>
-        {hasProperties && (
-          <Badge className="bg-[#4CAF50] hover:bg-[#388E3C] text-white border-none font-bold text-[12px] px-2 py-1 flex items-center gap-1 shadow-sm shrink-0 transition-transform hover:scale-105">
-            <CheckCircle className="w-3.5 h-3.5" />
-            {demand.imoveis_captados.length} IMÓVEL{demand.imoveis_captados.length > 1 ? 'S' : ''}
-          </Badge>
-        )}
-        {!hasProperties && (
-          <Badge
-            variant="outline"
-            className="bg-[#F5F5F5] text-[#999999] border-[#E5E5E5] font-bold text-[12px] shrink-0"
-          >
-            Aguardando
-          </Badge>
-        )}
+        <div className="flex flex-col items-end gap-1.5 shrink-0">
+          {hasProperties ? (
+            <Badge className="bg-[#4CAF50] hover:bg-[#388E3C] text-white border-none font-bold text-[12px] px-2 py-1 flex items-center gap-1 shadow-sm shrink-0 transition-transform hover:scale-105">
+              <CheckCircle className="w-3.5 h-3.5" />
+              {demand.imoveis_captados.length} IMÓVEL
+              {demand.imoveis_captados.length > 1 ? 'S' : ''}
+            </Badge>
+          ) : demand.status_demanda === 'aberta' ? (
+            <>
+              {prazo && prazo.status !== 'respondido' && (
+                <PrazoCounter prazoResposta={prazo.prazo_resposta} isExpired={isPrazoExpired} />
+              )}
+              {prazo && prazo.prorrogacoes_usadas > 0 && prazo.status !== 'respondido' && (
+                <span className="text-[9px] font-bold text-[#666666]">
+                  {prazo.prorrogacoes_usadas}/3 Prorrog.
+                </span>
+              )}
+              {!prazo && (
+                <Badge
+                  variant="outline"
+                  className="bg-[#F5F5F5] text-[#999999] border-[#E5E5E5] font-bold text-[12px] shrink-0"
+                >
+                  Aguardando
+                </Badge>
+              )}
+            </>
+          ) : (
+            <Badge
+              variant="outline"
+              className={cn(
+                'font-bold text-[12px] shrink-0 border-none px-2 py-1',
+                demand.status_demanda === 'sem_resposta_24h' ||
+                  demand.status_demanda === 'impossivel'
+                  ? 'bg-[#FEF2F2] text-[#EF4444]'
+                  : 'bg-[#F5F5F5] text-[#999999]',
+              )}
+            >
+              {demand.status_demanda === 'sem_resposta_24h'
+                ? 'SEM RESPOSTA'
+                : demand.status_demanda === 'impossivel'
+                  ? 'PERDIDA'
+                  : 'AGUARDANDO'}
+            </Badge>
+          )}
+        </div>
       </div>
 
       {/* Details */}

@@ -18,6 +18,7 @@ import {
   Info,
   CheckCircle,
   X,
+  History,
 } from 'lucide-react'
 import { ScrollArea } from '@/components/ui/scroll-area'
 
@@ -51,6 +52,7 @@ export function DemandDetailModal({ demand, isOpen, onClose, onFoundProperty }: 
   const createdDate = new Date(demand.created_at)
   const daysAgo = Math.floor((new Date().getTime() - createdDate.getTime()) / (1000 * 3600 * 24))
   const capturedCount = demand.imoveis_captados?.length || 0
+  const prazo = demand.prazos_captacao?.[0]
 
   return (
     <Dialog open={isOpen} onOpenChange={(val) => !val && onClose()}>
@@ -166,13 +168,26 @@ export function DemandDetailModal({ demand, isOpen, onClose, onFoundProperty }: 
                   </span>
                 </div>
 
-                <div className="col-span-2 sm:col-span-2 bg-[#F8FAFC] p-3 rounded-[8px] border border-[#E2E8F0] flex flex-col items-center justify-center text-center gap-1">
+                <div className="bg-[#F8FAFC] p-3 rounded-[8px] border border-[#E2E8F0] flex flex-col items-center justify-center text-center gap-1">
                   <Tag className="w-5 h-5 text-[#64748B]" />
-                  <span className="text-[12px] font-medium text-[#64748B] uppercase">
-                    Tipo de Imóvel
-                  </span>
+                  <span className="text-[12px] font-medium text-[#64748B] uppercase">Tipo</span>
                   <span className="text-[16px] font-bold text-[#1A3A52]">
-                    {demand.tipo_imovel || 'Não especificado'}
+                    {demand.tipo_imovel || 'Indif.'}
+                  </span>
+                </div>
+
+                <div className="bg-[#F8FAFC] p-3 rounded-[8px] border border-[#E2E8F0] flex flex-col items-center justify-center text-center gap-1">
+                  <History className="w-5 h-5 text-[#64748B]" />
+                  <span className="text-[12px] font-medium text-[#64748B] uppercase">Prazo</span>
+                  <span className="text-[14px] font-bold text-[#1A3A52]">
+                    {prazo
+                      ? prazo.status === 'respondido'
+                        ? 'Respondido'
+                        : new Date(prazo.prazo_resposta).toLocaleDateString('pt-BR', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })
+                      : 'N/A'}
                   </span>
                 </div>
               </div>
@@ -189,7 +204,7 @@ export function DemandDetailModal({ demand, isOpen, onClose, onFoundProperty }: 
           </div>
         </ScrollArea>
 
-        {demand.status_demanda === 'aberta' && (
+        {(demand.status_demanda === 'aberta' || demand.status_demanda === 'sem_resposta_24h') && (
           <div className="p-4 md:p-6 border-t border-[#E5E5E5] bg-white shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
             <Button
               className="w-full min-h-[56px] bg-[#10B981] hover:bg-[#059669] text-white font-black text-[16px] tracking-wide shadow-[0_4px_14px_rgba(16,185,129,0.3)] transition-all hover:scale-[1.01]"

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import {
   MapPin,
   DollarSign,
@@ -13,12 +14,16 @@ import {
   Star,
   CheckCircle,
   XCircle,
+  AlertTriangle,
+  X,
+  CheckCircle2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { SupabaseDemand } from '@/hooks/use-supabase-demands'
 import useAppStore from '@/stores/useAppStore'
 import { CapturePropertyModal } from './CapturePropertyModal'
 import { DemandDetailsModal } from './DemandDetailsModal'
+import { PrazoCounter } from './PrazoCounter'
 
 export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
   const { currentUser } = useAppStore()
@@ -33,11 +38,11 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
             label: 'ATENDIDA / EM NEGOCIAÇÃO',
             bg: 'bg-blue-500',
             text: 'text-white',
-            icon: CheckCircle,
+            icon: CheckCircle2,
           }
         : demand.status_demanda === 'sem_resposta_24h'
-          ? { label: 'SEM RESPOSTA', bg: 'bg-yellow-500', text: 'text-white', icon: Info }
-          : { label: 'PERDIDA / CANCELADA', bg: 'bg-gray-500', text: 'text-white', icon: XCircle }
+          ? { label: 'SEM RESPOSTA', bg: 'bg-yellow-500', text: 'text-white', icon: AlertTriangle }
+          : { label: 'PERDIDA / CANCELADA', bg: 'bg-gray-500', text: 'text-white', icon: X }
 
   const formatPrice = (val: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -61,6 +66,12 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
   }
 
   const isBrandNew = new Date().getTime() - new Date(demand.created_at).getTime() < 1000 * 60 * 5
+
+  const prazo = demand.prazos_captacao?.[0]
+  const isPrazoExpired =
+    prazo?.status === 'vencido' ||
+    prazo?.status === 'sem_resposta_24h' ||
+    prazo?.status === 'sem_resposta_final'
 
   // Map SupabaseDemand to local Demand interface for the DemandDetailsModal
   const mappedDemand = {
@@ -109,17 +120,28 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
 
         <div
           className={cn(
-            'px-4 py-2.5 flex items-center gap-2 font-black text-[11px] uppercase tracking-widest shadow-sm',
-            statusConfig.bg,
-            statusConfig.text,
+            'px-4 py-2.5 flex items-center justify-between shadow-sm border-b border-[#E5E5E5]/50 bg-white',
           )}
         >
-          <statusConfig.icon className="w-3.5 h-3.5" />
-          {statusConfig.label}
-          {isBrandNew && (
-            <span className="ml-auto bg-white/20 px-2 rounded-sm text-[9px] animate-pulse">
-              NOVA
-            </span>
+          <div
+            className={cn(
+              'flex items-center gap-2 font-black text-[11px] uppercase tracking-widest px-2 py-1 rounded shadow-sm',
+              statusConfig.bg,
+              statusConfig.text,
+            )}
+          >
+            <statusConfig.icon className="w-3.5 h-3.5" />
+            {statusConfig.label}
+            {isBrandNew && (
+              <span className="ml-1 bg-white/20 px-1.5 py-0.5 rounded-sm text-[9px] animate-pulse">
+                NOVA
+              </span>
+            )}
+          </div>
+          {prazo && demand.status_demanda === 'aberta' && prazo.status !== 'respondido' && (
+            <div className="flex flex-col items-end">
+              <PrazoCounter prazoResposta={prazo.prazo_resposta} isExpired={isPrazoExpired} />
+            </div>
           )}
         </div>
 
@@ -172,25 +194,26 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
             </p>
           </div>
 
-          {demand.status_demanda === 'aberta' && currentUser?.role === 'captador' && (
-            <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-[#E5E5E5]">
-              <Button
-                onClick={handleEncontrei}
-                className="w-full min-h-[44px] bg-[#10B981] hover:bg-[#059669] text-white font-black text-[11px] lg:text-[12px] px-1 lg:px-2 shadow-[0_4px_12px_rgba(16,185,129,0.3)] z-10"
-              >
-                <CheckCircle className="w-3.5 h-3.5 lg:w-4 lg:h-4 mr-1 lg:mr-1.5 shrink-0" />{' '}
-                <span className="truncate">ENCONTREI</span>
-              </Button>
-              <Button
-                onClick={handleNaoEncontrei}
-                variant="outline"
-                className="w-full min-h-[44px] text-[#EF4444] border-[#EF4444]/30 hover:bg-[#FEF2F2] font-bold text-[11px] lg:text-[12px] px-1 lg:px-2 z-10"
-              >
-                <XCircle className="w-3.5 h-3.5 lg:w-4 lg:h-4 mr-1 lg:mr-1.5 shrink-0" />{' '}
-                <span className="truncate">NÃO ENCONTREI</span>
-              </Button>
-            </div>
-          )}
+          {(demand.status_demanda === 'aberta' || demand.status_demanda === 'sem_resposta_24h') &&
+            currentUser?.role === 'captador' && (
+              <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-[#E5E5E5]">
+                <Button
+                  onClick={handleEncontrei}
+                  className="w-full min-h-[44px] bg-[#10B981] hover:bg-[#059669] text-white font-black text-[11px] lg:text-[12px] px-1 lg:px-2 shadow-[0_4px_12px_rgba(16,185,129,0.3)] z-10"
+                >
+                  <CheckCircle className="w-3.5 h-3.5 lg:w-4 lg:h-4 mr-1 lg:mr-1.5 shrink-0" />{' '}
+                  <span className="truncate">ENCONTREI</span>
+                </Button>
+                <Button
+                  onClick={handleNaoEncontrei}
+                  variant="outline"
+                  className="w-full min-h-[44px] text-[#EF4444] border-[#EF4444]/30 hover:bg-[#FEF2F2] font-bold text-[11px] lg:text-[12px] px-1 lg:px-2 z-10"
+                >
+                  <XCircle className="w-3.5 h-3.5 lg:w-4 lg:h-4 mr-1 lg:mr-1.5 shrink-0" />{' '}
+                  <span className="truncate">NÃO ENCONTREI</span>
+                </Button>
+              </div>
+            )}
         </div>
       </Card>
 
@@ -199,7 +222,8 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
         onOpenChange={setIsDetailsModalOpen}
         demand={mappedDemand}
         onEncontrei={
-          currentUser?.role === 'captador' && demand.status_demanda === 'aberta'
+          currentUser?.role === 'captador' &&
+          (demand.status_demanda === 'aberta' || demand.status_demanda === 'sem_resposta_24h')
             ? () => {
                 setIsDetailsModalOpen(false)
                 setTimeout(() => setIsCaptureModalOpen(true), 300)

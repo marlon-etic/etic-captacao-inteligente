@@ -13,6 +13,14 @@ export interface SupabaseCapturedProperty {
   captador_nome?: string
 }
 
+export interface SupabasePrazo {
+  id: string
+  prazo_resposta: string
+  prorrogacoes_usadas: number
+  status: string
+  captador_id?: string
+}
+
 export interface SupabaseDemand {
   id: string
   nome_cliente: string
@@ -25,6 +33,7 @@ export interface SupabaseDemand {
   tipo: 'Aluguel' | 'Venda'
   imoveis_captados: SupabaseCapturedProperty[]
   respostas_captador?: any[]
+  prazos_captacao?: SupabasePrazo[]
   telefone?: string
   email?: string
   dormitorios?: number
@@ -41,6 +50,14 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
   const [loading, setLoading] = useState(true)
   const fetchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
+  // Atualizador global de prazos a cada 1 minuto (se fallback do cron)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      supabase.rpc('atualizar_prazos_vencidos').catch(() => {})
+    }, 60000)
+    return () => clearInterval(interval)
+  }, [])
+
   const fetchDemands = useCallback(
     async (isBackground = false) => {
       try {
@@ -53,7 +70,7 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
 
         const query = supabase
           .from(table)
-          .select('*, imoveis_captados(*), respostas_captador(*)')
+          .select('*, imoveis_captados(*), respostas_captador(*), prazos_captacao(*)')
           .order('created_at', { ascending: false })
 
         const { data: usersData } = await supabase.from('users').select('id, nome')
@@ -88,6 +105,7 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
               sdr_id: d.sdr_id,
               corretor_id: d.corretor_id,
               respostas_captador: d.respostas_captador || [],
+              prazos_captacao: d.prazos_captacao || [],
               imoveis_captados: (d.imoveis_captados || [])
                 .map((i: any) => ({
                   ...i,
@@ -123,7 +141,6 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
   const debouncedFetch = useCallback(
     (isBackground = true) => {
       if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current)
-      // Reduzido para 150ms para garantir sincronização < 1 segundo
       fetchTimeoutRef.current = setTimeout(() => {
         fetchDemands(isBackground)
       }, 150)
@@ -165,6 +182,7 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
               corretor_id: d.corretor_id,
               imoveis_captados: [],
               respostas_captador: [],
+              prazos_captacao: [],
             }
             return [newDemand, ...prev]
           })
@@ -207,7 +225,6 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'imoveis_captados' },
         (payload) => {
-          // Atualização local imediata para sensação de tempo real (< 1s)
           if (payload.eventType === 'INSERT') {
             const imv = payload.new
             setDemands((prev) =>
@@ -250,6 +267,64 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'respostas_captador' }, () => {
         debouncedFetch(true)
       })
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'prazos_captacao' },
+        (payload) => {
+          if (payload.eventType === 'UPDATE') {
+            const newP = payload.new
+            const oldP = payload.old
+
+            if (newP.prorrogacoes_usadas > (oldP.prorrogacoes_usadas || 0)) {
+              const dId = newP.demanda_locacao_id || newP.demanda_venda_id
+              setDemands((prev) => {
+                const d = prev.find((x) => x.id === dId)
+                if (d) {
+                  supabase.auth.getUser().then(({ data }) => {
+                    if (
+                      data.user &&
+                      (d.sdr_id === data.user.id || d.corretor_id === data.user.id)
+                    ) {
+                      toast({
+                        title: '⏳ Prazo Prorrogado',
+                        description: `O prazo da demanda de ${d.nome_cliente} foi prorrogado (+48h).`,
+                        className: 'bg-[#F59E0B] text-white border-none',
+                      })
+                    }
+                  })
+                }
+                return prev
+              })
+            }
+
+            if (
+              (newP.status === 'sem_resposta_24h' || newP.status === 'sem_resposta_final') &&
+              oldP.status === 'ativo'
+            ) {
+              const dId = newP.demanda_locacao_id || newP.demanda_venda_id
+              setDemands((prev) => {
+                const d = prev.find((x) => x.id === dId)
+                if (d) {
+                  supabase.auth.getUser().then(({ data }) => {
+                    if (
+                      data.user &&
+                      (d.sdr_id === data.user.id || d.corretor_id === data.user.id)
+                    ) {
+                      toast({
+                        title: '⏰ Prazo Esgotado',
+                        description: `A demanda de ${d.nome_cliente} ficou sem resposta e foi marcada.`,
+                        variant: 'destructive',
+                      })
+                    }
+                  })
+                }
+                return prev
+              })
+            }
+          }
+          debouncedFetch(true)
+        },
+      )
       .subscribe()
 
     return () => {

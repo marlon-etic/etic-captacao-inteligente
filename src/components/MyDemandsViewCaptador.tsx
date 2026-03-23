@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { FilterSidebar } from '@/components/FilterSidebar'
 import { StickyFilterBar, FilterDef } from '@/components/StickyFilterBar'
 import { useViewFilters } from '@/hooks/useViewFilters'
@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils'
 import { useSupabaseDemands } from '@/hooks/use-supabase-demands'
 import { ExpandableDemandCardCaptador } from '@/components/ExpandableDemandCardCaptador'
 import useAppStore from '@/stores/useAppStore'
+import { toast } from '@/hooks/use-toast'
 
 interface Props {
   filterType?: 'Venda' | 'Aluguel'
@@ -72,6 +73,29 @@ export function MyDemandsViewCaptador({ filterType }: Props) {
     data: 'Todos',
     bairro: '',
   })
+
+  useEffect(() => {
+    let urgentCount = 0
+    demands.forEach((d) => {
+      if (d.status_demanda !== 'aberta' || !d.prazos_captacao?.[0]) return
+      const prazo = d.prazos_captacao[0]
+      if (prazo.status !== 'ativo') return
+      const diffHours = (new Date(prazo.prazo_resposta).getTime() - Date.now()) / 3600000
+      if (diffHours > 0 && diffHours <= 6) urgentCount++
+    })
+
+    if (urgentCount > 0) {
+      const key = `notified_urgent_${activeType}`
+      if (!sessionStorage.getItem(key)) {
+        toast({
+          title: '⚠️ Atenção aos Prazos!',
+          description: `Você tem ${urgentCount} demanda(s) de ${activeType} vencendo nas próximas 6 horas.`,
+          variant: 'destructive',
+        })
+        sessionStorage.setItem(key, 'true')
+      }
+    }
+  }, [demands, activeType])
 
   const handleFilterChange = (newF: Record<string, string>) => {
     setFilters(newF)
