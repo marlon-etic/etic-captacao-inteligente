@@ -70,13 +70,14 @@ export default function Index() {
   }
 
   const quickLogin = async (mockEmail: string) => {
+    const pass = mockEmail === 'captador@etic.com' ? 'captacao123' : 'Password1'
     setEmail(mockEmail)
-    setPassword('Password1')
+    setPassword(pass)
     setIsLoading(true)
     try {
       await new Promise((r) => setTimeout(r, 600))
 
-      const { error: authError } = await signIn(mockEmail, 'Password1')
+      const { error: authError } = await signIn(mockEmail, pass)
 
       // Auto-register mock users if they don't exist in Supabase yet
       if (
@@ -90,7 +91,7 @@ export default function Index() {
         try {
           const { data: signUpData } = await supabase.auth.signUp({
             email: mockEmail,
-            password: 'Password1',
+            password: pass,
           })
           if (signUpData.user) {
             let role = 'captador'
@@ -105,14 +106,14 @@ export default function Index() {
               role: role as any,
             })
 
-            await signIn(mockEmail, 'Password1')
+            await signIn(mockEmail, pass)
           }
         } catch (seedErr) {
           console.error('[Diagnostic] Error during auto-registration:', seedErr)
         }
       }
 
-      await login(mockEmail, 'Password1')
+      await login(mockEmail, pass)
       navigate('/app', { replace: true })
     } catch (err: any) {
       toast({
