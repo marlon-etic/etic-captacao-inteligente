@@ -1,4 +1,4 @@
-DO $
+DO $$
 DECLARE
   v_user_id uuid;
 BEGIN
@@ -58,4 +58,4 @@ BEGIN
   ON CONFLICT (id) DO UPDATE 
   SET nome = EXCLUDED.nome, role = EXCLUDED.role, status = EXCLUDED.status;
 
-END $;
+END $$;
