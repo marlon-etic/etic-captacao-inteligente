@@ -24,6 +24,7 @@ import { useToast } from '@/hooks/use-toast'
 import { ToastAction } from '@/components/ui/toast'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { DemandSelector } from '@/components/DemandSelector'
+import { cn } from '@/lib/utils'
 
 interface Props {
   isOpen: boolean
