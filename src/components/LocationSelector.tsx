@@ -11,7 +11,6 @@ import {
 } from '@/components/ui/dialog'
 import { REGIONS_DATA, normalizeString } from '@/lib/regions'
 import { useIsMobile } from '@/hooks/use-mobile'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
 
 interface LocationSelectorProps {
@@ -89,8 +88,11 @@ export function LocationSelector({ value = [], onChange, error }: LocationSelect
         </div>
       </div>
 
-      <ScrollArea className="flex-1">
-        <div className="p-2 space-y-2">
+      <div
+        className="flex-1 overflow-y-auto overscroll-contain"
+        style={{ WebkitOverflowScrolling: 'touch' }}
+      >
+        <div className="p-2 space-y-2 pb-6">
           {filteredRegions.length === 0 ? (
             <p className="text-center text-[#999999] text-[14px] py-6">
               Nenhum bairro encontrado para "{search}"
@@ -163,7 +165,7 @@ export function LocationSelector({ value = [], onChange, error }: LocationSelect
             })
           )}
         </div>
-      </ScrollArea>
+      </div>
 
       <div className="p-3 border-t border-[#E0E0E0] flex items-center justify-between bg-white shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
         <Button
@@ -213,7 +215,7 @@ export function LocationSelector({ value = [], onChange, error }: LocationSelect
                 </button>
               </DialogClose>
             </DialogHeader>
-            <div className="flex-1 overflow-hidden min-h-0 bg-white">
+            <div className="flex-1 overflow-hidden min-h-0 bg-white flex flex-col">
               <ListContent />
             </div>
           </DialogContent>
@@ -231,7 +233,7 @@ export function LocationSelector({ value = [], onChange, error }: LocationSelect
       </PopoverTrigger>
       <PopoverContent
         className="w-[400px] p-0 border-[#E0E0E0] shadow-lg rounded-[12px] z-[9999] overflow-hidden flex flex-col bg-white"
-        style={{ maxHeight: '320px' }}
+        style={{ maxHeight: '380px' }}
         align="start"
         sideOffset={8}
       >

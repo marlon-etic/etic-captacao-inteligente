@@ -7,12 +7,15 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/use-toast'
 import useAppStore from '@/stores/useAppStore'
+import { useAuth } from '@/hooks/use-auth'
+import { supabase } from '@/lib/supabase/client'
 
 export default function Index() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const { currentUser, login } = useAppStore()
+  const { signIn } = useAuth()
   const navigate = useNavigate()
   const { toast } = useToast()
 
@@ -36,6 +39,12 @@ export default function Index() {
     setIsLoading(true)
     try {
       await new Promise((r) => setTimeout(r, 600)) // Visual feedback delay
+
+      const { error: supaError } = await signIn(email, password)
+      if (supaError && !supaError.message.includes('Email not confirmed')) {
+        console.warn('[Diagnostic] Supabase auth warning:', supaError.message)
+      }
+
       await login(email, password)
       navigate('/app', { replace: true })
     } catch (err: any) {
@@ -55,6 +64,39 @@ export default function Index() {
     setIsLoading(true)
     try {
       await new Promise((r) => setTimeout(r, 600))
+
+      const { error: authError } = await signIn(mockEmail, 'Password1')
+
+      // Auto-register mock users if they don't exist in Supabase yet
+      if (
+        authError &&
+        (authError.message.includes('Invalid login') || authError.message.includes('credentials'))
+      ) {
+        console.warn(
+          '[Diagnostic] User not found in Supabase. Attempting to seed via signup:',
+          mockEmail,
+        )
+        const { data: signUpData } = await supabase.auth.signUp({
+          email: mockEmail,
+          password: 'Password1',
+        })
+        if (signUpData.user) {
+          let role = 'captador'
+          if (mockEmail.includes('sdr')) role = 'sdr'
+          if (mockEmail.includes('corretor')) role = 'corretor'
+          if (mockEmail.includes('gestor') || mockEmail.includes('admin')) role = 'admin'
+
+          await supabase.from('users').insert({
+            id: signUpData.user.id,
+            email: mockEmail,
+            nome: mockEmail.split('@')[0],
+            role: role as any,
+          })
+
+          await signIn(mockEmail, 'Password1')
+        }
+      }
+
       await login(mockEmail, 'Password1')
       navigate('/app', { replace: true })
     } catch (err: any) {
@@ -68,7 +110,7 @@ export default function Index() {
     }
   }
 
-  if (currentUser) return null // Prevents flashing the login screen while redirecting
+  if (currentUser) return null
 
   return (
     <div className="min-h-screen flex items-center justify-center p-[16px] bg-[#F5F5F5]">
