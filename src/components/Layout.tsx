@@ -12,7 +12,7 @@ import { Plus, Loader2 } from 'lucide-react'
 import { useAuth } from '@/hooks/use-auth'
 
 export default function Layout() {
-  const { currentUser, sessionExpiresAt, logout } = useAppStore()
+  const { currentUser, sessionExpiresAt, logout, isRestoringUser } = useAppStore()
   const { session, loading } = useAuth()
   const location = useLocation()
   const { toast } = useToast()
@@ -21,29 +21,34 @@ export default function Layout() {
   const [isNewDemandModalOpen, setNewDemandModalOpen] = useState(false)
 
   useEffect(() => {
-    if (!loading && !session && currentUser) {
+    // Only logout if auth is completely resolved, session is invalid, and user was previously logged in
+    if (!loading && !isRestoringUser && !session && currentUser) {
       toast({
         title: 'Sessão inválida',
-        description: 'Sua sessão expirou. Faça login novamente.',
+        description: 'Sua sessão expirou ou foi desconectada. Faça login novamente.',
         variant: 'destructive',
       })
       logout()
     }
-  }, [loading, session, currentUser, logout, toast])
+  }, [loading, isRestoringUser, session, currentUser, logout, toast])
 
   useEffect(() => {
-    if (currentUser && sessionExpiresAt && Date.now() > sessionExpiresAt) {
+    if (!isRestoringUser && currentUser && sessionExpiresAt && Date.now() > sessionExpiresAt) {
       toast({
         title: 'Sessão expirada',
-        description: 'Sessão expirada. Faça login novamente.',
+        description: 'Sua sessão atingiu o tempo limite. Faça login novamente.',
         variant: 'destructive',
       })
       logout()
     }
-  }, [currentUser, sessionExpiresAt, logout, toast])
+  }, [currentUser, isRestoringUser, sessionExpiresAt, logout, toast])
 
   useEffect(() => {
-    if (currentUser && (currentUser.status === 'bloqueado' || currentUser.status === 'inativo')) {
+    if (
+      !isRestoringUser &&
+      currentUser &&
+      (currentUser.status === 'bloqueado' || currentUser.status === 'inativo')
+    ) {
       toast({
         title: 'Acesso Negado',
         description: 'Sua conta foi bloqueada ou inativada pelo administrador.',
@@ -51,9 +56,9 @@ export default function Layout() {
       })
       logout()
     }
-  }, [currentUser, logout, toast])
+  }, [currentUser, isRestoringUser, logout, toast])
 
-  if (loading) {
+  if (loading || isRestoringUser) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#F5F5F5]">
         <Loader2 className="w-10 h-10 animate-spin text-[#1A3A52]" />
@@ -61,6 +66,7 @@ export default function Layout() {
     )
   }
 
+  // Prevent infinite loop by not checking session explicitly here - trust currentUser
   if (!currentUser && location.pathname !== '/') {
     return <Navigate to="/" replace />
   }

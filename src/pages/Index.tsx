@@ -14,16 +14,18 @@ export default function Index() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const { currentUser, login } = useAppStore()
+  const { currentUser, login, isRestoringUser } = useAppStore()
   const { signIn, loading: authLoading, session } = useAuth()
   const navigate = useNavigate()
   const { toast } = useToast()
 
   useEffect(() => {
-    if (!authLoading && (currentUser || session)) {
+    // Only navigate to /app if we genuinely have a loaded currentUser
+    // Prevent redirect loop if session exists but currentUser hasn't synced yet
+    if (!authLoading && !isRestoringUser && currentUser) {
       navigate('/app', { replace: true })
     }
-  }, [currentUser, session, authLoading, navigate])
+  }, [currentUser, session, authLoading, isRestoringUser, navigate])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -140,7 +142,7 @@ export default function Index() {
     }
   }
 
-  if (authLoading) {
+  if (authLoading || isRestoringUser) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#F5F5F5]">
         <Loader2 className="w-10 h-10 animate-spin text-[#1A3A52]" />
@@ -148,7 +150,7 @@ export default function Index() {
     )
   }
 
-  if (currentUser || session) return null
+  if (currentUser) return null
 
   return (
     <div className="min-h-screen flex items-center justify-center p-[16px] bg-[#F5F5F5]">

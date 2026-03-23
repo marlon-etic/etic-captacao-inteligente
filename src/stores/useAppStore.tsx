@@ -45,6 +45,7 @@ interface AppState {
   authAuditLogs: AuthAuditLog[]
   adminAuditLogs: AdminAuditLog[]
   isProcessingUser: boolean
+  isRestoringUser: boolean
   logSystemEvent: (message: string, type?: 'error' | 'info' | 'warning', context?: string) => void
   logAuthEvent: (
     event: string,
@@ -206,8 +207,8 @@ const mockUsers: User[] = [
   {
     id: '4',
     name: 'Mariana Gestora',
-    email: 'gestor@etic.com',
-    role: 'gestor',
+    email: 'admin@etic.com',
+    role: 'admin',
     status: 'ativo',
     points: 0,
     dailyPoints: 0,
@@ -219,23 +220,6 @@ const mockUsers: User[] = [
     createdAt: new Date(Date.now() - 100 * 86400000).toISOString(),
   },
 ]
-
-const createHistoryItem = (
-  type: PropertyActionType,
-  desc: string,
-  hoursAgo: number,
-  userId: string = '1',
-  userName: string = 'Ana Silva',
-  userRole: User['role'] = 'captador',
-): PropertyAction => ({
-  id: Math.random().toString(36).substr(2, 9),
-  type,
-  description: desc,
-  timestamp: new Date(Date.now() - hoursAgo * 3600000).toISOString(),
-  userId,
-  userName,
-  userRole,
-})
 
 const initialDemands: Demand[] = []
 const initialLooseProperties: CapturedProperty[] = []
@@ -269,6 +253,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     return null
   })
 
+  const [isRestoringUser, setIsRestoringUser] = useState(true)
   const [users, setUsers] = useState<User[]>(mockUsers)
 
   const [allDemands, setAllDemands] = useState<Demand[]>(initialDemands)
@@ -348,12 +333,71 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     allDemandsRef.current = allDemands
   }, [allDemands])
 
-  // Real-time Users Fetching
+  // Restore session from Supabase on mount
   useEffect(() => {
+    let mounted = true
+    const restoreSession = async () => {
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession()
+        if (session?.user && !currentUser) {
+          const { data: supaUser } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', session.user.id)
+            .single()
+
+          if (supaUser && mounted) {
+            const u = {
+              id: supaUser.id,
+              name: supaUser.nome,
+              email: supaUser.email,
+              role: supaUser.role as any,
+              status: (supaUser.status || 'ativo') as any,
+              points: 0,
+              dailyPoints: 0,
+              weeklyPoints: 0,
+              monthlyPoints: 0,
+              badges: [],
+              stats: defaultStats,
+              preferences: defaultPreferences,
+              createdAt: supaUser.created_at || new Date().toISOString(),
+            } as User
+            setCurrentUser(u)
+            setSessionExpiresAt(Date.now() + 86400000)
+            localStorage.setItem(
+              'etic_session',
+              JSON.stringify({ user: u, expiresAt: Date.now() + 86400000 }),
+            )
+          }
+        }
+      } catch (err) {
+        console.error('[useAppStore] Failed to restore session', err)
+      } finally {
+        if (mounted) setIsRestoringUser(false)
+      }
+    }
+
+    restoreSession()
+
+    return () => {
+      mounted = false
+    }
+  }, []) // intentionally runs only on mount
+
+  // Real-time Users Fetching (only if logged in to avoid 403)
+  useEffect(() => {
+    if (!currentUser) return // Prevent Anon requests from triggering 403
     let mounted = true
 
     const fetchUsers = async () => {
       try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession()
+        if (!session) return
+
         const { data, error } = await supabase.from('users').select('*')
         if (data && !error && mounted) {
           const dbUsers: User[] = data.map((u: any) => ({
@@ -375,7 +419,6 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
           setUsers((prev) => {
             const merged = [...dbUsers]
-            // Add mock users that don't exist in DB just for safety
             prev.forEach((p) => {
               if (!merged.find((m) => m.email === p.email)) {
                 merged.push(p)
@@ -402,7 +445,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       mounted = false
       supabase.removeChannel(sub)
     }
-  }, [])
+  }, [currentUser?.id]) // Run once after user logs in
 
   const logSystemEvent = useCallback(
     (message: string, type: 'error' | 'info' | 'warning' = 'info', context?: string) => {
@@ -579,23 +622,6 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
   const triggerCron = useCallback(() => {}, [])
 
-  const createAction = useCallback(
-    (type: PropertyActionType, desc: string, obs?: string): PropertyAction | null => {
-      if (!currentUser) return null
-      return {
-        id: Math.random().toString(36).substr(2, 9),
-        type,
-        timestamp: new Date().toISOString(),
-        userId: currentUser.id,
-        userName: currentUser.name,
-        userRole: currentUser.role,
-        description: desc,
-        observations: obs,
-      }
-    },
-    [currentUser],
-  )
-
   const scheduleVisitByCode = useCallback((code: string, payload: any) => {}, [])
   const submitProposalByCode = useCallback((code: string, payload: any) => {}, [])
   const closeDealByCode = useCallback((code: string, payload: any) => {}, [])
@@ -608,8 +634,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
       supabase.auth
         .getUser()
-        .then(({ data: authData, error: authErr }) => {
-          if (authErr) console.error('[useAppStore] Error getting user:', authErr)
+        .then(({ data: authData }) => {
           if (authData?.user) {
             const table = demand.type === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
             supabase
@@ -621,18 +646,11 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         })
         .catch(console.error)
 
-      setAllDemands((prev) => {
-        return prev.map((d) => {
-          if (d.id === id) {
-            return {
-              ...d,
-              status: 'Perdida' as DemandStatus,
-              lostReason: reason,
-            }
-          }
-          return d
-        })
-      })
+      setAllDemands((prev) =>
+        prev.map((d) =>
+          d.id === id ? { ...d, status: 'Perdida' as DemandStatus, lostReason: reason } : d,
+        ),
+      )
     },
     [allDemands],
   )
@@ -641,7 +659,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     (code: string, demandId: string, reason: string, obs?: string) => {
       supabase.auth
         .getUser()
-        .then(({ data: authData, error: authErr }) => {
+        .then(({ data: authData }) => {
           if (authData?.user) {
             supabase
               .from('imoveis_captados')
@@ -667,10 +685,71 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     (demandId: string, method: 'whatsapp' | 'email' | 'interno', message?: string) => {},
     [],
   )
-  const getSimilarDemands = useCallback((id: string) => {
-    return []
-  }, [])
+  const getSimilarDemands = useCallback((id: string) => [], [])
   const addGroupComment = useCallback((groupId: string, content: string) => {}, [])
+
+  const logout = useCallback(() => {
+    setCurrentUser(null)
+    setSessionExpiresAt(null)
+    localStorage.removeItem('etic_session')
+    supabase.auth.signOut().catch(console.error)
+  }, [])
+
+  const loginFn = useCallback(
+    async (email: string, password?: string) => {
+      const cleanEmail = email.toLowerCase().trim()
+      let user = users.find((u) => u.email.toLowerCase() === cleanEmail)
+
+      if (!user) {
+        try {
+          const { data: supaUser, error } = await supabase
+            .from('users')
+            .select('*')
+            .eq('email', cleanEmail)
+            .single()
+
+          if (supaUser) {
+            user = {
+              id: supaUser.id,
+              name: supaUser.nome,
+              email: supaUser.email,
+              role: supaUser.role as any,
+              status: (supaUser.status || 'ativo') as any,
+              points: 0,
+              dailyPoints: 0,
+              weeklyPoints: 0,
+              monthlyPoints: 0,
+              badges: [],
+              stats: defaultStats,
+              preferences: defaultPreferences,
+              createdAt: supaUser.created_at || new Date().toISOString(),
+            } as User
+          }
+        } catch (err) {
+          console.error('Erro ao buscar usuário no Supabase:', err)
+        }
+      }
+
+      if (!user) {
+        logAuthEvent('Tentativa de login falhou', 'erro', '/login', email)
+        throw new Error('E-mail não encontrado no sistema. Verifique suas credenciais.')
+      }
+      if (user.status === 'bloqueado' || user.status === 'inativo') {
+        logAuthEvent('Login em conta bloqueada/inativa', 'bloqueado', '/login', email)
+        throw new Error('Sua conta foi bloqueada pelo administrador.')
+      }
+
+      const expiresAt = Date.now() + 86400000
+      setUsers((prev) => {
+        if (!prev.find((u) => u.id === user!.id)) return [...prev, user!]
+        return prev
+      })
+      setCurrentUser(user)
+      setSessionExpiresAt(expiresAt)
+      localStorage.setItem('etic_session', JSON.stringify({ user, expiresAt }))
+    },
+    [users, logAuthEvent],
+  )
 
   const visibleDemands = useMemo(() => {
     if (currentUser?.role === 'corretor' || currentUser?.role === 'sdr') {
@@ -693,6 +772,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         authAuditLogs,
         adminAuditLogs,
         isProcessingUser,
+        isRestoringUser,
         logSystemEvent,
         logAuthEvent,
         notifications,
@@ -776,67 +856,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
             setIsProcessingUser(false)
           }
         },
-        getMatchesForProperty: (property: CapturedProperty) => {
-          return []
-        },
-        login: async (email, password) => {
-          const cleanEmail = email.toLowerCase().trim()
-          let user = users.find((u) => u.email.toLowerCase() === cleanEmail)
-
-          if (!user) {
-            try {
-              const { data: supaUser, error } = await supabase
-                .from('users')
-                .select('*')
-                .eq('email', cleanEmail)
-                .single()
-
-              if (supaUser) {
-                user = {
-                  id: supaUser.id,
-                  name: supaUser.nome,
-                  email: supaUser.email,
-                  role: supaUser.role as any,
-                  status: (supaUser.status || 'ativo') as any,
-                  points: 0,
-                  dailyPoints: 0,
-                  weeklyPoints: 0,
-                  monthlyPoints: 0,
-                  badges: [],
-                  stats: defaultStats,
-                  preferences: defaultPreferences,
-                  createdAt: supaUser.created_at || new Date().toISOString(),
-                } as User
-              }
-            } catch (err) {
-              console.error('Erro ao buscar usuário no Supabase:', err)
-            }
-          }
-
-          if (!user) {
-            logAuthEvent('Tentativa de login falhou', 'erro', '/login', email)
-            throw new Error('E-mail não encontrado no sistema. Verifique suas credenciais.')
-          }
-          if (user.status === 'bloqueado' || user.status === 'inativo') {
-            logAuthEvent('Login em conta bloqueada/inativa', 'bloqueado', '/login', email)
-            throw new Error('Sua conta foi bloqueada pelo administrador.')
-          }
-
-          const expiresAt = Date.now() + 86400000
-          setUsers((prev) => {
-            if (!prev.find((u) => u.id === user!.id)) return [...prev, user!]
-            return prev
-          })
-          setCurrentUser(user)
-          setSessionExpiresAt(expiresAt)
-          localStorage.setItem('etic_session', JSON.stringify({ user, expiresAt }))
-        },
-        logout: () => {
-          setCurrentUser(null)
-          setSessionExpiresAt(null)
-          localStorage.removeItem('etic_session')
-          supabase.auth.signOut().catch(console.error)
-        },
+        getMatchesForProperty: (property: CapturedProperty) => [],
+        login: loginFn,
+        logout,
         requestPasswordReset: async (email) => {
           const cleanEmail = email.toLowerCase().trim()
           const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
@@ -884,7 +906,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
             supabase.auth
               .getUser()
-              .then(({ data: authData, error: authErr }) => {
+              .then(({ data: authData }) => {
                 if (authData?.user) {
                   supabase
                     .from('imoveis_captados')

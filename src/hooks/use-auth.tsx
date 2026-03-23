@@ -27,16 +27,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     let mounted = true
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      if (mounted) {
-        setSession(session)
-        setUser(session?.user ?? null)
-        setLoading(false)
-      }
-    })
-
     const initAuth = async () => {
       try {
         const { data, error } = await supabase.auth.getSession()
@@ -60,6 +50,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
 
     initAuth()
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (mounted) {
+        setSession(session)
+        setUser(session?.user ?? null)
+        if (event !== 'INITIAL_SESSION') {
+          setLoading(false)
+        }
+      }
+    })
 
     return () => {
       mounted = false
