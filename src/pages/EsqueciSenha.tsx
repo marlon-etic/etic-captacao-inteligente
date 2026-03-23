@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { Mail, ArrowLeft, Loader2 } from 'lucide-react'
+import { Mail, ArrowLeft, Loader2, CheckCircle2 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -50,7 +50,7 @@ export default function EsqueciSenha() {
       toast({
         title: 'Email reenviado',
         description: 'Verifique sua caixa de entrada.',
-        className: 'bg-[#4CAF50] text-white',
+        className: 'bg-[#10B981] text-white border-none',
       })
     } catch (err: any) {
       toast({ title: 'Erro', description: err.message, variant: 'destructive' })
@@ -62,20 +62,20 @@ export default function EsqueciSenha() {
       <Card className="w-full max-w-[400px] shadow-[0_8px_32px_rgba(26,58,82,0.15)] border-[2px] border-transparent animate-fade-in-up bg-[#FFFFFF]">
         {status === 'success' ? (
           <CardContent className="p-[32px] flex flex-col items-center text-center space-y-6">
-            <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center animate-bounce-scale">
-              <Mail className="w-[64px] h-[64px] text-blue-500" />
+            <div className="w-20 h-20 bg-[#e6f8f1] rounded-full flex items-center justify-center animate-bounce-scale">
+              <CheckCircle2 className="w-[40px] h-[40px] text-[#10B981]" />
             </div>
             <div className="space-y-2">
               <h2 className="text-[24px] font-bold text-[#1A3A52]">Email enviado!</h2>
               <p className="text-[14px] text-[#333333]">
-                Enviamos um link de redefinição para <strong>{email}</strong>. Verifique sua caixa
-                de entrada e spam. O link expira em 1 hora.
+                Enviamos um link de redefinição seguro para <strong>{email}</strong>. Verifique sua
+                caixa de entrada e spam. O link expira em <strong>24 horas</strong>.
               </p>
             </div>
             <div className="w-full space-y-4 pt-4">
               <Button
                 variant="ghost"
-                className="w-full text-[#1A3A52] font-bold disabled:opacity-50"
+                className="w-full text-[#10B981] hover:text-[#0d9b6b] hover:bg-[#f0fdf8] font-bold disabled:opacity-50"
                 onClick={handleResend}
                 disabled={countdown > 0}
               >
@@ -113,7 +113,7 @@ export default function EsqueciSenha() {
                       id="email"
                       type="email"
                       placeholder="seu@email.com"
-                      className="pl-[40px] h-[48px] text-[16px]"
+                      className="pl-[40px] h-[48px] text-[16px] focus-visible:ring-[#10B981]"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       disabled={status === 'loading'}
@@ -123,7 +123,7 @@ export default function EsqueciSenha() {
 
                 <Button
                   type="submit"
-                  className="w-full h-[48px] text-[14px] font-bold bg-[#1A3A52] text-white hover:bg-[#1f4866]"
+                  className="w-full h-[48px] text-[14px] font-bold bg-[#10B981] text-white hover:bg-[#0d9b6b] border-none shadow-[0_4px_12px_rgba(16,185,129,0.2)]"
                   disabled={status === 'loading'}
                 >
                   {status === 'loading' ? (
@@ -137,7 +137,7 @@ export default function EsqueciSenha() {
                 <div className="pt-2 text-center">
                   <Link
                     to="/"
-                    className="inline-flex items-center text-[14px] text-[#1A3A52] hover:underline font-bold transition-all"
+                    className="inline-flex items-center text-[14px] text-[#1A3A52] hover:text-[#10B981] hover:underline font-bold transition-all"
                   >
                     <ArrowLeft className="w-4 h-4 mr-2" /> Voltar para o login
                   </Link>

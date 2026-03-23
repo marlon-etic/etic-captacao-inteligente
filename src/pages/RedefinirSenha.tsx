@@ -27,7 +27,7 @@ const getStrength = (p: string) => {
   const hasSpecial = /[^a-zA-Z0-9]/.test(p)
 
   if (hasLetters && hasNumbers && hasSpecial)
-    return { score: 100, label: 'Forte', color: 'bg-green-500' }
+    return { score: 100, label: 'Forte', color: 'bg-[#10B981]' }
   if (hasLetters && hasNumbers) return { score: 66, label: 'Média', color: 'bg-yellow-500' }
   return { score: 33, label: 'Fraca', color: 'bg-red-500' }
 }
@@ -88,12 +88,12 @@ export default function RedefinirSenha() {
       toast({
         title: 'Senha redefinida com sucesso!',
         description: 'Sua senha foi atualizada. Faça login para continuar.',
-        className: 'bg-emerald-600 text-white',
+        className: 'bg-[#10B981] text-white border-none',
       })
 
       navigate('/')
     } catch (err: any) {
-      if (err.message === 'Token expirado') {
+      if (err.message === 'Token expirado' || err.message?.includes('expired')) {
         setStatus('error_expired')
       } else {
         toast({ title: 'Erro', description: err.message, variant: 'destructive' })
@@ -113,12 +113,14 @@ export default function RedefinirSenha() {
             <div className="space-y-2">
               <h2 className="text-[24px] font-bold text-[#1A3A52]">Link Expirado</h2>
               <p className="text-[14px] text-[#333333]">
-                Este link de recuperação de senha expirou (limite de 1 hora) ou já foi utilizado.
+                Este link de recuperação de senha expirou (limite de 24 horas) ou já foi utilizado.
               </p>
             </div>
             <div className="w-full space-y-4 pt-4">
               <Link to="/esqueci-senha" className="w-full block">
-                <Button className="w-full h-[48px] font-bold">Solicitar novo link</Button>
+                <Button className="w-full h-[48px] font-bold bg-[#1A3A52] hover:bg-[#112739]">
+                  Solicitar novo link
+                </Button>
               </Link>
               <Link to="/" className="w-full block">
                 <Button variant="outline" className="w-full min-h-[48px]">
@@ -158,7 +160,7 @@ export default function RedefinirSenha() {
                   id="pass"
                   type={showPass ? 'text' : 'password'}
                   placeholder="••••••••"
-                  className="pl-[40px] pr-[40px] h-[48px] text-[16px]"
+                  className="pl-[40px] pr-[40px] h-[48px] text-[16px] focus-visible:ring-[#10B981]"
                   value={pass}
                   onChange={(e) => setPass(e.target.value)}
                   disabled={status === 'loading'}
@@ -202,7 +204,7 @@ export default function RedefinirSenha() {
                   id="confirm"
                   type={showConfirm ? 'text' : 'password'}
                   placeholder="••••••••"
-                  className="pl-[40px] pr-[40px] h-[48px] text-[16px]"
+                  className="pl-[40px] pr-[40px] h-[48px] text-[16px] focus-visible:ring-[#10B981]"
                   value={confirm}
                   onChange={(e) => setConfirm(e.target.value)}
                   disabled={status === 'loading'}
@@ -224,8 +226,8 @@ export default function RedefinirSenha() {
                 <div className="pt-1 animate-fade-in flex items-center gap-1.5">
                   {passwordsMatch ? (
                     <>
-                      <CheckCircle2 className="w-4 h-4 text-green-500" />
-                      <span className="text-[12px] font-bold text-green-600">
+                      <CheckCircle2 className="w-4 h-4 text-[#10B981]" />
+                      <span className="text-[12px] font-bold text-[#10B981]">
                         As senhas coincidem
                       </span>
                     </>
@@ -243,7 +245,7 @@ export default function RedefinirSenha() {
 
             <Button
               type="submit"
-              className="w-full h-[48px] text-[14px] font-bold bg-[#4CAF50] text-white hover:bg-[#388E3C] disabled:opacity-50 disabled:bg-[#999999]"
+              className="w-full h-[48px] text-[14px] font-bold bg-[#10B981] text-white hover:bg-[#0d9b6b] disabled:opacity-50 disabled:bg-[#999999] shadow-[0_4px_12px_rgba(16,185,129,0.2)]"
               disabled={!isValid || status === 'loading'}
             >
               {status === 'loading' ? (
