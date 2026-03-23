@@ -993,8 +993,28 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           localStorage.removeItem('etic_session')
           supabase.auth.signOut().catch(console.error)
         },
-        requestPasswordReset: async (email) => {},
-        resetPassword: async (password, token) => {},
+        requestPasswordReset: async (email) => {
+          const cleanEmail = email.toLowerCase().trim()
+          const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
+            redirectTo: `${window.location.origin}/redefinir-senha`,
+          })
+          if (error) {
+            console.error('[useAppStore] Erro ao enviar email de reset:', error)
+            throw new Error(
+              'Não foi possível enviar o link de recuperação. Verifique o email informado.',
+            )
+          }
+        },
+        resetPassword: async (password, token) => {
+          // O Supabase já configura a sessão automaticamente a partir do hash da URL
+          const { error } = await supabase.auth.updateUser({ password })
+          if (error) {
+            console.error('[useAppStore] Erro ao redefinir senha:', error)
+            throw new Error('O link é inválido ou já expirou. Solicite um novo link.')
+          }
+
+          await supabase.auth.signOut()
+        },
         addDemand: (d) => {
           const newDemand = {
             ...d,
