@@ -41,8 +41,19 @@ export default function Index() {
       await new Promise((r) => setTimeout(r, 600)) // Visual feedback delay
 
       const { error: supaError } = await signIn(email, password)
-      if (supaError && !supaError.message.includes('Email not confirmed')) {
-        console.warn('[Diagnostic] Supabase auth warning:', supaError.message)
+
+      // Tratativa de erro amigável para credenciais inválidas ou erro no Supabase
+      if (supaError) {
+        if (
+          supaError.message.includes('Invalid login') ||
+          supaError.message.includes('credentials')
+        ) {
+          throw new Error('E-mail ou senha incorretos. Verifique suas credenciais.')
+        } else if (supaError.message.includes('Email not confirmed')) {
+          throw new Error('Por favor, confirme seu e-mail antes de fazer login.')
+        } else {
+          throw new Error(supaError.message || 'Erro ao autenticar. Tente novamente.')
+        }
       }
 
       await login(email, password)

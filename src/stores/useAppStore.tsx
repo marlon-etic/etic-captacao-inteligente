@@ -937,9 +937,41 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           const cleanEmail = email.toLowerCase().trim()
           let user = users.find((u) => u.email.toLowerCase() === cleanEmail)
           if (!user) user = mockUsers.find((u) => u.email.toLowerCase() === cleanEmail)
+
+          // Tenta buscar o usuário no banco de dados se não encontrar localmente
+          if (!user) {
+            try {
+              const { data: supaUser, error } = await supabase
+                .from('users')
+                .select('*')
+                .eq('email', cleanEmail)
+                .single()
+
+              if (supaUser) {
+                user = {
+                  id: supaUser.id,
+                  name: supaUser.nome,
+                  email: supaUser.email,
+                  role: supaUser.role as any,
+                  status: (supaUser.status || 'ativo') as any,
+                  points: 0,
+                  dailyPoints: 0,
+                  weeklyPoints: 0,
+                  monthlyPoints: 0,
+                  badges: [],
+                  stats: defaultStats,
+                  preferences: defaultPreferences,
+                  createdAt: supaUser.created_at || new Date().toISOString(),
+                } as User
+              }
+            } catch (err) {
+              console.error('Erro ao buscar usuário no Supabase:', err)
+            }
+          }
+
           if (!user) {
             logAuthEvent('Tentativa de login falhou', 'erro', '/login', email)
-            throw new Error('Erro ao acessar o perfil. Verifique suas credenciais')
+            throw new Error('E-mail não encontrado no sistema. Verifique suas credenciais.')
           }
           if (user.status === 'bloqueado' || user.status === 'inativo') {
             logAuthEvent('Login em conta bloqueada/inativa', 'bloqueado', '/login', email)
