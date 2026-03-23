@@ -50,6 +50,11 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
 
         const userMap = new Map((usersData || []).map((u) => [u.id, u.nome]))
         const currentUserProfile = (usersData || []).find((u) => u.id === userData.user.id)
+        const role = currentUserProfile?.role
+
+        console.log(
+          `[Diagnostic] Buscando demandas ${type} para role ${role} (${userData.user.id})`,
+        )
 
         const table = type === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
 
@@ -58,9 +63,9 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
           .select('*, imoveis_captados(*)')
           .order('created_at', { ascending: false })
 
-        if (currentUserProfile?.role === 'sdr' && type === 'Aluguel') {
+        if (role === 'sdr' && type === 'Aluguel') {
           query = query.eq('sdr_id', userData.user.id)
-        } else if (currentUserProfile?.role === 'corretor' && type === 'Venda') {
+        } else if (role === 'corretor' && type === 'Venda') {
           query = query.eq('corretor_id', userData.user.id)
         }
 
@@ -141,9 +146,10 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
     const channel = supabase
       .channel(`demands_changes_${type}`)
       .on('postgres_changes', { event: '*', schema: 'public', table }, (payload) => {
-        console.log(`[Diagnostic] Realtime payload received for ${table}:`, payload)
+        console.log(`[Diagnostic] Subscription ${type} payload recebido:`, payload)
         if (payload.eventType === 'INSERT') {
           const d = payload.new
+          console.log('[Diagnostic] Sincronização Realtime - INSERT recebido:', d.id)
           setDemands((prev) => {
             if (prev.some((x) => x.id === d.id)) return prev
             const newDemand: SupabaseDemand = {
@@ -158,7 +164,10 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
               tipo: type,
               imoveis_captados: [],
             }
-            console.log('[Diagnostic] Adicionando nova demanda via subscription:', newDemand)
+            console.log(
+              '[Diagnostic] Estado React atualizado com nova demanda via subscription:',
+              newDemand.id,
+            )
             return [newDemand, ...prev]
           })
         } else if (payload.eventType === 'UPDATE') {
@@ -190,6 +199,7 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
           console.log('[Diagnostic] Realtime payload for imoveis_captados:', payload)
           if (payload.eventType === 'INSERT') {
             const imv = payload.new
+            console.log('[Diagnostic] Sincronização de nova captacao via Postgres:', imv.id)
             setDemands((prev) =>
               prev.map((d) => {
                 if (d.id === imv.demanda_locacao_id || d.id === imv.demanda_venda_id) {
@@ -210,6 +220,7 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
             )
           } else if (payload.eventType === 'UPDATE') {
             const imv = payload.new
+            console.log('[Diagnostic] Sincronização de update captacao via Postgres:', imv.id)
             setDemands((prev) =>
               prev.map((d) => {
                 if (d.id === imv.demanda_locacao_id || d.id === imv.demanda_venda_id) {
@@ -252,7 +263,7 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
               tipo: type,
               imoveis_captados: [],
             }
-            console.log('[Diagnostic] Optimistic update para nova demanda:', newDemand)
+            console.log('[Diagnostic] Optimistic update para nova demanda no React:', newDemand.id)
             return [newDemand, ...prev]
           })
         }

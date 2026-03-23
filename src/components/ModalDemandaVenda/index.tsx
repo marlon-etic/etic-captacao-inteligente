@@ -24,51 +24,48 @@ import { Check, CheckSquare, ChevronDown } from 'lucide-react'
 import { insertDemandaVenda } from '@/services/demandas_vendas'
 import { cn } from '@/lib/utils'
 import { formSchema, FormValues, BAIRROS_LIST } from './schema'
-import { useEffect, useMemo, useState, useRef } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useKeyboard } from '@/hooks/use-keyboard'
 import { useIsMobile } from '@/hooks/use-mobile'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import useAppStore from '@/stores/useAppStore'
 
 function BairrosDropdownVenda({ field }: { field: any }) {
   const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (ref.current && !ref.current.contains(event.target as Node)) {
-        setOpen(false)
-      }
-    }
-    if (open) document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [open])
+  const isMobile = useIsMobile()
 
   return (
-    <div className="relative" ref={ref}>
-      <Button
-        type="button"
-        variant="outline"
-        onClick={() => setOpen(!open)}
-        className={cn(
-          'w-full justify-between bg-white border-gray-300 font-normal min-h-[48px]',
-          !field.value?.length && 'text-muted-foreground',
-          open && 'border-[#1A3A52] ring-2 ring-[#1A3A52] ring-offset-0',
-        )}
-      >
-        <span className="truncate">
-          {field.value?.length > 0
-            ? `${field.value.length} bairros selecionados`
-            : 'Selecione os bairros...'}
-        </span>
-        <ChevronDown className="h-4 w-4 opacity-50 shrink-0 ml-2" />
-      </Button>
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          className={cn(
+            'w-full justify-between bg-white border-gray-300 font-normal min-h-[48px]',
+            !field.value?.length && 'text-muted-foreground',
+            open && 'border-[#1A3A52] ring-2 ring-[#1A3A52] ring-offset-0',
+          )}
+        >
+          <span className="truncate">
+            {field.value?.length > 0
+              ? `${field.value.length} bairros selecionados`
+              : 'Selecione os bairros...'}
+          </span>
+          <ChevronDown className="h-4 w-4 opacity-50 shrink-0 ml-2" />
+        </Button>
+      </PopoverTrigger>
 
-      {open && (
-        <div className="absolute top-full left-0 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl z-[9999] overflow-hidden flex flex-col">
+      <PopoverContent
+        className={cn(
+          'p-0 z-[1050] bg-white border border-gray-200 shadow-xl',
+          isMobile ? 'w-[calc(100vw-32px)]' : 'w-[400px]',
+        )}
+        align="start"
+      >
+        <div className="flex flex-col">
           <div
             className="max-h-[250px] overflow-y-auto overscroll-contain"
-            style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
-            onTouchMove={(e) => e.stopPropagation()}
-            onWheel={(e) => e.stopPropagation()}
+            style={{ WebkitOverflowScrolling: 'touch' }}
           >
             {BAIRROS_LIST.map((b) => {
               const isSelected = field.value?.includes(b)
@@ -104,25 +101,22 @@ function BairrosDropdownVenda({ field }: { field: any }) {
               )
             })}
           </div>
-          <div className="p-3 border-t border-gray-100 bg-gray-50 flex justify-between items-center">
+          <div className="p-3 border-t border-gray-100 bg-gray-50 flex justify-between items-center shrink-0">
             <span className="text-xs text-gray-500 font-medium">
               {field.value?.length || 0} selecionados
             </span>
             <Button
               size="sm"
               type="button"
-              onClick={(e) => {
-                e.stopPropagation()
-                setOpen(false)
-              }}
+              onClick={() => setOpen(false)}
               className="bg-[#1A3A52] text-white hover:bg-[#1A3A52]/90"
             >
               Concluir
             </Button>
           </div>
         </div>
-      )}
-    </div>
+      </PopoverContent>
+    </Popover>
   )
 }
 
@@ -165,6 +159,7 @@ function FormSummary({
 
 export function ModalDemandaVenda({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const { toast } = useToast()
+  const { addDemand } = useAppStore()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const { isKeyboardOpen, viewportHeight, keyboardHeight } = useKeyboard()
@@ -214,6 +209,20 @@ export function ModalDemandaVenda({ isOpen, onClose }: { isOpen: boolean; onClos
       window.dispatchEvent(
         new CustomEvent('demanda-created', { detail: { tipo: 'Venda', data: result } }),
       )
+
+      // Update global store para visibilidade instantânea em feeds (ex: Captadores)
+      addDemand({
+        clientName: values.nome_cliente,
+        phone: values.telefone || undefined,
+        type: 'Venda',
+        location: values.bairros,
+        minBudget: Number(values.valor_minimo || 0),
+        maxBudget: Number(values.valor_maximo || 0),
+        bedrooms: Number(values.dormitorios || 0),
+        parkingSpots: Number(values.vagas_estacionamento || 0),
+        timeframe: values.nivel_urgencia,
+        description: values.necessidades_especificas || '',
+      })
 
       toast({ title: '✅ Demanda criada com sucesso!', className: 'bg-emerald-600 text-white' })
       form.reset()

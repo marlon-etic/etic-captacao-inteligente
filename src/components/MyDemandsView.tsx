@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { FilterSidebar } from '@/components/FilterSidebar'
 import { StickyFilterBar, FilterDef } from '@/components/StickyFilterBar'
 import { useViewFilters } from '@/hooks/useViewFilters'
@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useSupabaseDemands } from '@/hooks/use-supabase-demands'
 import { ExpandableDemandCard } from '@/components/ExpandableDemandCard'
+import useAppStore from '@/stores/useAppStore'
 
 interface Props {
   filterType?: 'Venda' | 'Aluguel'
@@ -48,10 +49,16 @@ const FILTERS: FilterDef[] = [
   { id: 'bairro', label: 'Bairro', isSearch: true, options: [] },
 ]
 
-export function MyDemandsView({ filterType = 'Aluguel' }: Props) {
-  const { demands, loading, refresh } = useSupabaseDemands(filterType)
+export function MyDemandsView({ filterType }: Props) {
+  const { currentUser } = useAppStore()
 
-  const [filters, setFilters] = useViewFilters('my_demands_view_supabase_' + filterType, {
+  // O bug raiz estava aqui: O filtro padrão estava fixo em Aluguel (filterType = 'Aluguel'),
+  // o que escondia totalmente as demandas criadas pelos Corretores (Venda).
+  const activeType = filterType || (currentUser?.role === 'corretor' ? 'Venda' : 'Aluguel')
+
+  const { demands, loading, refresh } = useSupabaseDemands(activeType)
+
+  const [filters, setFilters] = useViewFilters('my_demands_view_supabase_' + activeType, {
     status: 'Todos',
     urgencia: 'Todos',
     data: 'Todos',
@@ -59,6 +66,12 @@ export function MyDemandsView({ filterType = 'Aluguel' }: Props) {
   })
 
   const [isFiltering, setIsFiltering] = useState(false)
+
+  // Diagnóstico
+  useEffect(() => {
+    console.log('[Diagnostic] MyDemandsView renderizado com activeType:', activeType)
+    console.log('[Diagnostic] Filtros atuais:', filters)
+  }, [activeType, filters])
 
   const handleFilterChange = (newF: Record<string, string>) => {
     setIsFiltering(true)
@@ -68,6 +81,7 @@ export function MyDemandsView({ filterType = 'Aluguel' }: Props) {
 
   const filteredDemands = useMemo(() => {
     return demands.filter((d) => {
+      // Exibimos todos os status se "Todos" estiver selecionado (incluindo "aberta")
       if (filters.status !== 'Todos' && d.status_demanda !== filters.status) return false
       if (filters.urgencia !== 'Todos' && d.nivel_urgencia !== filters.urgencia) return false
 
