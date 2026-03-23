@@ -690,11 +690,15 @@ export const Constants = {
 
 // --- ROW LEVEL SECURITY POLICIES ---
 // Table: audit_log
-//   Policy "Admin sees audit log" (ALL, PERMISSIVE) roles={public}
-//     USING: (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND (users.role = 'admin'::user_role))))
+//   Policy "Admin sees audit log" (ALL, PERMISSIVE) roles={authenticated}
+//     USING: ((((current_setting('request.jwt.claims'::text, true))::jsonb -> 'user_metadata'::text) ->> 'role'::text) = ANY (ARRAY['admin'::text, 'gestor'::text]))
 // Table: demandas_locacao
+//   Policy "Admin and Gestor full access Locacao" (ALL, PERMISSIVE) roles={authenticated}
+//     USING: (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND ((users.role)::text = ANY (ARRAY['admin'::text, 'gestor'::text])))))
 //   Policy "Admin sees all locacao" (ALL, PERMISSIVE) roles={public}
 //     USING: (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND (users.role = 'admin'::user_role))))
+//   Policy "Captador can see demands" (SELECT, PERMISSIVE) roles={authenticated}
+//     USING: (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND ((users.role)::text = 'captador'::text))))
 //   Policy "Captadores see aberta locacao" (SELECT, PERMISSIVE) roles={public}
 //     USING: (((status_demanda)::text = 'aberta'::text) AND (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND (users.role = 'captador'::user_role)))))
 //   Policy "SDR sees own Locacao demands" (SELECT, PERMISSIVE) roles={authenticated}
@@ -704,10 +708,14 @@ export const Constants = {
 //   Policy "SDRs manage own locacao" (ALL, PERMISSIVE) roles={public}
 //     USING: ((sdr_id = auth.uid()) AND (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND (users.role = 'sdr'::user_role)))))
 // Table: demandas_vendas
+//   Policy "Admin and Gestor full access Vendas" (ALL, PERMISSIVE) roles={authenticated}
+//     USING: (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND ((users.role)::text = ANY (ARRAY['admin'::text, 'gestor'::text])))))
 //   Policy "Admin sees all vendas" (ALL, PERMISSIVE) roles={public}
 //     USING: (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND (users.role = 'admin'::user_role))))
 //   Policy "Broker sees own Vendas demands" (SELECT, PERMISSIVE) roles={authenticated}
 //     USING: ((corretor_id = auth.uid()) OR (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND ((users.role)::text = ANY (ARRAY['admin'::text, 'gestor'::text, 'captador'::text]))))))
+//   Policy "Captador can see demands" (SELECT, PERMISSIVE) roles={authenticated}
+//     USING: (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND ((users.role)::text = 'captador'::text))))
 //   Policy "Captadores see aberta vendas" (SELECT, PERMISSIVE) roles={public}
 //     USING: (((status_demanda)::text = 'aberta'::text) AND (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND (users.role = 'captador'::user_role)))))
 //   Policy "Corretores manage own vendas" (ALL, PERMISSIVE) roles={public}
@@ -733,8 +741,10 @@ export const Constants = {
 //   Policy "Captadores manage own respostas" (ALL, PERMISSIVE) roles={public}
 //     USING: (captador_id = auth.uid())
 // Table: users
-//   Policy "Admin sees all users" (ALL, PERMISSIVE) roles={public}
-//     USING: (EXISTS ( SELECT 1    FROM auth.users users_1   WHERE ((users_1.id = auth.uid()) AND ((users_1.raw_user_meta_data ->> 'role'::text) = 'admin'::text))))
+//   Policy "Admin sees all users" (ALL, PERMISSIVE) roles={authenticated}
+//     USING: ((((current_setting('request.jwt.claims'::text, true))::jsonb -> 'user_metadata'::text) ->> 'role'::text) = ANY (ARRAY['admin'::text, 'gestor'::text]))
+//   Policy "Authenticated users can read users" (SELECT, PERMISSIVE) roles={authenticated}
+//     USING: true
 //   Policy "Users see own profile" (SELECT, PERMISSIVE) roles={public}
 //     USING: (id = auth.uid())
 //   Policy "Users update own profile" (UPDATE, PERMISSIVE) roles={public}
