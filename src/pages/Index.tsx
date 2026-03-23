@@ -15,15 +15,15 @@ export default function Index() {
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const { currentUser, login } = useAppStore()
-  const { signIn } = useAuth()
+  const { signIn, loading: authLoading, session } = useAuth()
   const navigate = useNavigate()
   const { toast } = useToast()
 
   useEffect(() => {
-    if (currentUser) {
+    if (!authLoading && (currentUser || session)) {
       navigate('/app', { replace: true })
     }
-  }, [currentUser, navigate])
+  }, [currentUser, session, authLoading, navigate])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -76,24 +76,28 @@ export default function Index() {
           '[Diagnostic] User not found in Supabase. Attempting to seed via signup:',
           mockEmail,
         )
-        const { data: signUpData } = await supabase.auth.signUp({
-          email: mockEmail,
-          password: 'Password1',
-        })
-        if (signUpData.user) {
-          let role = 'captador'
-          if (mockEmail.includes('sdr')) role = 'sdr'
-          if (mockEmail.includes('corretor')) role = 'corretor'
-          if (mockEmail.includes('gestor') || mockEmail.includes('admin')) role = 'admin'
-
-          await supabase.from('users').insert({
-            id: signUpData.user.id,
+        try {
+          const { data: signUpData } = await supabase.auth.signUp({
             email: mockEmail,
-            nome: mockEmail.split('@')[0],
-            role: role as any,
+            password: 'Password1',
           })
+          if (signUpData.user) {
+            let role = 'captador'
+            if (mockEmail.includes('sdr')) role = 'sdr'
+            if (mockEmail.includes('corretor')) role = 'corretor'
+            if (mockEmail.includes('gestor') || mockEmail.includes('admin')) role = 'admin'
 
-          await signIn(mockEmail, 'Password1')
+            await supabase.from('users').insert({
+              id: signUpData.user.id,
+              email: mockEmail,
+              nome: mockEmail.split('@')[0],
+              role: role as any,
+            })
+
+            await signIn(mockEmail, 'Password1')
+          }
+        } catch (seedErr) {
+          console.error('[Diagnostic] Error during auto-registration:', seedErr)
         }
       }
 
@@ -110,7 +114,15 @@ export default function Index() {
     }
   }
 
-  if (currentUser) return null
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#F5F5F5]">
+        <Loader2 className="w-10 h-10 animate-spin text-[#1A3A52]" />
+      </div>
+    )
+  }
+
+  if (currentUser || session) return null
 
   return (
     <div className="min-h-screen flex items-center justify-center p-[16px] bg-[#F5F5F5]">
