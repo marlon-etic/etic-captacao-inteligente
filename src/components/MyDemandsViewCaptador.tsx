@@ -7,7 +7,7 @@ import { Users, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useSupabaseDemands } from '@/hooks/use-supabase-demands'
-import { ExpandableDemandCardSDR } from '@/components/ExpandableDemandCardSDR'
+import { ExpandableDemandCardCaptador } from '@/components/ExpandableDemandCardCaptador'
 import useAppStore from '@/stores/useAppStore'
 
 interface Props {
@@ -59,15 +59,15 @@ const FILTERS: FilterDef[] = [
   { id: 'bairro', label: 'Bairro', isSearch: true, options: [] },
 ]
 
-export function MyDemandsView({ filterType }: Props) {
+export function MyDemandsViewCaptador({ filterType }: Props) {
   const { currentUser } = useAppStore()
 
-  const activeType = filterType || (currentUser?.role === 'corretor' ? 'Venda' : 'Aluguel')
+  const activeType = filterType || 'Venda'
   const { demands, loading, refresh } = useSupabaseDemands(activeType)
 
-  const [filters, setFilters] = useViewFilters('my_demands_view_supabase_' + activeType, {
+  const [filters, setFilters] = useViewFilters('captador_demands_view_supabase_' + activeType, {
     prioridade: 'Todos',
-    status: 'Todos',
+    status: 'aberta',
     urgencia: 'Todos',
     data: 'Todos',
     bairro: '',
@@ -121,7 +121,7 @@ export function MyDemandsView({ filterType }: Props) {
       label: 'Prioritárias',
       apply: {
         prioridade: 'prioritaria',
-        status: 'Todos',
+        status: 'aberta',
         urgencia: 'Todos',
         data: 'Todos',
         bairro: '',
@@ -149,7 +149,7 @@ export function MyDemandsView({ filterType }: Props) {
     },
     {
       label: 'Alta Urgência',
-      apply: { prioridade: 'Todos', status: 'Todos', urgencia: 'Alta', data: 'Todos', bairro: '' },
+      apply: { prioridade: 'Todos', status: 'aberta', urgencia: 'Alta', data: 'Todos', bairro: '' },
     },
   ]
 
@@ -225,7 +225,7 @@ export function MyDemandsView({ filterType }: Props) {
                   Nenhuma demanda registrada
                 </h3>
                 <p className="text-[15px] text-[#666666] mt-2 mb-8 max-w-[360px] leading-relaxed">
-                  Você ainda não criou nenhuma demanda. Crie uma para acompanhá-la.
+                  Não há demandas disponíveis no momento.
                 </p>
                 <Button onClick={refresh} variant="outline" className="gap-2">
                   <RefreshCw className="w-4 h-4" /> Atualizar
@@ -236,7 +236,7 @@ export function MyDemandsView({ filterType }: Props) {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-[16px] w-full items-stretch">
             {filteredDemands.map((demand) => (
-              <ExpandableDemandCardSDR key={demand.id} demand={demand} onUpdate={refresh} />
+              <ExpandableDemandCardCaptador key={demand.id} demand={demand} onUpdate={refresh} />
             ))}
           </div>
         )}

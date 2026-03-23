@@ -59,13 +59,13 @@ const FILTERS: FilterDef[] = [
   { id: 'bairro', label: 'Bairro', isSearch: true, options: [] },
 ]
 
-export function MyDemandsView({ filterType }: Props) {
+export function MyDemandsViewGestor({ filterType }: Props) {
   const { currentUser } = useAppStore()
 
-  const activeType = filterType || (currentUser?.role === 'corretor' ? 'Venda' : 'Aluguel')
+  const activeType = filterType || 'Venda'
   const { demands, loading, refresh } = useSupabaseDemands(activeType)
 
-  const [filters, setFilters] = useViewFilters('my_demands_view_supabase_' + activeType, {
+  const [filters, setFilters] = useViewFilters('gestor_demands_view_supabase_' + activeType, {
     prioridade: 'Todos',
     status: 'Todos',
     urgencia: 'Todos',
@@ -225,7 +225,7 @@ export function MyDemandsView({ filterType }: Props) {
                   Nenhuma demanda registrada
                 </h3>
                 <p className="text-[15px] text-[#666666] mt-2 mb-8 max-w-[360px] leading-relaxed">
-                  Você ainda não criou nenhuma demanda. Crie uma para acompanhá-la.
+                  Não há demandas no sistema.
                 </p>
                 <Button onClick={refresh} variant="outline" className="gap-2">
                   <RefreshCw className="w-4 h-4" /> Atualizar

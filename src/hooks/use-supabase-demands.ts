@@ -30,6 +30,7 @@ export interface SupabaseDemand {
   vagas_estacionamento?: number
   observacoes?: string
   tipo_imovel?: string
+  is_prioritaria?: boolean
 }
 
 export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
@@ -78,6 +79,7 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
               tipo_imovel: d.tipo_imovel || 'Casa',
               nivel_urgencia: d.nivel_urgencia || d.urgencia || 'Média',
               status_demanda: d.status_demanda || 'aberta',
+              is_prioritaria: d.is_prioritaria || false,
               created_at: d.created_at || new Date().toISOString(),
               tipo: type,
               imoveis_captados: (d.imoveis_captados || []).map((i: any) => ({
@@ -148,6 +150,7 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
               tipo_imovel: d.tipo_imovel || 'Casa',
               nivel_urgencia: d.nivel_urgencia || d.urgencia || 'Média',
               status_demanda: d.status_demanda || 'aberta',
+              is_prioritaria: d.is_prioritaria || false,
               created_at: d.created_at || new Date().toISOString(),
               tipo: type,
               imoveis_captados: [],
@@ -180,6 +183,8 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
                           ? d.necessidades_especificas
                           : x.observacoes,
                     nivel_urgencia: d.nivel_urgencia || d.urgencia || x.nivel_urgencia,
+                    is_prioritaria:
+                      d.is_prioritaria !== undefined ? d.is_prioritaria : x.is_prioritaria,
                   }
                 : x,
             ),
@@ -255,6 +260,7 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
               tipo_imovel: d.tipo_imovel || 'Casa',
               nivel_urgencia: d.nivel_urgencia || d.urgencia || 'Média',
               status_demanda: d.status_demanda || 'aberta',
+              is_prioritaria: d.is_prioritaria || false,
               created_at: d.created_at || new Date().toISOString(),
               tipo: type,
               imoveis_captados: [],
@@ -295,6 +301,8 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
                           : x.observacoes,
                     nivel_urgencia: d.nivel_urgencia || d.urgencia || x.nivel_urgencia,
                     status_demanda: d.status_demanda || x.status_demanda,
+                    is_prioritaria:
+                      d.is_prioritaria !== undefined ? d.is_prioritaria : x.is_prioritaria,
                   }
                 : x,
             ),

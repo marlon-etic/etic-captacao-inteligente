@@ -3,73 +3,39 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
-  Clock,
-  ChevronDown,
-  ChevronUp,
   MapPin,
   DollarSign,
-  Calendar,
-  User as UserIcon,
-  CheckCircle2,
+  Home,
+  BedDouble,
+  Car,
+  Tag,
+  Info,
+  Lock,
+  Star,
+  CheckCircle,
   XCircle,
-  MessageCircle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { SupabaseDemand } from '@/hooks/use-supabase-demands'
-import { supabase } from '@/lib/supabase/client'
-import { toast } from '@/hooks/use-toast'
+import useAppStore from '@/stores/useAppStore'
 
-export function ExpandableDemandCard({
-  demand,
-  onUpdate,
-}: {
-  demand: SupabaseDemand
-  onUpdate?: () => void
-}) {
-  const [expanded, setExpanded] = useState(false)
+export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
+  const { currentUser, submitDemandResponse } = useAppStore()
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'aberta':
-        return 'bg-emerald-500 text-white'
-      case 'atendida':
-        return 'bg-blue-500 text-white'
-      case 'sem_resposta_24h':
-        return 'bg-yellow-500 text-white'
-      case 'impossivel':
-        return 'bg-gray-500 text-white'
-      default:
-        return 'bg-gray-500 text-white'
-    }
-  }
-
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case 'aberta':
-        return 'Aberta'
-      case 'atendida':
-        return 'Atendida / Fechada'
-      case 'sem_resposta_24h':
-        return 'Sem Resposta'
-      case 'impossivel':
-        return 'Perdida / Impossível'
-      default:
-        return status
-    }
-  }
-
-  const getUrgencyIcon = (urgency: string) => {
-    switch (urgency) {
-      case 'Alta':
-        return <Clock className="w-4 h-4 text-red-500" />
-      case 'Média':
-        return <Clock className="w-4 h-4 text-yellow-500" />
-      case 'Baixa':
-        return <Clock className="w-4 h-4 text-gray-400" />
-      default:
-        return <Clock className="w-4 h-4 text-gray-400" />
-    }
-  }
+  const statusConfig =
+    demand.status_demanda === 'aberta'
+      ? { label: 'DISPONÍVEL PARA TODOS', bg: 'bg-[#10B981]', text: 'text-white', icon: Lock }
+      : demand.status_demanda === 'atendida'
+        ? {
+            label: 'ATENDIDA / EM NEGOCIAÇÃO',
+            bg: 'bg-blue-500',
+            text: 'text-white',
+            icon: CheckCircle,
+          }
+        : demand.status_demanda === 'sem_resposta_24h'
+          ? { label: 'SEM RESPOSTA', bg: 'bg-yellow-500', text: 'text-white', icon: Info }
+          : { label: 'PERDIDA / CANCELADA', bg: 'bg-gray-500', text: 'text-white', icon: XCircle }
 
   const formatPrice = (val: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -79,216 +45,117 @@ export function ExpandableDemandCard({
     }).format(val)
   }
 
-  const handleAction = async (
-    e: React.MouseEvent,
-    propId: string,
-    status: string,
-    message: string,
-  ) => {
+  const handleEncontrei = async (e: React.MouseEvent) => {
     e.stopPropagation()
-    const { error } = await supabase
-      .from('imoveis_captados')
-      .update({ status_captacao: status })
-      .eq('id', propId)
+    if (isSubmitting) return
+    setIsSubmitting(true)
 
-    if (!error) {
-      const table = demand.tipo === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
+    // Call the mock function or real logic to submit capture
+    submitDemandResponse(demand.id, 'encontrei', {
+      value: demand.valor_maximo,
+      neighborhood: demand.bairros[0],
+    })
 
-      // Update core demand status asynchronously based on the property resolution
-      if (status === 'fechado') {
-        await supabase.from(table).update({ status_demanda: 'atendida' }).eq('id', demand.id)
-      } else if (status === 'perdido' && demand.imoveis_captados?.length === 1) {
-        await supabase.from(table).update({ status_demanda: 'aberta' }).eq('id', demand.id)
-      }
-
-      toast({
-        title: 'Sucesso',
-        description: message,
-        className: status === 'fechado' ? 'bg-emerald-600 text-white border-emerald-600' : '',
-      })
-
-      // Dispatch optimistic update event locally for instant <1s feedback
-      window.dispatchEvent(
-        new CustomEvent('imovel-action', {
-          detail: {
-            propId,
-            status,
-            demandId: demand.id,
-            tipo: demand.tipo,
-          },
-        }),
-      )
-
-      if (onUpdate) onUpdate()
-    } else {
-      toast({ title: 'Erro', description: error.message, variant: 'destructive' })
-    }
+    setTimeout(() => setIsSubmitting(false), 1000)
   }
 
-  const handleContact = (e: React.MouseEvent) => {
+  const handleNaoEncontrei = async (e: React.MouseEvent) => {
     e.stopPropagation()
-    window.open(`https://wa.me/?text=Olá, sobre o imóvel da demanda...`, '_blank')
+    // Optional logic for não encontrei
   }
 
-  const capturedCount = demand.imoveis_captados?.length || 0
   const isBrandNew = new Date().getTime() - new Date(demand.created_at).getTime() < 1000 * 60 * 5
 
   return (
-    <Card
-      className={cn(
-        'w-full transition-all duration-200 shadow-sm border-[#E5E5E5]',
-        expanded ? 'shadow-md border-[#1A3A52]/30' : 'hover:shadow-md',
+    <Card className="w-full relative overflow-hidden rounded-[16px] border border-[#E5E5E5] shadow-sm hover:shadow-md transition-all duration-200 bg-gradient-to-b from-[#F2FBF5] to-white">
+      {demand.is_prioritaria && (
+        <div className="absolute top-11 right-3 z-10 bg-[#FCD34D] text-[#854D0E] text-[10px] font-black px-2.5 py-1 rounded-full flex items-center gap-1.5 shadow-sm border border-[#F59E0B]">
+          <Star className="w-3 h-3 fill-current" /> PRIORITÁRIA
+        </div>
       )}
-    >
+
       <div
-        className="p-4 cursor-pointer flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between"
-        onClick={() => setExpanded(!expanded)}
+        className={cn(
+          'px-4 py-2.5 flex items-center gap-2 font-black text-[11px] uppercase tracking-widest shadow-sm',
+          statusConfig.bg,
+          statusConfig.text,
+        )}
       >
-        <div className="flex flex-col gap-2 flex-1 w-full min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            {isBrandNew && (
-              <Badge className="bg-pink-500 hover:bg-pink-600 text-white animate-pulse shadow-sm border-none uppercase tracking-wide px-2">
-                NOVA
-              </Badge>
-            )}
-            <Badge className={cn('border-none', getStatusColor(demand.status_demanda))}>
-              {getStatusLabel(demand.status_demanda)}
-            </Badge>
-            <div className="flex items-center gap-1 text-[13px] font-bold text-[#333333] bg-[#F5F5F5] px-2 py-1 rounded-md">
-              {getUrgencyIcon(demand.nivel_urgencia)} {demand.nivel_urgencia}
-            </div>
-            <span className="text-[12px] text-[#999999] ml-auto sm:ml-0 flex items-center gap-1">
-              <Calendar className="w-3 h-3" />{' '}
-              {new Date(demand.created_at).toLocaleDateString('pt-BR')}
+        <statusConfig.icon className="w-3.5 h-3.5" />
+        {statusConfig.label}
+        {isBrandNew && (
+          <span className="ml-auto bg-white/20 px-2 rounded-sm text-[9px] animate-pulse">NOVA</span>
+        )}
+      </div>
+
+      <div className="p-4 flex flex-col gap-3">
+        <h3
+          className="text-[18px] font-black text-[#1A3A52] leading-tight pr-24 line-clamp-1"
+          title={demand.nome_cliente}
+        >
+          {demand.nome_cliente}
+        </h3>
+
+        <div className="flex flex-col gap-1.5 mt-1">
+          <div className="flex items-center gap-2 text-[14px] text-[#333333]">
+            <MapPin className="w-4 h-4 text-pink-500 shrink-0" />
+            <span className="font-medium line-clamp-1" title={demand.bairros?.join(', ')}>
+              {demand.bairros?.join(', ')}
             </span>
           </div>
-          <h3 className="text-[18px] font-bold text-[#1A3A52] leading-tight truncate">
-            {demand.nome_cliente}
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-[13px] text-[#666666] mt-1">
-            <div className="flex items-center gap-1.5 truncate">
-              <MapPin className="w-4 h-4 shrink-0 opacity-70" />
-              <span className="truncate">{demand.bairros?.join(', ')}</span>
-            </div>
-            <div className="flex items-center gap-1.5 truncate">
-              <DollarSign className="w-4 h-4 shrink-0 opacity-70" />
-              <span>
-                {formatPrice(demand.valor_minimo)} - {formatPrice(demand.valor_maximo)}
-              </span>
-            </div>
+          <div className="flex items-center gap-2 text-[14px] text-[#333333]">
+            <Home className="w-4 h-4 text-[#1A3A52] shrink-0" />
+            <span className="font-medium">{demand.tipo_imovel || 'Imóvel Residencial'}</span>
           </div>
         </div>
-        <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto gap-3 shrink-0 mt-2 sm:mt-0 pt-3 sm:pt-0 border-t sm:border-t-0 border-[#E5E5E5]">
-          <Badge
-            className={cn(
-              'min-h-[32px] px-3 font-bold border-none transition-colors',
-              capturedCount > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-[#F5F5F5] text-[#999999]',
-            )}
-          >
-            {capturedCount} imóvel{capturedCount !== 1 && 'eis'} captado{capturedCount !== 1 && 's'}
-          </Badge>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 px-2 text-[#1A3A52] font-bold hover:bg-[#F5F5F5]"
-          >
-            {expanded ? (
-              <>
-                <ChevronUp className="w-4 h-4 mr-1" /> Ocultar
-              </>
-            ) : (
-              <>
-                <ChevronDown className="w-4 h-4 mr-1" /> Ver Propriedades
-              </>
-            )}
-          </Button>
+
+        <div className="flex items-center gap-2 mt-1">
+          <DollarSign className="w-5 h-5 text-[#10B981] shrink-0" />
+          <span className="text-[20px] font-black text-[#10B981] tracking-tight">
+            {formatPrice(demand.valor_minimo)} - {formatPrice(demand.valor_maximo)}
+          </span>
         </div>
+
+        <div className="flex items-center gap-4 text-[13px] text-[#666666] font-medium bg-white p-2.5 rounded-lg mt-1 border border-[#E5E5E5] flex-wrap shadow-sm">
+          <div className="flex items-center gap-1.5">
+            <BedDouble className="w-4 h-4 text-[#999999]" /> {demand.dormitorios || 'Indif.'} dorm
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Car className="w-4 h-4 text-[#999999]" /> {demand.vagas_estacionamento || 'Indif.'}{' '}
+            vagas
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Tag className="w-4 h-4 text-[#999999]" /> {demand.tipo}
+          </div>
+        </div>
+
+        <div className="flex items-start gap-2.5 bg-[#E8F5E9] text-[#065F46] p-3 rounded-lg text-[13px] mt-1 border border-[#A7F3D0] shadow-sm">
+          <Info className="w-4 h-4 shrink-0 mt-0.5 text-[#10B981]" />
+          <p className="leading-snug font-medium">
+            {demand.observacoes ||
+              'Nenhum cliente específico — qualquer imóvel que se encaixe serve!'}
+          </p>
+        </div>
+
+        {demand.status_demanda === 'aberta' && currentUser?.role === 'captador' && (
+          <div className="flex flex-col sm:flex-row gap-2 mt-3 pt-3 border-t border-[#E5E5E5]">
+            <Button
+              onClick={handleEncontrei}
+              disabled={isSubmitting}
+              className="w-full sm:flex-1 min-h-[48px] bg-[#10B981] hover:bg-[#059669] text-white font-black shadow-[0_4px_12px_rgba(16,185,129,0.3)]"
+            >
+              <CheckCircle className="w-5 h-5 mr-2" /> ENCONTREI IMÓVEL
+            </Button>
+            <Button
+              onClick={handleNaoEncontrei}
+              variant="outline"
+              className="w-full sm:flex-1 min-h-[48px] text-[#EF4444] border-[#EF4444]/30 hover:bg-[#FEF2F2] font-bold"
+            >
+              <XCircle className="w-5 h-5 mr-2" /> Não Encontrei
+            </Button>
+          </div>
+        )}
       </div>
-      {expanded && (
-        <div className="p-4 pt-0 border-t border-[#E5E5E5] bg-[#FAFAFA] rounded-b-[12px]">
-          {capturedCount === 0 ? (
-            <div className="py-8 text-center text-[#999999] text-[14px]">
-              Nenhum imóvel captado para esta demanda ainda.
-            </div>
-          ) : (
-            <div className="flex flex-col gap-3 mt-4">
-              {demand.imoveis_captados.map((imovel) => {
-                const isPendente = imovel.status_captacao === 'pendente' || !imovel.status_captacao
-
-                return (
-                  <div
-                    key={imovel.id}
-                    className="bg-white p-3 rounded-lg border border-[#E5E5E5] shadow-sm flex flex-col lg:flex-row gap-4 items-start lg:items-center animate-in fade-in slide-in-from-top-2"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-bold text-[#1A3A52]">
-                          {imovel.codigo_imovel || 'Sem código'}
-                        </span>
-                        <Badge
-                          variant="outline"
-                          className={cn(
-                            'text-[10px] h-5 py-0 uppercase',
-                            imovel.status_captacao === 'fechado'
-                              ? 'bg-emerald-100 text-emerald-700 border-none'
-                              : imovel.status_captacao === 'perdido'
-                                ? 'bg-red-100 text-red-700 border-none'
-                                : 'bg-gray-100 text-gray-700 border-none',
-                          )}
-                        >
-                          {imovel.status_captacao || 'Pendente'}
-                        </Badge>
-                      </div>
-                      <div className="text-[13px] text-[#666666] flex flex-col gap-1">
-                        <div className="flex items-center gap-1.5 truncate">
-                          <MapPin className="w-3.5 h-3.5" />{' '}
-                          <span className="truncate">
-                            {imovel.endereco || 'Endereço não informado'}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <DollarSign className="w-3.5 h-3.5" /> {formatPrice(imovel.preco || 0)}
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <UserIcon className="w-3.5 h-3.5" /> Captador: {imovel.captador_nome}
-                        </div>
-                      </div>
-                    </div>
-
-                    {isPendente && (
-                      <div className="flex flex-row flex-wrap gap-2 w-full lg:w-auto lg:shrink-0 mt-2 lg:mt-0">
-                        <Button
-                          onClick={(e) => handleAction(e, imovel.id, 'fechado', 'Imóvel validado')}
-                          size="sm"
-                          className="flex-1 lg:flex-none bg-emerald-600 hover:bg-emerald-700 text-white h-9"
-                        >
-                          <CheckCircle2 className="w-4 h-4 mr-1.5" /> Validar
-                        </Button>
-                        <Button
-                          onClick={(e) => handleAction(e, imovel.id, 'perdido', 'Imóvel rejeitado')}
-                          variant="outline"
-                          size="sm"
-                          className="flex-1 lg:flex-none text-red-600 hover:text-red-700 hover:bg-red-50 h-9 border-red-200"
-                        >
-                          <XCircle className="w-4 h-4 mr-1.5" /> Rejeitar
-                        </Button>
-                        <Button
-                          onClick={(e) => handleContact(e)}
-                          variant="secondary"
-                          size="sm"
-                          className="flex-1 lg:flex-none h-9"
-                        >
-                          <MessageCircle className="w-4 h-4 mr-1.5" /> Contato
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
-      )}
     </Card>
   )
 }
