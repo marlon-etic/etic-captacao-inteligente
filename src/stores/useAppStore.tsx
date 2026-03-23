@@ -28,7 +28,6 @@ import {
   AdminAuditLog,
 } from '@/types'
 import { toast } from '@/hooks/use-toast'
-import { ToastAction } from '@/components/ui/toast'
 import { supabase } from '@/lib/supabase/client'
 
 interface AppState {
@@ -270,26 +269,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     return null
   })
 
-  const [users, setUsers] = useState<User[]>(() => {
-    try {
-      const raw = localStorage.getItem('etic_state_sync')
-      if (raw) {
-        const parsed = JSON.parse(raw)
-        if (parsed.users && Array.isArray(parsed.users)) {
-          const merged = [...parsed.users]
-          mockUsers.forEach((mu) => {
-            if (!merged.find((u) => u.email === mu.email)) {
-              merged.push(mu)
-            }
-          })
-          return merged
-        }
-      }
-    } catch {
-      // ignore
-    }
-    return mockUsers
-  })
+  const [users, setUsers] = useState<User[]>(mockUsers)
 
   const [allDemands, setAllDemands] = useState<Demand[]>(initialDemands)
   const [looseProperties, setLooseProperties] = useState<CapturedProperty[]>(initialLooseProperties)
@@ -349,7 +329,6 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const webhookQueueRef = useRef(webhookQueue)
   const loosePropertiesRef = useRef(looseProperties)
   const isProcessingRef = useRef(false)
-  const prevLooseRef = useRef<CapturedProperty[]>([])
   const usersRef = useRef(users)
   const allDemandsRef = useRef(allDemands)
 
@@ -369,11 +348,61 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     allDemandsRef.current = allDemands
   }, [allDemands])
 
-  const addLog = useCallback(
-    (msg: string) =>
-      setAuditLogs((prev) => [`[${new Date().toLocaleTimeString()}] ${msg}`, ...prev]),
-    [],
-  )
+  // Real-time Users Fetching
+  useEffect(() => {
+    let mounted = true
+
+    const fetchUsers = async () => {
+      try {
+        const { data, error } = await supabase.from('users').select('*')
+        if (data && !error && mounted) {
+          const dbUsers: User[] = data.map((u: any) => ({
+            id: u.id,
+            name: u.nome,
+            email: u.email,
+            role: u.role as any,
+            status: (u.status || 'ativo') as any,
+            whatsapp: '',
+            points: 0,
+            dailyPoints: 0,
+            weeklyPoints: 0,
+            monthlyPoints: 0,
+            badges: [],
+            stats: defaultStats,
+            preferences: defaultPreferences,
+            createdAt: u.created_at || new Date().toISOString(),
+          }))
+
+          setUsers((prev) => {
+            const merged = [...dbUsers]
+            // Add mock users that don't exist in DB just for safety
+            prev.forEach((p) => {
+              if (!merged.find((m) => m.email === p.email)) {
+                merged.push(p)
+              }
+            })
+            return merged
+          })
+        }
+      } catch (err) {
+        console.error('Error fetching users', err)
+      }
+    }
+
+    fetchUsers()
+
+    const sub = supabase
+      .channel('public_users_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, () => {
+        fetchUsers()
+      })
+      .subscribe()
+
+    return () => {
+      mounted = false
+      supabase.removeChannel(sub)
+    }
+  }, [])
 
   const logSystemEvent = useCallback(
     (message: string, type: 'error' | 'info' | 'warning' = 'info', context?: string) => {
@@ -415,182 +444,6 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       ])
     },
     [currentUser],
-  )
-
-  const broadcastState = useCallback(
-    (
-      nextDemands: Demand[],
-      nextUsers: User[],
-      actionMsg?: string,
-      nextLoose?: CapturedProperty[],
-      nextNotifs?: AppNotification[],
-    ) => {
-      const payload = {
-        demands: nextDemands,
-        users: nextUsers,
-        looseProperties: nextLoose || loosePropertiesRef.current,
-        notifications: nextNotifs || notifications,
-        lastAction: actionMsg,
-        timestamp: Date.now(),
-      }
-      const raw = JSON.stringify(payload)
-      localStorage.setItem('etic_state_sync', raw)
-      try {
-        const bc = new BroadcastChannel('etic-ws-sync')
-        bc.postMessage(payload)
-        bc.close()
-      } catch {
-        // ignore
-      }
-    },
-    [notifications],
-  )
-
-  const handleSync = useCallback((payloadRaw: string | null) => {
-    if (!payloadRaw) return
-    try {
-      const parsed = JSON.parse(payloadRaw)
-
-      setAllDemands((prev) => {
-        if (parsed.demands && JSON.stringify(prev) !== JSON.stringify(parsed.demands))
-          return parsed.demands
-        return prev
-      })
-
-      setUsers((prev) => {
-        if (!parsed.users || !Array.isArray(parsed.users)) return prev
-        const merged = [...parsed.users]
-        let added = false
-        mockUsers.forEach((mu) => {
-          if (!merged.find((u) => u.email === mu.email)) {
-            merged.push(mu)
-            added = true
-          }
-        })
-        if (added || JSON.stringify(prev) !== JSON.stringify(merged)) {
-          return merged
-        }
-        return prev
-      })
-
-      setLooseProperties((prev) => {
-        if (
-          parsed.looseProperties &&
-          JSON.stringify(prev) !== JSON.stringify(parsed.looseProperties)
-        ) {
-          return parsed.looseProperties
-        }
-        return prev
-      })
-
-      setNotifications((prev) => {
-        if (parsed.notifications && JSON.stringify(prev) !== JSON.stringify(parsed.notifications)) {
-          return parsed.notifications
-        }
-        return prev
-      })
-
-      setCurrentUser((prev) => {
-        if (!prev) return prev
-        const updatedCurrent = parsed.users?.find((u: User) => u.id === prev.id)
-        if (updatedCurrent && JSON.stringify(prev) !== JSON.stringify(updatedCurrent)) {
-          return updatedCurrent
-        }
-        return prev
-      })
-    } catch {
-      // ignore
-    }
-  }, [])
-
-  useEffect(() => {
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === 'etic_state_sync') handleSync(e.newValue)
-    }
-    window.addEventListener('storage', onStorage)
-
-    let bc: BroadcastChannel | null = null
-    try {
-      bc = new BroadcastChannel('etic-ws-sync')
-      bc.onmessage = (e) => handleSync(JSON.stringify(e.data))
-    } catch {
-      // ignore
-    }
-
-    const interval = setInterval(() => {
-      const raw = localStorage.getItem('etic_state_sync')
-      handleSync(raw)
-    }, 5000)
-
-    return () => {
-      window.removeEventListener('storage', onStorage)
-      bc?.close()
-      clearInterval(interval)
-    }
-  }, [handleSync])
-
-  const dispatchNotifications = useCallback(
-    (drafts: Partial<AppNotification>[]) => {
-      let toAdd: AppNotification[] = []
-      setNotifications((prev) => {
-        const currentUsers = usersRef.current
-
-        drafts.forEach((draft) => {
-          const user = currentUsers.find((u) => u.id === draft.usuario_id)
-          if (!user || user.status === 'inativo' || user.status === 'bloqueado') {
-            return
-          }
-
-          const prefs = user.preferences || defaultPreferences
-
-          if (!prefs.notifications.types[draft.tipo_notificacao as NotificationType]) {
-            return
-          }
-
-          let canais = draft.canais || ['in_app']
-
-          if (!prefs.notifications.channels.in_app) canais = canais.filter((c) => c !== 'in_app')
-          if (!prefs.notifications.channels.push) canais = canais.filter((c) => c !== 'push')
-          if (!prefs.notifications.channels.email) canais = canais.filter((c) => c !== 'email')
-
-          if (canais.length === 0) canais = ['in_app']
-
-          const notif: AppNotification = {
-            id: Math.random().toString(36).substring(2, 9),
-            usuario_id: draft.usuario_id!,
-            tipo_notificacao: draft.tipo_notificacao as NotificationType,
-            titulo: draft.titulo || '',
-            corpo: draft.corpo || '',
-            detalhes: draft.detalhes,
-            acao_url: draft.acao_url,
-            acao_botao: draft.acao_botao,
-            urgencia: (draft.urgencia as NotificationUrgency) || 'media',
-            canais,
-            lida: false,
-            arquivada: false,
-            data_criacao: new Date().toISOString(),
-          }
-
-          toAdd.push(notif)
-        })
-
-        if (toAdd.length === 0) return prev
-        const next = [...toAdd, ...prev]
-
-        setTimeout(() => {
-          broadcastState(
-            allDemandsRef.current,
-            usersRef.current,
-            'Novas notificações',
-            loosePropertiesRef.current,
-            next,
-          )
-        }, 0)
-
-        return next
-      })
-    },
-    [broadcastState],
   )
 
   const enqueueWebhook = useCallback(
@@ -706,41 +559,15 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
   const updateUser = useCallback(
     (id: string, updates: Partial<User>) => {
-      setUsers((prev) => {
-        const next = prev.map((u) => (u.id === id ? { ...u, ...updates } : u))
-        broadcastState(allDemandsRef.current, next, `Usuário atualizado: ${id}`)
-        return next
-      })
+      setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, ...updates } : u)))
       if (currentUser?.id === id) {
         setCurrentUser((prev) => (prev ? { ...prev, ...updates } : prev))
       }
     },
-    [broadcastState, currentUser],
+    [currentUser],
   )
 
-  const createUser = useCallback(
-    (userData: Partial<User>) => {
-      const newUser: User = {
-        id: Math.random().toString(36).substr(2, 9),
-        points: 0,
-        dailyPoints: 0,
-        weeklyPoints: 0,
-        monthlyPoints: 0,
-        badges: [],
-        stats: defaultStats,
-        status: 'ativo',
-        createdAt: new Date().toISOString(),
-        ...userData,
-      } as User
-
-      setUsers((prev) => {
-        const next = [...prev, newUser]
-        setTimeout(() => broadcastState(allDemandsRef.current, next, `Novo usuário criado`), 0)
-        return next
-      })
-    },
-    [broadcastState],
-  )
+  const createUser = useCallback((userData: Partial<User>) => {}, [])
 
   const updateDashboardPrefs = useCallback(
     (prefs: Record<string, boolean>) => {
@@ -750,20 +577,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     [currentUser, updateUser],
   )
 
-  const triggerCron = useCallback(() => {
-    // mock cron
-  }, [])
-
-  const checkDemandAccess = (demand: Demand | undefined, property?: CapturedProperty) => {
-    if (currentUser?.role === 'admin' || currentUser?.role === 'gestor') return true
-    if (currentUser?.role === 'corretor' || currentUser?.role === 'sdr') {
-      if (!demand || demand.createdBy !== currentUser.id) return false
-    }
-    if (currentUser?.role === 'captador') {
-      if (property && property.captador_id !== currentUser.id) return false
-    }
-    return true
-  }
+  const triggerCron = useCallback(() => {}, [])
 
   const createAction = useCallback(
     (type: PropertyActionType, desc: string, obs?: string): PropertyAction | null => {
@@ -782,21 +596,10 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     [currentUser],
   )
 
-  const scheduleVisitByCode = useCallback((code: string, payload: any) => {
-    // Mock implementation
-  }, [])
-
-  const submitProposalByCode = useCallback((code: string, payload: any) => {
-    // Mock implementation
-  }, [])
-
-  const closeDealByCode = useCallback((code: string, payload: any) => {
-    // Mock implementation
-  }, [])
-
-  const prioritizeDemand = useCallback((id: string, reason: string, count: number) => {
-    // Mock implementation
-  }, [])
+  const scheduleVisitByCode = useCallback((code: string, payload: any) => {}, [])
+  const submitProposalByCode = useCallback((code: string, payload: any) => {}, [])
+  const closeDealByCode = useCallback((code: string, payload: any) => {}, [])
+  const prioritizeDemand = useCallback((id: string, reason: string, count: number) => {}, [])
 
   const markDemandLost = useCallback(
     (id: string, reason: string, obs?: string) => {
@@ -813,49 +616,37 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
               .from(table)
               .update({ status_demanda: 'impossivel' })
               .eq('id', demand.id)
-              .then(({ error: updErr }) => {
-                if (updErr) console.error('[Diagnostic] Erro update demanda:', updErr)
-              })
               .catch(console.error)
           }
         })
         .catch(console.error)
 
-      const action = createAction('perdido', `Demanda perdida: ${reason}`, obs)
       setAllDemands((prev) => {
-        const next = prev.map((d) => {
+        return prev.map((d) => {
           if (d.id === id) {
-            const updated = {
+            return {
               ...d,
               status: 'Perdida' as DemandStatus,
               lostReason: reason,
             }
-            return updated
           }
           return d
         })
-        broadcastState(next, users, 'Demanda perdida')
-        return next
       })
     },
-    [allDemands, users, broadcastState, createAction],
+    [allDemands],
   )
 
   const markPropertyLost = useCallback(
     (code: string, demandId: string, reason: string, obs?: string) => {
-      // Mock implementation sync with supabase
       supabase.auth
         .getUser()
         .then(({ data: authData, error: authErr }) => {
-          if (authErr) console.error('[useAppStore] Error getting user:', authErr)
           if (authData?.user) {
             supabase
               .from('imoveis_captados')
               .update({ status_captacao: 'perdido' })
               .eq('codigo_imovel', code)
-              .then(({ error: updErr }) => {
-                if (updErr) console.error('[Diagnostic] Erro update imóvel:', updErr)
-              })
               .catch(console.error)
           }
         })
@@ -865,33 +656,21 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   )
 
   const updatePropertyDetails = useCallback(
-    (demandId: string, propertyCode: string, payload: any) => {
-      // Mock implementation
-    },
+    (demandId: string, propertyCode: string, payload: any) => {},
     [],
   )
-
   const logContactAttempt = useCallback(
-    (demandId: string, code: string, method: 'whatsapp' | 'interno', message?: string) => {
-      // Mock implementation
-    },
+    (demandId: string, code: string, method: 'whatsapp' | 'interno', message?: string) => {},
     [],
   )
-
   const logSolicitorContactAttempt = useCallback(
-    (demandId: string, method: 'whatsapp' | 'email' | 'interno', message?: string) => {
-      // Mock implementation
-    },
+    (demandId: string, method: 'whatsapp' | 'email' | 'interno', message?: string) => {},
     [],
   )
-
   const getSimilarDemands = useCallback((id: string) => {
     return []
   }, [])
-
-  const addGroupComment = useCallback((groupId: string, content: string) => {
-    // Mock implementation
-  }, [])
+  const addGroupComment = useCallback((groupId: string, content: string) => {}, [])
 
   const visibleDemands = useMemo(() => {
     if (currentUser?.role === 'corretor' || currentUser?.role === 'sdr') {
@@ -928,17 +707,82 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         updateDashboardPrefs,
         updateUser,
         createUser,
-        createUserAdmin: async (payload: Partial<User>) => {},
-        updateUserAdmin: async (id: string, payload: Partial<User>, password?: string) => {},
+        createUserAdmin: async (payload: Partial<User>, password?: string) => {
+          setIsProcessingUser(true)
+          try {
+            if (!password) throw new Error('Senha é obrigatória para novos usuários')
+
+            const { data, error } = await supabase.functions.invoke('admin-users', {
+              body: {
+                action: 'createUser',
+                payload: {
+                  email: payload.email,
+                  password: password,
+                  name: payload.name,
+                  role: payload.role,
+                  status: payload.status,
+                },
+              },
+            })
+
+            if (error) {
+              console.error(error)
+              throw new Error(error.message || 'Erro de rede ao criar usuário')
+            }
+
+            if (data?.error) {
+              throw new Error(data.error)
+            }
+          } finally {
+            setIsProcessingUser(false)
+          }
+        },
+        updateUserAdmin: async (id: string, payload: Partial<User>, password?: string) => {
+          setIsProcessingUser(true)
+          try {
+            const bodyPayload: any = {
+              id,
+              email: payload.email,
+              name: payload.name,
+              role: payload.role,
+              status: payload.status,
+            }
+            if (password) {
+              bodyPayload.password = password
+            }
+
+            const { data, error } = await supabase.functions.invoke('admin-users', {
+              body: {
+                action: 'updateUser',
+                payload: bodyPayload,
+              },
+            })
+
+            if (error) {
+              console.error(error)
+              throw new Error(error.message || 'Erro de rede ao atualizar usuário')
+            }
+
+            if (data?.error) {
+              throw new Error(data.error)
+            }
+
+            setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, ...payload } : u)))
+
+            if (currentUser?.id === id) {
+              setCurrentUser((prev) => (prev ? { ...prev, ...payload } : prev))
+            }
+          } finally {
+            setIsProcessingUser(false)
+          }
+        },
         getMatchesForProperty: (property: CapturedProperty) => {
           return []
         },
         login: async (email, password) => {
           const cleanEmail = email.toLowerCase().trim()
           let user = users.find((u) => u.email.toLowerCase() === cleanEmail)
-          if (!user) user = mockUsers.find((u) => u.email.toLowerCase() === cleanEmail)
 
-          // Tenta buscar o usuário no banco de dados se não encontrar localmente
           if (!user) {
             try {
               const { data: supaUser, error } = await supabase
@@ -975,7 +819,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           }
           if (user.status === 'bloqueado' || user.status === 'inativo') {
             logAuthEvent('Login em conta bloqueada/inativa', 'bloqueado', '/login', email)
-            throw new Error('Sua conta está bloqueada ou inativa.')
+            throw new Error('Sua conta foi bloqueada pelo administrador.')
           }
 
           const expiresAt = Date.now() + 86400000
@@ -1006,7 +850,6 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           }
         },
         resetPassword: async (password, token) => {
-          // O Supabase já configura a sessão automaticamente a partir do hash da URL
           const { error } = await supabase.auth.updateUser({ password })
           if (error) {
             console.error('[useAppStore] Erro ao redefinir senha:', error)
@@ -1024,18 +867,10 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
             grupo_id: `group-new-${Math.random().toString(36).substr(2, 9)}`,
           } as Demand
 
-          setAllDemands((p) => {
-            const next = [newDemand, ...p]
-            broadcastState(next, users, 'Nova demanda')
-            return next
-          })
+          setAllDemands((p) => [newDemand, ...p])
         },
         updateDemandStatus: (i, s) => {
-          setAllDemands((p) => {
-            const next = p.map((d) => (d.id === i ? { ...d, status: s } : d))
-            broadcastState(next, users, 'Status atualizado')
-            return next
-          })
+          setAllDemands((p) => p.map((d) => (d.id === i ? { ...d, status: s } : d)))
         },
         submitGroupCapture: (demandIds, payload) => {
           return { success: true, message: '' }
@@ -1050,7 +885,6 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
             supabase.auth
               .getUser()
               .then(({ data: authData, error: authErr }) => {
-                if (authErr) console.error('[useAppStore] Error getting user:', authErr)
                 if (authData?.user) {
                   supabase
                     .from('imoveis_captados')
@@ -1065,17 +899,13 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
                       demanda_venda_id: demand.type === 'Venda' ? demand.id : null,
                     })
                     .then(({ error }) => {
-                      if (error) console.error('[Diagnostic] Erro insert imóvel:', error)
-                      else {
+                      if (!error) {
                         const table =
                           demand.type === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
                         supabase
                           .from(table)
                           .update({ status_demanda: 'atendida' })
                           .eq('id', demand.id)
-                          .then(({ error: updErr }) => {
-                            if (updErr) console.error('[Diagnostic] Erro update demanda:', updErr)
-                          })
                           .catch(console.error)
                       }
                     })
@@ -1084,7 +914,6 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
               })
               .catch(console.error)
 
-            // update local fallback
             const newProp: CapturedProperty = {
               code,
               value: payload?.value || demand.budget || 0,

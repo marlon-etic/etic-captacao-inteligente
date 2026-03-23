@@ -38,13 +38,18 @@ export default function Index() {
 
     setIsLoading(true)
     try {
-      await new Promise((r) => setTimeout(r, 600)) // Visual feedback delay
+      await new Promise((r) => setTimeout(r, 600))
 
       const { error: supaError } = await signIn(email, password)
 
-      // Tratativa de erro amigável para credenciais inválidas ou erro no Supabase
       if (supaError) {
         if (
+          supaError.message.toLowerCase().includes('banned') ||
+          supaError.message.toLowerCase().includes('disabled') ||
+          supaError.message.toLowerCase().includes('suspended')
+        ) {
+          throw new Error('Sua conta foi bloqueada pelo administrador.')
+        } else if (
           supaError.message.includes('Invalid login') ||
           supaError.message.includes('credentials')
         ) {
@@ -79,37 +84,46 @@ export default function Index() {
 
       const { error: authError } = await signIn(mockEmail, pass)
 
-      // Auto-register mock users if they don't exist in Supabase yet
-      if (
-        authError &&
-        (authError.message.includes('Invalid login') || authError.message.includes('credentials'))
-      ) {
-        console.warn(
-          '[Diagnostic] User not found in Supabase. Attempting to seed via signup:',
-          mockEmail,
-        )
-        try {
-          const { data: signUpData } = await supabase.auth.signUp({
-            email: mockEmail,
-            password: pass,
-          })
-          if (signUpData.user) {
-            let role = 'captador'
-            if (mockEmail.includes('sdr')) role = 'sdr'
-            if (mockEmail.includes('corretor')) role = 'corretor'
-            if (mockEmail.includes('gestor') || mockEmail.includes('admin')) role = 'admin'
-
-            await supabase.from('users').insert({
-              id: signUpData.user.id,
+      if (authError) {
+        if (
+          authError.message.toLowerCase().includes('banned') ||
+          authError.message.toLowerCase().includes('disabled')
+        ) {
+          throw new Error('Sua conta foi bloqueada pelo administrador.')
+        } else if (
+          authError.message.includes('Invalid login') ||
+          authError.message.includes('credentials')
+        ) {
+          console.warn(
+            '[Diagnostic] User not found in Supabase. Attempting to seed via signup:',
+            mockEmail,
+          )
+          try {
+            const { data: signUpData } = await supabase.auth.signUp({
               email: mockEmail,
-              nome: mockEmail.split('@')[0],
-              role: role as any,
+              password: pass,
             })
+            if (signUpData.user) {
+              let role = 'captador'
+              if (mockEmail.includes('sdr')) role = 'sdr'
+              if (mockEmail.includes('corretor')) role = 'corretor'
+              if (mockEmail.includes('gestor') || mockEmail.includes('admin')) role = 'admin'
 
-            await signIn(mockEmail, pass)
+              await supabase.from('users').insert({
+                id: signUpData.user.id,
+                email: mockEmail,
+                nome: mockEmail.split('@')[0],
+                role: role as any,
+                status: 'ativo',
+              })
+
+              await signIn(mockEmail, pass)
+            }
+          } catch (seedErr) {
+            console.error('[Diagnostic] Error during auto-registration:', seedErr)
           }
-        } catch (seedErr) {
-          console.error('[Diagnostic] Error during auto-registration:', seedErr)
+        } else {
+          throw new Error(authError.message || 'Erro ao autenticar. Tente novamente.')
         }
       }
 
@@ -247,7 +261,7 @@ export default function Index() {
               </Button>
               <Button
                 variant="secondary"
-                onClick={() => quickLogin('gestor@etic.com')}
+                onClick={() => quickLogin('admin@etic.com')}
                 className="text-[12px]"
                 disabled={isLoading}
               >
