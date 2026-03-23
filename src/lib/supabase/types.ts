@@ -65,6 +65,7 @@ export type Database = {
           dormitorios: number | null
           email: string | null
           id: string
+          is_prioritaria: boolean | null
           localizacoes: string[] | null
           nivel_urgencia: string | null
           nome_cliente: string | null
@@ -90,6 +91,7 @@ export type Database = {
           dormitorios?: number | null
           email?: string | null
           id?: string
+          is_prioritaria?: boolean | null
           localizacoes?: string[] | null
           nivel_urgencia?: string | null
           nome_cliente?: string | null
@@ -115,6 +117,7 @@ export type Database = {
           dormitorios?: number | null
           email?: string | null
           id?: string
+          is_prioritaria?: boolean | null
           localizacoes?: string[] | null
           nivel_urgencia?: string | null
           nome_cliente?: string | null
@@ -152,6 +155,7 @@ export type Database = {
           dormitorios: number | null
           email: string | null
           id: string
+          is_prioritaria: boolean | null
           localizacoes: string[] | null
           necessidades_especificas: string | null
           nivel_urgencia: string | null
@@ -177,6 +181,7 @@ export type Database = {
           dormitorios?: number | null
           email?: string | null
           id?: string
+          is_prioritaria?: boolean | null
           localizacoes?: string[] | null
           necessidades_especificas?: string | null
           nivel_urgencia?: string | null
@@ -202,6 +207,7 @@ export type Database = {
           dormitorios?: number | null
           email?: string | null
           id?: string
+          is_prioritaria?: boolean | null
           localizacoes?: string[] | null
           necessidades_especificas?: string | null
           nivel_urgencia?: string | null
@@ -577,6 +583,7 @@ export const Constants = {
 //   status_demanda: character varying (nullable)
 //   observacoes: text (nullable)
 //   tipo_demanda: character varying (nullable, default: 'Aluguel'::character varying)
+//   is_prioritaria: boolean (nullable, default: false)
 // Table: demandas_vendas
 //   id: uuid (not null, default: gen_random_uuid())
 //   cliente_nome: character varying (nullable)
@@ -601,6 +608,7 @@ export const Constants = {
 //   nivel_urgencia: character varying (nullable)
 //   status_demanda: character varying (nullable)
 //   necessidades_especificas: text (nullable)
+//   is_prioritaria: boolean (nullable, default: false)
 // Table: imoveis_captados
 //   id: uuid (not null, default: gen_random_uuid())
 //   captador_id: uuid (nullable)
