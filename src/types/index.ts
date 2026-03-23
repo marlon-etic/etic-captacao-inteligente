@@ -81,6 +81,8 @@ export type DemandStatus =
   | 'Visita'
   | 'Proposta'
   | 'Negócio'
+  | 'Ganho'
+  | 'ganho'
   | 'Arquivado'
   | 'Impossível'
   | 'Perdida'

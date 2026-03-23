@@ -686,33 +686,30 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const closeDealByCode = useCallback((code: string, payload: any) => {}, [])
   const prioritizeDemand = useCallback((id: string, reason: string, count: number) => {}, [])
 
-  const markDemandLost = useCallback(
-    (id: string, reason: string, obs?: string) => {
-      const demand = allDemands.find((d) => d.id === id)
-      if (!demand) return
+  const markDemandLost = useCallback((id: string, reason: string, obs?: string) => {
+    const demand = allDemandsRef.current.find((d) => d.id === id)
+    if (!demand) return
 
-      supabase.auth
-        .getUser()
-        .then(({ data: authData }) => {
-          if (authData?.user) {
-            const table = demand.type === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
-            supabase
-              .from(table)
-              .update({ status_demanda: 'impossivel' })
-              .eq('id', demand.id)
-              .catch(console.error)
-          }
-        })
-        .catch(console.error)
+    supabase.auth
+      .getUser()
+      .then(({ data: authData }) => {
+        if (authData?.user) {
+          const table = demand.type === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
+          supabase
+            .from(table)
+            .update({ status_demanda: 'impossivel' })
+            .eq('id', demand.id)
+            .catch(console.error)
+        }
+      })
+      .catch(console.error)
 
-      setAllDemands((prev) =>
-        prev.map((d) =>
-          d.id === id ? { ...d, status: 'Perdida' as DemandStatus, lostReason: reason } : d,
-        ),
-      )
-    },
-    [allDemands],
-  )
+    setAllDemands((prev) =>
+      prev.map((d) =>
+        d.id === id ? { ...d, status: 'Perdida' as DemandStatus, lostReason: reason } : d,
+      ),
+    )
+  }, [])
 
   const markPropertyLost = useCallback(
     (code: string, demandId: string, reason: string, obs?: string) => {
@@ -757,7 +754,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const loginFn = useCallback(
     async (email: string, password?: string) => {
       const cleanEmail = email.toLowerCase().trim()
-      let user = users.find((u) => u.email.toLowerCase() === cleanEmail)
+      let user = usersRef.current.find((u) => u.email.toLowerCase() === cleanEmail)
 
       if (!user) {
         try {
@@ -807,7 +804,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       setSessionExpiresAt(expiresAt)
       localStorage.setItem('etic_session', JSON.stringify({ user, expiresAt }))
     },
-    [users, logAuthEvent],
+    [logAuthEvent],
   )
 
   const visibleDemands = useMemo(() => {
@@ -950,14 +947,40 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
           setAllDemands((p) => [newDemand, ...p])
         },
-        updateDemandStatus: (i, s) => {
-          setAllDemands((p) => p.map((d) => (d.id === i ? { ...d, status: s } : d)))
+        updateDemandStatus: (id: string, status: DemandStatus) => {
+          setAllDemands((p) => p.map((d) => (d.id === id ? { ...d, status } : d)))
+
+          const demand = allDemandsRef.current.find((d) => d.id === id)
+          if (demand) {
+            const table = demand.type === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
+
+            // Map our UI status to database ENUM 'status_demanda'
+            let dbStatus = 'aberta'
+            if (status === 'Negócio' || status === 'ganho' || status === 'Fechado') {
+              dbStatus = 'ganho'
+            } else if (
+              status === 'Atendida' ||
+              status === 'Captado sob demanda' ||
+              status === 'Visita' ||
+              status === 'Proposta'
+            ) {
+              dbStatus = 'atendida'
+            } else if (status === 'Perdida' || status === 'Impossível') {
+              dbStatus = 'impossivel'
+            }
+
+            supabase
+              .from(table)
+              .update({ status_demanda: dbStatus })
+              .eq('id', id)
+              .catch(console.error)
+          }
         },
         submitGroupCapture: (demandIds, payload) => {
           return { success: true, message: '' }
         },
         submitDemandResponse: (id, action, payload) => {
-          const demand = allDemands.find((d) => d.id === id)
+          const demand = allDemandsRef.current.find((d) => d.id === id)
           if (!demand) return { success: false, message: 'Não encontrada' }
 
           if (action === 'encontrei') {
@@ -1016,10 +1039,10 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
             }
 
             setAllDemands((prev) => prev.map((d) => (d.id === id ? updatedDemand : d)))
-            if (currentUser) addPoints(50, currentUser.id)
+
             toast({
               title: 'Sucesso',
-              description: 'Imóvel registrado. +50 pontos!',
+              description: 'Imóvel registrado com sucesso.',
               className: 'bg-emerald-600 text-white',
             })
 

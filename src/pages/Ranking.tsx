@@ -1,122 +1,62 @@
-import { Trophy, Star } from 'lucide-react'
-import { Card, CardContent } from '@/components/ui/card'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { Badge } from '@/components/ui/badge'
+import { Trophy } from 'lucide-react'
+import { useSupabasePontuacao } from '@/hooks/use-supabase-pontuacao'
 import useAppStore from '@/stores/useAppStore'
-import { User } from '@/types'
+import { RankingCaptadores } from '@/components/dashboard/RankingCaptadores'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 
 export default function Ranking() {
   const { users } = useAppStore()
+  const { pontuacoes } = useSupabasePontuacao()
 
-  const renderList = (
-    sortedList: User[],
-    pointKey: 'points' | 'weeklyPoints' | 'monthlyPoints',
-  ) => (
-    <div className="space-y-3 mt-4">
-      {sortedList.map((user, index) => {
-        const isTop3 = index < 3
-        const pts = user[pointKey]
-        return (
-          <div
-            key={user.id}
-            className="opacity-0 animate-flip-in"
-            style={{ animationDelay: `${index * 100}ms` }}
-          >
-            <Card
-              className={`overflow-hidden border-0 transition-all duration-150 ease-in-out hover:scale-[1.01] hover:shadow-lg ${isTop3 ? 'shadow-md ring-1 ring-primary/20' : 'shadow-sm border'}`}
-            >
-              <CardContent className="p-0 flex items-center">
-                <div
-                  className={`w-12 flex justify-center font-bold ${index === 0 ? 'text-yellow-500 text-xl' : index === 1 ? 'text-gray-400 text-lg' : index === 2 ? 'text-amber-700 text-lg' : 'text-muted-foreground'}`}
-                >
-                  #{index + 1}
-                </div>
-                <div className="flex-1 flex items-center gap-4 py-3 px-4 bg-background">
-                  <Avatar className="h-10 w-10 border transition-transform duration-300 hover:scale-110">
-                    <AvatarImage
-                      src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user.name}`}
-                    />
-                    <AvatarFallback>{user.name.substring(0, 2).toUpperCase()}</AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <p className="font-semibold text-sm">{user.name}</p>
-                      {isTop3 && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-sm bg-primary/10 text-primary font-bold uppercase animate-pulse">
-                          Top
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {user.badges &&
-                        user.badges.slice(0, 3).map((badge) => (
-                          <Badge
-                            key={badge}
-                            variant="secondary"
-                            className="text-[10px] px-1 py-0 h-4 font-normal hover:bg-secondary/60 transition-colors"
-                          >
-                            {badge}
-                          </Badge>
-                        ))}
-                      {(user.badges?.length || 0) > 3 && (
-                        <Badge
-                          variant="secondary"
-                          className="text-[10px] px-1 py-0 h-4 font-normal"
-                        >
-                          +{user.badges.length - 3}
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="flex items-center justify-end gap-1 text-primary font-bold text-lg">
-                      <Star className="w-4 h-4 fill-primary" />
-                      {pts.toLocaleString('pt-BR')}
-                    </div>
-                    <span className="text-xs text-muted-foreground font-medium">pts</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )
-      })}
-    </div>
+  // Calcula limites de data
+  const now = new Date()
+  const weeklyPontuacoes = pontuacoes.filter(
+    (p) => new Date(p.created_at).getTime() > now.getTime() - 7 * 86400000,
+  )
+  const monthlyPontuacoes = pontuacoes.filter(
+    (p) => new Date(p.created_at).getTime() > now.getTime() - 30 * 86400000,
   )
 
-  const weeklyUsers = [...users].sort((a, b) => b.weeklyPoints - a.weeklyPoints)
-  const monthlyUsers = [...users].sort((a, b) => b.monthlyPoints - a.monthlyPoints)
-  const allTimeUsers = [...users].sort((a, b) => b.points - a.points)
-
   return (
-    <div className="max-w-2xl mx-auto space-y-6 pb-8 animate-fade-in-up">
+    <div className="max-w-4xl mx-auto space-y-6 pb-8 animate-fade-in-up">
       <div className="text-center py-6">
-        <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4 hover:scale-110 transition-transform duration-300">
+        <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4 hover:scale-110 transition-transform duration-300 shadow-inner">
           <Trophy
             className="w-8 h-8 text-yellow-600 animate-bounce-scale origin-bottom"
             style={{ animationDuration: '600ms' }}
           />
         </div>
-        <h1 className="text-2xl font-bold tracking-tight">Ranking de Captadores</h1>
-        <p className="text-muted-foreground mt-1">Acumule pontos e conquiste o topo do pódio.</p>
+        <h1 className="text-3xl font-black text-[#1A3A52] tracking-tight">Ranking Oficial</h1>
+        <p className="text-[#666666] mt-2 font-medium">
+          Acompanhe o desempenho e a pontuação dos captadores em tempo real.
+        </p>
       </div>
 
-      <Tabs defaultValue="weekly" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 h-[44px]">
-          <TabsTrigger value="weekly" className="h-full">
+      <Tabs defaultValue="alltime" className="w-full">
+        <TabsList className="grid w-full grid-cols-3 h-[48px] p-1 bg-[#F1F5F9] rounded-xl shadow-sm border border-[#E2E8F0]">
+          <TabsTrigger value="weekly" className="rounded-lg text-[13px] uppercase tracking-wide">
             Semanal
           </TabsTrigger>
-          <TabsTrigger value="monthly" className="h-full">
+          <TabsTrigger value="monthly" className="rounded-lg text-[13px] uppercase tracking-wide">
             Mensal
           </TabsTrigger>
-          <TabsTrigger value="alltime" className="h-full">
+          <TabsTrigger value="alltime" className="rounded-lg text-[13px] uppercase tracking-wide">
             Geral
           </TabsTrigger>
         </TabsList>
-        <TabsContent value="weekly">{renderList(weeklyUsers, 'weeklyPoints')}</TabsContent>
-        <TabsContent value="monthly">{renderList(monthlyUsers, 'monthlyPoints')}</TabsContent>
-        <TabsContent value="alltime">{renderList(allTimeUsers, 'points')}</TabsContent>
+        <TabsContent value="weekly" className="mt-6">
+          <RankingCaptadores pontuacoes={weeklyPontuacoes} users={users} title="Ranking Semanal" />
+        </TabsContent>
+        <TabsContent value="monthly" className="mt-6">
+          <RankingCaptadores pontuacoes={monthlyPontuacoes} users={users} title="Ranking Mensal" />
+        </TabsContent>
+        <TabsContent value="alltime" className="mt-6">
+          <RankingCaptadores
+            pontuacoes={pontuacoes}
+            users={users}
+            title="Ranking Geral (Todos os Tempos)"
+          />
+        </TabsContent>
       </Tabs>
     </div>
   )
