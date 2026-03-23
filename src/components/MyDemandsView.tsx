@@ -7,7 +7,7 @@ import { Users, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useSupabaseDemands } from '@/hooks/use-supabase-demands'
-import { ExpandableDemandCard } from '@/components/ExpandableDemandCard'
+import { ExpandableDemandCardSDR } from '@/components/ExpandableDemandCardSDR'
 import useAppStore from '@/stores/useAppStore'
 
 interface Props {
@@ -21,9 +21,9 @@ const FILTERS: FilterDef[] = [
     options: [
       { value: 'Todos', label: 'Todos os Status' },
       { value: 'aberta', label: 'Aberta', icon: '🟢' },
-      { value: 'atendida', label: 'Atendida', icon: '🔵' },
+      { value: 'atendida', label: 'Ganho / Atendida', icon: '🔵' },
       { value: 'sem_resposta_24h', label: 'Sem Resposta', icon: '🟡' },
-      { value: 'impossivel', label: 'Impossível', icon: '⚪' },
+      { value: 'impossivel', label: 'Perdida', icon: '⚪' },
     ],
   },
   {
@@ -62,8 +62,6 @@ export function MyDemandsView({ filterType }: Props) {
     bairro: '',
   })
 
-  // Setar estado instantaneamente sem debounce ou isFiltering flags
-  // para evitar flicker ("piscar") a interface
   const handleFilterChange = (newF: Record<string, string>) => {
     setFilters(newF)
   }
@@ -150,9 +148,9 @@ export function MyDemandsView({ filterType }: Props) {
         </div>
 
         {loading ? (
-          <div className="flex flex-col gap-[16px] w-full">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-[16px] w-full items-start">
             {[1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-[140px] w-full rounded-[12px] animate-fast-pulse" />
+              <Skeleton key={i} className="h-[200px] w-full rounded-[12px] animate-fast-pulse" />
             ))}
           </div>
         ) : filteredDemands.length === 0 ? (
@@ -191,9 +189,9 @@ export function MyDemandsView({ filterType }: Props) {
             )}
           </div>
         ) : (
-          <div className="flex flex-col gap-[16px] w-full">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-[16px] w-full items-start">
             {filteredDemands.map((demand) => (
-              <ExpandableDemandCard key={demand.id} demand={demand} onUpdate={refresh} />
+              <ExpandableDemandCardSDR key={demand.id} demand={demand} onUpdate={refresh} />
             ))}
           </div>
         )}

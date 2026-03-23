@@ -24,6 +24,12 @@ export interface SupabaseDemand {
   created_at: string
   tipo: 'Aluguel' | 'Venda'
   imoveis_captados: SupabaseCapturedProperty[]
+  telefone?: string
+  email?: string
+  dormitorios?: number
+  vagas_estacionamento?: number
+  observacoes?: string
+  tipo_imovel?: string
 }
 
 export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
@@ -41,13 +47,11 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
 
         const table = type === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
 
-        // RLS safely limits returned rows to the ones the user is allowed to see
         const query = supabase
           .from(table)
           .select('*, imoveis_captados(*)')
           .order('created_at', { ascending: false })
 
-        // Fetch users locally to map captador names without complex joins
         const { data: usersData } = await supabase.from('users').select('id, nome')
         const userMap = new Map((usersData || []).map((u) => [u.id, u.nome]))
 
@@ -63,9 +67,15 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
             const fetchedFormatted = data.map((d: any) => ({
               id: d.id,
               nome_cliente: d.nome_cliente || d.cliente_nome || 'Cliente',
+              telefone: d.telefone || '',
+              email: d.email || '',
               bairros: d.bairros || d.localizacoes || [],
               valor_minimo: d.valor_minimo || 0,
               valor_maximo: d.valor_maximo || d.orcamento_max || 0,
+              dormitorios: d.dormitorios || 0,
+              vagas_estacionamento: d.vagas_estacionamento || 0,
+              observacoes: d.observacoes || d.necessidades_especificas || '',
+              tipo_imovel: d.tipo_imovel || 'Casa',
               nivel_urgencia: d.nivel_urgencia || d.urgencia || 'Média',
               status_demanda: d.status_demanda || 'aberta',
               created_at: d.created_at || new Date().toISOString(),
@@ -76,7 +86,6 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
               })),
             }))
 
-            // Preserva optimistic updates para evitar flicker
             const fetchedIds = new Set(fetchedFormatted.map((f) => f.id))
             const recentLocal = prev.filter(
               (p) => !fetchedIds.has(p.id) && Date.now() - new Date(p.created_at).getTime() < 5000,
@@ -128,9 +137,15 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
             const newDemand: SupabaseDemand = {
               id: d.id,
               nome_cliente: d.nome_cliente || d.cliente_nome || 'Cliente',
+              telefone: d.telefone || '',
+              email: d.email || '',
               bairros: d.bairros || d.localizacoes || [],
               valor_minimo: d.valor_minimo || 0,
               valor_maximo: d.valor_maximo || d.orcamento_max || 0,
+              dormitorios: d.dormitorios || 0,
+              vagas_estacionamento: d.vagas_estacionamento || 0,
+              observacoes: d.observacoes || d.necessidades_especificas || '',
+              tipo_imovel: d.tipo_imovel || 'Casa',
               nivel_urgencia: d.nivel_urgencia || d.urgencia || 'Média',
               status_demanda: d.status_demanda || 'aberta',
               created_at: d.created_at || new Date().toISOString(),
@@ -148,9 +163,22 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
                     ...x,
                     status_demanda: d.status_demanda || x.status_demanda,
                     nome_cliente: d.nome_cliente || d.cliente_nome || x.nome_cliente,
+                    telefone: d.telefone !== undefined ? d.telefone : x.telefone,
+                    email: d.email !== undefined ? d.email : x.email,
                     bairros: d.bairros || d.localizacoes || x.bairros,
-                    valor_minimo: d.valor_minimo || x.valor_minimo,
+                    valor_minimo: d.valor_minimo !== undefined ? d.valor_minimo : x.valor_minimo,
                     valor_maximo: d.valor_maximo || d.orcamento_max || x.valor_maximo,
+                    dormitorios: d.dormitorios !== undefined ? d.dormitorios : x.dormitorios,
+                    vagas_estacionamento:
+                      d.vagas_estacionamento !== undefined
+                        ? d.vagas_estacionamento
+                        : x.vagas_estacionamento,
+                    observacoes:
+                      d.observacoes !== undefined
+                        ? d.observacoes
+                        : d.necessidades_especificas !== undefined
+                          ? d.necessidades_especificas
+                          : x.observacoes,
                     nivel_urgencia: d.nivel_urgencia || d.urgencia || x.nivel_urgencia,
                   }
                 : x,
@@ -159,8 +187,6 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
         } else if (payload.eventType === 'DELETE') {
           setDemands((prev) => prev.filter((x) => x.id !== payload.old.id))
         }
-
-        // Garante que a relação com imoveis_captados seja consolidada
         debouncedFetch(true)
       })
       .on(
@@ -203,13 +229,11 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
               }),
             )
           }
-
           debouncedFetch(true)
         },
       )
       .subscribe()
 
-    // Optimistic Update: Demanda Criada (0 delay na interface)
     const handleDemandaCreated = (e: Event) => {
       const customEvent = e as CustomEvent
       if (customEvent.detail && customEvent.detail.tipo === type) {
@@ -220,9 +244,15 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
             const newDemand: SupabaseDemand = {
               id: d.id,
               nome_cliente: d.nome_cliente || d.cliente_nome || 'Cliente',
+              telefone: d.telefone || '',
+              email: d.email || '',
               bairros: d.bairros || d.localizacoes || [],
               valor_minimo: d.valor_minimo || 0,
               valor_maximo: d.valor_maximo || d.orcamento_max || 0,
+              dormitorios: d.dormitorios || 0,
+              vagas_estacionamento: d.vagas_estacionamento || 0,
+              observacoes: d.observacoes || d.necessidades_especificas || '',
+              tipo_imovel: d.tipo_imovel || 'Casa',
               nivel_urgencia: d.nivel_urgencia || d.urgencia || 'Média',
               status_demanda: d.status_demanda || 'aberta',
               created_at: d.created_at || new Date().toISOString(),
@@ -236,7 +266,44 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
       debouncedFetch(true)
     }
 
-    // Optimistic Update: Validar/Rejeitar Imóvel
+    const handleDemandaUpdated = (e: Event) => {
+      const customEvent = e as CustomEvent
+      if (customEvent.detail && customEvent.detail.tipo === type) {
+        const d = customEvent.detail.data
+        if (d) {
+          setDemands((prev) =>
+            prev.map((x) =>
+              x.id === d.id
+                ? {
+                    ...x,
+                    nome_cliente: d.nome_cliente || d.cliente_nome || x.nome_cliente,
+                    telefone: d.telefone !== undefined ? d.telefone : x.telefone,
+                    email: d.email !== undefined ? d.email : x.email,
+                    bairros: d.bairros || d.localizacoes || x.bairros,
+                    valor_minimo: d.valor_minimo !== undefined ? d.valor_minimo : x.valor_minimo,
+                    valor_maximo: d.valor_maximo || d.orcamento_max || x.valor_maximo,
+                    dormitorios: d.dormitorios !== undefined ? d.dormitorios : x.dormitorios,
+                    vagas_estacionamento:
+                      d.vagas_estacionamento !== undefined
+                        ? d.vagas_estacionamento
+                        : x.vagas_estacionamento,
+                    observacoes:
+                      d.observacoes !== undefined
+                        ? d.observacoes
+                        : d.necessidades_especificas !== undefined
+                          ? d.necessidades_especificas
+                          : x.observacoes,
+                    nivel_urgencia: d.nivel_urgencia || d.urgencia || x.nivel_urgencia,
+                    status_demanda: d.status_demanda || x.status_demanda,
+                  }
+                : x,
+            ),
+          )
+        }
+      }
+      debouncedFetch(true)
+    }
+
     const handleImovelAction = (e: Event) => {
       const customEvent = e as CustomEvent
       const { propId, status, demandId, tipo } = customEvent.detail
@@ -265,12 +332,14 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
     }
 
     window.addEventListener('demanda-created', handleDemandaCreated)
+    window.addEventListener('demanda-updated', handleDemandaUpdated)
     window.addEventListener('imovel-action', handleImovelAction)
 
     return () => {
       mounted = false
       supabase.removeChannel(channel)
       window.removeEventListener('demanda-created', handleDemandaCreated)
+      window.removeEventListener('demanda-updated', handleDemandaUpdated)
       window.removeEventListener('imovel-action', handleImovelAction)
       if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current)
     }
