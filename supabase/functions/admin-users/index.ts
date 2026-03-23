@@ -14,20 +14,27 @@ Deno.serve(async (req: Request) => {
       {
         auth: {
           autoRefreshToken: false,
-          persistSession: false
-        }
-      }
+          persistSession: false,
+        },
+      },
     )
 
     const authHeader = req.headers.get('Authorization')!
     const token = authHeader.replace('Bearer ', '')
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token)
+    const {
+      data: { user },
+      error: authError,
+    } = await supabaseClient.auth.getUser(token)
 
     if (authError || !user) {
       throw new Error('Unauthorized')
     }
 
-    const { data: profile } = await supabaseClient.from('users').select('role').eq('id', user.id).single()
+    const { data: profile } = await supabaseClient
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single()
     if (profile?.role !== 'admin' && profile?.role !== 'gestor') {
       throw new Error('Forbidden')
     }
@@ -37,13 +44,15 @@ Deno.serve(async (req: Request) => {
 
     if (action === 'createUser') {
       const { email, password, name, role, status } = payload
-      
-      const { data: authData, error: createAuthError } = await supabaseClient.auth.admin.createUser({
-        email,
-        password,
-        email_confirm: true,
-        user_metadata: { name, role }
-      })
+
+      const { data: authData, error: createAuthError } = await supabaseClient.auth.admin.createUser(
+        {
+          email,
+          password,
+          email_confirm: true,
+          user_metadata: { name, role },
+        },
+      )
 
       if (createAuthError) throw createAuthError
 
@@ -52,7 +61,7 @@ Deno.serve(async (req: Request) => {
         email,
         nome: name,
         role,
-        status: status || 'ativo'
+        status: status || 'ativo',
       })
 
       if (dbError) {
@@ -61,38 +70,42 @@ Deno.serve(async (req: Request) => {
       }
 
       return new Response(JSON.stringify({ user: authData.user, id: authData.user.id }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
 
     if (action === 'updateUser') {
       const { id, email, password, name, role, status } = payload
-      
+
       const authUpdates: any = {}
       if (email) authUpdates.email = email
       if (password) authUpdates.password = password
       if (name || role) authUpdates.user_metadata = { name, role }
-      
+
       if (status === 'inativo' || status === 'bloqueado') {
-        authUpdates.ban_duration = '876000h' 
+        authUpdates.ban_duration = '876000h'
       } else if (status === 'ativo') {
         authUpdates.ban_duration = 'none'
       }
 
-      const { data: authData, error: updateAuthError } = await supabaseClient.auth.admin.updateUserById(id, authUpdates)
+      const { data: authData, error: updateAuthError } =
+        await supabaseClient.auth.admin.updateUserById(id, authUpdates)
       if (updateAuthError) throw updateAuthError
 
-      const { error: dbError } = await supabaseClient.from('users').update({
-        email,
-        nome: name,
-        role,
-        status
-      }).eq('id', id)
+      const { error: dbError } = await supabaseClient
+        .from('users')
+        .update({
+          email,
+          nome: name,
+          role,
+          status,
+        })
+        .eq('id', id)
 
       if (dbError) throw dbError
 
       return new Response(JSON.stringify({ user: authData.user }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
 
@@ -100,7 +113,7 @@ Deno.serve(async (req: Request) => {
   } catch (error: any) {
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 400
+      status: 400,
     })
   }
 })
