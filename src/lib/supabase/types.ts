@@ -743,6 +743,8 @@ export const Constants = {
 // Table: users
 //   Policy "Admin sees all users" (ALL, PERMISSIVE) roles={authenticated}
 //     USING: ((((current_setting('request.jwt.claims'::text, true))::jsonb -> 'user_metadata'::text) ->> 'role'::text) = ANY (ARRAY['admin'::text, 'gestor'::text]))
+//   Policy "Anon can read users" (SELECT, PERMISSIVE) roles={anon}
+//     USING: true
 //   Policy "Authenticated users can read users" (SELECT, PERMISSIVE) roles={authenticated}
 //     USING: true
 //   Policy "Users see own profile" (SELECT, PERMISSIVE) roles={public}
