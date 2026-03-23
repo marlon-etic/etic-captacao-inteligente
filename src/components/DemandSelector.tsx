@@ -1,6 +1,23 @@
-import { useState, useMemo } from 'react'
-import useAppStore from '@/stores/useAppStore'
+import { useState, useMemo, useEffect } from 'react'
+import { Card } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import {
+  Search,
+  MapPin,
+  DollarSign,
+  BedDouble,
+  Car,
+  CheckCircle2,
+  Building2,
+  Home,
+} from 'lucide-react'
+import { useSupabaseDemands, SupabaseDemand } from '@/hooks/use-supabase-demands'
+import { cn } from '@/lib/utils'
+import { Slider } from '@/components/ui/slider'
 import {
   Select,
   SelectContent,
@@ -8,204 +25,138 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Slider } from '@/components/ui/slider'
-import { Button } from '@/components/ui/button'
-import { MapPin, BedDouble, Car, CheckCircle2, Info, Star, Search } from 'lucide-react'
-import { cn } from '@/lib/utils'
 
-interface DemandSelectorProps {
-  propertyData: {
-    type: string
-    neighborhoods: string[]
-    value: number
-    bedrooms: number
-    parkingSpots: number
+interface Props {
+  propertyData?: {
+    neighborhood?: string
+    price?: number
+    bedrooms?: number
+    parking?: number
+    type?: 'Venda' | 'Aluguel'
   }
-  onSelect: (demandId: string) => void
+  onSelectDemand: (demandId: string) => void
 }
 
-const formatPrice = (val: number) => {
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-    maximumFractionDigits: 0,
-  }).format(val)
-}
+export function DemandSelector({ propertyData, onSelectDemand }: Props) {
+  // Always fetch both, or fetch based on property type if available
+  const { demands: aluguelDemands } = useSupabaseDemands('Aluguel')
+  const { demands: vendasDemands } = useSupabaseDemands('Venda')
 
-const getUrgencyData = (demand: any) => {
-  const u = (demand.nivel_urgencia || demand.urgencia || demand.timeframe || '').toLowerCase()
-  if (u.includes('alta') || u.includes('urgente') || u.includes('15')) {
-    return { text: u || 'Alta', classes: 'text-[#EF4444] bg-[#FEF2F2] border-[#EF4444]/30' }
-  }
-  if (u.includes('média') || u.includes('media') || u.includes('30')) {
-    return { text: u || 'Média', classes: 'text-[#F59E0B] bg-[#FFFBEB] border-[#F59E0B]/30' }
-  }
-  return { text: u || 'Baixa', classes: 'text-[#10B981] bg-[#ECFDF5] border-[#10B981]/30' }
-}
-
-export function DemandSelector({ propertyData, onSelect }: DemandSelectorProps) {
-  const { demands } = useAppStore()
-
-  // Only show active demands that need properties
-  const pendingDemands = useMemo(() => {
-    return demands.filter((d) => ['Pendente', 'aberta', 'Aberta'].includes(d.status))
-  }, [demands])
-
-  // Extract all unique neighborhoods from active demands to populate the filter
-  const allNeighborhoods = useMemo(() => {
-    const set = new Set<string>()
-    pendingDemands.forEach((d) => {
-      if (Array.isArray(d.location)) d.location.forEach((l) => set.add(l))
-      else if (typeof d.location === 'string') set.add(d.location)
-    })
-    propertyData.neighborhoods.forEach((l) => set.add(l)) // Ensure property neighborhoods are included
-    return Array.from(set).sort()
-  }, [pendingDemands, propertyData.neighborhoods])
-
-  // Initial filter state based on property data
-  const [fBairro, setFBairro] = useState<string>(propertyData.neighborhoods[0] || 'Todos')
-  const [fBudget, setFBudget] = useState<number>(propertyData.value || 0)
-  const [fDorms, setFDorms] = useState<string>(
-    propertyData.bedrooms ? String(propertyData.bedrooms) : 'Todos',
+  const allDemands = useMemo(
+    () => [...aluguelDemands, ...vendasDemands],
+    [aluguelDemands, vendasDemands],
   )
-  const [fVagas, setFVagas] = useState<string>(
-    propertyData.parkingSpots ? String(propertyData.parkingSpots) : 'Todos',
-  )
-  const [fPrioritaria, setFPrioritaria] = useState<boolean>(false)
 
-  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [bairro, setBairro] = useState(propertyData?.neighborhood || '')
+  const [budget, setBudget] = useState<number[]>([
+    0,
+    Math.max(propertyData?.price ? propertyData.price * 2 : 10000000, 1000000),
+  ])
+  const [dormitorios, setDormitorios] = useState(propertyData?.bedrooms?.toString() || 'Todos')
+  const [vagas, setVagas] = useState(propertyData?.parking?.toString() || 'Todos')
+  const [tipo, setTipo] = useState(propertyData?.type || 'Todos')
 
-  // Dynamic filtering in real-time
+  const [selectedDemand, setSelectedDemand] = useState<SupabaseDemand | null>(null)
+
+  useEffect(() => {
+    if (propertyData?.price) {
+      setBudget([0, propertyData.price * 1.5])
+    }
+  }, [propertyData])
+
   const filteredDemands = useMemo(() => {
-    return pendingDemands
-      .filter((d) => {
-        // Type Match (Sale vs Rent)
-        if (d.type && propertyData.type && d.type !== propertyData.type) return false
+    return allDemands.filter((d) => {
+      if (d.status_demanda !== 'aberta') return false
 
-        // Neighborhood Match
-        if (fBairro && fBairro !== 'Todos') {
-          const locs = Array.isArray(d.location) ? d.location : [d.location].filter(Boolean)
-          if (!locs.some((l) => l?.toLowerCase().includes(fBairro.toLowerCase()))) return false
-        }
+      if (tipo !== 'Todos' && d.tipo !== tipo) return false
 
-        // Budget Match: The demand's max budget must be greater than or equal to the filtered minimum budget
-        if (fBudget > 0) {
-          const maxB = d.maxBudget || d.budget || 0
-          if (maxB > 0 && maxB < fBudget) return false
-        }
+      if (bairro && bairro.trim() !== '') {
+        const searchBairro = bairro.toLowerCase()
+        const hasMatch = d.bairros.some((b) => b.toLowerCase().includes(searchBairro))
+        if (!hasMatch) return false
+      }
 
-        // Bedrooms Match: Demand should not ask for more bedrooms than the property has
-        if (fDorms && fDorms !== 'Todos') {
-          if ((d.bedrooms || 0) > parseInt(fDorms)) return false
-        }
+      if (propertyData?.price) {
+        // If property has price, demand must afford it
+        if (d.valor_maximo > 0 && propertyData.price > d.valor_maximo) return false
+      } else {
+        // If filtering by slider
+        if (d.valor_maximo > 0 && d.valor_maximo < budget[0]) return false
+      }
 
-        // Parking Match: Demand should not ask for more parking spots than the property has
-        if (fVagas && fVagas !== 'Todos') {
-          if ((d.parkingSpots || 0) > parseInt(fVagas)) return false
-        }
+      if (dormitorios !== 'Todos') {
+        const dormNum = parseInt(dormitorios)
+        if (d.dormitorios && d.dormitorios > dormNum) return false // Demand wants more rooms than property has
+      }
 
-        // Priority Match
-        if (fPrioritaria && !d.isPrioritized && !(d as any).is_prioritaria) return false
+      if (vagas !== 'Todos') {
+        const vagasNum = parseInt(vagas)
+        if (d.vagas_estacionamento && d.vagas_estacionamento > vagasNum) return false
+      }
 
-        return true
-      })
-      .sort((a, b) => {
-        // Prioritize priority demands
-        const aPrio = a.isPrioritized || (a as any).is_prioritaria ? 1 : 0
-        const bPrio = b.isPrioritized || (b as any).is_prioritaria ? 1 : 0
-        return bPrio - aPrio
-      })
-      .slice(0, 30) // Limit to 30 for UI performance
-  }, [pendingDemands, fBairro, fBudget, fDorms, fVagas, fPrioritaria, propertyData.type])
+      return true
+    })
+  }, [allDemands, bairro, budget, dormitorios, vagas, tipo, propertyData])
 
-  const maxSliderValue = Math.max(5000000, propertyData.value * 1.5 || 1000000)
+  const formatPrice = (val: number) => {
+    return new Intl.NumberFormat('pt-BR', { notation: 'compact', compactDisplay: 'short' }).format(
+      val,
+    )
+  }
+
+  const handleSelect = (d: SupabaseDemand) => {
+    setSelectedDemand(d)
+  }
+
+  const confirmSelection = () => {
+    if (selectedDemand) {
+      onSelectDemand(selectedDemand.id)
+    }
+  }
 
   return (
-    <div className="flex flex-col h-full bg-white animate-in fade-in duration-300">
-      {/* Intelligent Filters Area */}
-      <div className="bg-[#F8FAFC] p-4 rounded-xl border border-[#E2E8F0] mb-4 space-y-4 shadow-sm">
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-sm font-black text-[#1A3A52] uppercase tracking-wide flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-[#10B981] animate-pulse" /> Filtros
-            Inteligentes
-          </h3>
-          <button
-            onClick={() => setFPrioritaria(!fPrioritaria)}
-            className={cn(
-              'text-xs font-bold px-2 py-1 rounded-md border flex items-center gap-1 transition-colors',
-              fPrioritaria
-                ? 'bg-[#FCD34D] text-[#854D0E] border-[#F59E0B]'
-                : 'bg-white text-[#64748B] border-[#E2E8F0] hover:bg-[#F1F5F9]',
-            )}
-          >
-            <Star className={cn('w-3 h-3', fPrioritaria ? 'fill-current' : '')} />
-            Prioritárias
-          </button>
-        </div>
+    <div className="flex flex-col bg-[#F8FAFC] rounded-[16px] border border-[#E5E5E5] overflow-hidden">
+      {/* Filtros Inteligentes */}
+      <div className="p-4 bg-white border-b border-[#E5E5E5] flex flex-col gap-4">
+        <h4 className="font-black text-[#1A3A52] text-[14px] flex items-center gap-2">
+          <Search className="w-4 h-4" /> Encontrar Demanda Compatível
+        </h4>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="space-y-1.5">
-            <Label className="text-[11px] font-bold text-[#64748B] uppercase">
-              Bairro da Demanda
-            </Label>
-            <Select value={fBairro} onValueChange={setFBairro}>
-              <SelectTrigger className="min-h-[44px] bg-white border-[#CBD5E1]">
-                <SelectValue placeholder="Bairro" />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="space-y-1">
+            <Label className="text-[11px] font-bold text-[#666666]">Tipo</Label>
+            <Select value={tipo} onValueChange={setTipo}>
+              <SelectTrigger className="h-[40px] text-[13px]">
+                <SelectValue placeholder="Tipo" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Todos">Qualquer Bairro</SelectItem>
-                {allNeighborhoods.map((b) => (
-                  <SelectItem key={b} value={b}>
-                    {b}
-                  </SelectItem>
-                ))}
+                <SelectItem value="Todos">Todos</SelectItem>
+                <SelectItem value="Venda">Venda</SelectItem>
+                <SelectItem value="Aluguel">Aluguel</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          <div className="space-y-2.5">
-            <div className="flex items-center justify-between">
-              <Label className="text-[11px] font-bold text-[#64748B] uppercase">
-                Budget do Cliente
-              </Label>
-              <span className="text-[12px] font-black text-[#10B981]">{formatPrice(fBudget)}+</span>
-            </div>
-            <Slider
-              value={[fBudget]}
-              max={maxSliderValue}
-              step={10000}
-              onValueChange={(v) => setFBudget(v[0])}
-              className="py-1"
+          <div className="space-y-1">
+            <Label className="text-[11px] font-bold text-[#666666]">Bairro</Label>
+            <Input
+              value={bairro}
+              onChange={(e) => setBairro(e.target.value)}
+              placeholder="Ex: Jardins"
+              className="h-[40px] text-[13px]"
             />
           </div>
 
-          <div className="space-y-1.5">
-            <Label className="text-[11px] font-bold text-[#64748B] uppercase">
-              Máx. Dormitórios
+          <div className="space-y-1">
+            <Label className="text-[11px] font-bold text-[#666666]">
+              Dormitórios (Máx. Exigido)
             </Label>
-            <Select value={fDorms} onValueChange={setFDorms}>
-              <SelectTrigger className="min-h-[44px] bg-white border-[#CBD5E1]">
-                <SelectValue placeholder="Dormitórios" />
+            <Select value={dormitorios} onValueChange={setDormitorios}>
+              <SelectTrigger className="h-[40px] text-[13px]">
+                <SelectValue placeholder="Dorms" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Todos">Qualquer</SelectItem>
-                <SelectItem value="1">Até 1</SelectItem>
-                <SelectItem value="2">Até 2</SelectItem>
-                <SelectItem value="3">Até 3</SelectItem>
-                <SelectItem value="4">Até 4</SelectItem>
-                <SelectItem value="5">Até 5+</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label className="text-[11px] font-bold text-[#64748B] uppercase">Máx. Vagas</Label>
-            <Select value={fVagas} onValueChange={setFVagas}>
-              <SelectTrigger className="min-h-[44px] bg-white border-[#CBD5E1]">
-                <SelectValue placeholder="Vagas" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Todos">Qualquer</SelectItem>
+                <SelectItem value="Todos">Indiferente</SelectItem>
                 <SelectItem value="1">Até 1</SelectItem>
                 <SelectItem value="2">Até 2</SelectItem>
                 <SelectItem value="3">Até 3</SelectItem>
@@ -213,132 +164,175 @@ export function DemandSelector({ propertyData, onSelect }: DemandSelectorProps) 
               </SelectContent>
             </Select>
           </div>
+
+          <div className="space-y-1">
+            <Label className="text-[11px] font-bold text-[#666666]">Vagas (Máx. Exigido)</Label>
+            <Select value={vagas} onValueChange={setVagas}>
+              <SelectTrigger className="h-[40px] text-[13px]">
+                <SelectValue placeholder="Vagas" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Todos">Indiferente</SelectItem>
+                <SelectItem value="1">Até 1</SelectItem>
+                <SelectItem value="2">Até 2</SelectItem>
+                <SelectItem value="3">Até 3+</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
 
-      {/* Results List */}
-      <div className="flex-1">
-        {filteredDemands.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-center bg-[#F8FAFC] rounded-xl border border-dashed border-[#CBD5E1]">
-            <Search className="w-12 h-12 text-[#94A3B8] mb-3 opacity-50" />
-            <h4 className="text-[16px] font-bold text-[#334155] mb-1">
-              Nenhuma demanda compatível
-            </h4>
-            <p className="text-[14px] text-[#64748B] max-w-sm">
-              Ajuste os filtros acima para encontrar clientes que procuram um imóvel como este.
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-3 pb-8">
-            <p className="text-[13px] font-bold text-[#64748B] mb-2">
-              Mostrando <span className="text-[#1A3A52]">{filteredDemands.length}</span> sugestões
-            </p>
+      {/* Lista de Demandas Sugeridas */}
+      <div className="flex-1 flex flex-col md:flex-row h-[400px]">
+        {/* Lista Scrollável */}
+        <ScrollArea className="flex-1 border-r border-[#E5E5E5] bg-[#F5F5F5]">
+          <div className="p-3 flex flex-col gap-2">
+            <div className="text-[11px] font-bold text-[#999999] uppercase tracking-wider mb-1 px-1">
+              {filteredDemands.length} Sugestões Encontradas
+            </div>
 
-            {filteredDemands.map((d) => {
-              const isExpanded = expandedId === d.id
-              const urgency = getUrgencyData(d)
-              const capturedCount = d.capturedProperties?.length || 0
-              const isPrioritized = d.isPrioritized || (d as any).is_prioritaria
+            {filteredDemands.length === 0 ? (
+              <div className="text-center py-8 text-[#999999] text-[13px] font-medium">
+                Nenhuma demanda aberta compatível.
+              </div>
+            ) : (
+              filteredDemands.slice(0, 10).map((d) => {
+                const isSelected = selectedDemand?.id === d.id
+                const capturedCount = d.imoveis_captados?.length || 0
 
-              return (
-                <div
-                  key={d.id}
-                  onClick={() => setExpandedId(isExpanded ? null : d.id)}
-                  className={cn(
-                    'flex flex-col rounded-[12px] border-[1.5px] transition-all cursor-pointer overflow-hidden group',
-                    isExpanded
-                      ? 'border-[#10B981] bg-[#F0FDF4] shadow-[0_4px_12px_rgba(16,185,129,0.1)]'
-                      : 'border-[#E2E8F0] bg-white hover:border-[#CBD5E1] hover:shadow-sm',
-                  )}
-                >
-                  {/* Collapsed/Header View */}
-                  <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center flex-wrap gap-2 mb-1.5">
-                        <h4 className="text-[16px] font-bold text-[#1A3A52] leading-tight">
-                          {d.clientName || 'Cliente Confidencial'}
-                        </h4>
-                        {isPrioritized && (
-                          <span className="bg-[#FCD34D] text-[#854D0E] border border-[#F59E0B]/30 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-1">
-                            <Star className="w-3 h-3 fill-current" /> Prioritária
-                          </span>
-                        )}
-                        <span
-                          className={cn(
-                            'px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border',
-                            urgency.classes,
-                          )}
-                        >
-                          {urgency.text}
-                        </span>
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-2">
-                        <span className="flex items-center gap-1.5 text-[13px] font-medium text-[#64748B]">
-                          <MapPin className="w-4 h-4 text-pink-500" />
-                          <span className="line-clamp-1 max-w-[200px]">
-                            {(d.location || []).join(', ')}
-                          </span>
-                        </span>
-                        <div className="flex items-center gap-3">
-                          <span className="flex items-center gap-1 text-[12px] font-bold text-[#475569] bg-[#F1F5F9] px-2 py-1 rounded-md">
-                            <BedDouble className="w-3.5 h-3.5 text-[#94A3B8]" />{' '}
-                            {d.bedrooms || 'Indif.'}
-                          </span>
-                          <span className="flex items-center gap-1 text-[12px] font-bold text-[#475569] bg-[#F1F5F9] px-2 py-1 rounded-md">
-                            <Car className="w-3.5 h-3.5 text-[#94A3B8]" />{' '}
-                            {d.parkingSpots || 'Indif.'}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center shrink-0">
-                      <div className="text-left sm:text-right">
-                        <p className="text-[18px] font-black text-[#10B981] leading-none">
-                          {formatPrice(d.maxBudget || d.budget || 0)}
-                        </p>
-                        <p className="text-[11px] font-bold text-[#94A3B8] uppercase mt-1">
-                          Orçamento Máx.
-                        </p>
-                      </div>
+                return (
+                  <div
+                    key={d.id}
+                    onClick={() => handleSelect(d)}
+                    className={cn(
+                      'p-3 rounded-[12px] border cursor-pointer transition-all duration-200 text-left',
+                      isSelected
+                        ? 'bg-white border-[#10B981] shadow-[0_0_0_2px_rgba(16,185,129,0.2)]'
+                        : 'bg-white border-[#E5E5E5] hover:border-[#1A3A52]/30',
+                    )}
+                  >
+                    <div className="flex justify-between items-start gap-2 mb-1.5">
+                      <span className="font-bold text-[#1A3A52] text-[14px] line-clamp-1">
+                        {d.nome_cliente}
+                      </span>
                       {capturedCount > 0 && (
-                        <span className="mt-2 sm:mt-1 bg-[#EFF6FF] text-[#2563EB] border border-[#BFDBFE] px-2.5 py-1 rounded-full text-[10px] font-bold inline-block">
-                          {capturedCount} Imóvel(ns) Vinculado(s)
-                        </span>
+                        <Badge className="bg-[#4CAF50]/10 text-[#2E7D32] border-none text-[10px] px-1.5 h-5 shrink-0">
+                          {capturedCount} captações
+                        </Badge>
                       )}
+                    </div>
+                    <div className="flex items-center gap-1.5 text-[12px] text-[#666666] mb-1">
+                      <MapPin className="w-3.5 h-3.5" />
+                      <span className="truncate">{d.bairros?.join(', ')}</span>
+                    </div>
+                    <div className="flex justify-between items-center mt-2">
+                      <span className="text-[13px] font-black text-[#10B981]">
+                        Até {formatPrice(d.valor_maximo)}
+                      </span>
+                      <span className="text-[11px] font-bold text-[#999999]">{d.tipo}</span>
                     </div>
                   </div>
-
-                  {/* Expanded Preview Details */}
-                  {isExpanded && (
-                    <div className="px-4 pb-4 pt-2 border-t border-[#10B981]/20 bg-[#F0FDF4] animate-in slide-in-from-top-4 duration-200">
-                      {(d.description || (d as any).observacoes) && (
-                        <div className="bg-white p-3 rounded-[8px] border border-[#10B981]/20 mb-4 flex gap-2.5 shadow-sm mt-2">
-                          <Info className="w-4 h-4 shrink-0 text-[#10B981] mt-0.5" />
-                          <p className="text-[13px] text-[#064E3B] font-medium leading-relaxed">
-                            {d.description || (d as any).observacoes}
-                          </p>
-                        </div>
-                      )}
-
-                      <Button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onSelect(d.id)
-                        }}
-                        className="w-full min-h-[48px] bg-[#10B981] hover:bg-[#059669] text-white font-black text-[15px] shadow-[0_4px_12px_rgba(16,185,129,0.3)] transition-transform hover:scale-[1.01] active:scale-[0.98]"
-                      >
-                        <CheckCircle2 className="w-5 h-5 mr-2" />
-                        SELECIONAR ESTA DEMANDA
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              )
-            })}
+                )
+              })
+            )}
           </div>
-        )}
+        </ScrollArea>
+
+        {/* Preview Expandido */}
+        <div className="w-full md:w-[320px] bg-white p-4 flex flex-col shrink-0">
+          {selectedDemand ? (
+            <div className="flex flex-col h-full animate-fade-in">
+              <h5 className="font-black text-[#1A3A52] text-[16px] mb-4 border-b border-[#F5F5F5] pb-2">
+                Preview da Demanda
+              </h5>
+
+              <div className="space-y-3 flex-1 overflow-y-auto pr-1">
+                <div>
+                  <span className="text-[11px] text-[#999999] font-bold uppercase block mb-0.5">
+                    Cliente
+                  </span>
+                  <span className="text-[14px] text-[#1A3A52] font-bold">
+                    {selectedDemand.nome_cliente}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-[11px] text-[#999999] font-bold uppercase block mb-0.5">
+                    Tipo
+                  </span>
+                  <span className="text-[14px] text-[#333333] font-medium flex items-center gap-1">
+                    {selectedDemand.tipo === 'Venda' ? (
+                      <Building2 className="w-4 h-4" />
+                    ) : (
+                      <Home className="w-4 h-4" />
+                    )}
+                    {selectedDemand.tipo}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-[11px] text-[#999999] font-bold uppercase block mb-0.5">
+                    Bairros
+                  </span>
+                  <span className="text-[14px] text-[#333333] font-medium leading-snug block">
+                    {selectedDemand.bairros?.join(', ')}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-[11px] text-[#999999] font-bold uppercase block mb-0.5">
+                    Orçamento
+                  </span>
+                  <span className="text-[16px] text-[#10B981] font-black">
+                    R$ {formatPrice(selectedDemand.valor_minimo)} - R${' '}
+                    {formatPrice(selectedDemand.valor_maximo)}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="bg-[#F5F5F5] p-2 rounded-lg">
+                    <span className="text-[10px] text-[#999999] font-bold uppercase block">
+                      Dormitórios
+                    </span>
+                    <span className="text-[14px] text-[#333333] font-bold">
+                      {selectedDemand.dormitorios || 'Indif.'}
+                    </span>
+                  </div>
+                  <div className="bg-[#F5F5F5] p-2 rounded-lg">
+                    <span className="text-[10px] text-[#999999] font-bold uppercase block">
+                      Vagas
+                    </span>
+                    <span className="text-[14px] text-[#333333] font-bold">
+                      {selectedDemand.vagas_estacionamento || 'Indif.'}
+                    </span>
+                  </div>
+                </div>
+
+                {selectedDemand.observacoes && (
+                  <div className="bg-[#E8F5E9] p-3 rounded-lg text-[12px] text-[#065F46] font-medium border border-[#A7F3D0]">
+                    {selectedDemand.observacoes}
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-4 pt-4 border-t border-[#E5E5E5] shrink-0">
+                <Button
+                  onClick={confirmSelection}
+                  className="w-full h-[48px] bg-[#10B981] hover:bg-[#059669] text-white font-black shadow-[0_4px_12px_rgba(16,185,129,0.3)]"
+                >
+                  <CheckCircle2 className="w-5 h-5 mr-2" /> VINCULAR A ESTA DEMANDA
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="h-full flex flex-col items-center justify-center text-center text-[#999999] p-6">
+              <Search className="w-12 h-12 mb-3 opacity-20" />
+              <p className="text-[14px] font-medium">
+                Selecione uma demanda na lista ao lado para ver os detalhes e vincular.
+              </p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

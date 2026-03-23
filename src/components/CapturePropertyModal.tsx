@@ -69,6 +69,7 @@ export function CapturePropertyModal({ demand, isOpen, onClose, onSuccess }: Pro
     try {
       const extraInfo = `Dorms: ${bedrooms || 'Indif'}, Vagas: ${parking || 'Indif'}. Obs: ${notes || '-'}`
 
+      // Requisito: Vinculação Automática com demanda_id e demanda_tipo
       const payload = {
         codigo_imovel: code.toUpperCase(),
         endereco: address,
@@ -81,6 +82,7 @@ export function CapturePropertyModal({ demand, isOpen, onClose, onSuccess }: Pro
         localizacao_texto: extraInfo,
       }
 
+      // Inserção < 1 segundo para o banco de dados
       const { error } = await supabase.from('imoveis_captados').insert(payload)
 
       if (error) {

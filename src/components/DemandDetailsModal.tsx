@@ -1,4 +1,4 @@
-import { X, RefreshCw } from 'lucide-react'
+import { X, RefreshCw, CheckCircle2 } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Demand } from '@/types'
 import useAppStore from '@/stores/useAppStore'
+import { cn } from '@/lib/utils'
 
 interface Props {
   open: boolean
@@ -18,6 +19,7 @@ interface Props {
   demand?: Demand
   onPrioritize?: () => void
   onLost?: () => void
+  onEncontrei?: () => void
 }
 
 const formatLocation = (loc: any) => {
@@ -26,7 +28,14 @@ const formatLocation = (loc: any) => {
   return String(loc)
 }
 
-export function DemandDetailsModal({ open, onOpenChange, demand, onPrioritize, onLost }: Props) {
+export function DemandDetailsModal({
+  open,
+  onOpenChange,
+  demand,
+  onPrioritize,
+  onLost,
+  onEncontrei,
+}: Props) {
   const { getSimilarDemands, users } = useAppStore()
 
   if (!demand) {
@@ -72,187 +81,162 @@ export function DemandDetailsModal({ open, onOpenChange, demand, onPrioritize, o
   const creator = users.find((u) => u.id === demand.createdBy)
   const creatorName = creator?.name || 'Desconhecido'
 
+  const isHighUrgency = demand.timeframe === 'Alta' || demand.timeframe === 'Urgente'
+  const urgencyColor = isHighUrgency
+    ? 'text-[#F44336]'
+    : demand.timeframe === 'Média'
+      ? 'text-[#FF9800]'
+      : 'text-[#4CAF50]'
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-full h-[100dvh] sm:h-[85vh] sm:max-w-[700px] p-0 flex flex-col rounded-none sm:rounded-[12px] border-0 sm:border-[2px] sm:border-[#2E5F8A] gap-0 overflow-hidden bg-[#FFFFFF] shadow-[0_8px_32px_rgba(26,58,82,0.2)]">
-        <DialogHeader className="p-[16px] md:p-[24px] border-b border-[#2E5F8A]/20 shrink-0 flex flex-row items-center justify-between bg-[#1A3A52] text-left relative">
-          <DialogTitle className="text-[20px] font-bold leading-[28px] m-0 p-0 pr-8 truncate text-white">
-            Detalhes da Demanda - {demand.clientName}
-          </DialogTitle>
-          <DialogClose className="absolute right-4 top-[50%] -translate-y-1/2 w-10 h-10 md:w-8 md:h-8 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors text-white">
+      <DialogContent className="max-w-full h-[100dvh] sm:h-[85vh] sm:max-w-[700px] p-0 flex flex-col rounded-none sm:rounded-[16px] border-0 sm:border-[2px] sm:border-[#2E5F8A]/20 gap-0 overflow-hidden bg-[#F8FAFC] shadow-2xl">
+        <DialogHeader className="p-[16px] md:p-[24px] border-b border-[#E5E5E5] shrink-0 flex flex-row items-center justify-between bg-white text-left relative z-10 shadow-sm">
+          <div className="flex flex-col gap-1 pr-8">
+            <DialogTitle className="text-[22px] font-black leading-tight text-[#1A3A52] m-0 p-0">
+              {demand.clientName}
+            </DialogTitle>
+            <span className="text-[13px] font-bold text-[#666666] flex items-center gap-2">
+              <Badge
+                className={cn(
+                  'text-[10px] px-2 py-0.5',
+                  demand.type === 'Venda' ? 'bg-[#FF9800]' : 'bg-[#1A3A52]',
+                )}
+              >
+                {demand.type === 'Venda' ? 'VENDA' : 'ALUGUEL'}
+              </Badge>
+              Solicitado por {creatorName}
+            </span>
+          </div>
+          <DialogClose className="absolute right-4 top-[50%] -translate-y-1/2 w-10 h-10 md:w-8 md:h-8 flex items-center justify-center rounded-full bg-[#F5F5F5] hover:bg-[#E5E5E5] transition-colors text-[#333333]">
             <X className="w-5 h-5" />
           </DialogClose>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto p-[16px] md:p-[24px] bg-[#FFFFFF]">
-          <div className="space-y-[24px] pb-[24px]">
-            <section className="space-y-[12px]">
-              <h4 className="text-[20px] font-bold text-[#1A3A52] border-b border-[#2E5F8A]/20 pb-[8px]">
-                👤 Informações do Cliente
-              </h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-[12px]">
-                <div>
-                  <span className="text-[12px] text-[#333333] font-medium block mb-1">Nome</span>
-                  <span className="text-[16px] text-[#1A3A52] font-bold">{demand.clientName}</span>
-                </div>
-                <div>
-                  <span className="text-[12px] text-[#333333] font-medium block mb-1">Email</span>
-                  <span className="text-[16px] text-[#1A3A52] font-bold">
-                    {demand.clientEmail || 'Não informado'}
-                  </span>
-                </div>
-                <div className="col-span-1 sm:col-span-2">
-                  <span className="text-[12px] text-[#333333] font-medium block mb-1">
-                    Telefone
-                  </span>
-                  <span className="text-[16px] text-[#1A3A52] font-bold">Não informado</span>
-                </div>
+        <div className="flex-1 overflow-y-auto p-[16px] md:p-[24px] bg-[#F8FAFC]">
+          <div className="space-y-[16px] pb-[24px]">
+            {/* Localização e Budget (Destaque Principal) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-white p-5 rounded-[12px] border border-[#E5E5E5] shadow-sm flex flex-col gap-1">
+                <span className="text-[12px] text-[#999999] font-black uppercase tracking-wider flex items-center gap-1.5 mb-1">
+                  📍 Localização Desejada
+                </span>
+                <span className="text-[16px] text-[#1A3A52] font-bold leading-snug">
+                  {formatLocation(demand.location)}
+                </span>
               </div>
-            </section>
+              <div className="bg-white p-5 rounded-[12px] border border-[#E5E5E5] shadow-sm flex flex-col gap-1">
+                <span className="text-[12px] text-[#999999] font-black uppercase tracking-wider flex items-center gap-1.5 mb-1">
+                  💰 Orçamento
+                </span>
+                <span className="text-[20px] text-[#10B981] font-black leading-snug tracking-tight">
+                  R$ {formatPrice(demand.minBudget)} - R$ {formatPrice(demand.maxBudget)}
+                </span>
+              </div>
+            </div>
 
-            <section className="space-y-[12px]">
-              <h4 className="text-[20px] font-bold text-[#1A3A52] border-b border-[#2E5F8A]/20 pb-[8px]">
-                📍 Detalhes da Demanda
-              </h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-[12px]">
-                <div className="col-span-1 sm:col-span-2">
-                  <span className="text-[12px] text-[#333333] font-medium block mb-1">
-                    Localização
-                  </span>
+            {/* Especificações */}
+            <div className="bg-white p-5 rounded-[12px] border border-[#E5E5E5] shadow-sm">
+              <span className="text-[12px] text-[#999999] font-black uppercase tracking-wider flex items-center gap-1.5 mb-3 border-b border-[#F5F5F5] pb-2">
+                🏠 Especificações do Imóvel
+              </span>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-[16px]">
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[12px] text-[#666666] font-medium">Dormitórios</span>
                   <span className="text-[16px] text-[#1A3A52] font-bold">
-                    {formatLocation(demand.location)}
+                    {demand.bedrooms || 'Indiferente'}
                   </span>
                 </div>
-                <div>
-                  <span className="text-[12px] text-[#333333] font-medium block mb-1">
-                    💰 Orçamento
-                  </span>
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[12px] text-[#666666] font-medium">Banheiros</span>
                   <span className="text-[16px] text-[#1A3A52] font-bold">
-                    R$ {formatPrice(demand.minBudget)} - R$ {formatPrice(demand.maxBudget)}
+                    {demand.bathrooms || 'Indiferente'}
                   </span>
                 </div>
-                <div>
-                  <span className="text-[12px] text-[#333333] font-medium block mb-1">
-                    🏠 Perfil
-                  </span>
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[12px] text-[#666666] font-medium">Vagas</span>
                   <span className="text-[16px] text-[#1A3A52] font-bold">
-                    {demand.bedrooms || 0} dorm, {demand.bathrooms || 0} banh,{' '}
-                    {demand.parkingSpots || 0} vagas
+                    {demand.parkingSpots || 'Indiferente'}
+                  </span>
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[12px] text-[#666666] font-medium">Urgência</span>
+                  <span className={cn('text-[16px] font-bold', urgencyColor)}>
+                    {demand.timeframe}
                   </span>
                 </div>
               </div>
-            </section>
+            </div>
 
-            <section className="space-y-[12px]">
-              <h4 className="text-[20px] font-bold text-[#1A3A52] border-b border-[#2E5F8A]/20 pb-[8px]">
-                📝 Necessidades
-              </h4>
-              <p className="text-[16px] text-[#333333] leading-[24px]">
-                {demand.description || 'Nenhuma descrição detalhada.'}
+            {/* Observações */}
+            <div className="bg-[#E8F5E9] p-5 rounded-[12px] border border-[#A7F3D0] shadow-sm">
+              <span className="text-[12px] text-[#065F46] font-black uppercase tracking-wider flex items-center gap-1.5 mb-2">
+                📝 Detalhes e Observações
+              </span>
+              <p className="text-[15px] text-[#065F46] font-medium leading-relaxed whitespace-pre-wrap">
+                {demand.description || 'Nenhuma observação específica fornecida pelo solicitante.'}
               </p>
-            </section>
+            </div>
 
-            <section className="space-y-[12px]">
-              <h4 className="text-[20px] font-bold text-[#1A3A52] border-b border-[#2E5F8A]/20 pb-[8px]">
-                ⏰ Informações Adicionais
-              </h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-[12px]">
-                <div>
-                  <span className="text-[12px] text-[#333333] font-medium block mb-1">
-                    Urgência
-                  </span>
-                  <span className="text-[16px] text-[#FF9800] font-bold">{demand.timeframe}</span>
-                </div>
-                <div>
-                  <span className="text-[12px] text-[#333333] font-medium block mb-1">
-                    📊 Status
-                  </span>
-                  <Badge variant="outline" className="mt-1">
-                    {statusLabel}
-                  </Badge>
-                </div>
-                <div>
-                  <span className="text-[12px] text-[#333333] font-medium block mb-1">
-                    📅 Data de Criação
-                  </span>
-                  <span className="text-[16px] text-[#1A3A52] font-bold">
-                    {new Date(demand.createdAt).toLocaleDateString('pt-BR')} por {creatorName}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-[12px] text-[#333333] font-medium block mb-1">
-                    📅 Data de Finalização
-                  </span>
-                  <span className="text-[16px] text-[#1A3A52] font-bold">
-                    {demand.status === 'Negócio' &&
-                    demand.capturedProperties?.find((p) => p.fechamentoDate)
-                      ? new Date(
-                          demand.capturedProperties.find((p) => p.fechamentoDate)!.fechamentoDate!,
-                        ).toLocaleDateString('pt-BR')
-                      : '-'}
-                  </span>
-                </div>
-
-                {demand.isPrioritized && demand.data_priorizacao && (
-                  <div className="col-span-1 sm:col-span-2 mt-[8px] p-[16px] bg-[#ffebee] rounded-[8px] border-[2px] border-[#F44336]/30">
-                    <span className="text-[12px] text-[#F44336] block uppercase font-bold mb-[4px]">
-                      🔴 Priorização
-                    </span>
-                    <span className="text-[16px] font-bold text-[#1A3A52] block mb-[4px]">
-                      Realizada em {new Date(demand.data_priorizacao).toLocaleDateString('pt-BR')}{' '}
-                      por {creatorName}
-                    </span>
-                    <span className="text-[14px] text-[#333333] font-medium block">
-                      Motivo: {demand.motivo_priorizacao}
-                    </span>
-                  </div>
-                )}
-
-                {demand.status === 'Perdida' && demand.data_perda && (
-                  <div className="col-span-1 sm:col-span-2 mt-[8px] p-[16px] bg-[#F5F5F5] rounded-[8px] border-[2px] border-[#999999]/30">
-                    <span className="text-[12px] text-[#999999] block uppercase font-bold mb-[4px]">
-                      ⚫ Demanda Perdida
-                    </span>
-                    <span className="text-[16px] font-bold text-[#1A3A52] block mb-[4px]">
-                      Marcada em {new Date(demand.data_perda).toLocaleDateString('pt-BR')} por{' '}
-                      {creatorName}
-                    </span>
-                    <span className="text-[14px] text-[#333333] font-medium block capitalize">
-                      Motivo: {demand.motivo_perda?.replace('_', ' ')}
-                    </span>
-                    {demand.observacoes_perda && (
-                      <span className="text-[14px] text-[#333333] font-medium block mt-[8px] italic">
-                        Obs: {demand.observacoes_perda}
-                      </span>
-                    )}
-                  </div>
-                )}
-              </div>
-            </section>
-
-            <section className="space-y-[12px]">
-              <h4 className="text-[20px] font-bold text-[#1A3A52] border-b border-[#2E5F8A]/20 pb-[8px]">
-                👥 Clientes Similares
-              </h4>
-              {similarDemands.length > 0 ? (
-                <ul className="list-disc pl-[20px] text-[16px] text-[#333333]">
-                  {similarDemands.map((d) => (
-                    <li key={d.id} className="mb-[4px]">
-                      {d.clientName} ({formatLocation(d.location)})
-                    </li>
+            {/* Histórico/Imóveis */}
+            {demand.capturedProperties && demand.capturedProperties.length > 0 && (
+              <div className="bg-white p-5 rounded-[12px] border border-[#E5E5E5] shadow-sm">
+                <span className="text-[12px] text-[#999999] font-black uppercase tracking-wider flex items-center gap-1.5 mb-3 border-b border-[#F5F5F5] pb-2">
+                  📦 Imóveis Capturados ({demand.capturedProperties.length})
+                </span>
+                <div className="flex flex-col gap-2">
+                  {demand.capturedProperties.map((p, i) => (
+                    <div
+                      key={i}
+                      className="flex justify-between items-center p-3 bg-[#F5F5F5] rounded-lg"
+                    >
+                      <div className="flex flex-col">
+                        <span className="font-bold text-[#1A3A52]">{p.code}</span>
+                        <span className="text-[12px] text-[#666666]">{p.neighborhood}</span>
+                      </div>
+                      <Badge className="bg-[#4CAF50] text-white border-none">{p.status}</Badge>
+                    </div>
                   ))}
-                </ul>
-              ) : (
-                <p className="text-[16px] text-[#999999]">Nenhum cliente similar encontrado.</p>
-              )}
-            </section>
+                </div>
+              </div>
+            )}
+
+            {/* Informações Adicionais */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-[12px] opacity-70">
+              <div className="bg-white p-4 rounded-[12px] border border-[#E5E5E5]">
+                <span className="text-[11px] text-[#999999] font-bold uppercase block mb-1">
+                  Status
+                </span>
+                <Badge variant="outline" className="font-bold">
+                  {statusLabel}
+                </Badge>
+              </div>
+              <div className="bg-white p-4 rounded-[12px] border border-[#E5E5E5]">
+                <span className="text-[11px] text-[#999999] font-bold uppercase block mb-1">
+                  Criada em
+                </span>
+                <span className="text-[14px] text-[#333333] font-bold">
+                  {new Date(demand.createdAt).toLocaleDateString('pt-BR')}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
 
-        <DialogFooter className="p-[16px] md:p-[24px] border-t border-[#2E5F8A]/20 shrink-0 flex flex-col sm:flex-row gap-[12px] bg-[#F5F5F5]">
-          {onPrioritize && (
+        {/* Rodapé Dinâmico */}
+        <DialogFooter className="p-[16px] md:p-[20px] border-t border-[#E5E5E5] shrink-0 flex flex-col sm:flex-row gap-[12px] bg-white z-10 shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
+          {onEncontrei && (
             <Button
-              className="min-h-[44px] w-full text-[14px] font-bold bg-[#F44336] hover:bg-[#d32f2f] text-white border-none"
+              className="min-h-[56px] w-full text-[16px] font-black bg-[#10B981] hover:bg-[#059669] text-white shadow-[0_4px_12px_rgba(16,185,129,0.3)] animate-pulse-green"
+              onClick={onEncontrei}
+            >
+              <CheckCircle2 className="w-5 h-5 mr-2" /> ENCONTREI UM IMÓVEL
+            </Button>
+          )}
+
+          {!onEncontrei && onPrioritize && (
+            <Button
+              className="min-h-[48px] w-full sm:flex-1 text-[14px] font-bold bg-[#F44336] hover:bg-[#d32f2f] text-white border-none"
               onClick={() => {
                 onOpenChange(false)
                 onPrioritize()
@@ -261,9 +245,10 @@ export function DemandDetailsModal({ open, onOpenChange, demand, onPrioritize, o
               🔴 PRIORIZAR
             </Button>
           )}
-          {onLost && (
+
+          {!onEncontrei && onLost && (
             <Button
-              className="min-h-[44px] w-full text-[14px] font-bold bg-[#999999] hover:bg-[#777777] text-white border-none"
+              className="min-h-[48px] w-full sm:flex-1 text-[14px] font-bold bg-[#999999] hover:bg-[#777777] text-white border-none"
               onClick={() => {
                 onOpenChange(false)
                 onLost()
@@ -272,13 +257,16 @@ export function DemandDetailsModal({ open, onOpenChange, demand, onPrioritize, o
               ❌ PERDIDO
             </Button>
           )}
-          <Button
-            variant="outline"
-            className="min-h-[44px] w-full text-[14px] font-bold"
-            onClick={() => onOpenChange(false)}
-          >
-            Fechar
-          </Button>
+
+          {!onEncontrei && (
+            <Button
+              variant="outline"
+              className="min-h-[48px] w-full sm:flex-1 text-[14px] font-bold"
+              onClick={() => onOpenChange(false)}
+            >
+              Fechar
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

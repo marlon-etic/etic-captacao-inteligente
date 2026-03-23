@@ -4,11 +4,12 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
+  DialogClose,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import {
   Select,
   SelectContent,
@@ -16,401 +17,338 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Textarea } from '@/components/ui/textarea'
-import { Link2, Search, Unlock, ArrowLeft, Building2 } from 'lucide-react'
-import useAppStore from '@/stores/useAppStore'
-import { LocationSelector } from '@/components/LocationSelector'
 import { useToast } from '@/hooks/use-toast'
-import { ToastAction } from '@/components/ui/toast'
+import useAppStore from '@/stores/useAppStore'
+import { supabase } from '@/lib/supabase/client'
+import { X, CheckCircle2, Link as LinkIcon, Unlink } from 'lucide-react'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { DemandSelector } from '@/components/DemandSelector'
+import { DemandSelector } from './DemandSelector'
 import { cn } from '@/lib/utils'
 
 interface Props {
   isOpen: boolean
   onClose: () => void
+  onSuccess: () => void
 }
 
-export function AddPropertyModal({ isOpen, onClose }: Props) {
-  const { submitIndependentCapture, submitDemandResponse } = useAppStore()
+export function AddPropertyModal({ isOpen, onClose, onSuccess }: Props) {
+  const { currentUser } = useAppStore()
   const { toast } = useToast()
 
-  // New Flow: 1 (Form) -> 2 (Options) -> 3 (Selector or ID)
-  const [step, setStep] = useState<1 | 2 | 3>(1)
-  const [option, setOption] = useState<'A' | 'B' | 'C' | null>(null)
+  const [step, setStep] = useState<1 | 2>(1)
 
-  // Data State
+  // Property Data
   const [code, setCode] = useState('')
-  const [type, setType] = useState('Venda')
-  const [neighborhoods, setNeighborhoods] = useState<string[]>([])
-  const [value, setValue] = useState('')
+  const [address, setAddress] = useState('')
+  const [price, setPrice] = useState('')
   const [bedrooms, setBedrooms] = useState('')
-  const [bathrooms, setBathrooms] = useState('')
-  const [parkingSpots, setParkingSpots] = useState('')
-  const [obs, setObs] = useState('')
-  const [selectedDemandId, setSelectedDemandId] = useState<string>('')
+  const [parking, setParking] = useState('')
+  const [notes, setNotes] = useState('')
+  const [type, setType] = useState<'Venda' | 'Aluguel'>('Venda')
 
-  const [errors, setErrors] = useState<{ code?: string; value?: string; neighborhoods?: string }>(
-    {},
-  )
+  // Linking Data
+  const [demandId, setDemandId] = useState<string | null>(null)
+
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [errors, setErrors] = useState<Record<string, string>>({})
 
   useEffect(() => {
-    if (!isOpen) {
-      setTimeout(resetForm, 300)
+    if (isOpen) {
+      setStep(1)
+      setCode(`IMV-${Math.floor(Math.random() * 10000)}`)
+      setAddress('')
+      setPrice('')
+      setBedrooms('')
+      setParking('')
+      setNotes('')
+      setType('Venda')
+      setDemandId(null)
+      setErrors({})
     }
   }, [isOpen])
 
-  const resetForm = () => {
-    setStep(1)
-    setOption(null)
-    setSelectedDemandId('')
-    setCode('')
-    setType('Venda')
-    setNeighborhoods([])
-    setValue('')
-    setBedrooms('')
-    setBathrooms('')
-    setParkingSpots('')
-    setObs('')
-    setErrors({})
-  }
-
-  const handleCodeChange = (val: string) => {
-    const sanitized = val.replace(/[^a-zA-Z0-9]/g, '').toUpperCase()
-    setCode(sanitized)
-    if (sanitized) setErrors((prev) => ({ ...prev, code: undefined }))
-  }
-
-  const handleValueChange = (val: string) => {
-    setValue(val)
-    if (Number(val) > 0) setErrors((prev) => ({ ...prev, value: undefined }))
-  }
-
-  // Validate form before moving to Step 2
-  const handleNextToStep2 = () => {
-    const newErrors: any = {}
+  const validateStep1 = () => {
+    const newErrors: Record<string, string> = {}
     if (!code) newErrors.code = 'Código é obrigatório'
-    if (!value || Number(value) <= 0) newErrors.value = 'Valor deve ser maior que zero'
-    if (neighborhoods.length === 0) newErrors.neighborhoods = 'Selecione pelo menos um bairro'
+    if (!address) newErrors.address = 'Localização é obrigatória'
+    if (!price || Number(price) <= 0) newErrors.price = 'Preço deve ser maior que zero'
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors)
-      return
+      return false
     }
-    setStep(2)
+    setErrors({})
+    return true
   }
 
-  const handleFinalSubmit = (submitOption: 'A' | 'B' | 'C', demandId?: string) => {
-    const payload = {
-      code,
-      propertyType: type,
-      neighborhood: neighborhoods,
-      value: Number(value),
-      bedrooms: Number(bedrooms),
-      bathrooms: Number(bathrooms),
-      parkingSpots: Number(parkingSpots),
-      obs,
-      docCompleta: true,
-      bairro_tipo: 'listado',
+  const handleNextStep = () => {
+    if (validateStep1()) {
+      setStep(2)
     }
+  }
 
-    let res
-    if (submitOption === 'C') {
-      res = submitIndependentCapture(payload)
-    } else {
-      if (!demandId) {
-        toast({
-          title: 'Erro',
-          description: 'ID da demanda não informado.',
-          variant: 'destructive',
-        })
-        return
-      }
-      res = submitDemandResponse(demandId, 'encontrei', payload)
-    }
-
-    if (res?.success) {
+  const handleSubmit = async (skipLink = false) => {
+    if (!skipLink && !demandId) {
       toast({
-        title: `✅ Imóvel ${code} cadastrado com sucesso!`,
-        description:
-          submitOption === 'C'
-            ? 'Salvo no banco de dados geral.'
-            : 'Vinculado com sucesso à demanda.',
-        className: 'bg-[#10B981] text-white border-none',
-        action: (
-          <ToastAction
-            altText="Adicionar outro imóvel"
-            onClick={(e) => {
-              e.preventDefault()
-              setTimeout(() => {
-                document.getElementById('btn-add-property-trigger')?.click()
-              }, 100)
-            }}
-          >
-            Adicionar outro
-          </ToastAction>
-        ),
-      })
-      onClose()
-    } else {
-      if (res?.message === 'Código já cadastrado') {
-        setErrors({ code: 'Código já cadastrado' })
-        setStep(1) // Return to form to fix code
-      }
-      toast({
-        title: 'Erro',
-        description: res?.message || 'Falha ao cadastrar imóvel',
+        title: 'Atenção',
+        description: 'Selecione uma demanda para vincular ou escolha "Salvar sem vincular".',
         variant: 'destructive',
       })
+      return
+    }
+
+    if (isSubmitting) return
+    setIsSubmitting(true)
+
+    try {
+      const extraInfo = `Dorms: ${bedrooms || 'Indif'}, Vagas: ${parking || 'Indif'}. Obs: ${notes || '-'}`
+
+      const payload = {
+        codigo_imovel: code.toUpperCase(),
+        endereco: address,
+        preco: Number(price),
+        status_captacao: 'pendente',
+        user_captador_id: currentUser?.id,
+        captador_id: currentUser?.id,
+        demanda_locacao_id: type === 'Aluguel' ? demandId : null,
+        demanda_venda_id: type === 'Venda' ? demandId : null,
+        localizacao_texto: extraInfo,
+      }
+
+      const { error } = await supabase.from('imoveis_captados').insert(payload)
+
+      if (error) {
+        if (error.code === '23505') {
+          setErrors({ code: 'Este código já está em uso.' })
+          setStep(1)
+          throw new Error('Código do imóvel já cadastrado.')
+        }
+        throw error
+      }
+
+      toast({
+        title: '✅ Imóvel Cadastrado!',
+        description: demandId
+          ? `Vinculado à demanda com sucesso.`
+          : `Salvo no banco de imóveis geral.`,
+        className: 'bg-[#10B981] text-white border-none',
+      })
+
+      onSuccess()
+      onClose()
+    } catch (err: any) {
+      toast({
+        title: 'Erro ao salvar',
+        description: err.message || 'Verifique os dados e tente novamente.',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
-  const goBack = () => {
-    if (step === 3) setStep(2)
-    if (step === 2) setStep(1)
+  const propertyDataForSelector = {
+    neighborhood: address,
+    price: Number(price) || undefined,
+    bedrooms: Number(bedrooms) || undefined,
+    parking: Number(parking) || undefined,
+    type,
   }
 
   return (
     <Dialog open={isOpen} onOpenChange={(val) => !val && onClose()}>
-      <DialogContent className="w-full max-w-[calc(100%-32px)] sm:max-w-3xl h-[90vh] sm:h-auto max-h-[90vh] p-0 flex flex-col rounded-[16px] bg-white border-0 shadow-2xl overflow-hidden z-[9999]">
-        <DialogHeader className="p-4 md:p-6 border-b border-[#E5E5E5] shrink-0 bg-[#F8FAFC] flex flex-row items-center gap-3">
-          {step > 1 && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-10 w-10 min-w-10 min-h-10 -ml-2 shrink-0 bg-white hover:bg-[#E2E8F0] text-[#1A3A52] border border-[#CBD5E1]"
-              onClick={goBack}
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-          )}
-          <div className="flex flex-col gap-1 text-left">
-            <DialogTitle className="text-xl text-[#1A3A52] font-black flex items-center gap-2">
-              <Building2 className="w-5 h-5 text-[#10B981]" />
-              Novo Imóvel Captado
-            </DialogTitle>
-            <DialogDescription className="text-[#64748B] font-medium">
-              {step === 1
-                ? 'Passo 1 de 2: Preencha as informações do imóvel encontrado.'
-                : step === 2
-                  ? 'Passo 2 de 2: Como deseja vincular este imóvel?'
-                  : 'Selecione a demanda ideal para este imóvel.'}
-            </DialogDescription>
-          </div>
+      <DialogContent
+        className={cn(
+          'w-full p-0 flex flex-col rounded-[16px] bg-[#FFFFFF] border-0 shadow-2xl overflow-hidden z-[110] transition-all duration-300',
+          step === 1 ? 'max-w-xl' : 'max-w-5xl',
+        )}
+      >
+        <DialogHeader className="p-4 md:p-6 border-b border-[#E5E5E5] shrink-0 bg-[#1A3A52] text-white relative">
+          <DialogTitle className="text-xl font-black flex items-center gap-2 pr-8">
+            {step === 1 ? 'Cadastrar Novo Imóvel' : 'Vincular a uma Demanda (Opcional)'}
+          </DialogTitle>
+          <DialogClose asChild>
+            <button className="absolute right-4 top-[50%] -translate-y-[50%] h-10 w-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors text-white">
+              <X className="w-5 h-5" />
+            </button>
+          </DialogClose>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 p-4 md:p-6 bg-white">
-          {step === 1 && (
-            <div className="space-y-5 pb-8 animate-in fade-in duration-300">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div>
-                  <Label className="font-bold text-[#333333] mb-1.5 block">
-                    Código do Imóvel <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    value={code}
-                    onChange={(e) => handleCodeChange(e.target.value)}
-                    placeholder="Ex: AP123"
-                    className={cn('min-h-[48px]', errors.code && 'border-red-500 ring-red-500')}
-                  />
-                  {errors.code && (
-                    <p className="text-red-500 text-xs mt-1.5 font-bold">{errors.code}</p>
-                  )}
-                </div>
+        {step === 1 ? (
+          <>
+            <ScrollArea className="flex-1 p-4 md:p-6 bg-white max-h-[70vh]">
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="md:col-span-2">
+                    <Label className="font-bold text-[#333333] mb-1.5 block">Finalidade</Label>
+                    <Select value={type} onValueChange={(v: any) => setType(v)}>
+                      <SelectTrigger className="min-h-[48px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Venda">Venda</SelectItem>
+                        <SelectItem value="Aluguel">Aluguel</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                <div>
-                  <Label className="font-bold text-[#333333] mb-1.5 block">Tipo</Label>
-                  <Select value={type} onValueChange={setType}>
-                    <SelectTrigger className="min-h-[48px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Venda" className="min-h-[48px]">
-                        Venda
-                      </SelectItem>
-                      <SelectItem value="Aluguel" className="min-h-[48px]">
-                        Aluguel
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                  <div>
+                    <Label className="font-bold text-[#333333] mb-1.5 block">
+                      Código do Imóvel <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      value={code}
+                      onChange={(e) => {
+                        setCode(e.target.value.toUpperCase())
+                        setErrors((prev) => ({ ...prev, code: '' }))
+                      }}
+                      placeholder="Ex: AP1234"
+                      className={errors.code ? 'border-red-500 ring-red-500' : ''}
+                    />
+                    {errors.code && (
+                      <p className="text-red-500 text-xs mt-1 font-medium">{errors.code}</p>
+                    )}
+                  </div>
 
-                <div className="md:col-span-2">
-                  <Label className="font-bold text-[#333333] mb-1.5 block">
-                    Bairros de Localização <span className="text-red-500">*</span>
-                  </Label>
-                  <LocationSelector
-                    value={neighborhoods}
-                    onChange={(val) => {
-                      setNeighborhoods(val)
-                      if (val.length > 0)
-                        setErrors((prev) => ({ ...prev, neighborhoods: undefined }))
-                    }}
-                    error={!!errors.neighborhoods}
-                  />
-                  {errors.neighborhoods && (
-                    <p className="text-red-500 text-xs mt-1.5 font-bold">{errors.neighborhoods}</p>
-                  )}
-                </div>
+                  <div>
+                    <Label className="font-bold text-[#333333] mb-1.5 block">
+                      Preço (R$) <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      type="number"
+                      value={price}
+                      onChange={(e) => {
+                        setPrice(e.target.value)
+                        setErrors((prev) => ({ ...prev, price: '' }))
+                      }}
+                      placeholder="Ex: 500000"
+                      className={errors.price ? 'border-red-500 ring-red-500' : ''}
+                    />
+                    {errors.price && (
+                      <p className="text-red-500 text-xs mt-1 font-medium">{errors.price}</p>
+                    )}
+                  </div>
 
-                <div>
-                  <Label className="font-bold text-[#333333] mb-1.5 block">
-                    Valor (R$) <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    type="number"
-                    value={value}
-                    onChange={(e) => handleValueChange(e.target.value)}
-                    placeholder="Ex: 500000"
-                    className={cn('min-h-[48px]', errors.value && 'border-red-500 ring-red-500')}
-                  />
-                  {errors.value && (
-                    <p className="text-red-500 text-xs mt-1.5 font-bold">{errors.value}</p>
-                  )}
+                  <div className="md:col-span-2">
+                    <Label className="font-bold text-[#333333] mb-1.5 block">
+                      Bairro / Endereço <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      value={address}
+                      onChange={(e) => {
+                        setAddress(e.target.value)
+                        setErrors((prev) => ({ ...prev, address: '' }))
+                      }}
+                      placeholder="Ex: Jardins"
+                      className={errors.address ? 'border-red-500 ring-red-500' : ''}
+                    />
+                    {errors.address && (
+                      <p className="text-red-500 text-xs mt-1 font-medium">{errors.address}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <Label className="font-bold text-[#333333] mb-1.5 block">Dormitórios</Label>
+                    <Input
+                      type="number"
+                      value={bedrooms}
+                      onChange={(e) => setBedrooms(e.target.value)}
+                      placeholder="Opcional"
+                    />
+                  </div>
+
+                  <div>
+                    <Label className="font-bold text-[#333333] mb-1.5 block">Vagas</Label>
+                    <Input
+                      type="number"
+                      value={parking}
+                      onChange={(e) => setParking(e.target.value)}
+                      placeholder="Opcional"
+                    />
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <Label className="font-bold text-[#333333] mb-1.5 block">
+                      Observações do Imóvel
+                    </Label>
+                    <Textarea
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      placeholder="Detalhes adicionais..."
+                      className="resize-none min-h-[80px]"
+                    />
+                  </div>
                 </div>
               </div>
+            </ScrollArea>
 
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <Label className="font-bold text-[#333333] mb-1.5 block">Dormitórios</Label>
-                  <Input
-                    type="number"
-                    value={bedrooms}
-                    onChange={(e) => setBedrooms(e.target.value)}
-                    className="min-h-[48px]"
-                  />
-                </div>
-                <div>
-                  <Label className="font-bold text-[#333333] mb-1.5 block">Banheiros</Label>
-                  <Input
-                    type="number"
-                    value={bathrooms}
-                    onChange={(e) => setBathrooms(e.target.value)}
-                    className="min-h-[48px]"
-                  />
-                </div>
-                <div>
-                  <Label className="font-bold text-[#333333] mb-1.5 block">Vagas</Label>
-                  <Input
-                    type="number"
-                    value={parkingSpots}
-                    onChange={(e) => setParkingSpots(e.target.value)}
-                    className="min-h-[48px]"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <Label className="font-bold text-[#333333] mb-1.5 block">
-                  Observações (Opcional)
-                </Label>
-                <Textarea
-                  value={obs}
-                  onChange={(e) => setObs(e.target.value)}
-                  placeholder="Detalhes adicionais do imóvel, estado de conservação, etc..."
-                  className="min-h-[80px] resize-none"
-                />
-              </div>
-            </div>
-          )}
-
-          {step === 2 && (
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 animate-in slide-in-from-right-4 duration-300">
-              <button
-                onClick={() => {
-                  setOption('A')
-                  setStep(3)
-                }}
-                className="flex flex-col items-center justify-center p-6 border-[2px] border-[#10B981]/30 rounded-xl hover:border-[#10B981] hover:bg-[#10B981]/5 transition-all text-center gap-3 group min-h-[180px] bg-white shadow-sm"
-              >
-                <div className="w-14 h-14 rounded-full bg-[#10B981]/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <Search className="w-7 h-7 text-[#10B981]" />
-                </div>
-                <span className="font-black text-[15px] text-[#1A3A52]">
-                  BUSCAR DEMANDA COMPATÍVEL
-                </span>
-                <p className="text-[12px] text-[#64748B] font-medium leading-relaxed">
-                  Sistema inteligente sugerirá demandas ideais baseadas nos dados preenchidos.
-                </p>
-              </button>
-
-              <button
-                onClick={() => {
-                  setOption('B')
-                  setStep(3)
-                }}
-                className="flex flex-col items-center justify-center p-6 border-[2px] border-[#3B82F6]/30 rounded-xl hover:border-[#3B82F6] hover:bg-[#3B82F6]/5 transition-all text-center gap-3 group min-h-[180px] bg-white shadow-sm"
-              >
-                <div className="w-14 h-14 rounded-full bg-[#3B82F6]/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <Link2 className="w-7 h-7 text-[#3B82F6]" />
-                </div>
-                <span className="font-black text-[15px] text-[#1A3A52]">
-                  VINCULAR POR ID MANUAL
-                </span>
-                <p className="text-[12px] text-[#64748B] font-medium leading-relaxed">
-                  Se você já sabe o ID exato da demanda para a qual buscou o imóvel.
-                </p>
-              </button>
-
-              <button
-                onClick={() => handleFinalSubmit('C')}
-                className="flex flex-col items-center justify-center p-6 border-[2px] border-[#64748B]/30 rounded-xl hover:border-[#64748B] hover:bg-[#F8FAFC] transition-all text-center gap-3 group min-h-[180px] bg-white shadow-sm"
-              >
-                <div className="w-14 h-14 rounded-full bg-[#F1F5F9] flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <Unlock className="w-7 h-7 text-[#64748B]" />
-                </div>
-                <span className="font-black text-[15px] text-[#1A3A52]">SALVAR SEM DEMANDA</span>
-                <p className="text-[12px] text-[#64748B] font-medium leading-relaxed">
-                  Apenas salvar no banco geral de imóveis disponíveis (soltos).
-                </p>
-              </button>
-            </div>
-          )}
-
-          {step === 3 && option === 'A' && (
-            <DemandSelector
-              propertyData={{
-                type,
-                neighborhoods,
-                value: Number(value),
-                bedrooms: Number(bedrooms),
-                parkingSpots: Number(parkingSpots),
-              }}
-              onSelect={(id) => handleFinalSubmit('A', id)}
-            />
-          )}
-
-          {step === 3 && option === 'B' && (
-            <div className="space-y-6 max-w-md mx-auto w-full py-8 animate-in slide-in-from-right-4">
-              <div className="space-y-3">
-                <Label className="font-bold text-[#333333] text-[16px]">ID da Demanda</Label>
-                <Input
-                  value={selectedDemandId}
-                  onChange={(e) => setSelectedDemandId(e.target.value)}
-                  placeholder="Ex: DEM-12345"
-                  className="min-h-[56px] text-lg text-center tracking-widest font-mono uppercase"
-                />
-              </div>
+            <div className="p-4 md:p-6 border-t border-[#E5E5E5] bg-[#F8FAFC] shrink-0 flex justify-end gap-3">
+              <Button variant="outline" onClick={onClose} className="min-h-[48px] font-bold">
+                Cancelar
+              </Button>
               <Button
-                className="w-full min-h-[56px] font-black text-[16px] bg-[#1A3A52] hover:bg-[#2E5F8A] text-white transition-all shadow-[0_4px_12px_rgba(26,58,82,0.2)]"
-                disabled={!selectedDemandId}
-                onClick={() => handleFinalSubmit('B', selectedDemandId)}
+                onClick={handleNextStep}
+                className="min-h-[48px] bg-[#1A3A52] text-white font-black px-6"
               >
-                CONFIRMAR VINCULAÇÃO
+                Próximo: Vincular Demanda <LinkIcon className="w-4 h-4 ml-2" />
               </Button>
             </div>
-          )}
-        </ScrollArea>
+          </>
+        ) : (
+          <>
+            <div className="flex-1 p-4 md:p-6 bg-white overflow-hidden flex flex-col">
+              <DemandSelector
+                propertyData={propertyDataForSelector}
+                onSelectDemand={(id) => setDemandId(id)}
+              />
+              {demandId && (
+                <div className="mt-4 p-3 bg-[#E8F5E9] border border-[#A7F3D0] rounded-[8px] text-[#065F46] font-bold flex items-center justify-between animate-fade-in">
+                  <span>✅ Demanda selecionada pronta para vinculação.</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setDemandId(null)}
+                    className="h-8 hover:bg-[#A7F3D0]/50 text-[#065F46]"
+                  >
+                    Desfazer
+                  </Button>
+                </div>
+              )}
+            </div>
 
-        {step === 1 && (
-          <div className="p-4 md:p-6 border-t border-[#E5E5E5] bg-[#F8FAFC] shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.03)]">
-            <Button
-              className="w-full min-h-[56px] bg-[#1A3A52] hover:bg-[#0F2333] text-white font-black text-[16px] tracking-wide transition-all shadow-[0_4px_12px_rgba(26,58,82,0.2)]"
-              onClick={handleNextToStep2}
-            >
-              AVANÇAR PARA VINCULAÇÃO
-            </Button>
-          </div>
+            <div className="p-4 md:p-6 border-t border-[#E5E5E5] bg-[#F8FAFC] shrink-0 flex flex-col sm:flex-row justify-between gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setStep(1)}
+                className="min-h-[48px] font-bold order-2 sm:order-1"
+              >
+                Voltar
+              </Button>
+              <div className="flex gap-2 order-1 sm:order-2 flex-col sm:flex-row">
+                <Button
+                  variant="outline"
+                  onClick={() => handleSubmit(true)}
+                  disabled={isSubmitting || demandId !== null}
+                  className="min-h-[48px] font-bold text-[#666666] hover:bg-[#F5F5F5]"
+                >
+                  <Unlink className="w-4 h-4 mr-2" /> Salvar Sem Vincular
+                </Button>
+                <Button
+                  onClick={() => handleSubmit(false)}
+                  disabled={isSubmitting || demandId === null}
+                  className="min-h-[48px] bg-[#10B981] hover:bg-[#059669] text-white font-black px-6 shadow-[0_4px_12px_rgba(16,185,129,0.3)]"
+                >
+                  {isSubmitting ? (
+                    'Salvando...'
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-5 h-5 mr-2" /> Confirmar e Vincular
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </>
         )}
       </DialogContent>
     </Dialog>

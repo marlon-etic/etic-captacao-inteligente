@@ -79,6 +79,13 @@ export function MyDemandsView({ filterType }: Props) {
 
   const filteredDemands = useMemo(() => {
     return demands.filter((d) => {
+      // Isolamento por usuário criador: SDR/Corretor veem apenas as SUAS demandas
+      if (currentUser?.role !== 'admin' && currentUser?.role !== 'gestor') {
+        if (d.sdr_id !== currentUser?.id && d.corretor_id !== currentUser?.id) {
+          return false
+        }
+      }
+
       if (filters.prioridade && filters.prioridade !== 'Todos') {
         const isPrio = filters.prioridade === 'prioritaria'
         if (!!d.is_prioritaria !== isPrio) return false
@@ -103,7 +110,7 @@ export function MyDemandsView({ filterType }: Props) {
       }
       return true
     })
-  }, [demands, filters])
+  }, [demands, filters, currentUser])
 
   const handleClear = () =>
     handleFilterChange({

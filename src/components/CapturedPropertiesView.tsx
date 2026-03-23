@@ -8,24 +8,28 @@ import { StickyFilterBar, FilterDef } from '@/components/StickyFilterBar'
 import { FilterSidebar } from '@/components/FilterSidebar'
 import { useViewFilters } from '@/hooks/useViewFilters'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useSupabaseProperties } from '@/hooks/use-supabase-properties'
 
 interface Props {
   filterType?: 'Venda' | 'Aluguel'
+  source?: 'linked' | 'loose'
   emptyStateText?: string
 }
 
 export function CapturedPropertiesView({
   filterType,
+  source,
   emptyStateText = 'Nenhum imóvel captado no momento.',
 }: Props) {
   const {
-    demands,
     currentUser,
     scheduleVisitByCode,
     submitProposalByCode,
     closeDealByCode,
     markPropertyLost,
   } = useAppStore()
+
+  const { properties: supabaseProps, loading } = useSupabaseProperties(filterType)
 
   const [filters, setFilters] = useViewFilters('captados_view_' + (filterType || 'all'), {
     status: 'Todos',
@@ -83,30 +87,40 @@ export function CapturedPropertiesView({
   }
 
   const allCaptured = useMemo(() => {
-    return demands.flatMap((d) => {
-      if (filterType && d.type !== filterType) return []
-      if (!d.capturedProperties || d.capturedProperties.length === 0) return []
-      if (currentUser?.role === 'admin' || currentUser?.role === 'gestor') {
-        return d.capturedProperties.map((p) => ({ demand: d, property: p }))
-      }
-      if (
-        (currentUser?.role === 'sdr' || currentUser?.role === 'corretor') &&
-        d.createdBy === currentUser.id
-      ) {
-        return d.capturedProperties.map((p) => ({ demand: d, property: p }))
-      }
-      if (currentUser?.role === 'captador') {
-        return d.capturedProperties
-          .filter((p) => p.captador_id === currentUser.id)
-          .map((p) => ({ demand: d, property: p }))
-      }
-      return []
-    })
-  }, [demands, currentUser, filterType])
+    return supabaseProps.map((p) => ({
+      demand: p.demanda as Demand,
+      property: {
+        code: p.codigo_imovel,
+        neighborhood: p.endereco,
+        value: p.preco,
+        captador_id: p.user_captador_id,
+        captador_name: p.captador_nome,
+        capturedAt: p.created_at,
+        status: p.status_captacao,
+        propertyType: p.tipo,
+        bedrooms: p.dormitorios,
+        parkingSpots: p.vagas,
+        obs: p.observacoes,
+      } as CapturedProperty,
+    }))
+  }, [supabaseProps])
 
   const filteredAndSorted = useMemo(() => {
     let result = allCaptured.filter(({ demand: d, property: p }) => {
       if (p.discarded) return false
+
+      if (source === 'linked' && !d) return false
+      if (source === 'loose' && d) return false
+
+      if (
+        source === 'linked' &&
+        (currentUser?.role === 'sdr' || currentUser?.role === 'corretor') &&
+        d?.createdBy !== currentUser?.id
+      ) {
+        return false
+      }
+
+      if (currentUser?.role === 'captador' && p.captador_id !== currentUser.id) return false
 
       const isClosed = !!p.fechamentoDate
       const isVisita = !!p.visitaDate && !isClosed
@@ -138,7 +152,7 @@ export function CapturedPropertiesView({
     )
 
     return result
-  }, [allCaptured, filters, filterType])
+  }, [allCaptured, filters, filterType, currentUser, source])
 
   const handleAction = (
     type: 'visita' | 'proposta' | 'negocio' | 'lost' | 'history' | 'details' | 'edit',
@@ -184,7 +198,7 @@ export function CapturedPropertiesView({
           />
         </div>
 
-        {isFiltering ? (
+        {isFiltering || loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-[16px] w-full">
             {[1, 2, 3].map((i) => (
               <Skeleton key={i} className="h-[250px] w-full rounded-[12px] animate-fast-pulse" />
@@ -195,14 +209,14 @@ export function CapturedPropertiesView({
             <div className="text-[64px] leading-none mb-4">📦</div>
             <p className="text-[16px] font-bold text-[#333333]">{emptyStateText}</p>
             <p className="text-[14px] text-[#999999] mt-1">
-              Tente ajustar os filtros ou espere novas captações.
+              Tente ajustar os filtros ou espere novas captações em tempo real.
             </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-[16px] w-full">
             {filteredAndSorted.map(({ demand, property }, index) => (
               <div
-                key={`${demand.id}-${property.code}`}
+                key={`${demand?.id || 'loose'}-${property.code}`}
                 className="opacity-0 animate-cascade-fade h-full"
                 style={{ animationDelay: `${index * 50}ms` }}
               >
