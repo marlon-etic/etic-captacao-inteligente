@@ -48,11 +48,11 @@ export function ExpandableDemandCard({
       case 'aberta':
         return 'Aberta'
       case 'atendida':
-        return 'Atendida'
+        return 'Atendida / Fechada'
       case 'sem_resposta_24h':
         return 'Sem Resposta'
       case 'impossivel':
-        return 'Impossível'
+        return 'Perdida / Impossível'
       default:
         return status
     }
@@ -90,13 +90,35 @@ export function ExpandableDemandCard({
       .from('imoveis_captados')
       .update({ status_captacao: status })
       .eq('id', propId)
+
     if (!error) {
+      const table = demand.tipo === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
+
+      // Update core demand status asynchronously based on the property resolution
+      if (status === 'fechado') {
+        await supabase.from(table).update({ status_demanda: 'atendida' }).eq('id', demand.id)
+      } else if (status === 'perdido' && demand.imoveis_captados?.length === 1) {
+        await supabase.from(table).update({ status_demanda: 'aberta' }).eq('id', demand.id)
+      }
+
       toast({
         title: 'Sucesso',
         description: message,
-        className: status === 'fechado' ? 'bg-emerald-600 text-white' : '',
+        className: status === 'fechado' ? 'bg-emerald-600 text-white border-emerald-600' : '',
       })
-      window.dispatchEvent(new Event('demanda-updated'))
+
+      // Dispatch optimistic update event locally for instant <1s feedback
+      window.dispatchEvent(
+        new CustomEvent('imovel-action', {
+          detail: {
+            propId,
+            status,
+            demandId: demand.id,
+            tipo: demand.tipo,
+          },
+        }),
+      )
+
       if (onUpdate) onUpdate()
     } else {
       toast({ title: 'Erro', description: error.message, variant: 'destructive' })
@@ -109,7 +131,7 @@ export function ExpandableDemandCard({
   }
 
   const capturedCount = demand.imoveis_captados?.length || 0
-  const isBrandNew = new Date().getTime() - new Date(demand.created_at).getTime() < 1000 * 60 * 5 // 5 minutes
+  const isBrandNew = new Date().getTime() - new Date(demand.created_at).getTime() < 1000 * 60 * 5
 
   return (
     <Card
@@ -122,7 +144,7 @@ export function ExpandableDemandCard({
         className="p-4 cursor-pointer flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between"
         onClick={() => setExpanded(!expanded)}
       >
-        <div className="flex flex-col gap-2 flex-1 w-full">
+        <div className="flex flex-col gap-2 flex-1 w-full min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             {isBrandNew && (
               <Badge className="bg-pink-500 hover:bg-pink-600 text-white animate-pulse shadow-sm border-none uppercase tracking-wide px-2">
@@ -140,15 +162,15 @@ export function ExpandableDemandCard({
               {new Date(demand.created_at).toLocaleDateString('pt-BR')}
             </span>
           </div>
-          <h3 className="text-[18px] font-bold text-[#1A3A52] leading-tight">
+          <h3 className="text-[18px] font-bold text-[#1A3A52] leading-tight truncate">
             {demand.nome_cliente}
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-[13px] text-[#666666] mt-1">
             <div className="flex items-center gap-1.5 truncate">
               <MapPin className="w-4 h-4 shrink-0 opacity-70" />
-              <span className="truncate">{demand.bairros.join(', ')}</span>
+              <span className="truncate">{demand.bairros?.join(', ')}</span>
             </div>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 truncate">
               <DollarSign className="w-4 h-4 shrink-0 opacity-70" />
               <span>
                 {formatPrice(demand.valor_minimo)} - {formatPrice(demand.valor_maximo)}
@@ -190,60 +212,79 @@ export function ExpandableDemandCard({
             </div>
           ) : (
             <div className="flex flex-col gap-3 mt-4">
-              {demand.imoveis_captados.map((imovel) => (
-                <div
-                  key={imovel.id}
-                  className="bg-white p-3 rounded-lg border border-[#E5E5E5] shadow-sm flex flex-col lg:flex-row gap-4 items-start lg:items-center animate-in fade-in slide-in-from-top-2"
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-bold text-[#1A3A52]">
-                        {imovel.codigo_imovel || 'Sem código'}
-                      </span>
-                      <Badge variant="outline" className="text-[10px] h-5 py-0">
-                        {imovel.status_captacao || 'Pendente'}
-                      </Badge>
+              {demand.imoveis_captados.map((imovel) => {
+                const isPendente = imovel.status_captacao === 'pendente' || !imovel.status_captacao
+
+                return (
+                  <div
+                    key={imovel.id}
+                    className="bg-white p-3 rounded-lg border border-[#E5E5E5] shadow-sm flex flex-col lg:flex-row gap-4 items-start lg:items-center animate-in fade-in slide-in-from-top-2"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-bold text-[#1A3A52]">
+                          {imovel.codigo_imovel || 'Sem código'}
+                        </span>
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            'text-[10px] h-5 py-0 uppercase',
+                            imovel.status_captacao === 'fechado'
+                              ? 'bg-emerald-100 text-emerald-700 border-none'
+                              : imovel.status_captacao === 'perdido'
+                                ? 'bg-red-100 text-red-700 border-none'
+                                : 'bg-gray-100 text-gray-700 border-none',
+                          )}
+                        >
+                          {imovel.status_captacao || 'Pendente'}
+                        </Badge>
+                      </div>
+                      <div className="text-[13px] text-[#666666] flex flex-col gap-1">
+                        <div className="flex items-center gap-1.5 truncate">
+                          <MapPin className="w-3.5 h-3.5" />{' '}
+                          <span className="truncate">
+                            {imovel.endereco || 'Endereço não informado'}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <DollarSign className="w-3.5 h-3.5" /> {formatPrice(imovel.preco || 0)}
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <UserIcon className="w-3.5 h-3.5" /> Captador: {imovel.captador_nome}
+                        </div>
+                      </div>
                     </div>
-                    <div className="text-[13px] text-[#666666] flex flex-col gap-1">
-                      <div className="flex items-center gap-1.5">
-                        <MapPin className="w-3.5 h-3.5" />{' '}
-                        {imovel.endereco || 'Endereço não informado'}
+
+                    {isPendente && (
+                      <div className="flex flex-row flex-wrap gap-2 w-full lg:w-auto lg:shrink-0 mt-2 lg:mt-0">
+                        <Button
+                          onClick={(e) => handleAction(e, imovel.id, 'fechado', 'Imóvel validado')}
+                          size="sm"
+                          className="flex-1 lg:flex-none bg-emerald-600 hover:bg-emerald-700 text-white h-9"
+                        >
+                          <CheckCircle2 className="w-4 h-4 mr-1.5" /> Validar
+                        </Button>
+                        <Button
+                          onClick={(e) => handleAction(e, imovel.id, 'perdido', 'Imóvel rejeitado')}
+                          variant="outline"
+                          size="sm"
+                          className="flex-1 lg:flex-none text-red-600 hover:text-red-700 hover:bg-red-50 h-9 border-red-200"
+                        >
+                          <XCircle className="w-4 h-4 mr-1.5" /> Rejeitar
+                        </Button>
+                        <Button
+                          onClick={(e) => handleContact(e)}
+                          variant="secondary"
+                          size="sm"
+                          className="flex-1 lg:flex-none h-9"
+                        >
+                          <MessageCircle className="w-4 h-4 mr-1.5" /> Contato
+                        </Button>
                       </div>
-                      <div className="flex items-center gap-1.5">
-                        <DollarSign className="w-3.5 h-3.5" /> {formatPrice(imovel.preco || 0)}
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <UserIcon className="w-3.5 h-3.5" /> Captador: {imovel.captador_nome}
-                      </div>
-                    </div>
+                    )}
                   </div>
-                  <div className="flex flex-row flex-wrap gap-2 w-full lg:w-auto lg:shrink-0 mt-2 lg:mt-0">
-                    <Button
-                      onClick={(e) => handleAction(e, imovel.id, 'fechado', 'Imóvel validado')}
-                      size="sm"
-                      className="flex-1 lg:flex-none bg-emerald-600 hover:bg-emerald-700 text-white h-9"
-                    >
-                      <CheckCircle2 className="w-4 h-4 mr-1.5" /> Validar
-                    </Button>
-                    <Button
-                      onClick={(e) => handleAction(e, imovel.id, 'perdido', 'Imóvel rejeitado')}
-                      variant="outline"
-                      size="sm"
-                      className="flex-1 lg:flex-none text-red-600 hover:text-red-700 hover:bg-red-50 h-9 border-red-200"
-                    >
-                      <XCircle className="w-4 h-4 mr-1.5" /> Rejeitar
-                    </Button>
-                    <Button
-                      onClick={(e) => handleContact(e)}
-                      variant="secondary"
-                      size="sm"
-                      className="flex-1 lg:flex-none h-9"
-                    >
-                      <MessageCircle className="w-4 h-4 mr-1.5" /> Contato
-                    </Button>
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>

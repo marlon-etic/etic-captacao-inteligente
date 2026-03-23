@@ -205,12 +205,12 @@ export function ModalDemandaVenda({ isOpen, onClose }: { isOpen: boolean; onClos
         necessidades_especificas: values.necessidades_especificas || null,
       })
 
-      console.log('[Diagnostic] Disparando evento demanda-created:', result)
+      // Update imediato local em <1s
       window.dispatchEvent(
         new CustomEvent('demanda-created', { detail: { tipo: 'Venda', data: result } }),
       )
 
-      // Update global store para visibilidade instantânea em feeds (ex: Captadores)
+      // Fallback legado
       addDemand({
         clientName: values.nome_cliente,
         phone: values.telefone || undefined,
@@ -497,7 +497,7 @@ export function ModalDemandaVenda({ isOpen, onClose }: { isOpen: boolean; onClos
           <Button
             type="submit"
             form="venda-form"
-            disabled={form.formState.isSubmitting}
+            disabled={isSubmitting || form.formState.isSubmitting}
             className={cn(
               'min-h-[44px] md:min-h-[48px] bg-[#10B981] hover:bg-[#059669] text-white font-bold text-[16px] rounded-[8px] shadow-[0_4px_12px_rgba(16,185,129,0.3)]',
               isMobile && isKeyboardOpen

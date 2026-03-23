@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { Button } from '@/components/ui/button'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
@@ -132,6 +132,7 @@ export function NewDemandModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
   const { addDemand, currentUser } = useAppStore()
   const { toast } = useToast()
   const navigate = useNavigate()
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const { isKeyboardOpen, viewportHeight } = useKeyboard()
   const isMobile = useIsMobile()
@@ -159,6 +160,7 @@ export function NewDemandModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
   }, [isOpen, form])
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    setIsSubmitting(true)
     try {
       const { data: authData } = await supabase.auth.getUser()
 
@@ -217,7 +219,7 @@ export function NewDemandModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
         }
       }
 
-      // Keep local store for mock compat
+      // Fallback para visualização legado
       addDemand({
         clientName: values.clientName,
         phone: values.clientPhone,
@@ -239,6 +241,7 @@ export function NewDemandModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
         duration: 3000,
       })
 
+      form.reset()
       onClose()
       sessionStorage.setItem(
         'etic_filters_my_demands_view_supabase_Venda',
@@ -256,11 +259,16 @@ export function NewDemandModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
         description: e.message || 'Ocorreu um erro ao salvar.',
         variant: 'destructive',
       })
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
   return (
-    <DialogPrimitive.Root open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <DialogPrimitive.Root
+      open={isOpen}
+      onOpenChange={(open) => !open && !isSubmitting && onClose()}
+    >
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay className="fixed inset-0 z-[1000] bg-black/60 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
         <DialogPrimitive.Content
@@ -480,6 +488,7 @@ export function NewDemandModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
               type="button"
               variant="ghost"
               onClick={onClose}
+              disabled={isSubmitting}
               className={cn(
                 'min-h-[44px] md:min-h-[48px] text-[#666666] hover:text-[#333333] hover:bg-transparent font-bold text-[16px] rounded-[8px] border border-[#E0E0E0] md:border-transparent',
                 isMobile && isKeyboardOpen
@@ -492,7 +501,7 @@ export function NewDemandModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
             <Button
               type="submit"
               form="new-demand-form"
-              disabled={form.formState.isSubmitting}
+              disabled={isSubmitting || form.formState.isSubmitting}
               className={cn(
                 'min-h-[44px] md:min-h-[48px] bg-[#10B981] hover:bg-[#059669] text-white font-bold text-[16px] rounded-[8px] shadow-[0_4px_12px_rgba(16,185,129,0.3)]',
                 isMobile && isKeyboardOpen
@@ -500,7 +509,11 @@ export function NewDemandModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
                   : 'w-full md:w-[160px] order-1 md:order-2',
               )}
             >
-              {isMobile && isKeyboardOpen ? '✅ Confirmar' : '✅ Criar Demanda'}
+              {isSubmitting
+                ? 'Salvando...'
+                : isMobile && isKeyboardOpen
+                  ? '✅ Confirmar'
+                  : '✅ Criar Demanda'}
             </Button>
           </div>
         </DialogPrimitive.Content>

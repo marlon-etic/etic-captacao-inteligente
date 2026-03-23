@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { z } from 'zod'
 import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -227,6 +227,10 @@ export function ModalDemandaLocacao({ isOpen, onClose }: Props) {
     mode: 'onTouched',
   })
 
+  useEffect(() => {
+    if (!isOpen) form.reset()
+  }, [isOpen, form])
+
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>, onChange: any) => {
     let v = e.target.value.replace(/\D/g, '')
     if (v.length > 11) v = v.slice(0, 11)
@@ -257,12 +261,12 @@ export function ModalDemandaLocacao({ isOpen, onClose }: Props) {
 
       if (error) throw error
 
-      console.log('[Diagnostic] Disparando evento demanda-created:', data)
+      // Dispara evento global para o componente de dashboard do criador processar em <1s sem recarregar a tela
       window.dispatchEvent(
         new CustomEvent('demanda-created', { detail: { tipo: 'Aluguel', data } }),
       )
 
-      // Update global store para visibilidade instantânea em feeds (ex: Captadores)
+      // Atualiza o estado global legado para compatibilidade com a view dos Captadores em fallback
       addDemand({
         clientName: values.nome_cliente,
         phone: values.telefone || undefined,

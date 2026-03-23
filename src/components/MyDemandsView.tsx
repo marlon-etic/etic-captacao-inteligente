@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import { FilterSidebar } from '@/components/FilterSidebar'
 import { StickyFilterBar, FilterDef } from '@/components/StickyFilterBar'
 import { useViewFilters } from '@/hooks/useViewFilters'
@@ -52,10 +52,7 @@ const FILTERS: FilterDef[] = [
 export function MyDemandsView({ filterType }: Props) {
   const { currentUser } = useAppStore()
 
-  // O bug raiz estava aqui: O filtro padrão estava fixo em Aluguel (filterType = 'Aluguel'),
-  // o que escondia totalmente as demandas criadas pelos Corretores (Venda).
   const activeType = filterType || (currentUser?.role === 'corretor' ? 'Venda' : 'Aluguel')
-
   const { demands, loading, refresh } = useSupabaseDemands(activeType)
 
   const [filters, setFilters] = useViewFilters('my_demands_view_supabase_' + activeType, {
@@ -65,33 +62,26 @@ export function MyDemandsView({ filterType }: Props) {
     bairro: '',
   })
 
-  const [isFiltering, setIsFiltering] = useState(false)
-
-  // Diagnóstico
-  useEffect(() => {
-    console.log('[Diagnostic] MyDemandsView renderizado com activeType:', activeType)
-    console.log('[Diagnostic] Filtros atuais:', filters)
-  }, [activeType, filters])
-
+  // Setar estado instantaneamente sem debounce ou isFiltering flags
+  // para evitar flicker ("piscar") a interface
   const handleFilterChange = (newF: Record<string, string>) => {
-    setIsFiltering(true)
     setFilters(newF)
-    setTimeout(() => setIsFiltering(false), 250)
   }
 
   const filteredDemands = useMemo(() => {
     return demands.filter((d) => {
-      // Exibimos todos os status se "Todos" estiver selecionado (incluindo "aberta")
-      if (filters.status !== 'Todos' && d.status_demanda !== filters.status) return false
-      if (filters.urgencia !== 'Todos' && d.nivel_urgencia !== filters.urgencia) return false
-
-      if (filters.bairro) {
+      if (filters.status && filters.status !== 'Todos') {
+        if (d.status_demanda !== filters.status) return false
+      }
+      if (filters.urgencia && filters.urgencia !== 'Todos') {
+        if (d.nivel_urgencia !== filters.urgencia) return false
+      }
+      if (filters.bairro && filters.bairro !== '') {
         const bArr = filters.bairro.toLowerCase().split(',')
         const dBairros = d.bairros.map((b) => b.toLowerCase())
         if (!bArr.some((b) => dBairros.includes(b))) return false
       }
-
-      if (filters.data !== 'Todos') {
+      if (filters.data && filters.data !== 'Todos') {
         const days = parseInt(filters.data)
         const dateLimit = new Date()
         dateLimit.setDate(dateLimit.getDate() - days)
@@ -160,12 +150,6 @@ export function MyDemandsView({ filterType }: Props) {
         </div>
 
         {loading ? (
-          <div className="flex flex-col gap-[16px] w-full">
-            {[1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-[140px] w-full rounded-[12px] animate-fast-pulse" />
-            ))}
-          </div>
-        ) : isFiltering ? (
           <div className="flex flex-col gap-[16px] w-full">
             {[1, 2, 3].map((i) => (
               <Skeleton key={i} className="h-[140px] w-full rounded-[12px] animate-fast-pulse" />

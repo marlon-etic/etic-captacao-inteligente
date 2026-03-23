@@ -34,53 +34,33 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
   const fetchDemands = useCallback(
     async (isBackground = false) => {
       try {
-        console.log(`[Diagnostic] fetchDemands started for ${type}`, { isBackground })
         if (!isBackground) setLoading(true)
 
         const { data: userData, error: userError } = await supabase.auth.getUser()
-        if (userError || !userData?.user) {
-          console.error('[Diagnostic] Auth error or no user:', userError)
-          return
-        }
-
-        const { data: usersData, error: profileError } = await supabase
-          .from('users')
-          .select('id, nome, role')
-        if (profileError) console.error('[Diagnostic] Profile error:', profileError)
-
-        const userMap = new Map((usersData || []).map((u) => [u.id, u.nome]))
-        const currentUserProfile = (usersData || []).find((u) => u.id === userData.user.id)
-        const role = currentUserProfile?.role
-
-        console.log(
-          `[Diagnostic] Buscando demandas ${type} para role ${role} (${userData.user.id})`,
-        )
+        if (userError || !userData?.user) return
 
         const table = type === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
 
-        let query = supabase
+        // RLS safely limits returned rows to the ones the user is allowed to see
+        const query = supabase
           .from(table)
           .select('*, imoveis_captados(*)')
           .order('created_at', { ascending: false })
 
-        if (role === 'sdr' && type === 'Aluguel') {
-          query = query.eq('sdr_id', userData.user.id)
-        } else if (role === 'corretor' && type === 'Venda') {
-          query = query.eq('corretor_id', userData.user.id)
-        }
+        // Fetch users locally to map captador names without complex joins
+        const { data: usersData } = await supabase.from('users').select('id, nome')
+        const userMap = new Map((usersData || []).map((u) => [u.id, u.nome]))
 
         const { data, error } = await query
 
         if (error) {
-          console.error('[Diagnostic] Query error:', error)
+          console.error('[useSupabaseDemands] Query error:', error)
           throw error
         }
 
-        console.log(`[Diagnostic] Fetched ${data?.length || 0} rows from ${table}`)
-
         if (data) {
           setDemands((prev) => {
-            const fetchedFormatted = data.map((d) => ({
+            const fetchedFormatted = data.map((d: any) => ({
               id: d.id,
               nome_cliente: d.nome_cliente || d.cliente_nome || 'Cliente',
               bairros: d.bairros || d.localizacoes || [],
@@ -96,15 +76,11 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
               })),
             }))
 
-            // Preserva updates otimistas para evitar que demandas recém-criadas pisquem na tela
+            // Preserva optimistic updates para evitar flicker
             const fetchedIds = new Set(fetchedFormatted.map((f) => f.id))
             const recentLocal = prev.filter(
               (p) => !fetchedIds.has(p.id) && Date.now() - new Date(p.created_at).getTime() < 5000,
             )
-
-            if (recentLocal.length > 0) {
-              console.log('[Diagnostic] Preservando optimistic updates locais:', recentLocal.length)
-            }
 
             return [...recentLocal, ...fetchedFormatted].sort(
               (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
@@ -112,7 +88,6 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
           })
         }
       } catch (err: any) {
-        console.error('[Diagnostic] Erro geral ao buscar demandas:', err)
         if (!isBackground) {
           toast({
             title: 'Erro ao carregar demandas',
@@ -132,7 +107,7 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
       if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current)
       fetchTimeoutRef.current = setTimeout(() => {
         fetchDemands(isBackground)
-      }, 500)
+      }, 800)
     },
     [fetchDemands],
   )
@@ -146,10 +121,8 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
     const channel = supabase
       .channel(`demands_changes_${type}`)
       .on('postgres_changes', { event: '*', schema: 'public', table }, (payload) => {
-        console.log(`[Diagnostic] Subscription ${type} payload recebido:`, payload)
         if (payload.eventType === 'INSERT') {
           const d = payload.new
-          console.log('[Diagnostic] Sincronização Realtime - INSERT recebido:', d.id)
           setDemands((prev) => {
             if (prev.some((x) => x.id === d.id)) return prev
             const newDemand: SupabaseDemand = {
@@ -164,10 +137,6 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
               tipo: type,
               imoveis_captados: [],
             }
-            console.log(
-              '[Diagnostic] Estado React atualizado com nova demanda via subscription:',
-              newDemand.id,
-            )
             return [newDemand, ...prev]
           })
         } else if (payload.eventType === 'UPDATE') {
@@ -190,22 +159,21 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
         } else if (payload.eventType === 'DELETE') {
           setDemands((prev) => prev.filter((x) => x.id !== payload.old.id))
         }
+
+        // Garante que a relação com imoveis_captados seja consolidada
         debouncedFetch(true)
       })
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'imoveis_captados' },
         (payload) => {
-          console.log('[Diagnostic] Realtime payload for imoveis_captados:', payload)
           if (payload.eventType === 'INSERT') {
             const imv = payload.new
-            console.log('[Diagnostic] Sincronização de nova captacao via Postgres:', imv.id)
             setDemands((prev) =>
               prev.map((d) => {
                 if (d.id === imv.demanda_locacao_id || d.id === imv.demanda_venda_id) {
                   const exists = d.imoveis_captados?.some((i: any) => i.id === imv.id)
                   if (exists) return d
-                  console.log('[Diagnostic] Atualizando demanda via nova captacao:', d.id)
                   return {
                     ...d,
                     status_demanda: 'atendida',
@@ -220,7 +188,6 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
             )
           } else if (payload.eventType === 'UPDATE') {
             const imv = payload.new
-            console.log('[Diagnostic] Sincronização de update captacao via Postgres:', imv.id)
             setDemands((prev) =>
               prev.map((d) => {
                 if (d.id === imv.demanda_locacao_id || d.id === imv.demanda_venda_id) {
@@ -236,16 +203,15 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
               }),
             )
           }
+
           debouncedFetch(true)
         },
       )
-      .subscribe((status) => {
-        console.log(`[Diagnostic] Subscription status for ${table}:`, status)
-      })
+      .subscribe()
 
-    const handleEvent = (e: Event) => {
+    // Optimistic Update: Demanda Criada (0 delay na interface)
+    const handleDemandaCreated = (e: Event) => {
       const customEvent = e as CustomEvent
-      console.log('[Diagnostic] Local event recebido:', customEvent.type, customEvent.detail)
       if (customEvent.detail && customEvent.detail.tipo === type) {
         const d = customEvent.detail.data
         if (d) {
@@ -263,7 +229,6 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
               tipo: type,
               imoveis_captados: [],
             }
-            console.log('[Diagnostic] Optimistic update para nova demanda no React:', newDemand.id)
             return [newDemand, ...prev]
           })
         }
@@ -271,14 +236,42 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
       debouncedFetch(true)
     }
 
-    window.addEventListener('demanda-created', handleEvent)
-    window.addEventListener('demanda-updated', handleEvent)
+    // Optimistic Update: Validar/Rejeitar Imóvel
+    const handleImovelAction = (e: Event) => {
+      const customEvent = e as CustomEvent
+      const { propId, status, demandId, tipo } = customEvent.detail
+      if (tipo !== type) return
+
+      setDemands((prev) =>
+        prev.map((d) => {
+          if (d.id === demandId) {
+            return {
+              ...d,
+              status_demanda:
+                status === 'fechado'
+                  ? 'atendida'
+                  : status === 'perdido' && d.imoveis_captados.length <= 1
+                    ? 'aberta'
+                    : d.status_demanda,
+              imoveis_captados: (d.imoveis_captados || []).map((i) =>
+                i.id === propId ? { ...i, status_captacao: status } : i,
+              ),
+            }
+          }
+          return d
+        }),
+      )
+      debouncedFetch(true)
+    }
+
+    window.addEventListener('demanda-created', handleDemandaCreated)
+    window.addEventListener('imovel-action', handleImovelAction)
 
     return () => {
       mounted = false
       supabase.removeChannel(channel)
-      window.removeEventListener('demanda-created', handleEvent)
-      window.removeEventListener('demanda-updated', handleEvent)
+      window.removeEventListener('demanda-created', handleDemandaCreated)
+      window.removeEventListener('imovel-action', handleImovelAction)
       if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current)
     }
   }, [fetchDemands, debouncedFetch, type])
