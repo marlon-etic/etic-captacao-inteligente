@@ -35,19 +35,50 @@ export default function Layout() {
   }, [navigate])
 
   useEffect(() => {
-    if (currentUser) {
-      const updatePrazos = async () => {
-        try {
-          const { error } = await supabase.rpc('atualizar_prazos_vencidos')
-          if (error) console.error('Erro ao atualizar prazos vencidos:', error)
-        } catch (err) {
-          console.error('Falha ao executar RPC:', err)
+    if (!currentUser) return
+
+    let isMounted = true
+    let intervalId: NodeJS.Timeout
+    let timeoutId: NodeJS.Timeout
+
+    const updatePrazos = async (retryCount = 0) => {
+      // Pré-validação de conectividade
+      if (!isMounted || !navigator.onLine) return
+
+      try {
+        const { error } = await supabase.rpc('atualizar_prazos_vencidos')
+
+        if (error) {
+          // Lança o erro para ativar o backoff se for problema de rede
+          if (error.message?.includes('Failed to fetch') || error.message?.includes('network')) {
+            throw error
+          }
+          // Loga silenciosamente (warn) para não disparar o ErrorBoundary em tarefas de background
+          console.warn('[Background Sync] Aviso ao atualizar prazos:', error.message)
+        }
+      } catch (err: any) {
+        // Implementação de Retry com Backoff Exponencial
+        if (retryCount < 3) {
+          const backoffDelay = Math.pow(2, retryCount) * 2000 // 2s, 4s, 8s
+          timeoutId = setTimeout(() => updatePrazos(retryCount + 1), backoffDelay)
+        } else {
+          // Falha silenciosa após 3 tentativas
+          console.warn(
+            '[Background Sync] Falha de rede ao atualizar prazos. Nova tentativa no próximo ciclo.',
+            err?.message || err,
+          )
         }
       }
+    }
 
-      updatePrazos()
-      const interval = setInterval(updatePrazos, 60000)
-      return () => clearInterval(interval)
+    // Delay inicial para evitar sobrecarga no startup da página
+    timeoutId = setTimeout(() => updatePrazos(0), 5000)
+    intervalId = setInterval(() => updatePrazos(0), 60000)
+
+    return () => {
+      isMounted = false
+      clearTimeout(timeoutId)
+      clearInterval(intervalId)
     }
   }, [currentUser])
 
