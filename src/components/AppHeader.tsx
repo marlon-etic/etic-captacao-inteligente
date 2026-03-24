@@ -1,45 +1,21 @@
-import {
-  Bell,
-  Menu,
-  Star,
-  Check,
-  Home,
-  CheckCircle2,
-  XCircle,
-  FileText,
-  Calendar,
-  DollarSign,
-  X,
-} from 'lucide-react'
+import { Bell, Menu, Star, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { SidebarTrigger, useSidebar } from '@/components/ui/sidebar'
 import { Badge } from '@/components/ui/badge'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+  SheetDescription,
+} from '@/components/ui/sheet'
 import useAppStore from '@/stores/useAppStore'
 import { cn } from '@/lib/utils'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { AppNotification } from '@/types'
-
-const getNotifIcon = (type: string) => {
-  switch (type) {
-    case 'novo_imovel':
-      return <Home className="w-5 h-5 text-[#1A3A52]" />
-    case 'reivindicado':
-      return <CheckCircle2 className="w-5 h-5 text-[#4CAF50]" />
-    case 'ja_reivindicado':
-      return <XCircle className="w-5 h-5 text-[#F44336]" />
-    case 'demanda_respondida':
-      return <FileText className="w-5 h-5 text-[#2E5F8A]" />
-    case 'perdido':
-      return <X className="w-5 h-5 text-[#999999]" />
-    case 'visita':
-      return <Calendar className="w-5 h-5 text-[#FF9800]" />
-    case 'negocio':
-      return <DollarSign className="w-5 h-5 text-[#388E3C]" />
-    default:
-      return <Bell className="w-5 h-5 text-[#999999]" />
-  }
-}
+import { useNotificacoes } from '@/hooks/use-notificacoes'
+import { formatDistanceToNow } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
 
 interface AppHeaderProps {
   onAddPropertyClick?: () => void
@@ -51,15 +27,11 @@ export function AppHeader({ onAddPropertyClick }: AppHeaderProps) {
   const navigate = useNavigate()
   const location = useLocation()
   const { isMobile, setOpenMobile } = useSidebar()
+  const { notificacoes, markAsRead, markAllAsRead } = useNotificacoes()
 
   if (!currentUser) return null
 
-  const notifications =
-    store.notifications?.filter(
-      (n: AppNotification) => n.usuario_id === currentUser.id && !n.arquivada,
-    ) || []
-  const unreadCount = notifications.filter((n: AppNotification) => !n.lida).length
-  const { markNotificationAsRead, markAllNotificationsAsRead } = store
+  const unreadCount = notificacoes.filter((n) => !n.lido).length
 
   const getTitle = () => {
     if (location.pathname.includes('/app/pontuacao')) return 'Pontuação e Desempenho'
@@ -113,8 +85,8 @@ export function AppHeader({ onAddPropertyClick }: AppHeaderProps) {
           </span>
         </Badge>
 
-        <Popover>
-          <PopoverTrigger asChild>
+        <Sheet>
+          <SheetTrigger asChild>
             <Button
               variant="ghost"
               size="icon"
@@ -122,116 +94,108 @@ export function AppHeader({ onAddPropertyClick }: AppHeaderProps) {
             >
               <Bell className="w-6 h-6" />
               {unreadCount > 0 && (
-                <span className="absolute top-2 right-2 w-3 h-3 bg-[#F44336] rounded-full border-2 border-[#1A3A52] animate-pulse" />
+                <span className="absolute top-2 right-2 flex h-4 w-4">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#EF4444] opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-4 w-4 bg-[#EF4444] items-center justify-center text-[9px] font-bold text-white border border-[#1A3A52]">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                </span>
               )}
             </Button>
-          </PopoverTrigger>
-          <PopoverContent
-            align="end"
-            className="w-[320px] sm:w-[380px] p-0 overflow-hidden shadow-[0_8px_24px_rgba(26,58,82,0.15)] border-[#2E5F8A] bg-[#FFFFFF]"
+          </SheetTrigger>
+          <SheetContent
+            side="right"
+            className="w-full sm:w-[400px] p-0 flex flex-col z-[1050] bg-[#F5F5F5] border-l-0 sm:border-l sm:border-[#E5E5E5]"
           >
-            <div className="flex flex-col max-h-[80vh]">
-              <div className="flex items-center justify-between p-4 border-b border-[#2E5F8A]/20 bg-[#F5F5F5]">
-                <h4 className="font-bold text-[20px] leading-[24px] text-[#1A3A52]">
-                  Notificações
-                </h4>
+            <SheetHeader className="p-4 border-b border-[#E5E5E5] bg-white shrink-0">
+              <div className="flex justify-between items-center">
+                <SheetTitle className="text-[20px] font-black text-[#1A3A52] flex items-center gap-2">
+                  <Bell className="w-5 h-5" /> Notificações
+                </SheetTitle>
                 {unreadCount > 0 && (
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="min-h-[48px] px-[16px] py-[8px] text-[14px] font-bold text-[#2E5F8A] hover:bg-[#FFFFFF] hover:text-[#1A3A52]"
-                    onClick={() => markAllNotificationsAsRead()}
+                    onClick={markAllAsRead}
+                    className="text-[12px] h-8 text-[#2E5F8A] font-bold"
                   >
-                    <Check className="w-4 h-4 mr-1.5" /> Marcar lidas
+                    <Check className="w-4 h-4 mr-1" /> Marcar lidas
                   </Button>
                 )}
               </div>
-              <div className="overflow-y-auto p-3 flex flex-col gap-3">
-                {notifications.length === 0 ? (
-                  <div className="text-center py-8 text-[#999999]">
-                    <Bell className="w-10 h-10 mx-auto mb-3 opacity-20" />
-                    <p className="text-[14px] leading-[20px] font-medium text-[#333333]">
-                      Nenhuma notificação
-                    </p>
-                  </div>
-                ) : (
-                  notifications.slice(0, 10).map((n: AppNotification) => (
+              <SheetDescription className="hidden">
+                Lista de notificações do sistema
+              </SheetDescription>
+            </SheetHeader>
+
+            <div className="flex-1 overflow-y-auto">
+              {notificacoes.length === 0 ? (
+                <div className="p-8 text-center text-[#999999] flex flex-col items-center h-full justify-center">
+                  <Bell className="w-12 h-12 opacity-20 mb-3" />
+                  <p className="font-bold">Nenhuma notificação</p>
+                  <p className="text-sm mt-1">Você está atualizado.</p>
+                </div>
+              ) : (
+                <div className="flex flex-col p-3 gap-2">
+                  {notificacoes.map((n) => (
                     <div
                       key={n.id}
-                      className={cn(
-                        'p-4 rounded-[8px] border-[2px] transition-all duration-200 ease-in-out flex items-start gap-3',
-                        n.lida
-                          ? 'bg-[#FFFFFF] border-transparent hover:bg-[#F5F5F5]'
-                          : 'bg-[#F5F5F5] border-[#2E5F8A]/20 shadow-[0_2px_4px_rgba(26,58,82,0.1)] cursor-pointer hover:border-[#2E5F8A]/40',
-                      )}
                       onClick={() => {
-                        if (!n.lida) markNotificationAsRead(n.id)
-                        if (n.acao_url && !n.acao_botao) navigate(n.acao_url)
+                        if (!n.lido) markAsRead(n.id)
+                        if (n.dados_relacionados?.demanda_id) {
+                          navigate(`/app/demandas?id=${n.dados_relacionados.demanda_id}`)
+                        } else if (n.dados_relacionados?.imovel_id) {
+                          navigate(`/app/disponivel-geral`)
+                        }
                       }}
+                      className={cn(
+                        'p-4 rounded-[8px] cursor-pointer transition-all border flex gap-3 shadow-sm',
+                        !n.lido ? 'bg-white' : 'bg-[#F9FAFB] opacity-70',
+                        n.prioridade === 'alta' && !n.lido
+                          ? 'border-l-4 border-l-[#EF4444] border-y-transparent border-r-transparent shadow-[0_2px_8px_rgba(239,68,68,0.15)]'
+                          : n.prioridade === 'normal' && !n.lido
+                            ? 'border-l-4 border-l-[#3B82F6] border-y-transparent border-r-transparent shadow-[0_2px_8px_rgba(59,130,246,0.15)]'
+                            : !n.lido
+                              ? 'border-l-4 border-l-[#6B7280] border-y-transparent border-r-transparent'
+                              : 'border-transparent',
+                      )}
                     >
-                      <div className="mt-0.5 shrink-0 bg-[#FFFFFF] rounded-full p-2 shadow-[0_2px_4px_rgba(26,58,82,0.1)] border border-[#2E5F8A]/20 w-[40px] h-[40px] flex items-center justify-center">
-                        {getNotifIcon(n.tipo_notificacao)}
-                      </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-bold text-[14px] md:text-[16px] leading-[20px] text-[#1A3A52]">
+                        <p
+                          className={cn(
+                            'text-[14px] leading-tight',
+                            !n.lido ? 'font-black text-[#1A3A52]' : 'font-bold text-[#666666]',
+                          )}
+                        >
                           {n.titulo}
                         </p>
-                        <p className="text-[12px] md:text-[14px] leading-[16px] md:leading-[20px] mt-1 text-[#333333]">
-                          {n.corpo}
+                        <p className="text-[13px] text-[#333333] mt-1 line-clamp-2 leading-snug">
+                          {n.mensagem}
                         </p>
-
-                        {n.detalhes && (
-                          <div className="bg-[#FFFFFF] rounded-[8px] p-2.5 mt-2 flex flex-wrap gap-x-2 gap-y-1.5 border border-[#2E5F8A]/20 shadow-[inset_0_1px_2px_rgba(26,58,82,0.05)]">
-                            {Object.entries(n.detalhes).map(([k, v]) => (
-                              <span
-                                key={k}
-                                className="text-[12px] leading-[16px] font-bold text-[#999999] block w-full truncate"
-                              >
-                                {String(k).replace('_', ' ').toUpperCase()}:{' '}
-                                <span className="text-[#1A3A52]">{String(v)}</span>
-                              </span>
-                            ))}
-                          </div>
-                        )}
-
-                        {n.acao_botao && (
-                          <Button
-                            variant={n.urgencia === 'alta' ? 'default' : 'secondary'}
-                            className="mt-3 w-full min-h-[48px]"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              if (!n.lida) markNotificationAsRead(n.id)
-                              if (n.acao_url) navigate(n.acao_url)
-                            }}
-                          >
-                            {n.acao_botao}
-                          </Button>
-                        )}
-                        <div className="text-[12px] leading-[16px] text-[#999999] mt-2 font-bold text-right w-full">
-                          {new Date(n.data_criacao).toLocaleString('pt-BR', {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                            day: '2-digit',
-                            month: '2-digit',
+                        <p className="text-[11px] text-[#999999] mt-2 font-semibold">
+                          {formatDistanceToNow(new Date(n.created_at), {
+                            addSuffix: true,
+                            locale: ptBR,
                           })}
-                        </div>
+                        </p>
                       </div>
                     </div>
-                  ))
-                )}
-              </div>
-              <div className="p-3 border-t border-[#2E5F8A]/20 bg-[#F5F5F5]">
-                <Button
-                  variant="outline"
-                  className="w-full text-[14px] font-bold min-h-[48px]"
-                  onClick={() => navigate('/app/notificacoes')}
-                >
-                  Ver todas as notificações
-                </Button>
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
-          </PopoverContent>
-        </Popover>
+
+            <div className="p-3 border-t border-[#E5E5E5] bg-white shrink-0">
+              <Button
+                variant="outline"
+                className="w-full font-bold min-h-[44px]"
+                onClick={() => navigate('/app/notificacoes')}
+              >
+                Ver Histórico Completo
+              </Button>
+            </div>
+          </SheetContent>
+        </Sheet>
       </div>
     </header>
   )

@@ -3,6 +3,7 @@ import { Tabs, TabsContent } from '@/components/ui/tabs'
 import { MyDemandsView } from '@/components/MyDemandsView'
 import { CapturedPropertiesView } from '@/components/CapturedPropertiesView'
 import { ScrollableTabs } from '@/components/ScrollableTabs'
+import { UltimosImoveisTab } from '@/components/UltimosImoveisTab'
 
 export function CorretorDashboard() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -15,6 +16,7 @@ export function CorretorDashboard() {
   const tabs = [
     { value: 'minhas-demandas', label: 'Minhas Demandas' },
     { value: 'cadastrados', label: 'Cadastrados para meus clientes' },
+    { value: 'ultimos-imoveis', label: 'Últimos Imóveis' },
   ]
 
   return (
@@ -38,6 +40,10 @@ export function CorretorDashboard() {
               source="linked"
               emptyStateText="Nenhum imóvel cadastrado para seus clientes no momento."
             />
+          </TabsContent>
+
+          <TabsContent value="ultimos-imoveis" className="m-0 border-none">
+            <UltimosImoveisTab />
           </TabsContent>
         </div>
       </Tabs>
