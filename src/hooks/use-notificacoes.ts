@@ -36,7 +36,9 @@ export function useNotificacoes() {
       if (data) {
         setNotificacoes(data as Notificacao[])
       }
-    } catch (e) {}
+    } catch (e) {
+      console.error('[useNotificacoes] Erro ao buscar notificações:', e)
+    }
   }, [currentUser, fetchWithResilience])
 
   useEffect(() => {

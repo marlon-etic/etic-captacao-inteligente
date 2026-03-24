@@ -34,7 +34,9 @@ export function useSupabasePontuacao() {
       if (data && mounted.current) {
         setPontuacoes(data as Pontuacao[])
       }
-    } catch (e) {}
+    } catch (e) {
+      console.error('[useSupabasePontuacao] Erro ao buscar pontuações:', e)
+    }
   }, [fetchWithResilience])
 
   useEffect(() => {
