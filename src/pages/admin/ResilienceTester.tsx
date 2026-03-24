@@ -74,14 +74,18 @@ export default function ResilienceTester() {
   const goOffline = () => {
     try {
       Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => false })
-    } catch (e) {}
+    } catch (e) {
+      /* ignore */
+    }
     window.dispatchEvent(new Event('offline'))
   }
 
   const goOnline = () => {
     try {
       Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => true })
-    } catch (e) {}
+    } catch (e) {
+      /* ignore */
+    }
     window.dispatchEvent(new Event('online'))
   }
 
@@ -93,7 +97,9 @@ export default function ResilienceTester() {
           configurable: true,
           get: () => originalOnLine,
         })
-      } catch (e) {}
+      } catch (e) {
+        /* ignore */
+      }
       window.dispatchEvent(new Event('online'))
     }
   }, [originalOnLine])
