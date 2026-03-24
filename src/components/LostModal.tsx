@@ -58,8 +58,8 @@ export function LostModal({ open, onOpenChange, onConfirm }: Props) {
               ❌ Marcar Demanda como Perdida
             </DialogTitle>
             <DialogDescription className="text-[14px] leading-tight text-[#333333]">
-              Por que esta demanda foi perdida? (Esta ação diminuirá a contagem de clientes no grupo
-              ativo).
+              Por que esta demanda foi perdida? (Esta ação arquivará a demanda e notificará os
+              captadores).
             </DialogDescription>
           </DialogHeader>
 
@@ -78,49 +78,45 @@ export function LostModal({ open, onOpenChange, onConfirm }: Props) {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem
-                    value="Cliente desistiu"
+                    value="Já alugou/comprou com outro"
                     className="min-h-[44px] text-[14px] cursor-pointer"
                   >
-                    Cliente desistiu
+                    Já alugou/comprou com outro
                   </SelectItem>
                   <SelectItem
-                    value="Cliente já alugou"
+                    value="Parou de procurar"
                     className="min-h-[44px] text-[14px] cursor-pointer"
                   >
-                    Cliente já alugou
+                    Parou de procurar
                   </SelectItem>
                   <SelectItem
-                    value="Cliente já comprou"
-                    className="min-h-[44px] text-[14px] cursor-pointer"
+                    value="Alugou/comprou com a Étic"
+                    className="min-h-[44px] text-[14px] cursor-pointer text-[#10B981] font-bold"
                   >
-                    Cliente já comprou
+                    Alugou/comprou com a Étic (Sucesso)
                   </SelectItem>
-                  <SelectItem
-                    value="Imóvel fora do mercado"
-                    className="min-h-[44px] text-[14px] cursor-pointer"
-                  >
-                    Imóvel fora do mercado
-                  </SelectItem>
-                  <SelectItem
-                    value="Outro motivo"
-                    className="min-h-[44px] text-[14px] cursor-pointer"
-                  >
+                  <SelectItem value="Outro" className="min-h-[44px] text-[14px] cursor-pointer">
                     Outro motivo
                   </SelectItem>
                 </SelectContent>
               </Select>
               {error && <p className="text-[13px] font-bold text-destructive mt-1">{error}</p>}
             </div>
-            <div className="space-y-2">
-              <Label className="text-[14px] font-bold text-[#1A3A52]">Observações (Opcional)</Label>
-              <Textarea
-                value={obs}
-                onChange={(e) => setObs(e.target.value)}
-                placeholder="Detalhes adicionais..."
-                className="resize-none min-h-[88px] text-[14px] border-[#E5E5E5] focus-visible:ring-[#1A3A52]"
-                rows={3}
-              />
-            </div>
+            {(reason === 'Outro' || reason) && (
+              <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                <Label className="text-[14px] font-bold text-[#1A3A52]">
+                  Observações (Opcional)
+                </Label>
+                <Textarea
+                  value={obs}
+                  onChange={(e) => setObs(e.target.value)}
+                  placeholder="Detalhes adicionais..."
+                  className="resize-none min-h-[88px] text-[14px] border-[#E5E5E5] focus-visible:ring-[#1A3A52]"
+                  rows={3}
+                  maxLength={500}
+                />
+              </div>
+            )}
           </div>
 
           <DialogFooter className="shrink-0 flex flex-col sm:flex-row gap-2 sm:gap-3 pt-2 sm:pt-0">

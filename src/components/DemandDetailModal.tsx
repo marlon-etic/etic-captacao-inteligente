@@ -4,6 +4,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogClose,
+  DialogFooter,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { SupabaseDemand } from '@/hooks/use-supabase-demands'
@@ -20,17 +21,32 @@ import {
   X,
   History,
   Star,
+  Pencil,
 } from 'lucide-react'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { ImovelCapturadoCard } from './ImovelCapturadoCard'
+import useAppStore from '@/stores/useAppStore'
 
 interface Props {
   demand: SupabaseDemand | null
   isOpen: boolean
   onClose: () => void
-  onFoundProperty: () => void
+  onFoundProperty?: () => void
+  onEdit?: () => void
+  onPrioritize?: () => void
+  onLost?: () => void
 }
 
-export function DemandDetailModal({ demand, isOpen, onClose, onFoundProperty }: Props) {
+export function DemandDetailModal({
+  demand,
+  isOpen,
+  onClose,
+  onFoundProperty,
+  onEdit,
+  onPrioritize,
+  onLost,
+}: Props) {
+  const { currentUser } = useAppStore()
   if (!demand) return null
 
   const formatPrice = (val: number) => {
@@ -54,6 +70,12 @@ export function DemandDetailModal({ demand, isOpen, onClose, onFoundProperty }: 
   const daysAgo = Math.floor((new Date().getTime() - createdDate.getTime()) / (1000 * 3600 * 24))
   const capturedCount = demand.imoveis_captados?.length || 0
   const prazo = demand.prazos_captacao?.[0]
+
+  const isOwnerOrAdmin =
+    currentUser?.role === 'admin' ||
+    currentUser?.role === 'gestor' ||
+    demand.sdr_id === currentUser?.id ||
+    demand.corretor_id === currentUser?.id
 
   return (
     <Dialog open={isOpen} onOpenChange={(val) => !val && onClose()}>
@@ -202,19 +224,95 @@ export function DemandDetailModal({ demand, isOpen, onClose, onFoundProperty }: 
                 {demand.observacoes || 'Nenhuma observação adicional fornecida para esta demanda.'}
               </p>
             </div>
+
+            {/* Histórico/Imóveis */}
+            <div className="md:col-span-2 bg-white p-5 rounded-[12px] border border-[#E5E5E5] shadow-sm">
+              <span className="text-[12px] text-[#999999] font-black uppercase tracking-wider flex items-center gap-1.5 mb-4 border-b border-[#F5F5F5] pb-2">
+                📦 Imóveis Capturados ({demand.imoveis_captados?.length || 0})
+              </span>
+
+              {demand.imoveis_captados && demand.imoveis_captados.length > 0 ? (
+                <div className="flex flex-col gap-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                  {demand.imoveis_captados.map((p, i) => (
+                    <ImovelCapturadoCard
+                      key={p.id || i}
+                      property={p}
+                      demand={demand}
+                      isOwnerOrAdmin={isOwnerOrAdmin}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="bg-[#F8FAFC] p-6 rounded-[8px] border border-[#E5E5E5] text-center flex flex-col items-center gap-2">
+                  <span className="text-[24px]">🏠</span>
+                  <p className="text-[14px] text-[#666666] font-medium leading-snug">
+                    Nenhum imóvel capturado ainda.
+                    <br />
+                    <span className="text-[#999999]">
+                      Aguardando os captadores encontrarem opções.
+                    </span>
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         </ScrollArea>
 
-        {(demand.status_demanda === 'aberta' || demand.status_demanda === 'sem_resposta_24h') && (
-          <div className="p-4 md:p-6 border-t border-[#E5E5E5] bg-white shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
-            <Button
-              className="w-full min-h-[56px] bg-[#10B981] hover:bg-[#059669] text-white font-black text-[16px] tracking-wide shadow-[0_4px_14px_rgba(16,185,129,0.3)] transition-all hover:scale-[1.01]"
-              onClick={onFoundProperty}
-            >
-              <CheckCircle className="w-5 h-5 mr-2" />
-              ENCONTREI IMÓVEL PARA ESTA DEMANDA
-            </Button>
-          </div>
+        {(onFoundProperty || onEdit || onPrioritize || onLost) && (
+          <DialogFooter className="p-[16px] md:p-[20px] border-t border-[#E5E5E5] shrink-0 flex flex-col sm:flex-row gap-[12px] bg-white z-10 shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
+            {onFoundProperty &&
+              (demand.status_demanda === 'aberta' ||
+                demand.status_demanda === 'sem_resposta_24h') && (
+                <Button
+                  className="w-full min-h-[56px] bg-[#10B981] hover:bg-[#059669] text-white font-black text-[16px] tracking-wide shadow-[0_4px_14px_rgba(16,185,129,0.3)] transition-all hover:scale-[1.01]"
+                  onClick={onFoundProperty}
+                >
+                  <CheckCircle className="w-5 h-5 mr-2" />
+                  ENCONTREI IMÓVEL PARA ESTA DEMANDA
+                </Button>
+              )}
+
+            {!onFoundProperty && (
+              <div className="flex flex-col sm:flex-row gap-3 w-full justify-end">
+                {onPrioritize && (
+                  <Button
+                    variant="outline"
+                    className="min-h-[48px] sm:flex-1 text-[14px] font-bold border-[#FCD34D] text-[#854D0E] hover:bg-[#FFFBEB] transition-colors"
+                    onClick={() => {
+                      onClose()
+                      onPrioritize()
+                    }}
+                  >
+                    <Star className="w-4 h-4 mr-2 fill-current" />{' '}
+                    {demand.is_prioritaria ? 'REMOVER PRIORIDADE' : 'PRIORIZAR'}
+                  </Button>
+                )}
+                {onEdit && (
+                  <Button
+                    variant="outline"
+                    className="min-h-[48px] sm:flex-1 text-[14px] font-bold border-[#2E5F8A] text-[#1A3A52] hover:bg-[#F5F5F5] transition-colors"
+                    onClick={() => {
+                      onClose()
+                      onEdit()
+                    }}
+                  >
+                    <Pencil className="w-4 h-4 mr-2" /> EDITAR
+                  </Button>
+                )}
+                {onLost && (
+                  <Button
+                    className="min-h-[48px] sm:flex-1 text-[14px] font-bold bg-[#EF4444] hover:bg-[#DC2626] text-white border-none transition-colors shadow-sm"
+                    onClick={() => {
+                      onClose()
+                      onLost()
+                    }}
+                  >
+                    <X className="w-4 h-4 mr-2" /> PERDIDO
+                  </Button>
+                )}
+              </div>
+            )}
+          </DialogFooter>
         )}
       </DialogContent>
     </Dialog>

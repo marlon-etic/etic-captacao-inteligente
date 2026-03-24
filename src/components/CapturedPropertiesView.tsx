@@ -179,7 +179,7 @@ export function CapturedPropertiesView({
   }
 
   return (
-    <div className="flex flex-col lg:flex-row gap-[24px] items-start w-full animate-fade-in transition-opacity duration-150 ease-in">
+    <div className="flex flex-col lg:flex-row gap-[24px] items-start w-full animate-fade-in transition-opacity duration-150 ease-in relative z-0">
       <FilterSidebar
         filters={FILTERS}
         values={filters}
@@ -188,13 +188,13 @@ export function CapturedPropertiesView({
       />
 
       <div className="flex-1 w-full flex flex-col gap-[16px] min-w-0">
-        <div className="lg:hidden w-full">
+        <div className="lg:hidden w-full space-y-3 relative z-10">
           <StickyFilterBar
             filters={FILTERS}
             values={filters}
             onChange={handleFilterChange}
             resultsCount={filteredAndSorted.length}
-            stickyTop="top-[128px] sm:top-[136px]"
+            stickyTop="top-[128px]"
           />
         </div>
 
@@ -213,7 +213,7 @@ export function CapturedPropertiesView({
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-[16px] w-full">
+          <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-[16px] w-full relative z-0">
             {filteredAndSorted.map(({ demand, property }, index) => (
               <div
                 key={`${demand?.id || 'loose'}-${property.code}`}

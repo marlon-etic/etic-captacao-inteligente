@@ -6,9 +6,14 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Users, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { useSupabaseDemands } from '@/hooks/use-supabase-demands'
+import { useSupabaseDemands, SupabaseDemand } from '@/hooks/use-supabase-demands'
 import { ExpandableDemandCardSDR } from '@/components/ExpandableDemandCardSDR'
 import useAppStore from '@/stores/useAppStore'
+import { DemandDetailModal } from '@/components/DemandDetailModal'
+import { EditDemandModal } from '@/components/EditDemandModal'
+import { LostModal } from '@/components/LostModal'
+import { supabase } from '@/lib/supabase/client'
+import { useToast } from '@/hooks/use-toast'
 
 interface Props {
   filterType?: 'Venda' | 'Aluguel'
@@ -61,6 +66,7 @@ const FILTERS: FilterDef[] = [
 
 export function MyDemandsView({ filterType }: Props) {
   const { currentUser } = useAppStore()
+  const { toast } = useToast()
 
   const activeType = filterType || (currentUser?.role === 'corretor' ? 'Venda' : 'Aluguel')
   const { demands, loading, refresh } = useSupabaseDemands(activeType)
@@ -73,13 +79,84 @@ export function MyDemandsView({ filterType }: Props) {
     bairro: '',
   })
 
+  const [actionDemand, setActionDemand] = useState<SupabaseDemand | null>(null)
+  const [modalType, setModalType] = useState<'details' | 'edit' | 'lost' | null>(null)
+
+  const handleAction = async (
+    action: 'details' | 'edit' | 'lost' | 'prioritize',
+    d: SupabaseDemand,
+  ) => {
+    if (action === 'prioritize') {
+      const newStatus = !d.is_prioritaria
+      const table = d.tipo === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
+
+      try {
+        const { error } = await supabase
+          .from(table)
+          .update({ is_prioritaria: newStatus })
+          .eq('id', d.id)
+        if (error) throw error
+        toast({
+          title: newStatus ? '⭐ Demanda Priorizada' : 'Prioridade Removida',
+          description: newStatus
+            ? 'A demanda subiu para o topo do feed dos captadores.'
+            : 'A demanda voltou à posição normal.',
+          className: newStatus ? 'bg-[#FCD34D] text-[#854D0E] border-none' : '',
+        })
+      } catch (err: any) {
+        toast({
+          title: 'Erro',
+          description: 'Não foi possível alterar a prioridade.',
+          variant: 'destructive',
+        })
+      }
+    } else {
+      setActionDemand(d)
+      setModalType(action)
+    }
+  }
+
+  const handleLostConfirm = async (reason: string, obs: string) => {
+    if (!actionDemand) return
+    const table = actionDemand.tipo === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
+
+    // Fallback if DB doesn't have specific lost reason columns: append to observations
+    const currentObs =
+      actionDemand.tipo === 'Aluguel'
+        ? actionDemand.observacoes
+        : (actionDemand as any).necessidades_especificas
+    const newObs = currentObs
+      ? `${currentObs}\n\n[PERDIDO - ${new Date().toLocaleDateString()}]: ${reason} - ${obs}`
+      : `[PERDIDO - ${new Date().toLocaleDateString()}]: ${reason} - ${obs}`
+
+    const updateData: any = { status_demanda: 'impossivel' }
+    if (actionDemand.tipo === 'Aluguel') {
+      updateData.observacoes = newObs
+    } else {
+      updateData.necessidades_especificas = newObs
+    }
+
+    try {
+      const { error } = await supabase.from(table).update(updateData).eq('id', actionDemand.id)
+      if (error) throw error
+      toast({
+        title: 'Demanda Marcada como Perdida',
+        description: `Motivo: ${reason}`,
+        className: 'bg-[#EF4444] text-white border-none',
+      })
+    } catch (e: any) {
+      toast({ title: 'Erro ao atualizar demanda', description: e.message, variant: 'destructive' })
+    }
+    setModalType(null)
+  }
+
   const handleFilterChange = (newF: Record<string, string>) => {
     setFilters(newF)
   }
 
   const filteredDemands = useMemo(() => {
     return demands.filter((d) => {
-      // Isolamento por usuário criador: SDR/Corretor veem apenas as SUAS demandas
+      // Isolamento por usuário criador: SDR/Corretor veem apenas as SUAS demandas (exceto Admin/Gestor)
       if (currentUser?.role !== 'admin' && currentUser?.role !== 'gestor') {
         if (d.sdr_id !== currentUser?.id && d.corretor_id !== currentUser?.id) {
           return false
@@ -108,6 +185,16 @@ export function MyDemandsView({ filterType }: Props) {
         const dDate = new Date(d.created_at)
         if (dDate < dateLimit) return false
       }
+
+      // Ocultar demandas perdidas por padrão se não estiver filtrando explicitamente por elas
+      if (
+        filters.status !== 'impossivel' &&
+        filters.status !== 'Todos' &&
+        d.status_demanda === 'impossivel'
+      ) {
+        return false
+      }
+
       return true
     })
   }, [demands, filters, currentUser])
@@ -155,13 +242,19 @@ export function MyDemandsView({ filterType }: Props) {
       },
     },
     {
-      label: 'Alta Urgência',
-      apply: { prioridade: 'Todos', status: 'Todos', urgencia: 'Alta', data: 'Todos', bairro: '' },
+      label: 'Perdidas',
+      apply: {
+        prioridade: 'Todos',
+        status: 'impossivel',
+        urgencia: 'Todos',
+        data: 'Todos',
+        bairro: '',
+      },
     },
   ]
 
   return (
-    <div className="flex flex-col lg:flex-row gap-[24px] items-start w-full animate-fade-in transition-opacity duration-150 ease-in">
+    <div className="flex flex-col lg:flex-row gap-[24px] items-start w-full animate-fade-in transition-opacity duration-150 ease-in relative z-0">
       <FilterSidebar
         filters={FILTERS}
         values={filters}
@@ -170,7 +263,7 @@ export function MyDemandsView({ filterType }: Props) {
       />
 
       <div className="flex-1 w-full flex flex-col gap-[16px] min-w-0">
-        <div className="lg:hidden w-full space-y-3">
+        <div className="lg:hidden w-full space-y-3 relative z-10">
           <div className="flex overflow-x-auto gap-2 pb-1 scrollbar-hide px-1">
             {MOBILE_CHIPS.map((chip) => {
               const isActive = JSON.stringify(filters) === JSON.stringify(chip.apply)
@@ -195,7 +288,7 @@ export function MyDemandsView({ filterType }: Props) {
             values={filters}
             onChange={handleFilterChange}
             resultsCount={filteredDemands.length}
-            stickyTop="top-[128px] sm:top-[136px]"
+            stickyTop="top-[128px]"
           />
         </div>
 
@@ -241,13 +334,34 @@ export function MyDemandsView({ filterType }: Props) {
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-[16px] w-full items-stretch">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-[16px] w-full items-stretch relative z-0">
             {filteredDemands.map((demand) => (
-              <ExpandableDemandCardSDR key={demand.id} demand={demand} />
+              <ExpandableDemandCardSDR key={demand.id} demand={demand} onAction={handleAction} />
             ))}
           </div>
         )}
       </div>
+
+      <DemandDetailModal
+        demand={actionDemand}
+        isOpen={modalType === 'details'}
+        onClose={() => setModalType(null)}
+        onEdit={() => setModalType('edit')}
+        onPrioritize={() => actionDemand && handleAction('prioritize', actionDemand)}
+        onLost={() => setModalType('lost')}
+      />
+
+      <EditDemandModal
+        demand={actionDemand}
+        isOpen={modalType === 'edit'}
+        onClose={() => setModalType(null)}
+      />
+
+      <LostModal
+        open={modalType === 'lost'}
+        onOpenChange={(o) => !o && setModalType(null)}
+        onConfirm={handleLostConfirm}
+      />
     </div>
   )
 }

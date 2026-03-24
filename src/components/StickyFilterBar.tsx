@@ -40,7 +40,7 @@ export function StickyFilterBar({
   values,
   onChange,
   resultsCount,
-  stickyTop = 'top-[72px]',
+  stickyTop = 'top-[128px]',
 }: Props) {
   const isMobile = useIsMobile()
   const [isOpen, setIsOpen] = useState(false)
@@ -166,7 +166,7 @@ export function StickyFilterBar({
                   className="shrink-0 h-[52px] px-4 bg-[#FFFFFF] hover:bg-[#F5F5F5] text-[#1A3A52] border-[2px] border-[#2E5F8A]/20 font-bold w-full justify-between"
                 >
                   <span className="flex items-center gap-2">
-                    🔽 Filtros {activeCount > 0 && `(${activeCount})`}
+                    <Filter className="w-4 h-4" /> Filtros {activeCount > 0 && `(${activeCount})`}
                   </span>
                   <span className="text-[#999999] text-[12px] font-normal">
                     {resultsCount} res.
@@ -175,8 +175,8 @@ export function StickyFilterBar({
               </DrawerTrigger>
               <DrawerContent className="max-h-[85dvh] h-[85dvh] flex flex-col rounded-t-[24px] bg-[#F5F5F5] outline-none z-[110]">
                 <DrawerHeader className="px-6 py-4 text-left border-b border-[#E5E5E5] shrink-0 bg-[#F5F5F5]">
-                  <DrawerTitle className="text-[20px] font-black text-[#1A3A52]">
-                    Filtros
+                  <DrawerTitle className="text-[20px] font-black text-[#1A3A52] flex items-center gap-2">
+                    <Filter className="w-5 h-5" /> Filtros
                   </DrawerTitle>
                 </DrawerHeader>
                 <ScrollArea className="flex-1 px-6 py-4 bg-white">

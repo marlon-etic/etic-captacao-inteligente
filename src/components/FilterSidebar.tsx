@@ -1,9 +1,10 @@
+import { useState } from 'react'
 import { FilterDef } from './StickyFilterBar'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Filter, X } from 'lucide-react'
+import { Filter, X, ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { LocationSelector } from '@/components/LocationSelector'
 
@@ -15,6 +16,8 @@ interface Props {
 }
 
 export function FilterSidebar({ filters, values, onChange, resultsCount }: Props) {
+  const [isCollapsed, setIsCollapsed] = useState(false)
+
   const defaultValues = filters.reduce(
     (acc, f) => {
       acc[f.id] = f.options[0]?.value || ''
@@ -27,15 +30,57 @@ export function FilterSidebar({ filters, values, onChange, resultsCount }: Props
 
   const handleClearAll = () => onChange(defaultValues)
 
+  if (isCollapsed) {
+    return (
+      <aside className="hidden lg:flex w-[64px] shrink-0 flex-col sticky top-[88px] bg-[#FFFFFF] border-[2px] border-[#E5E5E5] rounded-[12px] shadow-[0_4px_12px_rgba(26,58,82,0.05)] overflow-hidden h-[calc(100vh-120px)] animate-fade-in z-[50] items-center py-4 gap-6 transition-all duration-300">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setIsCollapsed(false)}
+          className="h-10 w-10 shrink-0 hover:bg-[#F5F5F5] transition-transform hover:scale-110"
+          title="Expandir Filtros"
+        >
+          <ChevronRight className="w-5 h-5 text-[#1A3A52]" />
+        </Button>
+        <div
+          className="flex-1 flex flex-col items-center justify-center gap-6 cursor-pointer opacity-70 hover:opacity-100 transition-opacity"
+          onClick={() => setIsCollapsed(false)}
+        >
+          <Filter className="w-5 h-5 text-[#1A3A52]" />
+          <div
+            className="text-[#1A3A52] font-black text-[13px] tracking-widest uppercase rotate-180 select-none"
+            style={{ writingMode: 'vertical-rl' }}
+          >
+            Filtros
+          </div>
+        </div>
+        {activeCount > 0 && (
+          <Badge className="bg-[#1A3A52] text-white border-none shadow-sm">{activeCount}</Badge>
+        )}
+      </aside>
+    )
+  }
+
   return (
-    <aside className="hidden lg:flex w-[260px] shrink-0 flex-col sticky top-[88px] bg-[#FFFFFF] border-[2px] border-[#E5E5E5] rounded-[12px] shadow-[0_4px_12px_rgba(26,58,82,0.05)] overflow-hidden h-[calc(100vh-120px)] animate-fade-in z-[50]">
+    <aside className="hidden lg:flex w-[260px] shrink-0 flex-col sticky top-[88px] bg-[#FFFFFF] border-[2px] border-[#E5E5E5] rounded-[12px] shadow-[0_4px_12px_rgba(26,58,82,0.05)] overflow-hidden h-[calc(100vh-120px)] animate-fade-in z-[50] transition-all duration-300">
       <div className="p-4 border-b border-[#E5E5E5] bg-[#F5F5F5] flex items-center justify-between shrink-0">
         <h3 className="font-black text-[#1A3A52] flex items-center gap-2 uppercase tracking-wide text-[14px]">
           <Filter className="w-4 h-4" /> Filtros
         </h3>
-        {activeCount > 0 && (
-          <Badge className="bg-[#1A3A52] text-white border-none shadow-sm">{activeCount}</Badge>
-        )}
+        <div className="flex items-center gap-2">
+          {activeCount > 0 && (
+            <Badge className="bg-[#1A3A52] text-white border-none shadow-sm">{activeCount}</Badge>
+          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsCollapsed(true)}
+            className="h-8 w-8 hover:bg-[#E5E5E5] transition-transform hover:scale-110"
+            title="Recolher Filtros"
+          >
+            <ChevronLeft className="w-4 h-4 text-[#666666]" />
+          </Button>
+        </div>
       </div>
 
       <ScrollArea className="flex-1 p-4 bg-white">

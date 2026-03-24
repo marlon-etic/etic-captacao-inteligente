@@ -1,6 +1,7 @@
 import { SupabaseDemand } from '@/hooks/use-supabase-demands'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import {
   Building2,
   Home,
@@ -11,21 +12,21 @@ import {
   Clock,
   CheckCircle,
   Star,
+  Pencil,
+  X,
+  Maximize2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { PrazoCounter } from './PrazoCounter'
 import useAppStore from '@/stores/useAppStore'
-import { useState } from 'react'
-import { supabase } from '@/lib/supabase/client'
-import { toast } from '@/hooks/use-toast'
 
 interface Props {
   demand: SupabaseDemand
+  onAction?: (action: 'details' | 'edit' | 'lost' | 'prioritize', demand: SupabaseDemand) => void
 }
 
-export function ExpandableDemandCardSDR({ demand }: Props) {
+export function ExpandableDemandCardSDR({ demand, onAction }: Props) {
   const { currentUser } = useAppStore()
-  const [isPrioritizing, setIsPrioritizing] = useState(false)
 
   const isSale = demand.tipo === 'Venda'
   const hasProperties = demand.imoveis_captados && demand.imoveis_captados.length > 0
@@ -49,56 +50,23 @@ export function ExpandableDemandCardSDR({ demand }: Props) {
     demand.sdr_id === currentUser?.id ||
     demand.corretor_id === currentUser?.id
 
-  const togglePriority = async (e: React.MouseEvent) => {
-    e.stopPropagation()
-    if (isPrioritizing || !isOwnerOrAdmin) return
-    setIsPrioritizing(true)
-
-    const table = demand.tipo === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
-    const newStatus = !demand.is_prioritaria
-
-    try {
-      const { error } = await supabase
-        .from(table)
-        .update({ is_prioritaria: newStatus })
-        .eq('id', demand.id)
-
-      if (error) throw error
-
-      toast({
-        title: newStatus ? '⭐ Demanda Priorizada' : 'Prioridade Removida',
-        description: newStatus
-          ? 'A demanda subiu para o topo do feed dos captadores.'
-          : 'A demanda voltou à posição normal.',
-        className: newStatus ? 'bg-[#FCD34D] text-[#854D0E] border-none' : '',
-      })
-    } catch (err: any) {
-      toast({
-        title: 'Erro',
-        description: 'Não foi possível alterar a prioridade.',
-        variant: 'destructive',
-      })
-    } finally {
-      setIsPrioritizing(false)
-    }
-  }
-
   return (
     <Card
+      onClick={() => onAction?.('details', demand)}
       className={cn(
-        'w-full flex flex-col rounded-[16px] overflow-hidden transition-all duration-500 ease-in-out h-full',
+        'w-full flex flex-col rounded-[16px] overflow-hidden transition-all duration-500 ease-in-out h-full cursor-pointer group hover:shadow-lg',
         hasProperties
           ? 'border-[2px] border-[#4CAF50] bg-[#F2FBF5] shadow-[0_4px_16px_rgba(76,175,80,0.15)]'
           : demand.is_prioritaria
             ? 'border-[2px] border-[#FCD34D] bg-[#FFFBEB] shadow-[0_4px_16px_rgba(252,211,77,0.15)]'
-            : 'border-[1px] border-[#E5E5E5] bg-white shadow-sm hover:shadow-md',
+            : 'border-[1px] border-[#E5E5E5] bg-white shadow-sm hover:border-[#1A3A52]/30',
         cardAnimation,
       )}
     >
       {/* Header */}
       <div
         className={cn(
-          'p-4 border-b flex justify-between items-start shrink-0 transition-colors duration-500',
+          'p-4 border-b flex justify-between items-start shrink-0 transition-colors duration-500 relative',
           hasProperties
             ? 'border-[#4CAF50]/20'
             : demand.is_prioritaria
@@ -134,73 +102,112 @@ export function ExpandableDemandCardSDR({ demand }: Props) {
             {demand.nome_cliente}
           </h3>
         </div>
+
         <div className="flex flex-col items-end gap-2 shrink-0">
-          <div className="flex items-center gap-2">
-            {isOwnerOrAdmin && (
-              <button
-                onClick={togglePriority}
-                disabled={isPrioritizing}
-                className={cn(
-                  'flex items-center justify-center w-8 h-8 rounded-full transition-all border shadow-sm focus:outline-none focus:ring-2 focus:ring-[#F59E0B] focus:ring-offset-1 disabled:opacity-50 shrink-0',
-                  demand.is_prioritaria
-                    ? 'bg-[#FFFBEB] border-[#FCD34D] hover:bg-[#FEF3C7]'
-                    : 'bg-white border-[#E5E5E5] hover:bg-[#F5F5F5]',
-                )}
-                title={demand.is_prioritaria ? 'Remover prioridade' : 'Marcar como prioritária'}
+          {/* Quick Actions (Visible on hover desktop, always on mobile) */}
+          {isOwnerOrAdmin && (
+            <div className="flex items-center gap-0.5 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity bg-white/80 backdrop-blur-sm rounded-[8px] p-1 border border-[#E5E5E5] shadow-sm z-10 absolute right-4 top-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-[#666666] hover:text-[#1A3A52] hover:bg-[#F5F5F5] rounded-[6px]"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onAction?.('details', demand)
+                }}
+                title="Ver Detalhes"
+              >
+                <Maximize2 className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-[#666666] hover:text-[#1A3A52] hover:bg-[#F5F5F5] rounded-[6px]"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onAction?.('edit', demand)
+                }}
+                title="Editar Demanda"
+              >
+                <Pencil className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-[#666666] hover:text-amber-500 hover:bg-amber-50 rounded-[6px]"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onAction?.('prioritize', demand)
+                }}
+                title={demand.is_prioritaria ? 'Remover Prioridade' : 'Priorizar Demanda'}
               >
                 <Star
                   className={cn(
-                    'w-4 h-4 transition-all',
-                    demand.is_prioritaria ? 'fill-[#F59E0B] text-[#F59E0B]' : 'text-[#999999]',
+                    'w-4 h-4',
+                    demand.is_prioritaria && 'fill-amber-500 text-amber-500',
                   )}
                 />
-              </button>
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-[#666666] hover:text-red-500 hover:bg-red-50 rounded-[6px]"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onAction?.('lost', demand)
+                }}
+                title="Marcar como Perdido"
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+          )}
+
+          <div className="mt-10 lg:mt-0 lg:group-hover:opacity-0 transition-opacity">
+            {hasProperties ? (
+              <Badge className="bg-[#4CAF50] hover:bg-[#388E3C] text-white border-none font-bold text-[12px] px-2 py-1 flex items-center gap-1 shadow-sm shrink-0 transition-transform hover:scale-105">
+                <CheckCircle className="w-3.5 h-3.5" />
+                {demand.imoveis_captados.length} IMÓVEL
+                {demand.imoveis_captados.length > 1 ? 'S' : ''}
+              </Badge>
+            ) : demand.status_demanda === 'aberta' ? (
+              <div className="flex flex-col items-end">
+                {prazo && prazo.status !== 'respondido' && (
+                  <PrazoCounter prazoResposta={prazo.prazo_resposta} isExpired={isPrazoExpired} />
+                )}
+                {prazo && prazo.prorrogacoes_usadas > 0 && prazo.status !== 'respondido' && (
+                  <span className="text-[9px] font-bold text-[#666666] mt-0.5">
+                    {prazo.prorrogacoes_usadas}/3 Prorrog.
+                  </span>
+                )}
+                {!prazo && (
+                  <Badge
+                    variant="outline"
+                    className="bg-[#F5F5F5] text-[#999999] border-[#E5E5E5] font-bold text-[12px] shrink-0"
+                  >
+                    Aguardando
+                  </Badge>
+                )}
+              </div>
+            ) : (
+              <Badge
+                variant="outline"
+                className={cn(
+                  'font-bold text-[12px] shrink-0 border-none px-2 py-1',
+                  demand.status_demanda === 'sem_resposta_24h' ||
+                    demand.status_demanda === 'impossivel'
+                    ? 'bg-[#FEF2F2] text-[#EF4444]'
+                    : 'bg-[#F5F5F5] text-[#999999]',
+                )}
+              >
+                {demand.status_demanda === 'sem_resposta_24h'
+                  ? 'SEM RESPOSTA'
+                  : demand.status_demanda === 'impossivel'
+                    ? 'PERDIDA'
+                    : 'AGUARDANDO'}
+              </Badge>
             )}
           </div>
-
-          {hasProperties ? (
-            <Badge className="bg-[#4CAF50] hover:bg-[#388E3C] text-white border-none font-bold text-[12px] px-2 py-1 flex items-center gap-1 shadow-sm shrink-0 transition-transform hover:scale-105">
-              <CheckCircle className="w-3.5 h-3.5" />
-              {demand.imoveis_captados.length} IMÓVEL
-              {demand.imoveis_captados.length > 1 ? 'S' : ''}
-            </Badge>
-          ) : demand.status_demanda === 'aberta' ? (
-            <div className="flex flex-col items-end">
-              {prazo && prazo.status !== 'respondido' && (
-                <PrazoCounter prazoResposta={prazo.prazo_resposta} isExpired={isPrazoExpired} />
-              )}
-              {prazo && prazo.prorrogacoes_usadas > 0 && prazo.status !== 'respondido' && (
-                <span className="text-[9px] font-bold text-[#666666] mt-0.5">
-                  {prazo.prorrogacoes_usadas}/3 Prorrog.
-                </span>
-              )}
-              {!prazo && (
-                <Badge
-                  variant="outline"
-                  className="bg-[#F5F5F5] text-[#999999] border-[#E5E5E5] font-bold text-[12px] shrink-0"
-                >
-                  Aguardando
-                </Badge>
-              )}
-            </div>
-          ) : (
-            <Badge
-              variant="outline"
-              className={cn(
-                'font-bold text-[12px] shrink-0 border-none px-2 py-1',
-                demand.status_demanda === 'sem_resposta_24h' ||
-                  demand.status_demanda === 'impossivel'
-                  ? 'bg-[#FEF2F2] text-[#EF4444]'
-                  : 'bg-[#F5F5F5] text-[#999999]',
-              )}
-            >
-              {demand.status_demanda === 'sem_resposta_24h'
-                ? 'SEM RESPOSTA'
-                : demand.status_demanda === 'impossivel'
-                  ? 'PERDIDA'
-                  : 'AGUARDANDO'}
-            </Badge>
-          )}
         </div>
       </div>
 

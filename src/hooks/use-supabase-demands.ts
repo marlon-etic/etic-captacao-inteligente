@@ -158,7 +158,7 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
 
     const table = type === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
 
-    // Sincronização Bidirecional em Tempo Real - Apenas Atualiza Estado (Notificações movidas para GlobalNotificationListener)
+    // Sincronização Bidirecional em Tempo Real
     const channel = supabase
       .channel(`realtime_sync_${type}`)
       .on('postgres_changes', { event: '*', schema: 'public', table }, (payload) => {
@@ -320,9 +320,39 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
       )
       .subscribe()
 
+    // Listen to custom event for manual local update when editing
+    const handleDemandaUpdated = (e: CustomEvent) => {
+      if (e.detail?.tipo === type && e.detail?.data) {
+        const d = e.detail.data
+        setDemands((prev) => {
+          return sortDemands(
+            prev.map((x) =>
+              x.id === d.id
+                ? {
+                    ...x,
+                    ...d,
+                    nome_cliente: d.nome_cliente || d.cliente_nome || x.nome_cliente,
+                    bairros: d.bairros || d.localizacoes || x.bairros,
+                    valor_maximo: d.valor_maximo || d.orcamento_max || x.valor_maximo,
+                    observacoes: d.observacoes || d.necessidades_especificas || x.observacoes,
+                    nivel_urgencia: d.nivel_urgencia || d.urgencia || x.nivel_urgencia,
+                    status_demanda: d.status_demanda || x.status_demanda,
+                    is_prioritaria:
+                      d.is_prioritaria !== undefined ? d.is_prioritaria : x.is_prioritaria,
+                  }
+                : x,
+            ),
+          )
+        })
+      }
+    }
+
+    window.addEventListener('demanda-updated', handleDemandaUpdated as EventListener)
+
     return () => {
       mounted = false
       supabase.removeChannel(channel)
+      window.removeEventListener('demanda-updated', handleDemandaUpdated as EventListener)
     }
   }, [fetchDemands, type, formatData, sortDemands])
 
