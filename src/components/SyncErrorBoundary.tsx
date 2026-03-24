@@ -1,18 +1,22 @@
 import React, { ReactNode, useState, useCallback, useEffect } from 'react'
-import { AlertCircle, RefreshCw } from 'lucide-react'
+import { AlertCircle, RefreshCw, ToggleRight, ToggleLeft } from 'lucide-react'
 
 interface SyncErrorBoundaryProps {
   children: ReactNode
   onRetry?: () => void
-  error?: Error | null
+  toggleRealtime?: () => void
+  isRealtimeEnabled?: boolean
   retryCount?: number
+  error?: Error | null
 }
 
 export const SyncErrorBoundary: React.FC<SyncErrorBoundaryProps> = ({
   children,
   onRetry,
-  error: externalError,
+  toggleRealtime,
+  isRealtimeEnabled,
   retryCount = 0,
+  error: externalError,
 }) => {
   const [internalError, setInternalError] = useState<Error | null>(null)
   const [isRetrying, setIsRetrying] = useState(false)
@@ -23,22 +27,23 @@ export const SyncErrorBoundary: React.FC<SyncErrorBoundaryProps> = ({
     setInternalError(externalError || null)
   }, [externalError])
 
-  // Captura global de unhandled promise rejections (fix channel closed)
   useEffect(() => {
-    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
-      console.error('[GLOBAL] Unhandled Rejection (Channel Closed?):', event.reason)
+    const handleRejection = (event: PromiseRejectionEvent) => {
+      console.group('GLOBAL CHANNEL ERROR')
+      console.error('Reason:', event.reason)
+      console.trace('Stack:')
+      console.groupEnd()
       event.preventDefault() // Previne default browser popup
       setInternalError(
         event.reason instanceof Error ? event.reason : new Error(String(event.reason)),
       )
     }
 
-    window.addEventListener('unhandledrejection', handleUnhandledRejection)
-    return () => window.removeEventListener('unhandledrejection', handleUnhandledRejection)
+    window.addEventListener('unhandledrejection', handleRejection)
+    return () => window.removeEventListener('unhandledrejection', handleRejection)
   }, [])
 
   const handleRetry = useCallback(async () => {
-    console.log(`[UI] Retry #${retryCount + 1} - Capturando async errors`)
     setIsRetrying(true)
     try {
       if (onRetry) {
@@ -48,49 +53,59 @@ export const SyncErrorBoundary: React.FC<SyncErrorBoundaryProps> = ({
         }
       }
       setInternalError(null)
-      await new Promise((resolve) => setTimeout(resolve, 1500)) // Espera extra para dar tempo aos websockets
+      await new Promise((resolve) => setTimeout(resolve, 1000))
     } catch (err) {
-      const newErr = err instanceof Error ? err : new Error('Retry failed: ' + String(err))
-      console.error('[UI] Retry erro com stack:', newErr.stack)
-      setInternalError(newErr)
+      setInternalError(err instanceof Error ? err : new Error('Retry failed: ' + String(err)))
     } finally {
       setIsRetrying(false)
     }
-  }, [onRetry, retryCount])
+  }, [onRetry])
 
   if (activeError) {
     return (
       <div className="space-y-4">
-        <div className="flex flex-col gap-3 p-4 bg-red-50 border border-red-200 rounded-lg shadow-sm">
+        <div className="p-4 bg-red-50 border border-red-200 rounded-lg shadow-sm space-y-3">
           <div className="flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-red-900 truncate">
-                Erro de Sincronização (Tentativa {retryCount + 1})
+              <p className="font-bold text-red-900 truncate">
+                Erro de Canal/Sincronização (#{retryCount + 1})
               </p>
-              <p className="text-xs font-medium text-red-700 mt-1 break-words">
+              <p className="text-sm font-medium text-red-700 mt-1 break-words">
                 {activeError.message}
               </p>
               {activeError.stack && (
-                <pre className="text-xs text-red-600 mt-2 overflow-auto max-h-24 bg-red-100 p-2 rounded border border-red-200">
+                <pre className="text-[10px] text-red-600 mt-2 overflow-auto max-h-24 bg-red-100/50 p-2 rounded border border-red-200">
                   {activeError.stack.slice(0, 500)}...
                 </pre>
               )}
+              <p className="text-xs font-medium text-red-600 mt-2">
+                Dica: Teste em modo anônimo (sem extensions) para isolar erros externos.
+              </p>
             </div>
           </div>
-          <div className="flex flex-col gap-2">
+          <div className="flex gap-2">
             <button
               onClick={handleRetry}
               disabled={isRetrying}
-              className="self-start flex items-center gap-2 px-4 py-2 bg-red-600 text-white font-bold rounded-md hover:bg-red-700 disabled:opacity-50 transition-colors shadow-sm"
+              className="flex items-center gap-2 px-3 py-1.5 bg-red-600 text-white font-bold rounded text-xs hover:bg-red-700 disabled:opacity-50 transition-colors shadow-sm"
             >
-              <RefreshCw className={`w-4 h-4 ${isRetrying ? 'animate-spin' : ''}`} />
-              {isRetrying ? 'Processando...' : 'Tentar Reconectar'}
+              <RefreshCw className={isRetrying ? 'animate-spin w-3.5 h-3.5' : 'w-3.5 h-3.5'} />
+              {isRetrying ? 'Retry...' : 'Reconectar'}
             </button>
-            <p className="text-xs font-medium text-red-600">
-              Dica: Verifique F12 &gt; Console para logs [Realtime] e desabilite extensions
-              temporariamente.
-            </p>
+            {toggleRealtime && (
+              <button
+                onClick={toggleRealtime}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1A3A52] text-white font-bold rounded text-xs hover:bg-[#1A3A52]/90 transition-colors shadow-sm"
+              >
+                {isRealtimeEnabled ? (
+                  <ToggleRight className="w-4 h-4" />
+                ) : (
+                  <ToggleLeft className="w-4 h-4" />
+                )}
+                Realtime: {isRealtimeEnabled ? 'ON' : 'OFF'}
+              </button>
+            )}
           </div>
         </div>
         <div className="opacity-50 pointer-events-none grayscale transition-all duration-300">
