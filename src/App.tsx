@@ -34,6 +34,32 @@ import PerdidosPage from '@/pages/dashboard/PerdidosPage'
 import DisponivelGeralPage from '@/pages/dashboard/DisponivelGeralPage'
 import TodosCaptadosPage from '@/pages/dashboard/TodosCaptadosPage'
 
+// Landlord Panel Imports
+import LandlordLogin from '@/pages/auth/LandlordLogin'
+import LandlordSignup from '@/pages/auth/LandlordSignup'
+import { LandlordLayout } from '@/components/landlord/LandlordLayout'
+import LandlordDashboard from '@/pages/landlord/LandlordDashboard'
+import LandlordProperties from '@/pages/landlord/LandlordProperties'
+import LandlordProposals from '@/pages/landlord/LandlordProposals'
+import LandlordSettings from '@/pages/landlord/LandlordSettings'
+import { useLandlordAuth } from '@/hooks/useLandlordAuth'
+import { LoadingSpinner } from '@/components/common/LoadingSpinner'
+import React from 'react'
+
+const LandlordProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { session, loading } = useLandlordAuth()
+
+  if (loading) {
+    return <LoadingSpinner />
+  }
+
+  if (!session) {
+    return <Navigate to="/landlord/login" replace />
+  }
+
+  return <>{children}</>
+}
+
 const App = () => (
   <AuthProvider>
     <AppStoreProvider>
@@ -47,6 +73,26 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/esqueci-senha" element={<EsqueciSenha />} />
             <Route path="/redefinir-senha" element={<RedefinirSenha />} />
+
+            {/* Landlord Auth Routes */}
+            <Route path="/landlord/login" element={<LandlordLogin />} />
+            <Route path="/landlord/signup" element={<LandlordSignup />} />
+
+            {/* Landlord Protected Routes */}
+            <Route
+              path="/landlord"
+              element={
+                <LandlordProtectedRoute>
+                  <LandlordLayout />
+                </LandlordProtectedRoute>
+              }
+            >
+              <Route index element={<Navigate to="/landlord/dashboard" replace />} />
+              <Route path="dashboard" element={<LandlordDashboard />} />
+              <Route path="properties" element={<LandlordProperties />} />
+              <Route path="proposals" element={<LandlordProposals />} />
+              <Route path="settings" element={<LandlordSettings />} />
+            </Route>
 
             {/* Redirects for common root routes to avoid 404s */}
             <Route path="/demandas" element={<Navigate to="/app/demandas" replace />} />

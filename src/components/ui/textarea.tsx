@@ -13,12 +13,6 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
           className,
         )}
         ref={ref}
-        onFocus={(e) => {
-          props.onFocus?.(e)
-          setTimeout(() => {
-            e.target.scrollIntoView({ behavior: 'auto', block: 'center' })
-          }, 300)
-        }}
         {...props}
       />
     )
