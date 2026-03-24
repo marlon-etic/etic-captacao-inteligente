@@ -240,16 +240,22 @@ export type Database = {
           codigo_imovel: string | null
           comissao_percentual: number | null
           created_at: string | null
+          data_fechamento: string | null
+          data_visita: string | null
           demanda_locacao_id: string | null
           demanda_venda_id: string | null
+          dormitorios: number | null
           endereco: string | null
+          etapa_funil: string | null
           fotos: string[] | null
           id: string
           localizacao_texto: string | null
+          observacoes: string | null
           preco: number | null
           status_captacao: string | null
           updated_at: string | null
           user_captador_id: string | null
+          vagas: number | null
           valor: number | null
         }
         Insert: {
@@ -257,16 +263,22 @@ export type Database = {
           codigo_imovel?: string | null
           comissao_percentual?: number | null
           created_at?: string | null
+          data_fechamento?: string | null
+          data_visita?: string | null
           demanda_locacao_id?: string | null
           demanda_venda_id?: string | null
+          dormitorios?: number | null
           endereco?: string | null
+          etapa_funil?: string | null
           fotos?: string[] | null
           id?: string
           localizacao_texto?: string | null
+          observacoes?: string | null
           preco?: number | null
           status_captacao?: string | null
           updated_at?: string | null
           user_captador_id?: string | null
+          vagas?: number | null
           valor?: number | null
         }
         Update: {
@@ -274,16 +286,22 @@ export type Database = {
           codigo_imovel?: string | null
           comissao_percentual?: number | null
           created_at?: string | null
+          data_fechamento?: string | null
+          data_visita?: string | null
           demanda_locacao_id?: string | null
           demanda_venda_id?: string | null
+          dormitorios?: number | null
           endereco?: string | null
+          etapa_funil?: string | null
           fotos?: string[] | null
           id?: string
           localizacao_texto?: string | null
+          observacoes?: string | null
           preco?: number | null
           status_captacao?: string | null
           updated_at?: string | null
           user_captador_id?: string | null
+          vagas?: number | null
           valor?: number | null
         }
         Relationships: [
@@ -735,6 +753,12 @@ export const Constants = {
 //   fotos: _text (nullable, default: '{}'::text[])
 //   comissao_percentual: numeric (nullable)
 //   status_captacao: character varying (nullable)
+//   etapa_funil: character varying (nullable, default: 'capturado'::character varying)
+//   data_visita: timestamp with time zone (nullable)
+//   data_fechamento: timestamp with time zone (nullable)
+//   dormitorios: integer (nullable)
+//   vagas: integer (nullable)
+//   observacoes: text (nullable)
 // Table: pontuacao_captador
 //   id: uuid (not null, default: gen_random_uuid())
 //   captador_id: uuid (not null)
