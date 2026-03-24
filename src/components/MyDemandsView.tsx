@@ -344,9 +344,18 @@ export function MyDemandsView({ filterType }: Props) {
         demand={actionDemand}
         isOpen={modalType === 'details'}
         onClose={() => setModalType(null)}
-        onEdit={() => setModalType('edit')}
-        onPrioritize={() => actionDemand && handleAction('prioritize', actionDemand)}
-        onLost={() => setModalType('lost')}
+        onEdit={() => {
+          setModalType(null)
+          setTimeout(() => setModalType('edit'), 300)
+        }}
+        onPrioritize={() => {
+          setModalType(null)
+          if (actionDemand) setTimeout(() => handleAction('prioritize', actionDemand), 300)
+        }}
+        onLost={() => {
+          setModalType(null)
+          setTimeout(() => setModalType('lost'), 300)
+        }}
       />
 
       <EditDemandModal

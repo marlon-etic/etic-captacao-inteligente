@@ -57,7 +57,7 @@ export function NaoEncontreiModal({ isOpen, onClose, onConfirm }: Props) {
         }
       }}
     >
-      <DialogContent className="w-[90%] sm:w-full h-auto max-h-[90vh] sm:max-h-[85vh] max-w-full sm:max-w-[400px] p-0 rounded-[16px] border-0 sm:border-[2px] sm:border-[#E5E5E5] flex flex-col overflow-hidden bg-white z-[120] shadow-2xl animate-in fade-in duration-300">
+      <DialogContent className="w-[90%] sm:w-full h-auto max-h-[90vh] sm:max-h-[85vh] max-w-full sm:max-w-[400px] p-0 rounded-[16px] border-0 sm:border-[2px] sm:border-[#E5E5E5] flex flex-col overflow-hidden bg-white shadow-2xl animate-in fade-in duration-300">
         <div className="flex flex-col h-full">
           <DialogHeader className="p-4 sm:p-6 border-b border-[#E5E5E5] shrink-0 text-left bg-[#F8FAFC]">
             <DialogTitle className="text-[#1A3A52] font-black text-[18px] md:text-[20px] leading-tight flex items-center gap-2">

@@ -79,7 +79,7 @@ export function DemandDetailModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(val) => !val && onClose()}>
-      <DialogContent className="w-full max-w-[calc(100%-32px)] md:max-w-2xl lg:max-w-3xl h-[95vh] md:h-[85vh] p-0 flex flex-col rounded-[16px] bg-[#FFFFFF] border-0 shadow-2xl overflow-hidden z-[100]">
+      <DialogContent className="w-full max-w-[calc(100%-32px)] md:max-w-2xl lg:max-w-3xl h-[95vh] md:h-[85vh] p-0 flex flex-col rounded-[16px] bg-[#FFFFFF] border-0 shadow-2xl overflow-hidden">
         <DialogHeader className="p-4 md:p-6 border-b border-[#E5E5E5] shrink-0 bg-[#F8FAFC] flex flex-row items-center justify-between sticky top-0 z-10">
           <div className="flex flex-col gap-1 text-left pr-8">
             <DialogTitle className="text-xl md:text-2xl text-[#1A3A52] font-black flex items-center gap-2 flex-wrap">
@@ -278,10 +278,7 @@ export function DemandDetailModal({
                   <Button
                     variant="outline"
                     className="min-h-[48px] sm:flex-1 text-[14px] font-bold border-[#FCD34D] text-[#854D0E] hover:bg-[#FFFBEB] transition-colors"
-                    onClick={() => {
-                      onClose()
-                      onPrioritize()
-                    }}
+                    onClick={onPrioritize}
                   >
                     <Star className="w-4 h-4 mr-2 fill-current" />{' '}
                     {demand.is_prioritaria ? 'REMOVER PRIORIDADE' : 'PRIORIZAR'}
@@ -291,10 +288,7 @@ export function DemandDetailModal({
                   <Button
                     variant="outline"
                     className="min-h-[48px] sm:flex-1 text-[14px] font-bold border-[#2E5F8A] text-[#1A3A52] hover:bg-[#F5F5F5] transition-colors"
-                    onClick={() => {
-                      onClose()
-                      onEdit()
-                    }}
+                    onClick={onEdit}
                   >
                     <Pencil className="w-4 h-4 mr-2" /> EDITAR
                   </Button>
@@ -302,10 +296,7 @@ export function DemandDetailModal({
                 {onLost && (
                   <Button
                     className="min-h-[48px] sm:flex-1 text-[14px] font-bold bg-[#EF4444] hover:bg-[#DC2626] text-white border-none transition-colors shadow-sm"
-                    onClick={() => {
-                      onClose()
-                      onLost()
-                    }}
+                    onClick={onLost}
                   >
                     <X className="w-4 h-4 mr-2" /> PERDIDO
                   </Button>

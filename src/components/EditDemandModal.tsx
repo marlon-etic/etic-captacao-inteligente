@@ -142,7 +142,7 @@ export function EditDemandModal({
     <Dialog open={isOpen} onOpenChange={(o) => !o && !isSubmitting && onClose()}>
       <DialogContent
         className={cn(
-          'sm:max-w-[700px] p-0 flex flex-col gap-0 shadow-2xl z-[1010] bg-[#F9FAFB]',
+          'sm:max-w-[700px] p-0 flex flex-col gap-0 shadow-2xl bg-[#F9FAFB]',
           isMobile
             ? '!fixed !inset-0 !w-full !max-w-none rounded-none'
             : 'max-h-[90vh] overflow-hidden',
