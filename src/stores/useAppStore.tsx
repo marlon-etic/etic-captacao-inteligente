@@ -478,13 +478,14 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     (code: string, demandId: string, reason: string, obs?: string) => {
       supabase.auth
         .getUser()
-        .then(({ data: authData }) => {
+        .then(async ({ data: authData }) => {
           if (authData?.user) {
-            supabase
+            const { error } = await supabase
               .from('imoveis_captados')
               .update({ status_captacao: 'perdido' })
               .eq('codigo_imovel', code)
-              .catch(console.error)
+
+            if (error) console.error(error)
           }
         })
         .catch(console.error)

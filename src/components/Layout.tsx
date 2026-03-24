@@ -10,6 +10,7 @@ import { AddPropertyModal } from '@/components/AddPropertyModal'
 import { NewDemandModal } from '@/components/NewDemandModal'
 import { Plus, Loader2 } from 'lucide-react'
 import { useAuth } from '@/hooks/use-auth'
+import { supabase } from '@/lib/supabase/client'
 
 export default function Layout() {
   const { currentUser, sessionExpiresAt, logout, isRestoringUser } = useAppStore()
@@ -19,6 +20,24 @@ export default function Layout() {
 
   const [isAddPropertyModalOpen, setAddPropertyModalOpen] = useState(false)
   const [isNewDemandModalOpen, setNewDemandModalOpen] = useState(false)
+
+  // FIX: execute supabase.rpc properly with async/await to avoid the .catch is not a function error
+  useEffect(() => {
+    if (currentUser) {
+      const updatePrazos = async () => {
+        try {
+          const { error } = await supabase.rpc('atualizar_prazos_vencidos')
+          if (error) console.error('Erro ao atualizar prazos vencidos:', error)
+        } catch (err) {
+          console.error('Falha ao executar RPC:', err)
+        }
+      }
+
+      updatePrazos()
+      const interval = setInterval(updatePrazos, 60000)
+      return () => clearInterval(interval)
+    }
+  }, [currentUser])
 
   useEffect(() => {
     // Only logout if auth is completely resolved, session is invalid, and user was previously logged in

@@ -172,24 +172,20 @@ export default function IntegrationTester() {
           if (err1) throw err1
           venDemandId = dem.id
 
-          const { error: err2 } = await client
-            .from('respostas_captador')
-            .insert({
-              demanda_venda_id: venDemandId,
-              captador_id: adminId,
-              resposta: 'nao_encontrei',
-              motivo: 'Buscando outras opções',
-            })
+          const { error: err2 } = await client.from('respostas_captador').insert({
+            demanda_venda_id: venDemandId,
+            captador_id: adminId,
+            resposta: 'nao_encontrei',
+            motivo: 'Buscando outras opções',
+          })
           if (err2) throw err2
 
-          const { error: err3 } = await client
-            .from('imoveis_captados')
-            .insert({
-              demanda_venda_id: venDemandId,
-              codigo_imovel: `IMV_V_${Date.now()}`,
-              preco: 500000,
-              captador_id: adminId,
-            })
+          const { error: err3 } = await client.from('imoveis_captados').insert({
+            demanda_venda_id: venDemandId,
+            codigo_imovel: `IMV_V_${Date.now()}`,
+            preco: 500000,
+            captador_id: adminId,
+          })
           if (err3) throw err3
         },
         '2',
