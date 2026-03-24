@@ -93,6 +93,21 @@ export const useProposals = (landlordId: string | undefined) => {
     }
   }
 
+  const logErrorToDB = async (channelName: string, err: any) => {
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+      await supabase.rpc('log_realtime_error', {
+        p_channel_name: channelName,
+        p_error_message: err?.message || JSON.stringify(err),
+        p_user_id: session?.user?.id || null,
+      })
+    } catch (e) {
+      console.error('Falha ao logar erro de realtime no banco:', e)
+    }
+  }
+
   const setupSubscriptions = (landlordId: string) => {
     try {
       if (subscriptionRef.current) {
@@ -156,6 +171,7 @@ export const useProposals = (landlordId: string | undefined) => {
         .on('system', { event: 'error' }, (err) => {
           console.error('❌ Erro no canal:', err)
           setIsConnected(false)
+          logErrorToDB(channelName, err)
 
           if (reconnectCountRef.current < SUBSCRIPTION_CONFIG.maxReconnectAttempts) {
             reconnectCountRef.current++
@@ -180,6 +196,7 @@ export const useProposals = (landlordId: string | undefined) => {
         } else if (status === 'CHANNEL_ERROR' || status === 'CHANNEL_FAILED') {
           console.error('❌ Erro na conexão:', status)
           setIsConnected(false)
+          logErrorToDB(channelName, status)
 
           if (reconnectCountRef.current < SUBSCRIPTION_CONFIG.maxReconnectAttempts) {
             reconnectCountRef.current++
