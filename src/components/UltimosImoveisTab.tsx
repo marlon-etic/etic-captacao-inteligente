@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useUltimosImoveis } from '@/hooks/use-ultimos-imoveis'
+import { useUltimosImoveis, UltimoImovel } from '@/hooks/use-ultimos-imoveis'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import {
@@ -26,19 +26,19 @@ import {
   ExternalLink,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useNavigate } from 'react-router-dom'
 import { getPropertyPublicUrl } from '@/lib/propertyUrl'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useToast } from '@/hooks/use-toast'
 import { VinculacaoModal, VinculacaoImovelData } from './VinculacaoModal'
+import { ImovelDetailsSheet } from './ImovelDetailsSheet'
 
 export function UltimosImoveisTab() {
   const [periodo, setPeriodo] = useState<'24h' | '7d' | '30d' | 'todos'>('30d')
   const [tipoFiltro, setTipoFiltro] = useState<'todos' | 'meus'>('todos')
   const [imovelParaVincular, setImovelParaVincular] = useState<VinculacaoImovelData | null>(null)
+  const [selectedImovel, setSelectedImovel] = useState<UltimoImovel | null>(null)
 
   const { imoveis, loading, refresh } = useUltimosImoveis(periodo, tipoFiltro)
-  const navigate = useNavigate()
   const { toast } = useToast()
 
   const handleCopyLink = async (e: React.MouseEvent, url: string) => {
@@ -112,15 +112,9 @@ export function UltimosImoveisTab() {
             return (
               <Card
                 key={imovel.id}
-                onClick={() => {
-                  if (imovel.demanda_id) {
-                    navigate(`/app/demandas?id=${imovel.demanda_id}`)
-                  } else {
-                    navigate(`/app/disponivel-geral`)
-                  }
-                }}
+                onClick={() => setSelectedImovel(imovel)}
                 className={cn(
-                  'overflow-hidden transition-all hover:shadow-md border-l-[6px] cursor-pointer',
+                  'overflow-hidden transition-all hover:shadow-lg border-l-[6px] cursor-pointer hover:-translate-y-1',
                   imovel.is_minha_demanda
                     ? 'border-l-[#10B981]'
                     : !imovel.has_demanda
@@ -194,7 +188,7 @@ export function UltimosImoveisTab() {
                         <Button
                           size="sm"
                           variant="ghost"
-                          className="h-8 text-[12px] gap-1.5 text-[#1D4ED8] hover:text-[#1e3a8a] hover:bg-[#3B82F6]/10 font-bold px-2"
+                          className="h-8 text-[12px] gap-1.5 text-[#1D4ED8] hover:text-[#1e3a8a] hover:bg-[#3B82F6]/10 font-bold px-2 z-10 relative"
                           onClick={(e) => {
                             e.stopPropagation()
                             setImovelParaVincular({
@@ -213,7 +207,7 @@ export function UltimosImoveisTab() {
                       )}
                     </div>
 
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 z-10 relative">
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button
@@ -259,12 +253,29 @@ export function UltimosImoveisTab() {
         </div>
       )}
 
+      <ImovelDetailsSheet
+        imovel={selectedImovel}
+        onClose={() => setSelectedImovel(null)}
+        onVincular={(imv) => {
+          setImovelParaVincular({
+            id: imv.id,
+            codigo_imovel: imv.codigo_imovel,
+            endereco: imv.endereco,
+            preco: imv.preco,
+            dormitorios: imv.dormitorios,
+            vagas: imv.vagas,
+            tipo: (imv.demanda_tipo as 'Venda' | 'Aluguel') || undefined,
+          })
+        }}
+      />
+
       <VinculacaoModal
         isOpen={!!imovelParaVincular}
         onClose={() => setImovelParaVincular(null)}
         imovel={imovelParaVincular}
         onSuccess={() => {
           refresh()
+          setSelectedImovel(null)
         }}
       />
     </div>

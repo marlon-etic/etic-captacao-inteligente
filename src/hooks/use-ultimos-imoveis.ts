@@ -16,6 +16,10 @@ export interface UltimoImovel {
   demanda_tipo: string | null
   is_minha_demanda: boolean
   has_demanda: boolean
+  fotos: string[]
+  observacoes: string
+  status_captacao: string
+  etapa_funil: string
 }
 
 export function useUltimosImoveis(
@@ -75,6 +79,10 @@ export function useUltimosImoveis(
         demanda_tipo: isLocacao ? 'Aluguel' : d.demandas_vendas ? 'Venda' : null,
         is_minha_demanda: !!is_minha_demanda,
         has_demanda: !!demanda,
+        fotos: d.fotos || [],
+        observacoes: d.observacoes || d.localizacao_texto || '',
+        status_captacao: d.status_captacao || 'pendente',
+        etapa_funil: d.etapa_funil || 'capturado',
       }
     })
 
@@ -91,13 +99,9 @@ export function useUltimosImoveis(
 
     const channel = supabase
       .channel('ultimos_imoveis_changes')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'imoveis_captados' },
-        () => {
-          fetchImoveis()
-        },
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'imoveis_captados' }, () => {
+        fetchImoveis()
+      })
       .subscribe()
 
     return () => {
