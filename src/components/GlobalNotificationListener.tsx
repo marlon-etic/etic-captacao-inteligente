@@ -17,8 +17,12 @@ export function GlobalNotificationListener() {
       try {
         const audio = new Audio('/notification.mp3')
         audio.volume = 0.5
-        audio.play().catch(() => {})
-      } catch (e) {}
+        audio.play().catch(() => {
+          // ignore play errors
+        })
+      } catch (e) {
+        // ignore audio creation errors
+      }
     }
   }, [])
 
