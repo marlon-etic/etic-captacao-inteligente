@@ -78,20 +78,20 @@ export function useTimeElapsed(createdAt: string | undefined) {
 
 export function useSlaCountdown(
   createdAt?: string,
-  isExtension?: boolean,
-  extensionRequestedAt?: string,
+  prazoRespostaDb?: string,
   status?: string,
+  prorrogacoesUsadas: number = 0,
 ) {
   const [now, setNow] = useState(Date.now())
 
   useEffect(() => {
-    if (status !== 'Pendente') return
-    // Update more frequently for smooth progress bar transition (1 second real time visually)
+    if (status !== 'Pendente' && status !== 'aberta') return
+    // Update every second for smooth transition on active demands
     const i = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(i)
   }, [status])
 
-  if (!createdAt || status !== 'Pendente')
+  if (!createdAt || (status !== 'Pendente' && status !== 'aberta'))
     return {
       text: '',
       progress: 0,
@@ -102,43 +102,47 @@ export function useSlaCountdown(
       remainingMs: 0,
     }
 
-  const startMs =
-    isExtension && extensionRequestedAt
-      ? new Date(extensionRequestedAt).getTime()
-      : new Date(createdAt).getTime()
-  const totalSlaMs = isExtension ? 48 * 3600000 : 24 * 3600000
+  const startMs = new Date(createdAt).getTime()
+
+  // Use database calculated deadline if available, otherwise assume 24h from creation
+  const targetMs = prazoRespostaDb ? new Date(prazoRespostaDb).getTime() : startMs + 24 * 3600000
+  const totalSlaMs = Math.max(1, targetMs - startMs)
 
   const elapsedMs = Math.max(0, now - startMs)
-  const remainingMs = Math.max(0, totalSlaMs - elapsedMs)
+  const remainingMs = Math.max(0, targetMs - now)
 
   const hrs = Math.floor(remainingMs / 3600000)
   const mins = Math.floor((remainingMs % 3600000) / 60000)
 
+  // Progress fills up as time passes
   const progress = Math.min(100, (elapsedMs / totalSlaMs) * 100)
-  const elapsedHrs = elapsedMs / 3600000
 
   let level: 'green' | 'yellow' | 'red' | 'orange' | 'none' = 'green'
   let badgeText = ''
 
-  if (isExtension) {
+  if (prorrogacoesUsadas > 0) {
     level = 'orange'
-    badgeText = '🟠 Continua em busca - 48h'
+    badgeText = `🟠 Prorrogado (${prorrogacoesUsadas}/3)`
   } else {
-    // 0-12h elapsed: Green. 12-24h elapsed: Yellow. 24h+ elapsed: Red
-    if (elapsedHrs >= 24) {
+    if (remainingMs <= 6 * 3600000) {
       level = 'red'
-      badgeText = '🔴 0h para responder'
-    } else if (elapsedHrs >= 12) {
+      badgeText = '🔴 Prazo Crítico'
+    } else if (remainingMs <= 12 * 3600000) {
       level = 'yellow'
-      badgeText = '🟡 12h para responder'
+      badgeText = '🟡 Atenção ao Prazo'
     } else {
       level = 'green'
-      badgeText = '🟢 NOVA - Responda em 24h'
+      badgeText = '🟢 NOVA - 24h'
     }
   }
 
+  if (remainingMs === 0) {
+    level = 'red'
+    badgeText = '🚨 VENCIDO'
+  }
+
   return {
-    text: `⏰ ${hrs}h ${mins}min`,
+    text: remainingMs > 0 ? `⏰ ${hrs}h ${mins}min` : '🚨 Vencido',
     progress,
     level,
     isExpired: remainingMs === 0,

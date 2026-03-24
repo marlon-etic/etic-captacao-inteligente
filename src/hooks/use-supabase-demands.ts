@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { toast } from '@/hooks/use-toast'
+import useAppStore from '@/stores/useAppStore'
 
 export interface SupabaseCapturedProperty {
   id: string
@@ -48,7 +49,19 @@ export interface SupabaseDemand {
 export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
   const [demands, setDemands] = useState<SupabaseDemand[]>([])
   const [loading, setLoading] = useState(true)
-  const fetchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const { users, currentUser } = useAppStore()
+
+  // Use refs to access latest state inside real-time subscriptions without re-subscribing
+  const usersRef = useRef(users)
+  const currentUserRef = useRef(currentUser)
+
+  useEffect(() => {
+    usersRef.current = users
+  }, [users])
+
+  useEffect(() => {
+    currentUserRef.current = currentUser
+  }, [currentUser])
 
   // Atualizador global de prazos a cada 1 minuto (se fallback do cron)
   useEffect(() => {
@@ -57,6 +70,46 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
     }, 60000)
     return () => clearInterval(interval)
   }, [])
+
+  const formatData = useCallback(
+    (data: any[]) => {
+      const userMap = new Map((usersRef.current || []).map((u) => [u.id, u.name]))
+
+      return data.map((d: any) => ({
+        id: d.id,
+        nome_cliente: d.nome_cliente || d.cliente_nome || 'Cliente',
+        telefone: d.telefone || '',
+        email: d.email || '',
+        bairros: d.bairros || d.localizacoes || [],
+        valor_minimo: d.valor_minimo || 0,
+        valor_maximo: d.valor_maximo || d.orcamento_max || 0,
+        dormitorios: d.dormitorios || 0,
+        vagas_estacionamento: d.vagas_estacionamento || 0,
+        observacoes: d.observacoes || d.necessidades_especificas || '',
+        tipo_imovel: d.tipo_imovel || 'Casa',
+        nivel_urgencia: d.nivel_urgencia || d.urgencia || 'Média',
+        status_demanda: d.status_demanda || 'aberta',
+        is_prioritaria: d.is_prioritaria || false,
+        created_at: d.created_at || new Date().toISOString(),
+        tipo: type,
+        sdr_id: d.sdr_id,
+        corretor_id: d.corretor_id,
+        respostas_captador: (d.respostas_captador || []).sort(
+          (a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+        ),
+        prazos_captacao: d.prazos_captacao || [],
+        imoveis_captados: (d.imoveis_captados || [])
+          .map((i: any) => ({
+            ...i,
+            captador_nome: userMap.get(i.user_captador_id || i.captador_id) || 'Captador',
+          }))
+          .sort(
+            (a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+          ),
+      }))
+    },
+    [type],
+  )
 
   const fetchDemands = useCallback(
     async (isBackground = false) => {
@@ -68,84 +121,32 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
 
         const table = type === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
 
-        const query = supabase
+        const { data, error } = await supabase
           .from(table)
           .select('*, imoveis_captados(*), respostas_captador(*), prazos_captacao(*)')
           .order('created_at', { ascending: false })
 
-        const { data: usersData } = await supabase.from('users').select('id, nome')
-        const userMap = new Map((usersData || []).map((u) => [u.id, u.nome]))
-
-        const { data, error } = await query
-
-        if (error) {
-          console.error('[useSupabaseDemands] Query error:', error)
-          throw error
-        }
+        if (error) throw error
 
         if (data) {
           setDemands((prev) => {
-            const fetchedFormatted = data.map((d: any) => ({
-              id: d.id,
-              nome_cliente: d.nome_cliente || d.cliente_nome || 'Cliente',
-              telefone: d.telefone || '',
-              email: d.email || '',
-              bairros: d.bairros || d.localizacoes || [],
-              valor_minimo: d.valor_minimo || 0,
-              valor_maximo: d.valor_maximo || d.orcamento_max || 0,
-              dormitorios: d.dormitorios || 0,
-              vagas_estacionamento: d.vagas_estacionamento || 0,
-              observacoes: d.observacoes || d.necessidades_especificas || '',
-              tipo_imovel: d.tipo_imovel || 'Casa',
-              nivel_urgencia: d.nivel_urgencia || d.urgencia || 'Média',
-              status_demanda: d.status_demanda || 'aberta',
-              is_prioritaria: d.is_prioritaria || false,
-              created_at: d.created_at || new Date().toISOString(),
-              tipo: type,
-              sdr_id: d.sdr_id,
-              corretor_id: d.corretor_id,
-              respostas_captador: d.respostas_captador || [],
-              prazos_captacao: d.prazos_captacao || [],
-              imoveis_captados: (d.imoveis_captados || [])
-                .map((i: any) => ({
-                  ...i,
-                  captador_nome: userMap.get(i.user_captador_id || i.captador_id) || 'Captador',
-                }))
-                .sort(
-                  (a: any, b: any) =>
-                    new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-                ),
-            }))
-
+            const fetchedFormatted = formatData(data)
             const fetchedIds = new Set(fetchedFormatted.map((f) => f.id))
             const recentLocal = prev.filter(
               (p) => !fetchedIds.has(p.id) && Date.now() - new Date(p.created_at).getTime() < 5000,
             )
-
             return [...recentLocal, ...fetchedFormatted].sort(
               (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
             )
           })
         }
       } catch (err: any) {
-        if (!isBackground) {
-          console.error('Erro ao carregar demandas', err)
-        }
+        if (!isBackground) console.error('Erro ao carregar demandas', err)
       } finally {
         if (!isBackground) setLoading(false)
       }
     },
-    [type],
-  )
-
-  const debouncedFetch = useCallback(
-    (isBackground = true) => {
-      if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current)
-      fetchTimeoutRef.current = setTimeout(() => {
-        fetchDemands(isBackground)
-      }, 150)
-    },
-    [fetchDemands],
+    [type, formatData],
   )
 
   useEffect(() => {
@@ -154,36 +155,17 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
 
     const table = type === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
 
+    // Sincronização Bidirecional em Tempo Real - Atualizações Locais Otimizadas O(1)
     const channel = supabase
-      .channel(`demands_changes_${type}`)
+      .channel(`realtime_sync_${type}`)
       .on('postgres_changes', { event: '*', schema: 'public', table }, (payload) => {
         if (payload.eventType === 'INSERT') {
           const d = payload.new
           setDemands((prev) => {
             if (prev.some((x) => x.id === d.id)) return prev
-            const newDemand: SupabaseDemand = {
-              id: d.id,
-              nome_cliente: d.nome_cliente || d.cliente_nome || 'Cliente',
-              telefone: d.telefone || '',
-              email: d.email || '',
-              bairros: d.bairros || d.localizacoes || [],
-              valor_minimo: d.valor_minimo || 0,
-              valor_maximo: d.valor_maximo || d.orcamento_max || 0,
-              dormitorios: d.dormitorios || 0,
-              vagas_estacionamento: d.vagas_estacionamento || 0,
-              observacoes: d.observacoes || d.necessidades_especificas || '',
-              tipo_imovel: d.tipo_imovel || 'Casa',
-              nivel_urgencia: d.nivel_urgencia || d.urgencia || 'Média',
-              status_demanda: d.status_demanda || 'aberta',
-              is_prioritaria: d.is_prioritaria || false,
-              created_at: d.created_at || new Date().toISOString(),
-              tipo: type,
-              sdr_id: d.sdr_id,
-              corretor_id: d.corretor_id,
-              imoveis_captados: [],
-              respostas_captador: [],
-              prazos_captacao: [],
-            }
+            const newDemand = formatData([
+              { ...d, imoveis_captados: [], respostas_captador: [], prazos_captacao: [] },
+            ])[0]
             return [newDemand, ...prev]
           })
         } else if (payload.eventType === 'UPDATE') {
@@ -193,25 +175,12 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
               x.id === d.id
                 ? {
                     ...x,
-                    status_demanda: d.status_demanda || x.status_demanda,
+                    ...d,
                     nome_cliente: d.nome_cliente || d.cliente_nome || x.nome_cliente,
                     bairros: d.bairros || d.localizacoes || x.bairros,
-                    valor_minimo: d.valor_minimo !== undefined ? d.valor_minimo : x.valor_minimo,
                     valor_maximo: d.valor_maximo || d.orcamento_max || x.valor_maximo,
-                    dormitorios: d.dormitorios !== undefined ? d.dormitorios : x.dormitorios,
-                    vagas_estacionamento:
-                      d.vagas_estacionamento !== undefined
-                        ? d.vagas_estacionamento
-                        : x.vagas_estacionamento,
-                    observacoes:
-                      d.observacoes !== undefined
-                        ? d.observacoes
-                        : d.necessidades_especificas !== undefined
-                          ? d.necessidades_especificas
-                          : x.observacoes,
+                    observacoes: d.observacoes || d.necessidades_especificas || x.observacoes,
                     nivel_urgencia: d.nivel_urgencia || d.urgencia || x.nivel_urgencia,
-                    is_prioritaria:
-                      d.is_prioritaria !== undefined ? d.is_prioritaria : x.is_prioritaria,
                   }
                 : x,
             ),
@@ -219,110 +188,138 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
         } else if (payload.eventType === 'DELETE') {
           setDemands((prev) => prev.filter((x) => x.id !== payload.old.id))
         }
-        debouncedFetch(true)
       })
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'imoveis_captados' },
+        { event: 'INSERT', schema: 'public', table: 'imoveis_captados' },
         (payload) => {
-          if (payload.eventType === 'INSERT') {
-            const imv = payload.new
-            setDemands((prev) =>
-              prev.map((d) => {
-                if (d.id === imv.demanda_locacao_id || d.id === imv.demanda_venda_id) {
-                  const exists = d.imoveis_captados?.some((i: any) => i.id === imv.id)
-                  if (exists) return d
-                  return {
-                    ...d,
-                    status_demanda: 'atendida',
-                    imoveis_captados: [
-                      { ...imv, captador_nome: 'Sincronizando...' },
-                      ...(d.imoveis_captados || []),
-                    ],
-                  }
+          const imv = payload.new
+          setDemands((prev) =>
+            prev.map((d) => {
+              if (d.id === imv.demanda_locacao_id || d.id === imv.demanda_venda_id) {
+                if (d.imoveis_captados?.some((i: any) => i.id === imv.id)) return d
+
+                const captador = usersRef.current.find(
+                  (u) => u.id === (imv.user_captador_id || imv.captador_id),
+                )
+                const enrichedImv = { ...imv, captador_nome: captador?.name || 'Captador' }
+
+                const user = currentUserRef.current
+                if (user && (d.sdr_id === user.id || d.corretor_id === user.id)) {
+                  toast({
+                    title: '🏠 Novo Imóvel Captado!',
+                    description: `${enrichedImv.captador_nome} encontrou um imóvel para ${d.nome_cliente}.`,
+                    className: 'bg-[#10B981] text-white border-none shadow-lg',
+                  })
                 }
-                return d
-              }),
-            )
-          } else if (payload.eventType === 'UPDATE') {
-            const imv = payload.new
-            setDemands((prev) =>
-              prev.map((d) => {
-                if (d.id === imv.demanda_locacao_id || d.id === imv.demanda_venda_id) {
-                  return {
-                    ...d,
-                    status_demanda: d.imoveis_captados?.length > 0 ? 'atendida' : d.status_demanda,
-                    imoveis_captados: (d.imoveis_captados || []).map((i: any) =>
-                      i.id === imv.id ? { ...i, ...imv } : i,
-                    ),
-                  }
+
+                return {
+                  ...d,
+                  status_demanda: 'atendida',
+                  imoveis_captados: [enrichedImv, ...(d.imoveis_captados || [])],
                 }
-                return d
-              }),
-            )
-          }
-          debouncedFetch(true)
+              }
+              return d
+            }),
+          )
         },
       )
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'respostas_captador' }, () => {
-        debouncedFetch(true)
-      })
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'imoveis_captados' },
+        (payload) => {
+          const imv = payload.new
+          setDemands((prev) =>
+            prev.map((d) => {
+              if (d.id === imv.demanda_locacao_id || d.id === imv.demanda_venda_id) {
+                return {
+                  ...d,
+                  imoveis_captados: (d.imoveis_captados || []).map((i: any) =>
+                    i.id === imv.id ? { ...i, ...imv } : i,
+                  ),
+                }
+              }
+              return d
+            }),
+          )
+        },
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'respostas_captador' },
+        (payload) => {
+          const resp = payload.new
+          setDemands((prev) =>
+            prev.map((d) => {
+              if (d.id === resp.demanda_locacao_id || d.id === resp.demanda_venda_id) {
+                const user = currentUserRef.current
+                if (user && (d.sdr_id === user.id || d.corretor_id === user.id)) {
+                  const captador = usersRef.current.find((u) => u.id === resp.captador_id)
+                  toast({
+                    title: '📢 Feedback de Busca',
+                    description: `${captador?.name || 'Captador'}: ${resp.resposta === 'nao_encontrei' ? resp.motivo : 'Encontrei!'}`,
+                    className:
+                      resp.resposta === 'nao_encontrei'
+                        ? 'bg-[#F59E0B] text-white border-none'
+                        : 'bg-[#10B981] text-white border-none',
+                  })
+                }
+                return { ...d, respostas_captador: [resp, ...(d.respostas_captador || [])] }
+              }
+              return d
+            }),
+          )
+        },
+      )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'prazos_captacao' },
         (payload) => {
-          if (payload.eventType === 'UPDATE') {
+          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
             const newP = payload.new
             const oldP = payload.old
 
-            if (newP.prorrogacoes_usadas > (oldP.prorrogacoes_usadas || 0)) {
-              const dId = newP.demanda_locacao_id || newP.demanda_venda_id
-              setDemands((prev) => {
-                const d = prev.find((x) => x.id === dId)
-                if (d) {
-                  supabase.auth.getUser().then(({ data }) => {
-                    if (
-                      data.user &&
-                      (d.sdr_id === data.user.id || d.corretor_id === data.user.id)
-                    ) {
+            setDemands((prev) =>
+              prev.map((d) => {
+                if (d.id === newP.demanda_locacao_id || d.id === newP.demanda_venda_id) {
+                  const user = currentUserRef.current
+                  const isOwner = user && (d.sdr_id === user.id || d.corretor_id === user.id)
+
+                  if (payload.eventType === 'UPDATE' && oldP && isOwner) {
+                    if (newP.prorrogacoes_usadas > (oldP.prorrogacoes_usadas || 0)) {
                       toast({
                         title: '⏳ Prazo Prorrogado',
                         description: `O prazo da demanda de ${d.nome_cliente} foi prorrogado (+48h).`,
-                        className: 'bg-[#F59E0B] text-white border-none',
+                        className: 'bg-[#3B82F6] text-white border-none shadow-lg',
                       })
                     }
-                  })
-                }
-                return prev
-              })
-            }
-
-            if (
-              (newP.status === 'sem_resposta_24h' || newP.status === 'sem_resposta_final') &&
-              oldP.status === 'ativo'
-            ) {
-              const dId = newP.demanda_locacao_id || newP.demanda_venda_id
-              setDemands((prev) => {
-                const d = prev.find((x) => x.id === dId)
-                if (d) {
-                  supabase.auth.getUser().then(({ data }) => {
                     if (
-                      data.user &&
-                      (d.sdr_id === data.user.id || d.corretor_id === data.user.id)
+                      (newP.status === 'sem_resposta_24h' ||
+                        newP.status === 'sem_resposta_final') &&
+                      oldP.status === 'ativo'
                     ) {
                       toast({
-                        title: '⏰ Prazo Esgotado',
-                        description: `A demanda de ${d.nome_cliente} ficou sem resposta e foi marcada.`,
+                        title: '🚨 Prazo Esgotado',
+                        description: `A demanda de ${d.nome_cliente} ficou sem resposta e está parada.`,
                         variant: 'destructive',
+                        className: 'border-none shadow-lg',
                       })
                     }
-                  })
+                  }
+
+                  let currentPrazos = d.prazos_captacao || []
+                  if (currentPrazos.some((p) => p.id === newP.id)) {
+                    currentPrazos = currentPrazos.map((p) => (p.id === newP.id ? newP : p))
+                  } else {
+                    currentPrazos = [newP, ...currentPrazos]
+                  }
+
+                  return { ...d, prazos_captacao: currentPrazos }
                 }
-                return prev
-              })
-            }
+                return d
+              }),
+            )
           }
-          debouncedFetch(true)
         },
       )
       .subscribe()
@@ -330,9 +327,8 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
     return () => {
       mounted = false
       supabase.removeChannel(channel)
-      if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current)
     }
-  }, [fetchDemands, debouncedFetch, type])
+  }, [fetchDemands, type, formatData])
 
   return { demands, loading, refresh: () => fetchDemands(false) }
 }

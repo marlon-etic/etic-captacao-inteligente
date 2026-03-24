@@ -33,15 +33,19 @@ export function useSupabasePontuacao() {
     mounted.current = true
     fetchPontuacoes()
 
+    // Sincronização Bidirecional em Tempo Real
     const sub = supabase
-      .channel('pontuacao_changes')
+      .channel('realtime_pontuacao_sync')
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'pontuacao_captador' },
         (payload) => {
           const newPoint = payload.new as Pontuacao
           if (mounted.current) {
-            setPontuacoes((prev) => [newPoint, ...prev])
+            setPontuacoes((prev) => {
+              if (prev.some((p) => p.id === newPoint.id)) return prev
+              return [newPoint, ...prev]
+            })
 
             if (currentUser && newPoint.captador_id === currentUser.id) {
               let msg = ''
@@ -54,9 +58,10 @@ export function useSupabasePontuacao() {
 
               if (msg) {
                 toast({
-                  title: '🏆 Pontuação!',
+                  title: '🏆 Pontuação em Tempo Real!',
                   description: msg,
-                  className: 'bg-[#10B981] text-white border-none font-bold shadow-lg',
+                  className:
+                    'bg-[#10B981] text-white border-none font-bold shadow-lg animate-bounce-scale',
                 })
               }
             }

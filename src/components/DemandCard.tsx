@@ -6,10 +6,12 @@ import { Progress } from '@/components/ui/progress'
 import { Demand } from '@/types'
 import { cn } from '@/lib/utils'
 import useAppStore from '@/stores/useAppStore'
+import { supabase } from '@/lib/supabase/client'
+import { toast } from '@/hooks/use-toast'
 import { DemandDetailsModal } from '@/components/DemandDetailsModal'
 import { LostModal } from '@/components/LostModal'
 import { useSlaCountdown, useTimeElapsed } from '@/hooks/useTimeElapsed'
-import { Building2, Home, Eye, Zap } from 'lucide-react'
+import { Building2, Home, Eye, Zap, Clock } from 'lucide-react'
 
 interface DemandCardProps {
   demand: Demand
@@ -32,6 +34,7 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
   const { users, logSolicitorContactAttempt, markDemandLost, currentUser } = useAppStore()
   const [showDetails, setShowDetails] = useState(false)
   const [showLostModal, setShowLostModal] = useState(false)
+  const [isExtending, setIsExtending] = useState(false)
   const prevStatus = useRef(demand.status)
   const [isJustLost, setIsJustLost] = useState(false)
   const [isJustPrioritized, setIsJustPrioritized] = useState(false)
@@ -40,16 +43,22 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
   const creatorName = creator?.name || 'Desconhecido'
 
   const { text: timeElapsedText, hoursElapsed } = useTimeElapsed(demand.createdAt)
+
+  // Extrai o prazo real da estrutura mapeada para sincronização em tempo real
+  const prazoDb = (demand as any).prazos_captacao?.[0]
+  const isPending = demand.status === 'Pendente' || demand.status === 'aberta'
+
   const {
     text: slaText,
     progress: slaProgress,
     badgeText: slaBadgeText,
     level: slaLevel,
+    isExpired,
   } = useSlaCountdown(
     demand.createdAt,
-    demand.isExtension48h,
-    demand.extensionRequestedAt,
-    demand.status,
+    prazoDb?.prazo_resposta,
+    isPending ? 'aberta' : demand.status,
+    prazoDb?.prorrogacoes_usadas,
   )
 
   useEffect(() => {
@@ -71,9 +80,8 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
     return new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 }).format(val)
   }
 
-  const isPending = demand.status === 'Pendente'
   const isSale = demand.type === 'Venda'
-  const isLost = demand.status === 'Perdida'
+  const isLost = demand.status === 'Perdida' || demand.status === 'impossivel'
   const isPrioritized = demand.isPrioritized && !isLost
   const isNew = hoursElapsed <= 24 && isPending && !isLost && !isPrioritized
 
@@ -89,7 +97,6 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
   else if (isPrioritized) cardBg = 'bg-[#ffebee]'
   else if (isNew) cardBg = 'bg-[#e8f5e9] border-[#4CAF50]'
 
-  // Get the latest 'nao_encontrei' response if available
   const latestNaoEncontrei = (demand as any).respostas_captador
     ?.filter((r: any) => r.resposta === 'nao_encontrei')
     .sort(
@@ -124,11 +131,15 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
     let bgCol = 'bg-[#2E5F8A]'
     let textCol = 'text-[#FFFFFF]'
 
-    if (demand.status === 'Captado sob demanda' || demand.status === 'Em Captação') {
+    if (
+      demand.status === 'Captado sob demanda' ||
+      demand.status === 'Em Captação' ||
+      demand.status === 'atendida'
+    ) {
       bgCol = 'bg-[#4CAF50]'
     } else if (demand.status === 'Visita') {
       bgCol = 'bg-[#FF9800]'
-    } else if (demand.status === 'Negócio') {
+    } else if (demand.status === 'Negócio' || demand.status === 'ganho') {
       bgCol = 'bg-[#388E3C]'
     } else if (isPending) {
       if (latestNaoEncontrei) {
@@ -174,12 +185,35 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
 
   const btnSolid = 'bg-[#1A3A52] hover:bg-[#2E5F8A] text-white border-none'
   const btnSoft = 'bg-[#F5F5F5] text-[#333333] hover:bg-[#FFFFFF] border-[2px] border-[#2E5F8A]'
-  const btnOutline = 'bg-[#FFFFFF] text-[#333333] hover:bg-[#F5F5F5] border-[2px] border-[#2E5F8A]'
 
   let indicatorColor = 'bg-[#4CAF50]'
   if (slaLevel === 'yellow') indicatorColor = 'bg-[#FF9800]'
   else if (slaLevel === 'red') indicatorColor = 'bg-[#F44336]'
   else if (slaLevel === 'orange') indicatorColor = 'bg-[#FF9800]'
+
+  const handleProrrogar = async () => {
+    if (!prazoDb || isExtending) return
+    setIsExtending(true)
+    try {
+      const currentPrazo = new Date(prazoDb.prazo_resposta)
+      currentPrazo.setHours(currentPrazo.getHours() + 48)
+
+      const { error } = await supabase
+        .from('prazos_captacao')
+        .update({
+          prazo_resposta: currentPrazo.toISOString(),
+          prorrogacoes_usadas: (prazoDb.prorrogacoes_usadas || 0) + 1,
+        })
+        .eq('id', prazoDb.id)
+
+      if (error) throw error
+      // The Real-time subscription will trigger the toast and UI update instantly
+    } catch (e: any) {
+      toast({ title: 'Erro ao prorrogar', description: e.message, variant: 'destructive' })
+    } finally {
+      setIsExtending(false)
+    }
+  }
 
   return (
     <div
@@ -233,7 +267,7 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
           </div>
 
           <div className="flex items-center justify-end flex-wrap gap-2">
-            {!isLost && !isPrioritized && !isNew && isPending && (
+            {!isLost && !isPrioritized && !isNew && isPending && !isExpired && (
               <Badge className="bg-[#4CAF50] text-[#FFFFFF] hover:bg-[#388E3C] border-none text-[12px] font-bold whitespace-normal break-words text-center min-h-[28px] py-1 px-3 shadow-sm">
                 🟢 Ativa
               </Badge>
@@ -257,7 +291,7 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
                     : 'text-[#4CAF50]',
               )}
             >
-              {slaText} restantes
+              {slaText}
             </span>
           )}
         </div>
@@ -293,7 +327,7 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
           <InfoItem label="📅 Criado há" value={timeElapsedText} />
           <InfoItem
             label="📦 Imóveis"
-            value={`${demand.capturedProperties?.length || 0} imóveis`}
+            value={`${demand.capturedProperties?.length || (demand as any).imoveis_captados?.length || 0} imóveis`}
           />
         </div>
 
@@ -318,27 +352,42 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
               <Eye className="w-4 h-4 mr-2" /> Ver Detalhes
             </Button>
 
-            {currentUser?.role === 'captador' && (
-              <div className="flex flex-row gap-[8px] w-full xl:w-auto flex-1">
-                <Button
-                  className={cn(
-                    'min-h-[44px] flex-1 font-bold whitespace-normal break-words text-[14px] px-2 shadow-md transition-transform hover:scale-[1.02]',
-                    btnSolid,
-                  )}
-                  onClick={() => onAction?.(demand.id, 'encontrei')}
-                  disabled={isLost}
-                >
-                  ✅ Encontrei
-                </Button>
-                <Button
-                  className={cn(
-                    'min-h-[44px] flex-1 font-bold whitespace-normal break-words text-[14px] px-2 shadow-md transition-transform hover:scale-[1.02] bg-[#EF4444] hover:bg-[#DC2626] text-white border-none',
-                  )}
-                  onClick={() => onAction?.(demand.id, 'nao_encontrei')}
-                  disabled={isLost}
-                >
-                  ❌ Não Encontrei
-                </Button>
+            {currentUser?.role === 'captador' && isPending && (
+              <div className="flex flex-col sm:flex-row gap-[8px] w-full xl:w-auto flex-1">
+                {(!isExpired || (prazoDb?.prorrogacoes_usadas || 0) >= 3) && (
+                  <>
+                    <Button
+                      className={cn(
+                        'min-h-[44px] flex-1 font-bold whitespace-normal break-words text-[14px] px-2 shadow-md transition-transform hover:scale-[1.02]',
+                        btnSolid,
+                      )}
+                      onClick={() => onAction?.(demand.id, 'encontrei')}
+                      disabled={isLost}
+                    >
+                      ✅ Encontrei
+                    </Button>
+                    <Button
+                      className={cn(
+                        'min-h-[44px] flex-1 font-bold whitespace-normal break-words text-[14px] px-2 shadow-md transition-transform hover:scale-[1.02] bg-[#EF4444] hover:bg-[#DC2626] text-white border-none',
+                      )}
+                      onClick={() => onAction?.(demand.id, 'nao_encontrei')}
+                      disabled={isLost}
+                    >
+                      ❌ Não Encontrei
+                    </Button>
+                  </>
+                )}
+                {isPending && !isLost && (prazoDb?.prorrogacoes_usadas || 0) < 3 && (
+                  <Button
+                    className={cn(
+                      'min-h-[44px] flex-1 font-bold whitespace-normal break-words text-[14px] px-2 shadow-md transition-transform hover:scale-[1.02] bg-[#3B82F6] hover:bg-[#2563EB] text-white border-none',
+                    )}
+                    onClick={handleProrrogar}
+                    disabled={isExtending}
+                  >
+                    <Clock className="w-4 h-4 mr-1.5" /> Prorrogar (+48h)
+                  </Button>
+                )}
               </div>
             )}
           </div>

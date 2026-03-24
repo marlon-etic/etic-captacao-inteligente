@@ -68,7 +68,11 @@ interface AppState {
   resetPassword: (password: string, token: string) => Promise<void>
   addDemand: (demand: Partial<Demand>) => void
   updateDemandStatus: (id: string, status: DemandStatus) => void
-  submitDemandResponse: (id: string, action: 'encontrei' | 'nao_encontrei', payload: any) => any
+  submitDemandResponse: (
+    id: string,
+    action: 'encontrei' | 'nao_encontrei',
+    payload: any,
+  ) => Promise<any>
   submitIndependentCapture: (payload: any) => { success: boolean; message: string }
   submitGroupCapture: (demandIds: string[], payload: any) => { success: boolean; message: string }
   claimLooseProperty: (code: string, demandId: string) => { success: boolean; message: string }
@@ -131,99 +135,6 @@ export const defaultPreferences: UserPreferences = {
   },
 }
 
-const formatLocStr = (loc: any): string => {
-  if (!loc) return ''
-  return Array.isArray(loc) ? loc.join(', ') : String(loc)
-}
-
-const getLocsArray = (loc: any): string[] => {
-  if (!loc) return []
-  if (Array.isArray(loc)) return loc.map((s) => String(s).toLowerCase().trim())
-  return String(loc)
-    .toLowerCase()
-    .split(',')
-    .map((s) => s.trim())
-}
-
-const mockUsers: User[] = [
-  {
-    id: '1',
-    name: 'Ana Silva',
-    email: 'captador@etic.com',
-    role: 'captador',
-    status: 'ativo',
-    phone: '5511999999999',
-    whatsapp: '(11) 99999-9999',
-    points: 1250,
-    dailyPoints: 150,
-    weeklyPoints: 600,
-    monthlyPoints: 1250,
-    badges: ['🏆 Especialista', '🔥 Semana de Ouro'],
-    stats: {
-      ...defaultStats,
-      imoveisCaptados: 105,
-      imoveisCaptadosSemana: 11,
-      negociosFechados: 2,
-    },
-    preferences: defaultPreferences,
-    createdAt: new Date(Date.now() - 30 * 86400000).toISOString(),
-  },
-  {
-    id: '2',
-    name: 'Carlos Santos',
-    email: 'sdr@etic.com',
-    role: 'sdr',
-    status: 'ativo',
-    phone: '5511988888888',
-    whatsapp: '(11) 98888-8888',
-    points: 800,
-    dailyPoints: 0,
-    weeklyPoints: 200,
-    monthlyPoints: 800,
-    badges: ['🚀 Rastreador Rápido'],
-    stats: { ...defaultStats, responseCount: 10, responseTimeSum: 120 },
-    preferences: defaultPreferences,
-    createdAt: new Date(Date.now() - 60 * 86400000).toISOString(),
-  },
-  {
-    id: '3',
-    name: 'Roberto Corretor',
-    email: 'corretor@etic.com',
-    role: 'corretor',
-    status: 'ativo',
-    phone: '5511977777777',
-    whatsapp: '(11) 97777-7777',
-    tipo_demanda: 'vendas',
-    tipos_demanda_solicitados: ['locacao', 'vendas'],
-    points: 950,
-    dailyPoints: 50,
-    weeklyPoints: 300,
-    monthlyPoints: 950,
-    badges: ['⭐ Negociador Estrela'],
-    stats: { ...defaultStats, negociosFechados: 5 },
-    preferences: defaultPreferences,
-    createdAt: new Date(Date.now() - 15 * 86400000).toISOString(),
-  },
-  {
-    id: '4',
-    name: 'Mariana Gestora',
-    email: 'admin@etic.com',
-    role: 'admin',
-    status: 'ativo',
-    points: 0,
-    dailyPoints: 0,
-    weeklyPoints: 0,
-    monthlyPoints: 0,
-    badges: [],
-    stats: { ...defaultStats },
-    preferences: defaultPreferences,
-    createdAt: new Date(Date.now() - 100 * 86400000).toISOString(),
-  },
-]
-
-const initialDemands: Demand[] = []
-const initialLooseProperties: CapturedProperty[] = []
-
 const AppContext = createContext<AppState | null>(null)
 
 export function AppStoreProvider({ children }: { children: ReactNode }) {
@@ -254,10 +165,10 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   })
 
   const [isRestoringUser, setIsRestoringUser] = useState(true)
-  const [users, setUsers] = useState<User[]>(mockUsers)
+  const [users, setUsers] = useState<User[]>([])
 
-  const [allDemands, setAllDemands] = useState<Demand[]>(initialDemands)
-  const [looseProperties, setLooseProperties] = useState<CapturedProperty[]>(initialLooseProperties)
+  const [allDemands, setAllDemands] = useState<Demand[]>([])
+  const [looseProperties, setLooseProperties] = useState<CapturedProperty[]>([])
   const [webhookQueue, setWebhookQueue] = useState<WebhookEvent[]>([])
   const [auditLogs, setAuditLogs] = useState<string[]>([])
   const [systemLogs, setSystemLogs] = useState<SystemLog[]>([])
@@ -266,50 +177,10 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const [authAuditLogs, setAuthAuditLogs] = useState<AuthAuditLog[]>([])
   const [adminAuditLogs, setAdminAuditLogs] = useState<AdminAuditLog[]>([])
 
-  const [notifications, setNotifications] = useState<AppNotification[]>(() => {
-    try {
-      const raw = localStorage.getItem('etic_state_sync')
-      if (raw) {
-        const parsed = JSON.parse(raw)
-        if (parsed.notifications && Array.isArray(parsed.notifications)) {
-          return parsed.notifications.map((n: any) => ({
-            id: n.id,
-            usuario_id: n.userId || n.usuario_id,
-            tipo_notificacao: n.tipo_notificacao || 'novo_imovel',
-            titulo: n.titulo || 'Aviso',
-            corpo: n.corpo || n.message || '',
-            detalhes: n.detalhes,
-            acao_url: n.acao_url,
-            acao_botao: n.acao_botao,
-            urgencia: n.urgencia || 'baixa',
-            canais: n.canais || ['in_app'],
-            lida: n.lida !== undefined ? n.lida : n.read || false,
-            data_criacao: n.data_criacao || n.createdAt || new Date().toISOString(),
-            data_leitura: n.data_leitura,
-            arquivada: n.arquivada || false,
-          }))
-        }
-      }
-    } catch {
-      // ignore
-    }
-    return []
-  })
+  const [notifications, setNotifications] = useState<AppNotification[]>([])
 
   const [groupComments, setGroupComments] = useState<GroupComment[]>([])
   const [inactiveGroups] = useState<InactiveGroup[]>([])
-
-  useEffect(() => {
-    localStorage.setItem('etic_group_comments', JSON.stringify(groupComments))
-  }, [groupComments])
-
-  useEffect(() => {
-    localStorage.setItem('etic_auth_logs', JSON.stringify(authAuditLogs))
-  }, [authAuditLogs])
-
-  useEffect(() => {
-    localStorage.setItem('etic_admin_logs', JSON.stringify(adminAuditLogs))
-  }, [adminAuditLogs])
 
   const webhookQueueRef = useRef(webhookQueue)
   const loosePropertiesRef = useRef(looseProperties)
@@ -384,11 +255,11 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     return () => {
       mounted = false
     }
-  }, []) // intentionally runs only on mount
+  }, [])
 
-  // Real-time Users Fetching (only if logged in to avoid 403)
+  // Real-time Users Fetching
   useEffect(() => {
-    if (!currentUser) return // Prevent Anon requests from triggering 403
+    if (!currentUser) return
     let mounted = true
 
     const fetchUsers = async () => {
@@ -416,16 +287,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
             preferences: defaultPreferences,
             createdAt: u.created_at || new Date().toISOString(),
           }))
-
-          setUsers((prev) => {
-            const merged = [...dbUsers]
-            prev.forEach((p) => {
-              if (!merged.find((m) => m.email === p.email)) {
-                merged.push(p)
-              }
-            })
-            return merged
-          })
+          setUsers(dbUsers)
         }
       } catch (err) {
         console.error('Error fetching users', err)
@@ -445,66 +307,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       mounted = false
       supabase.removeChannel(sub)
     }
-  }, [currentUser?.id]) // Run once after user logs in
-
-  // Real-time SDR/Corretor Notifications for Respostas Captador
-  useEffect(() => {
-    let mounted = true
-    if (!currentUser || (currentUser.role !== 'sdr' && currentUser.role !== 'corretor')) return
-
-    const subRespostas = supabase
-      .channel('notif_respostas_sdr')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'respostas_captador' },
-        async (payload) => {
-          if (!mounted) return
-          const resp = payload.new
-          if (resp.resposta === 'nao_encontrei') {
-            try {
-              const isLocacao = !!resp.demanda_locacao_id
-              const table = isLocacao ? 'demandas_locacao' : 'demandas_vendas'
-              const id = isLocacao ? resp.demanda_locacao_id : resp.demanda_venda_id
-
-              const { data: dData } = await supabase
-                .from(table)
-                .select(
-                  isLocacao
-                    ? 'sdr_id, nome_cliente, cliente_nome'
-                    : 'corretor_id, nome_cliente, cliente_nome',
-                )
-                .eq('id', id)
-                .single()
-
-              const ownerId = isLocacao ? dData?.sdr_id : dData?.corretor_id
-              const clientName = dData?.nome_cliente || dData?.cliente_nome
-
-              if (dData && ownerId === currentUser.id) {
-                const { data: uData } = await supabase
-                  .from('users')
-                  .select('nome')
-                  .eq('id', resp.captador_id)
-                  .single()
-
-                toast({
-                  title: '📢 Feedback de Busca',
-                  description: `Captador ${uData?.nome || 'Desconhecido'} não encontrou imóvel para ${clientName}. Motivo: ${resp.motivo}`,
-                  className: 'bg-[#FF9800] text-white border-none',
-                })
-              }
-            } catch (err) {
-              console.error('Error fetching notification data', err)
-            }
-          }
-        },
-      )
-      .subscribe()
-
-    return () => {
-      mounted = false
-      supabase.removeChannel(subRespostas)
-    }
-  }, [currentUser?.id, currentUser?.role])
+  }, [currentUser?.id])
 
   const logSystemEvent = useCallback(
     (message: string, type: 'error' | 'info' | 'warning' = 'info', context?: string) => {
@@ -552,12 +355,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     (event_type: string, entity_id: string | undefined, data: any) => {
       const target_url =
         import.meta.env.VITE_N8N_WEBHOOK_URL || 'https://mock-n8n.example.com/webhook-test'
-
       if (!target_url.startsWith('http')) return
-
       const id = Math.random().toString(36).substring(2, 9)
       const payload = { event_type, entity_id, data, timestamp: new Date().toISOString() }
-
       const newEvent: WebhookEvent = {
         id,
         event_type,
@@ -568,7 +368,6 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         target_url,
         data_criacao: new Date().toISOString(),
       }
-
       setWebhookQueue((prev) => [...prev, newEvent])
     },
     [],
@@ -626,38 +425,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(intervalId)
   }, [processWebhookCron])
 
-  const addPoints = useCallback(
-    (amount: number, userId?: string) => {
-      const id = userId || currentUser?.id
-      if (!id) return
-      setUsers((p) =>
-        p.map((u) =>
-          u.id === id
-            ? {
-                ...u,
-                points: u.points + amount,
-                dailyPoints: u.dailyPoints + amount,
-                weeklyPoints: u.weeklyPoints + amount,
-                monthlyPoints: u.monthlyPoints + amount,
-              }
-            : u,
-        ),
-      )
-      if (currentUser?.id === id)
-        setCurrentUser((p) =>
-          p
-            ? {
-                ...p,
-                points: p.points + amount,
-                dailyPoints: p.dailyPoints + amount,
-                weeklyPoints: p.weeklyPoints + amount,
-                monthlyPoints: p.monthlyPoints + amount,
-              }
-            : p,
-        )
-    },
-    [currentUser],
-  )
+  const addPoints = useCallback((amount: number, userId?: string) => {
+    // Handled by supabase triggers directly. Left for mock compatibility if needed elsewhere.
+  }, [])
 
   const updateUser = useCallback(
     (id: string, updates: Partial<User>) => {
@@ -680,35 +450,28 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   )
 
   const triggerCron = useCallback(() => {}, [])
-
   const scheduleVisitByCode = useCallback((code: string, payload: any) => {}, [])
   const submitProposalByCode = useCallback((code: string, payload: any) => {}, [])
   const closeDealByCode = useCallback((code: string, payload: any) => {}, [])
   const prioritizeDemand = useCallback((id: string, reason: string, count: number) => {}, [])
 
   const markDemandLost = useCallback((id: string, reason: string, obs?: string) => {
-    const demand = allDemandsRef.current.find((d) => d.id === id)
-    if (!demand) return
-
     supabase.auth
       .getUser()
-      .then(({ data: authData }) => {
+      .then(async ({ data: authData }) => {
         if (authData?.user) {
-          const table = demand.type === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
-          supabase
-            .from(table)
-            .update({ status_demanda: 'impossivel' })
-            .eq('id', demand.id)
-            .catch(console.error)
+          // Find if it's locacao or venda
+          const { data: loc } = await supabase
+            .from('demandas_locacao')
+            .select('id')
+            .eq('id', id)
+            .single()
+          const table = loc ? 'demandas_locacao' : 'demandas_vendas'
+
+          await supabase.from(table).update({ status_demanda: 'impossivel' }).eq('id', id)
         }
       })
       .catch(console.error)
-
-    setAllDemands((prev) =>
-      prev.map((d) =>
-        d.id === id ? { ...d, status: 'Perdida' as DemandStatus, lostReason: reason } : d,
-      ),
-    )
   }, [])
 
   const markPropertyLost = useCallback(
@@ -847,7 +610,6 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           setIsProcessingUser(true)
           try {
             if (!password) throw new Error('Senha é obrigatória para novos usuários')
-
             const { data, error } = await supabase.functions.invoke('admin-users', {
               body: {
                 action: 'createUser',
@@ -860,15 +622,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
                 },
               },
             })
-
-            if (error) {
-              console.error(error)
-              throw new Error(error.message || 'Erro de rede ao criar usuário')
-            }
-
-            if (data?.error) {
-              throw new Error(data.error)
-            }
+            if (error) throw new Error(error.message || 'Erro de rede ao criar usuário')
+            if (data?.error) throw new Error(data.error)
           } finally {
             setIsProcessingUser(false)
           }
@@ -883,28 +638,14 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
               role: payload.role,
               status: payload.status,
             }
-            if (password) {
-              bodyPayload.password = password
-            }
-
+            if (password) bodyPayload.password = password
             const { data, error } = await supabase.functions.invoke('admin-users', {
-              body: {
-                action: 'updateUser',
-                payload: bodyPayload,
-              },
+              body: { action: 'updateUser', payload: bodyPayload },
             })
-
-            if (error) {
-              console.error(error)
-              throw new Error(error.message || 'Erro de rede ao atualizar usuário')
-            }
-
-            if (data?.error) {
-              throw new Error(data.error)
-            }
+            if (error) throw new Error(error.message || 'Erro de rede ao atualizar usuário')
+            if (data?.error) throw new Error(data.error)
 
             setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, ...payload } : u)))
-
             if (currentUser?.id === id) {
               setCurrentUser((prev) => (prev ? { ...prev, ...payload } : prev))
             }
@@ -920,134 +661,116 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
             redirectTo: `${window.location.origin}/redefinir-senha`,
           })
-          if (error) {
-            console.error('[useAppStore] Erro ao enviar email de reset:', error)
+          if (error)
             throw new Error(
               'Não foi possível enviar o link de recuperação. Verifique o email informado.',
             )
-          }
         },
         resetPassword: async (password, token) => {
           const { error } = await supabase.auth.updateUser({ password })
-          if (error) {
-            console.error('[useAppStore] Erro ao redefinir senha:', error)
-            throw new Error('O link é inválido ou já expirou. Solicite um novo link.')
-          }
-
+          if (error) throw new Error('O link é inválido ou já expirou. Solicite um novo link.')
           await supabase.auth.signOut()
         },
-        addDemand: (d) => {
-          const newDemand = {
-            ...d,
-            id: Math.random().toString(36).substr(2, 9),
-            createdAt: new Date().toISOString(),
-            status: 'Pendente',
-            grupo_id: `group-new-${Math.random().toString(36).substr(2, 9)}`,
-          } as Demand
-
-          setAllDemands((p) => [newDemand, ...p])
-        },
-        updateDemandStatus: (id: string, status: DemandStatus) => {
-          setAllDemands((p) => p.map((d) => (d.id === id ? { ...d, status } : d)))
-
-          const demand = allDemandsRef.current.find((d) => d.id === id)
-          if (demand) {
-            const table = demand.type === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
-
-            // Map our UI status to database ENUM 'status_demanda'
-            let dbStatus = 'aberta'
-            if (status === 'Negócio' || status === 'ganho' || status === 'Fechado') {
-              dbStatus = 'ganho'
-            } else if (
-              status === 'Atendida' ||
-              status === 'Captado sob demanda' ||
-              status === 'Visita' ||
-              status === 'Proposta'
-            ) {
-              dbStatus = 'atendida'
-            } else if (status === 'Perdida' || status === 'Impossível') {
-              dbStatus = 'impossivel'
-            }
-
-            supabase
-              .from(table)
-              .update({ status_demanda: dbStatus })
-              .eq('id', id)
-              .catch(console.error)
+        addDemand: (d) => {},
+        updateDemandStatus: async (id: string, status: DemandStatus) => {
+          // Sync with database directly - triggers realtime updates to all clients instantly
+          let dbStatus = 'aberta'
+          if (status === 'Negócio' || status === 'ganho' || status === 'Fechado') {
+            dbStatus = 'ganho'
+          } else if (
+            status === 'Atendida' ||
+            status === 'Captado sob demanda' ||
+            status === 'Visita' ||
+            status === 'Proposta'
+          ) {
+            dbStatus = 'atendida'
+          } else if (status === 'Perdida' || status === 'Impossível') {
+            dbStatus = 'impossivel'
           }
+
+          const { data: locData } = await supabase
+            .from('demandas_locacao')
+            .select('id')
+            .eq('id', id)
+            .single()
+          const table = locData ? 'demandas_locacao' : 'demandas_vendas'
+          await supabase.from(table).update({ status_demanda: dbStatus }).eq('id', id)
         },
         submitGroupCapture: (demandIds, payload) => {
           return { success: true, message: '' }
         },
-        submitDemandResponse: (id, action, payload) => {
-          const demand = allDemandsRef.current.find((d) => d.id === id)
-          if (!demand) return { success: false, message: 'Não encontrada' }
+        submitDemandResponse: async (id, action, payload) => {
+          const { data: authData } = await supabase.auth.getUser()
+          if (!authData?.user) return { success: false, message: 'Usuário não autenticado' }
+
+          let isLocacao = true
+          let dbDemand: any = null
+
+          const { data: locData } = await supabase
+            .from('demandas_locacao')
+            .select('*')
+            .eq('id', id)
+            .single()
+          if (locData) {
+            dbDemand = locData
+          } else {
+            const { data: venData } = await supabase
+              .from('demandas_vendas')
+              .select('*')
+              .eq('id', id)
+              .single()
+            if (venData) {
+              dbDemand = venData
+              isLocacao = false
+            }
+          }
+
+          if (!dbDemand) return { success: false, message: 'Demanda não encontrada' }
 
           if (action === 'encontrei') {
             const code = payload?.code || `IMV-${Math.floor(Math.random() * 1000)}`
-
-            supabase.auth
-              .getUser()
-              .then(({ data: authData }) => {
-                if (authData?.user) {
-                  supabase
-                    .from('imoveis_captados')
-                    .insert({
-                      codigo_imovel: code,
-                      endereco: payload?.neighborhood || demand.location?.[0] || 'Não informado',
-                      preco: payload?.value || demand.budget || demand.maxBudget || 0,
-                      status_captacao: 'pendente',
-                      user_captador_id: authData.user.id,
-                      captador_id: authData.user.id,
-                      demanda_locacao_id: demand.type === 'Aluguel' ? demand.id : null,
-                      demanda_venda_id: demand.type === 'Venda' ? demand.id : null,
-                    })
-                    .then(({ error }) => {
-                      if (!error) {
-                        const table =
-                          demand.type === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
-                        supabase
-                          .from(table)
-                          .update({ status_demanda: 'atendida' })
-                          .eq('id', demand.id)
-                          .catch(console.error)
-                      }
-                    })
-                    .catch(console.error)
-                }
-              })
-              .catch(console.error)
-
-            const newProp: CapturedProperty = {
-              code,
-              value: payload?.value || demand.budget || 0,
-              neighborhood: payload?.neighborhood || '',
-              bairro_tipo: 'listado',
-              docCompleta: false,
-              photoUrl: `https://img.usecurling.com/p/400/300?q=house&seed=${code}`,
-              capturedAt: new Date().toISOString(),
-              tipo_vinculacao: 'vinculado',
-              captador_id: currentUser?.id,
-              captador_name: currentUser?.name,
-              propertyType: demand.type,
-            }
-
-            const updatedDemand = {
-              ...demand,
-              status: 'Captado sob demanda' as DemandStatus,
-              capturedProperties: [...(demand.capturedProperties || []), newProp],
-            }
-
-            setAllDemands((prev) => prev.map((d) => (d.id === id ? updatedDemand : d)))
-
-            toast({
-              title: 'Sucesso',
-              description: 'Imóvel registrado com sucesso.',
-              className: 'bg-emerald-600 text-white',
+            const { error } = await supabase.from('imoveis_captados').insert({
+              codigo_imovel: code,
+              endereco:
+                payload?.neighborhood ||
+                dbDemand.localizacoes?.[0] ||
+                dbDemand.bairros?.[0] ||
+                'Não informado',
+              preco: payload?.value || dbDemand.orcamento_max || dbDemand.valor_maximo || 0,
+              status_captacao: 'pendente',
+              user_captador_id: authData.user.id,
+              captador_id: authData.user.id,
+              demanda_locacao_id: isLocacao ? id : null,
+              demanda_venda_id: !isLocacao ? id : null,
             })
 
-            return { success: true, message: '' }
+            if (!error) {
+              const table = isLocacao ? 'demandas_locacao' : 'demandas_vendas'
+              await supabase.from(table).update({ status_demanda: 'atendida' }).eq('id', id)
+            }
+
+            return {
+              success: !error,
+              message: error ? error.message : 'Imóvel vinculado com sucesso',
+            }
           }
+
+          if (action === 'nao_encontrei') {
+            const { error } = await supabase.from('respostas_captador').insert({
+              demanda_locacao_id: isLocacao ? id : null,
+              demanda_venda_id: !isLocacao ? id : null,
+              captador_id: authData.user.id,
+              resposta: 'nao_encontrei',
+              motivo: payload?.motivo || 'Outro motivo',
+              observacao: payload?.observacao || '',
+            })
+
+            return {
+              success: !error,
+              message: error ? error.message : 'Feedback registrado com sucesso',
+            }
+          }
+
           return { success: false, message: 'Ação desconhecida' }
         },
         submitIndependentCapture: (payload) => {
