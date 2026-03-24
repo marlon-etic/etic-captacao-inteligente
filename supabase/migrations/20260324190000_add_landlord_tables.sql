@@ -86,7 +86,7 @@ CREATE POLICY "Landlords can view own property performance" ON public.property_p
 );
 
 -- Seed Data for Testing
-DO $
+DO $$
 DECLARE
   mock_landlord_id uuid := gen_random_uuid();
   mock_user_id uuid;
@@ -95,11 +95,11 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM auth.users WHERE email = 'proprietario@etic.com') THEN
     mock_user_id := gen_random_uuid();
     INSERT INTO auth.users (
-      id, email, encrypted_password, email_confirmed_at, created_at, updated_at,
+      id, instance_id, email, encrypted_password, email_confirmed_at, created_at, updated_at,
       raw_app_meta_data, raw_user_meta_data, role, aud,
       confirmation_token, recovery_token, email_change_token_new, email_change, email_change_token_current, phone_change, phone_change_token, reauthentication_token
     ) VALUES (
-      mock_user_id, 'proprietario@etic.com', crypt('Senha123!', gen_salt('bf')), NOW(), NOW(), NOW(),
+      mock_user_id, '00000000-0000-0000-0000-000000000000', 'proprietario@etic.com', crypt('Senha123!', gen_salt('bf')), NOW(), NOW(), NOW(),
       '{"provider": "email", "providers": ["email"]}', '{"name": "Proprietário Teste", "role": "landlord"}', 'authenticated', 'authenticated',
       '', '', '', '', '', '', '', ''
     );
@@ -122,5 +122,4 @@ BEGIN
       (mock_imovel_id, 'João Inquilino', 'joao@email.com', '(11) 99999-9999', 90, 10500, CURRENT_DATE + INTERVAL '15 days', 'Gostei muito do imóvel, tenho fiador.', 'pending'),
       (mock_imovel_id, 'Maria Silva', 'maria@email.com', '(11) 97777-7777', 65, 7000, CURRENT_DATE + INTERVAL '30 days', 'Proponho um pequeno desconto no primeiro mês.', 'pending');
   END IF;
-END $;
-
+END $$;
