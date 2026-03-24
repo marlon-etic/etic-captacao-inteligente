@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import useAppStore from '@/stores/useAppStore'
 import { toast } from '@/hooks/use-toast'
+import { useSmartSync, useConsolidatedSync } from '@/hooks/useSmartSync'
 
 export interface SupabaseCapturedProperty {
   id: string
@@ -57,6 +58,7 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
   const { users } = useAppStore()
+  const { fetchWithResilience } = useSmartSync()
 
   const usersRef = useRef(users)
 
@@ -128,12 +130,14 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
 
         const table = type === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
 
-        const { data, error } = await supabase
-          .from(table)
-          .select('*, imoveis_captados(*), respostas_captador(*), prazos_captacao(*)')
-          .order('created_at', { ascending: false })
-
-        if (error) throw error
+        const data = await fetchWithResilience(`demands_${type}`, async () => {
+          const { data: resData, error } = await supabase
+            .from(table)
+            .select('*, imoveis_captados(*), respostas_captador(*), prazos_captacao(*)')
+            .order('created_at', { ascending: false })
+          if (error) throw error
+          return resData
+        })
 
         if (data) {
           setDemands((prev) => {
@@ -151,220 +155,12 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
         if (!isBackground) setLoading(false)
       }
     },
-    [type, formatData, sortDemands],
+    [type, formatData, sortDemands, fetchWithResilience],
   )
 
   useEffect(() => {
     let mounted = true
     if (mounted) fetchDemands()
-
-    const table = type === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
-
-    const channel = supabase
-      .channel(`realtime_sync_${type}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table }, (payload) => {
-        setSyncing(true)
-        if (payload.eventType === 'INSERT') {
-          const d = payload.new
-          setDemands((prev) => {
-            if (prev.some((x) => x.id === d.id)) return prev
-            const newDemand = formatData([
-              { ...d, imoveis_captados: [], respostas_captador: [], prazos_captacao: [] },
-            ])[0]
-            return sortDemands([newDemand, ...prev])
-          })
-        } else if (payload.eventType === 'UPDATE') {
-          const d = payload.new
-          setDemands((prev) => {
-            return sortDemands(
-              prev.map((x) =>
-                x.id === d.id
-                  ? {
-                      ...x,
-                      ...d,
-                      nome_cliente: d.nome_cliente || d.cliente_nome || x.nome_cliente,
-                      bairros: d.bairros || d.localizacoes || x.bairros,
-                      valor_maximo: d.valor_maximo || d.orcamento_max || x.valor_maximo,
-                      observacoes: d.observacoes || d.necessidades_especificas || x.observacoes,
-                      nivel_urgencia: d.nivel_urgencia || d.urgencia || x.nivel_urgencia,
-                      status_demanda: d.status_demanda || x.status_demanda,
-                      is_prioritaria:
-                        d.is_prioritaria !== undefined ? d.is_prioritaria : x.is_prioritaria,
-                    }
-                  : x,
-              ),
-            )
-          })
-        } else if (payload.eventType === 'DELETE') {
-          setDemands((prev) => prev.filter((x) => x.id !== payload.old.id))
-        }
-        setTimeout(() => setSyncing(false), 500)
-      })
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'imoveis_captados' },
-        (payload) => {
-          const imv = payload.new
-          setSyncing(true)
-          setDemands((prev) => {
-            return prev.map((d) => {
-              if (d.id === imv.demanda_locacao_id || d.id === imv.demanda_venda_id) {
-                if (d.imoveis_captados?.some((i: any) => i.id === imv.id)) return d
-
-                const captador = usersRef.current.find(
-                  (u) => u.id === (imv.user_captador_id || imv.captador_id),
-                )
-                const enrichedImv = {
-                  ...imv,
-                  captador_nome: captador?.name || 'Captador',
-                  etapa_funil: imv.etapa_funil || 'capturado',
-                  observacoes: imv.observacoes || imv.localizacao_texto,
-                }
-
-                return {
-                  ...d,
-                  status_demanda: 'atendida',
-                  imoveis_captados: [enrichedImv, ...(d.imoveis_captados || [])],
-                }
-              }
-              return d
-            })
-          })
-          setTimeout(() => setSyncing(false), 500)
-        },
-      )
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'imoveis_captados' },
-        (payload) => {
-          const imv = payload.new
-          setSyncing(true)
-          setDemands((prev) => {
-            return prev.map((d) => {
-              const belongsToThisDemand =
-                d.id === imv.demanda_locacao_id || d.id === imv.demanda_venda_id
-              const currentlyHasIt = d.imoveis_captados?.some((i: any) => i.id === imv.id)
-
-              if (belongsToThisDemand) {
-                let newImoveis = d.imoveis_captados || []
-                if (!currentlyHasIt) {
-                  const captador = usersRef.current.find(
-                    (u) => u.id === (imv.user_captador_id || imv.captador_id),
-                  )
-                  const enrichedImv = {
-                    ...imv,
-                    captador_nome: captador?.name || 'Captador',
-                    etapa_funil: imv.etapa_funil || 'capturado',
-                    observacoes: imv.observacoes || imv.localizacao_texto,
-                  }
-                  newImoveis = [enrichedImv, ...newImoveis]
-                } else {
-                  newImoveis = newImoveis.map((i: any) =>
-                    i.id === imv.id
-                      ? {
-                          ...i,
-                          ...imv,
-                          etapa_funil: imv.etapa_funil || i.etapa_funil,
-                          observacoes: imv.observacoes || imv.localizacao_texto || i.observacoes,
-                        }
-                      : i,
-                  )
-                }
-
-                let newStatus = d.status_demanda
-                if (imv.etapa_funil === 'fechado') newStatus = 'ganho'
-                else if (d.status_demanda === 'ganho' && imv.etapa_funil !== 'fechado') {
-                  const otherClosed = newImoveis.some(
-                    (i: any) => i.id !== imv.id && i.etapa_funil === 'fechado',
-                  )
-                  if (!otherClosed) newStatus = 'atendida'
-                } else if (!currentlyHasIt && newImoveis.length > 0) {
-                  newStatus = 'atendida'
-                }
-
-                return { ...d, status_demanda: newStatus, imoveis_captados: newImoveis }
-              } else if (currentlyHasIt) {
-                const newImoveis = (d.imoveis_captados || []).filter((i: any) => i.id !== imv.id)
-                let newStatus = d.status_demanda
-                const hasClosed = newImoveis.some((i: any) => i.etapa_funil === 'fechado')
-                if (!hasClosed && newStatus === 'ganho')
-                  newStatus = newImoveis.length > 0 ? 'atendida' : 'aberta'
-                if (newImoveis.length === 0 && newStatus === 'atendida') newStatus = 'aberta'
-
-                return { ...d, status_demanda: newStatus, imoveis_captados: newImoveis }
-              }
-              return d
-            })
-          })
-          setTimeout(() => setSyncing(false), 500)
-        },
-      )
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'respostas_captador' },
-        (payload) => {
-          const resp = payload.new
-          setSyncing(true)
-          setDemands((prev) => {
-            return prev.map((d) => {
-              if (d.id === resp.demanda_locacao_id || d.id === resp.demanda_venda_id) {
-                let newStatus = d.status_demanda
-                if (resp.resposta === 'nao_encontrei') {
-                  if (resp.motivo === 'Fora do mercado') newStatus = 'impossivel'
-                  else if (resp.motivo === 'Buscando outras opções') newStatus = 'aberta'
-                }
-
-                return {
-                  ...d,
-                  status_demanda: newStatus,
-                  respostas_captador: [resp, ...(d.respostas_captador || [])],
-                }
-              }
-              return d
-            })
-          })
-          setTimeout(() => setSyncing(false), 500)
-        },
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'prazos_captacao' },
-        (payload) => {
-          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-            const newP = payload.new
-            setSyncing(true)
-            setDemands((prev) => {
-              return prev.map((d) => {
-                if (d.id === newP.demanda_locacao_id || d.id === newP.demanda_venda_id) {
-                  let currentPrazos = d.prazos_captacao || []
-                  if (currentPrazos.some((p) => p.id === newP.id)) {
-                    currentPrazos = currentPrazos.map((p) => (p.id === newP.id ? newP : p))
-                  } else {
-                    currentPrazos = [newP, ...currentPrazos]
-                  }
-
-                  return { ...d, prazos_captacao: currentPrazos }
-                }
-                return d
-              })
-            })
-            setTimeout(() => setSyncing(false), 500)
-          }
-        },
-      )
-      .subscribe((status) => {
-        if (status === 'CLOSED') {
-          toast({ title: 'Aviso', description: 'Conexão perdida. Reconectando...', duration: 3000 })
-        }
-        if (status === 'CHANNEL_ERROR') {
-          toast({
-            title: 'Erro',
-            description: 'Erro ao sincronizar dados. Recarregando...',
-            variant: 'destructive',
-          })
-          fetchDemands(false)
-        }
-      })
 
     const handleDemandaUpdated = (e: CustomEvent) => {
       if (e.detail?.tipo === type && e.detail?.data) {
@@ -396,10 +192,209 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
 
     return () => {
       mounted = false
-      supabase.removeChannel(channel)
       window.removeEventListener('demanda-updated', handleDemandaUpdated as EventListener)
     }
   }, [fetchDemands, type, formatData, sortDemands])
+
+  useConsolidatedSync({
+    channelName: `realtime_sync_${type}`,
+    setupRealtime: (channel) => {
+      const table = type === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
+
+      channel
+        .on('postgres_changes', { event: '*', schema: 'public', table }, (payload) => {
+          setSyncing(true)
+          if (payload.eventType === 'INSERT') {
+            const d = payload.new
+            setDemands((prev) => {
+              if (prev.some((x) => x.id === d.id)) return prev
+              const newDemand = formatData([
+                { ...d, imoveis_captados: [], respostas_captador: [], prazos_captacao: [] },
+              ])[0]
+              return sortDemands([newDemand, ...prev])
+            })
+          } else if (payload.eventType === 'UPDATE') {
+            const d = payload.new
+            setDemands((prev) => {
+              return sortDemands(
+                prev.map((x) =>
+                  x.id === d.id
+                    ? {
+                        ...x,
+                        ...d,
+                        nome_cliente: d.nome_cliente || d.cliente_nome || x.nome_cliente,
+                        bairros: d.bairros || d.localizacoes || x.bairros,
+                        valor_maximo: d.valor_maximo || d.orcamento_max || x.valor_maximo,
+                        observacoes: d.observacoes || d.necessidades_especificas || x.observacoes,
+                        nivel_urgencia: d.nivel_urgencia || d.urgencia || x.nivel_urgencia,
+                        status_demanda: d.status_demanda || x.status_demanda,
+                        is_prioritaria:
+                          d.is_prioritaria !== undefined ? d.is_prioritaria : x.is_prioritaria,
+                      }
+                    : x,
+                ),
+              )
+            })
+          } else if (payload.eventType === 'DELETE') {
+            setDemands((prev) => prev.filter((x) => x.id !== payload.old.id))
+          }
+          setTimeout(() => setSyncing(false), 500)
+        })
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'imoveis_captados' },
+          (payload) => {
+            const imv = payload.new
+            setSyncing(true)
+            setDemands((prev) => {
+              return prev.map((d) => {
+                if (d.id === imv.demanda_locacao_id || d.id === imv.demanda_venda_id) {
+                  if (d.imoveis_captados?.some((i: any) => i.id === imv.id)) return d
+
+                  const captador = usersRef.current.find(
+                    (u) => u.id === (imv.user_captador_id || imv.captador_id),
+                  )
+                  const enrichedImv = {
+                    ...imv,
+                    captador_nome: captador?.name || 'Captador',
+                    etapa_funil: imv.etapa_funil || 'capturado',
+                    observacoes: imv.observacoes || imv.localizacao_texto,
+                  }
+
+                  return {
+                    ...d,
+                    status_demanda: 'atendida',
+                    imoveis_captados: [enrichedImv, ...(d.imoveis_captados || [])],
+                  }
+                }
+                return d
+              })
+            })
+            setTimeout(() => setSyncing(false), 500)
+          },
+        )
+        .on(
+          'postgres_changes',
+          { event: 'UPDATE', schema: 'public', table: 'imoveis_captados' },
+          (payload) => {
+            const imv = payload.new
+            setSyncing(true)
+            setDemands((prev) => {
+              return prev.map((d) => {
+                const belongsToThisDemand =
+                  d.id === imv.demanda_locacao_id || d.id === imv.demanda_venda_id
+                const currentlyHasIt = d.imoveis_captados?.some((i: any) => i.id === imv.id)
+
+                if (belongsToThisDemand) {
+                  let newImoveis = d.imoveis_captados || []
+                  if (!currentlyHasIt) {
+                    const captador = usersRef.current.find(
+                      (u) => u.id === (imv.user_captador_id || imv.captador_id),
+                    )
+                    const enrichedImv = {
+                      ...imv,
+                      captador_nome: captador?.name || 'Captador',
+                      etapa_funil: imv.etapa_funil || 'capturado',
+                      observacoes: imv.observacoes || imv.localizacao_texto,
+                    }
+                    newImoveis = [enrichedImv, ...newImoveis]
+                  } else {
+                    newImoveis = newImoveis.map((i: any) =>
+                      i.id === imv.id
+                        ? {
+                            ...i,
+                            ...imv,
+                            etapa_funil: imv.etapa_funil || i.etapa_funil,
+                            observacoes: imv.observacoes || imv.localizacao_texto || i.observacoes,
+                          }
+                        : i,
+                    )
+                  }
+
+                  let newStatus = d.status_demanda
+                  if (imv.etapa_funil === 'fechado') newStatus = 'ganho'
+                  else if (d.status_demanda === 'ganho' && imv.etapa_funil !== 'fechado') {
+                    const otherClosed = newImoveis.some(
+                      (i: any) => i.id !== imv.id && i.etapa_funil === 'fechado',
+                    )
+                    if (!otherClosed) newStatus = 'atendida'
+                  } else if (!currentlyHasIt && newImoveis.length > 0) {
+                    newStatus = 'atendida'
+                  }
+
+                  return { ...d, status_demanda: newStatus, imoveis_captados: newImoveis }
+                } else if (currentlyHasIt) {
+                  const newImoveis = (d.imoveis_captados || []).filter((i: any) => i.id !== imv.id)
+                  let newStatus = d.status_demanda
+                  const hasClosed = newImoveis.some((i: any) => i.etapa_funil === 'fechado')
+                  if (!hasClosed && newStatus === 'ganho')
+                    newStatus = newImoveis.length > 0 ? 'atendida' : 'aberta'
+                  if (newImoveis.length === 0 && newStatus === 'atendida') newStatus = 'aberta'
+
+                  return { ...d, status_demanda: newStatus, imoveis_captados: newImoveis }
+                }
+                return d
+              })
+            })
+            setTimeout(() => setSyncing(false), 500)
+          },
+        )
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'respostas_captador' },
+          (payload) => {
+            const resp = payload.new
+            setSyncing(true)
+            setDemands((prev) => {
+              return prev.map((d) => {
+                if (d.id === resp.demanda_locacao_id || d.id === resp.demanda_venda_id) {
+                  let newStatus = d.status_demanda
+                  if (resp.resposta === 'nao_encontrei') {
+                    if (resp.motivo === 'Fora do mercado') newStatus = 'impossivel'
+                    else if (resp.motivo === 'Buscando outras opções') newStatus = 'aberta'
+                  }
+
+                  return {
+                    ...d,
+                    status_demanda: newStatus,
+                    respostas_captador: [resp, ...(d.respostas_captador || [])],
+                  }
+                }
+                return d
+              })
+            })
+            setTimeout(() => setSyncing(false), 500)
+          },
+        )
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'prazos_captacao' },
+          (payload) => {
+            if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+              const newP = payload.new
+              setSyncing(true)
+              setDemands((prev) => {
+                return prev.map((d) => {
+                  if (d.id === newP.demanda_locacao_id || d.id === newP.demanda_venda_id) {
+                    let currentPrazos = d.prazos_captacao || []
+                    if (currentPrazos.some((p) => p.id === newP.id)) {
+                      currentPrazos = currentPrazos.map((p) => (p.id === newP.id ? newP : p))
+                    } else {
+                      currentPrazos = [newP, ...currentPrazos]
+                    }
+
+                    return { ...d, prazos_captacao: currentPrazos }
+                  }
+                  return d
+                })
+              })
+              setTimeout(() => setSyncing(false), 500)
+            }
+          },
+        )
+    },
+    onFallbackPoll: () => fetchDemands(true),
+  })
 
   return { demands, loading, syncing, refresh: () => fetchDemands(false) }
 }

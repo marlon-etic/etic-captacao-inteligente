@@ -7,6 +7,7 @@ import { AuthProvider } from '@/hooks/use-auth'
 import { GlobalPontuacaoListener } from '@/components/GlobalPontuacaoListener'
 import { GlobalNotificationListener } from '@/components/GlobalNotificationListener'
 import { ErrorBoundary } from '@/components/common/ErrorBoundary'
+import { ConnectionStatus } from '@/components/common/ConnectionStatus'
 import Layout from '@/components/Layout'
 import Index from '@/pages/Index'
 import EsqueciSenha from '@/pages/EsqueciSenha'
@@ -74,6 +75,7 @@ const AppContent = () => {
       <TooltipProvider>
         <Toaster />
         <Sonner />
+        <ConnectionStatus />
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/esqueci-senha" element={<EsqueciSenha />} />

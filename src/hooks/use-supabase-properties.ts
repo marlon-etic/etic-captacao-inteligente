@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import useAppStore from '@/stores/useAppStore'
 import { toast } from '@/hooks/use-toast'
+import { useSmartSync, useConsolidatedSync } from '@/hooks/useSmartSync'
 
 export interface SupabaseCapturedPropertyWithDemand {
   id: string
@@ -28,6 +29,7 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
   const { users } = useAppStore()
+  const { fetchWithResilience } = useSmartSync()
   const usersRef = useRef(users)
 
   useEffect(() => {
@@ -77,13 +79,14 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
         const { data: userData } = await supabase.auth.getUser()
         if (!userData?.user) return
 
-        const query = supabase
-          .from('imoveis_captados')
-          .select('*, demanda_locacao:demandas_locacao(*), demanda_venda:demandas_vendas(*)')
-          .order('created_at', { ascending: false })
-
-        const { data, error } = await query
-        if (error) throw error
+        const data = await fetchWithResilience(`properties_${filterType || 'all'}`, async () => {
+          const { data: resData, error } = await supabase
+            .from('imoveis_captados')
+            .select('*, demanda_locacao:demandas_locacao(*), demanda_venda:demandas_vendas(*)')
+            .order('created_at', { ascending: false })
+          if (error) throw error
+          return resData
+        })
 
         if (data) {
           let formatted = data.map(formatProperty)
@@ -98,17 +101,21 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
         if (!isBackground) setLoading(false)
       }
     },
-    [filterType, formatProperty],
+    [filterType, formatProperty, fetchWithResilience],
   )
 
   const fetchSingleProperty = useCallback(
     async (id: string) => {
       try {
-        const { data } = await supabase
-          .from('imoveis_captados')
-          .select('*, demanda_locacao:demandas_locacao(*), demanda_venda:demandas_vendas(*)')
-          .eq('id', id)
-          .single()
+        const data = await fetchWithResilience(`property_${id}`, async () => {
+          const { data: resData, error } = await supabase
+            .from('imoveis_captados')
+            .select('*, demanda_locacao:demandas_locacao(*), demanda_venda:demandas_vendas(*)')
+            .eq('id', id)
+            .single()
+          if (error) throw error
+          return resData
+        })
 
         if (data) {
           const formatted = formatProperty(data)
@@ -129,74 +136,65 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
         console.error('Error fetching single property', err)
       }
     },
-    [filterType, formatProperty],
+    [filterType, formatProperty, fetchWithResilience],
   )
 
   useEffect(() => {
     let mounted = true
     if (mounted) fetchProperties()
 
-    const channel = supabase
-      .channel(`properties_realtime_${filterType || 'all'}`)
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'imoveis_captados' },
-        (payload) => {
-          setSyncing(true)
-          fetchSingleProperty(payload.new.id).finally(() => {
-            if (mounted) setTimeout(() => setSyncing(false), 500)
-          })
-        },
-      )
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'imoveis_captados' },
-        (payload) => {
-          setSyncing(true)
-          if (
-            payload.old &&
-            (payload.new.demanda_locacao_id !== payload.old.demanda_locacao_id ||
-              payload.new.demanda_venda_id !== payload.old.demanda_venda_id)
-          ) {
-            fetchSingleProperty(payload.new.id).finally(() => {
-              if (mounted) setTimeout(() => setSyncing(false), 500)
-            })
-          } else {
-            setProperties((prev) => {
-              return prev.map((p) => (p.id === payload.new.id ? { ...p, ...payload.new } : p))
-            })
-            setTimeout(() => setSyncing(false), 500)
-          }
-        },
-      )
-      .on(
-        'postgres_changes',
-        { event: 'DELETE', schema: 'public', table: 'imoveis_captados' },
-        (payload) => {
-          setSyncing(true)
-          setProperties((prev) => prev.filter((p) => p.id !== payload.old.id))
-          setTimeout(() => setSyncing(false), 500)
-        },
-      )
-      .subscribe((status) => {
-        if (status === 'CLOSED') {
-          toast({ title: 'Aviso', description: 'Conexão perdida. Reconectando...', duration: 3000 })
-        }
-        if (status === 'CHANNEL_ERROR') {
-          toast({
-            title: 'Erro',
-            description: 'Erro ao sincronizar dados. Recarregando...',
-            variant: 'destructive',
-          })
-          fetchProperties(false)
-        }
-      })
-
     return () => {
       mounted = false
-      supabase.removeChannel(channel)
     }
-  }, [fetchProperties, fetchSingleProperty, filterType])
+  }, [fetchProperties])
+
+  useConsolidatedSync({
+    channelName: `properties_realtime_${filterType || 'all'}`,
+    setupRealtime: (channel) => {
+      channel
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'imoveis_captados' },
+          (payload) => {
+            setSyncing(true)
+            fetchSingleProperty(payload.new.id).finally(() => {
+              setTimeout(() => setSyncing(false), 500)
+            })
+          },
+        )
+        .on(
+          'postgres_changes',
+          { event: 'UPDATE', schema: 'public', table: 'imoveis_captados' },
+          (payload) => {
+            setSyncing(true)
+            if (
+              payload.old &&
+              (payload.new.demanda_locacao_id !== payload.old.demanda_locacao_id ||
+                payload.new.demanda_venda_id !== payload.old.demanda_venda_id)
+            ) {
+              fetchSingleProperty(payload.new.id).finally(() => {
+                setTimeout(() => setSyncing(false), 500)
+              })
+            } else {
+              setProperties((prev) => {
+                return prev.map((p) => (p.id === payload.new.id ? { ...p, ...payload.new } : p))
+              })
+              setTimeout(() => setSyncing(false), 500)
+            }
+          },
+        )
+        .on(
+          'postgres_changes',
+          { event: 'DELETE', schema: 'public', table: 'imoveis_captados' },
+          (payload) => {
+            setSyncing(true)
+            setProperties((prev) => prev.filter((p) => p.id !== payload.old.id))
+            setTimeout(() => setSyncing(false), 500)
+          },
+        )
+    },
+    onFallbackPoll: () => fetchProperties(true),
+  })
 
   return { properties, loading, syncing, refresh: () => fetchProperties(false) }
 }

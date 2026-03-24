@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { useToast } from '@/hooks/use-toast'
 import useAppStore from '@/stores/useAppStore'
+import { useSmartSync, useConsolidatedSync } from '@/hooks/useSmartSync'
 
 export interface Pontuacao {
   id: string
@@ -18,25 +19,36 @@ export function useSupabasePontuacao() {
   const { toast } = useToast()
   const { currentUser } = useAppStore()
   const mounted = useRef(true)
+  const { fetchWithResilience } = useSmartSync()
 
   const fetchPontuacoes = useCallback(async () => {
-    const { data } = await supabase
-      .from('pontuacao_captador')
-      .select('*')
-      .order('created_at', { ascending: false })
-    if (data && mounted.current) {
-      setPontuacoes(data as Pontuacao[])
-    }
-  }, [])
+    try {
+      const data = await fetchWithResilience('pontuacoes', async () => {
+        const { data: resData, error } = await supabase
+          .from('pontuacao_captador')
+          .select('*')
+          .order('created_at', { ascending: false })
+        if (error) throw error
+        return resData
+      })
+      if (data && mounted.current) {
+        setPontuacoes(data as Pontuacao[])
+      }
+    } catch (e) {}
+  }, [fetchWithResilience])
 
   useEffect(() => {
     mounted.current = true
     fetchPontuacoes()
+    return () => {
+      mounted.current = false
+    }
+  }, [fetchPontuacoes])
 
-    // Sincronização Bidirecional em Tempo Real
-    const sub = supabase
-      .channel('realtime_pontuacao_sync')
-      .on(
+  useConsolidatedSync({
+    channelName: 'realtime_pontuacao_sync',
+    setupRealtime: (channel) => {
+      channel.on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'pontuacao_captador' },
         (payload) => {
@@ -54,7 +66,6 @@ export function useSupabasePontuacao() {
                   msg = `Você ganhou +${newPoint.pontos} pontos! Captura vinculada a uma demanda.`
                 else if (newPoint.tipo_pontuacao === 'captura_sem_demanda')
                   msg = `Você ganhou +${newPoint.pontos} pontos! Nova captura de imóvel avulso.`
-                // Removemos o toast para 'ganho_confirmado' pois o GlobalNotificationListener já dispara o aviso de Fechado
 
                 if (msg) {
                   toast({
@@ -74,13 +85,9 @@ export function useSupabasePontuacao() {
           }
         },
       )
-      .subscribe()
-
-    return () => {
-      mounted.current = false
-      supabase.removeChannel(sub)
-    }
-  }, [fetchPontuacoes, currentUser?.id, toast])
+    },
+    onFallbackPoll: fetchPontuacoes,
+  })
 
   return { pontuacoes, refresh: fetchPontuacoes }
 }

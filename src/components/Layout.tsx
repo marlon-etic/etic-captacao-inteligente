@@ -11,6 +11,7 @@ import { NewDemandModal } from '@/components/NewDemandModal'
 import { Plus, Loader2 } from 'lucide-react'
 import { useAuth } from '@/hooks/use-auth'
 import { supabase } from '@/lib/supabase/client'
+import { useSmartSync } from '@/hooks/useSmartSync'
 
 export default function Layout() {
   const { currentUser, sessionExpiresAt, logout, isRestoringUser } = useAppStore()
@@ -18,6 +19,7 @@ export default function Layout() {
   const location = useLocation()
   const navigate = useNavigate()
   const { toast } = useToast()
+  const { enqueueMutation } = useSmartSync()
 
   const [isAddPropertyModalOpen, setAddPropertyModalOpen] = useState(false)
   const [isNewDemandModalOpen, setNewDemandModalOpen] = useState(false)
@@ -41,46 +43,25 @@ export default function Layout() {
     let intervalId: NodeJS.Timeout
     let timeoutId: NodeJS.Timeout
 
-    const updatePrazos = async (retryCount = 0) => {
-      // Pré-validação de conectividade
-      if (!isMounted || !navigator.onLine) return
+    const updatePrazos = () => {
+      if (!isMounted) return
 
-      try {
+      enqueueMutation(async () => {
         const { error } = await supabase.rpc('atualizar_prazos_vencidos')
-
-        if (error) {
-          // Lança o erro para ativar o backoff se for problema de rede
-          if (error.message?.includes('Failed to fetch') || error.message?.includes('network')) {
-            throw error
-          }
-          // Loga silenciosamente (warn) para não disparar o ErrorBoundary em tarefas de background
-          console.warn('[Background Sync] Aviso ao atualizar prazos:', error.message)
-        }
-      } catch (err: any) {
-        // Implementação de Retry com Backoff Exponencial
-        if (retryCount < 3) {
-          const backoffDelay = Math.pow(2, retryCount) * 2000 // 2s, 4s, 8s
-          timeoutId = setTimeout(() => updatePrazos(retryCount + 1), backoffDelay)
-        } else {
-          // Falha silenciosa após 3 tentativas
-          console.warn(
-            '[Background Sync] Falha de rede ao atualizar prazos. Nova tentativa no próximo ciclo.',
-            err?.message || err,
-          )
-        }
-      }
+        if (error) throw error
+      })
     }
 
     // Delay inicial para evitar sobrecarga no startup da página
-    timeoutId = setTimeout(() => updatePrazos(0), 5000)
-    intervalId = setInterval(() => updatePrazos(0), 60000)
+    timeoutId = setTimeout(() => updatePrazos(), 5000)
+    intervalId = setInterval(() => updatePrazos(), 60000)
 
     return () => {
       isMounted = false
       clearTimeout(timeoutId)
       clearInterval(intervalId)
     }
-  }, [currentUser])
+  }, [currentUser, enqueueMutation])
 
   useEffect(() => {
     // Only logout if auth is completely resolved, session is invalid, and user was previously logged in
