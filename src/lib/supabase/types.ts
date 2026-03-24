@@ -328,6 +328,59 @@ export type Database = {
           },
         ]
       }
+      notificacoes: {
+        Row: {
+          created_at: string | null
+          dados_relacionados: Json | null
+          id: string
+          lido: boolean | null
+          mensagem: string
+          prioridade:
+            | Database["public"]["Enums"]["notificacao_prioridade"]
+            | null
+          tipo: Database["public"]["Enums"]["notificacao_tipo"]
+          titulo: string
+          updated_at: string | null
+          usuario_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          dados_relacionados?: Json | null
+          id?: string
+          lido?: boolean | null
+          mensagem: string
+          prioridade?:
+            | Database["public"]["Enums"]["notificacao_prioridade"]
+            | null
+          tipo: Database["public"]["Enums"]["notificacao_tipo"]
+          titulo: string
+          updated_at?: string | null
+          usuario_id: string
+        }
+        Update: {
+          created_at?: string | null
+          dados_relacionados?: Json | null
+          id?: string
+          lido?: boolean | null
+          mensagem?: string
+          prioridade?:
+            | Database["public"]["Enums"]["notificacao_prioridade"]
+            | null
+          tipo?: Database["public"]["Enums"]["notificacao_tipo"]
+          titulo?: string
+          updated_at?: string | null
+          usuario_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notificacoes_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pontuacao_captador: {
         Row: {
           captador_id: string
@@ -534,6 +587,12 @@ export type Database = {
       atualizar_prazos_vencidos: { Args: never; Returns: undefined }
     }
     Enums: {
+      notificacao_prioridade: "alta" | "normal" | "baixa"
+      notificacao_tipo:
+        | "nova_demanda"
+        | "novo_imovel"
+        | "imovel_capturado"
+        | "status_atualizado"
       user_role: "admin" | "sdr" | "corretor" | "captador"
     }
     CompositeTypes: {
@@ -662,6 +721,13 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      notificacao_prioridade: ["alta", "normal", "baixa"],
+      notificacao_tipo: [
+        "nova_demanda",
+        "novo_imovel",
+        "imovel_capturado",
+        "status_atualizado",
+      ],
       user_role: ["admin", "sdr", "corretor", "captador"],
     },
   },
@@ -759,6 +825,17 @@ export const Constants = {
 //   dormitorios: integer (nullable)
 //   vagas: integer (nullable)
 //   observacoes: text (nullable)
+// Table: notificacoes
+//   id: uuid (not null, default: gen_random_uuid())
+//   usuario_id: uuid (not null)
+//   tipo: notificacao_tipo (not null)
+//   titulo: text (not null)
+//   mensagem: text (not null)
+//   dados_relacionados: jsonb (nullable)
+//   lido: boolean (nullable, default: false)
+//   prioridade: notificacao_prioridade (nullable, default: 'normal'::notificacao_prioridade)
+//   created_at: timestamp with time zone (nullable, default: now())
+//   updated_at: timestamp with time zone (nullable, default: now())
 // Table: pontuacao_captador
 //   id: uuid (not null, default: gen_random_uuid())
 //   captador_id: uuid (not null)
@@ -832,6 +909,9 @@ export const Constants = {
 //   CHECK imoveis_captados_preco_check: CHECK ((preco > (0)::numeric))
 //   CHECK imoveis_captados_status_captacao_check: CHECK (((status_captacao)::text = ANY ((ARRAY['pendente'::character varying, 'capturado'::character varying, 'visitado'::character varying, 'fechado'::character varying, 'perdido'::character varying])::text[])))
 //   FOREIGN KEY imoveis_captados_user_captador_id_fkey: FOREIGN KEY (user_captador_id) REFERENCES users(id) ON DELETE SET NULL
+// Table: notificacoes
+//   PRIMARY KEY notificacoes_pkey: PRIMARY KEY (id)
+//   FOREIGN KEY notificacoes_usuario_id_fkey: FOREIGN KEY (usuario_id) REFERENCES users(id) ON DELETE CASCADE
 // Table: pontuacao_captador
 //   FOREIGN KEY pontuacao_captador_captador_id_fkey: FOREIGN KEY (captador_id) REFERENCES users(id) ON DELETE CASCADE
 //   FOREIGN KEY pontuacao_captador_demanda_locacao_id_fkey: FOREIGN KEY (demanda_locacao_id) REFERENCES demandas_locacao(id) ON DELETE CASCADE
@@ -904,6 +984,13 @@ export const Constants = {
 //   Policy "SDRs update captures linked to own locacao demands" (UPDATE, PERMISSIVE) roles={authenticated}
 //     USING: true
 //     WITH CHECK: true
+// Table: notificacoes
+//   Policy "System can insert notifications" (INSERT, PERMISSIVE) roles={public}
+//     WITH CHECK: true
+//   Policy "Users can update own notifications" (UPDATE, PERMISSIVE) roles={public}
+//     USING: (auth.uid() = usuario_id)
+//   Policy "Users can view own notifications" (SELECT, PERMISSIVE) roles={public}
+//     USING: (auth.uid() = usuario_id)
 // Table: pontuacao_captador
 //   Policy "Authenticated users can read pontuacao" (SELECT, PERMISSIVE) roles={authenticated}
 //     USING: true
@@ -1045,6 +1132,153 @@ export const Constants = {
 //   END;
 //   $function$
 //   
+// FUNCTION notify_imovel_atualizado()
+//   CREATE OR REPLACE FUNCTION public.notify_imovel_atualizado()
+//    RETURNS trigger
+//    LANGUAGE plpgsql
+//    SECURITY DEFINER
+//   AS $function$
+//   DECLARE
+//       demanda_owner UUID;
+//   BEGIN
+//       IF NEW.etapa_funil IS DISTINCT FROM OLD.etapa_funil THEN
+//           IF NEW.demanda_locacao_id IS NOT NULL THEN
+//               SELECT sdr_id INTO demanda_owner FROM public.demandas_locacao WHERE id = NEW.demanda_locacao_id;
+//           ELSIF NEW.demanda_venda_id IS NOT NULL THEN
+//               SELECT corretor_id INTO demanda_owner FROM public.demandas_vendas WHERE id = NEW.demanda_venda_id;
+//           END IF;
+//   
+//           IF demanda_owner IS NOT NULL THEN
+//               IF NEW.etapa_funil = 'visitado' THEN
+//                   INSERT INTO public.notificacoes (usuario_id, tipo, titulo, mensagem, dados_relacionados, prioridade)
+//                   VALUES (demanda_owner, 'status_atualizado', 'Imóvel Visitado',
+//                           'Imóvel ' || COALESCE(NEW.codigo_imovel, '') || ' marcado como visitado.',
+//                           jsonb_build_object('imovel_id', NEW.id, 'demanda_id', COALESCE(NEW.demanda_locacao_id, NEW.demanda_venda_id)), 'normal');
+//               ELSIF NEW.etapa_funil = 'fechado' THEN
+//                   INSERT INTO public.notificacoes (usuario_id, tipo, titulo, mensagem, dados_relacionados, prioridade)
+//                   VALUES (demanda_owner, 'status_atualizado', 'Negócio Fechado! 🎉',
+//                           'Imóvel ' || COALESCE(NEW.codigo_imovel, '') || ' marcado como fechado!',
+//                           jsonb_build_object('imovel_id', NEW.id, 'demanda_id', COALESCE(NEW.demanda_locacao_id, NEW.demanda_venda_id)), 'alta');
+//               END IF;
+//           END IF;
+//       END IF;
+//       RETURN NEW;
+//   END;
+//   $function$
+//   
+// FUNCTION notify_nova_demanda()
+//   CREATE OR REPLACE FUNCTION public.notify_nova_demanda()
+//    RETURNS trigger
+//    LANGUAGE plpgsql
+//    SECURITY DEFINER
+//   AS $function$
+//   DECLARE
+//       urgencia_text TEXT;
+//       prioridade_val notificacao_prioridade;
+//       cliente_nome TEXT;
+//       bairros_text TEXT;
+//       valor_max NUMERIC;
+//   BEGIN
+//       IF TG_TABLE_NAME = 'demandas_locacao' THEN
+//           urgencia_text := NEW.nivel_urgencia;
+//           cliente_nome := NEW.nome_cliente;
+//           valor_max := NEW.valor_maximo;
+//       ELSE
+//           urgencia_text := NEW.nivel_urgencia;
+//           cliente_nome := NEW.nome_cliente;
+//           valor_max := NEW.valor_maximo;
+//       END IF;
+//   
+//       IF urgencia_text IN ('Urgente', 'Alta') THEN 
+//           prioridade_val := 'alta';
+//       ELSIF urgencia_text IN ('Baixa') THEN 
+//           prioridade_val := 'baixa';
+//       ELSE 
+//           prioridade_val := 'normal'; 
+//       END IF;
+//   
+//       bairros_text := array_to_string(NEW.bairros, ', ');
+//   
+//       INSERT INTO public.notificacoes (usuario_id, tipo, titulo, mensagem, dados_relacionados, prioridade)
+//       SELECT id, 'nova_demanda', 
+//              'Nova demanda: ' || COALESCE(cliente_nome, ''), 
+//              COALESCE(bairros_text, '') || ' - R$ ' || COALESCE(valor_max, 0),
+//              jsonb_build_object('demanda_id', NEW.id, 'tipo_demanda', CASE WHEN TG_TABLE_NAME = 'demandas_locacao' THEN 'Aluguel' ELSE 'Venda' END),
+//              prioridade_val
+//       FROM public.users WHERE role = 'captador';
+//   
+//       RETURN NEW;
+//   END;
+//   $function$
+//   
+// FUNCTION notify_novo_imovel()
+//   CREATE OR REPLACE FUNCTION public.notify_novo_imovel()
+//    RETURNS trigger
+//    LANGUAGE plpgsql
+//    SECURITY DEFINER
+//   AS $function$
+//   DECLARE
+//       demanda_owner UUID;
+//       cliente_nome TEXT;
+//   BEGIN
+//       IF NEW.demanda_locacao_id IS NOT NULL THEN
+//           SELECT sdr_id, nome_cliente INTO demanda_owner, cliente_nome FROM public.demandas_locacao WHERE id = NEW.demanda_locacao_id;
+//           IF demanda_owner IS NOT NULL THEN
+//               INSERT INTO public.notificacoes (usuario_id, tipo, titulo, mensagem, dados_relacionados, prioridade)
+//               VALUES (demanda_owner, 'imovel_capturado', 'Imóvel capturado para ' || COALESCE(cliente_nome, 'Cliente'),
+//                       'Código: ' || COALESCE(NEW.codigo_imovel, '') || ', Preço: R$ ' || COALESCE(NEW.preco, COALESCE(NEW.valor, 0)),
+//                       jsonb_build_object('imovel_id', NEW.id, 'demanda_id', NEW.demanda_locacao_id), 'alta');
+//           END IF;
+//       ELSIF NEW.demanda_venda_id IS NOT NULL THEN
+//           SELECT corretor_id, nome_cliente INTO demanda_owner, cliente_nome FROM public.demandas_vendas WHERE id = NEW.demanda_venda_id;
+//           IF demanda_owner IS NOT NULL THEN
+//               INSERT INTO public.notificacoes (usuario_id, tipo, titulo, mensagem, dados_relacionados, prioridade)
+//               VALUES (demanda_owner, 'imovel_capturado', 'Imóvel capturado para ' || COALESCE(cliente_nome, 'Cliente'),
+//                       'Código: ' || COALESCE(NEW.codigo_imovel, '') || ', Preço: R$ ' || COALESCE(NEW.preco, COALESCE(NEW.valor, 0)),
+//                       jsonb_build_object('imovel_id', NEW.id, 'demanda_id', NEW.demanda_venda_id), 'alta');
+//           END IF;
+//       ELSE
+//           INSERT INTO public.notificacoes (usuario_id, tipo, titulo, mensagem, dados_relacionados, prioridade)
+//           SELECT id, 'novo_imovel', 'Novo imóvel genérico',
+//                  'Código: ' || COALESCE(NEW.codigo_imovel, '') || ', Localização: ' || COALESCE(NEW.endereco, '') || ', Preço: R$ ' || COALESCE(NEW.preco, COALESCE(NEW.valor, 0)),
+//                  jsonb_build_object('imovel_id', NEW.id), 'normal'
+//           FROM public.users WHERE role = 'corretor';
+//       END IF;
+//   
+//       RETURN NEW;
+//   END;
+//   $function$
+//   
+// FUNCTION notify_resposta_captador()
+//   CREATE OR REPLACE FUNCTION public.notify_resposta_captador()
+//    RETURNS trigger
+//    LANGUAGE plpgsql
+//    SECURITY DEFINER
+//   AS $function$
+//   DECLARE
+//       demanda_owner UUID;
+//       cliente_nome TEXT;
+//       captador_nome TEXT;
+//   BEGIN
+//       IF NEW.resposta = 'nao_encontrei' THEN
+//           SELECT nome INTO captador_nome FROM public.users WHERE id = NEW.captador_id;
+//           IF NEW.demanda_locacao_id IS NOT NULL THEN
+//               SELECT sdr_id, nome_cliente INTO demanda_owner, cliente_nome FROM public.demandas_locacao WHERE id = NEW.demanda_locacao_id;
+//           ELSIF NEW.demanda_venda_id IS NOT NULL THEN
+//               SELECT corretor_id, nome_cliente INTO demanda_owner, cliente_nome FROM public.demandas_vendas WHERE id = NEW.demanda_venda_id;
+//           END IF;
+//   
+//           IF demanda_owner IS NOT NULL THEN
+//               INSERT INTO public.notificacoes (usuario_id, tipo, titulo, mensagem, dados_relacionados, prioridade)
+//               VALUES (demanda_owner, 'status_atualizado', 'Busca sem sucesso: ' || COALESCE(cliente_nome, 'Cliente'),
+//                       'Captador ' || COALESCE(captador_nome, '') || ' não encontrou imóvel. Motivo: ' || COALESCE(NEW.motivo, ''),
+//                       jsonb_build_object('demanda_id', COALESCE(NEW.demanda_locacao_id, NEW.demanda_venda_id)), 'normal');
+//           END IF;
+//       END IF;
+//       RETURN NEW;
+//   END;
+//   $function$
+//   
 // FUNCTION rls_auto_enable()
 //   CREATE OR REPLACE FUNCTION public.rls_auto_enable()
 //    RETURNS event_trigger
@@ -1164,19 +1398,24 @@ export const Constants = {
 //   audit_demandas_locacao: CREATE TRIGGER audit_demandas_locacao AFTER INSERT OR DELETE OR UPDATE ON public.demandas_locacao FOR EACH ROW EXECUTE FUNCTION audit_log_function()
 //   criar_prazo_locacao_trigger: CREATE TRIGGER criar_prazo_locacao_trigger AFTER INSERT ON public.demandas_locacao FOR EACH ROW EXECUTE FUNCTION criar_prazo_captacao()
 //   pontuacao_ganho_locacao_trigger: CREATE TRIGGER pontuacao_ganho_locacao_trigger AFTER UPDATE ON public.demandas_locacao FOR EACH ROW EXECUTE FUNCTION trg_pontuacao_ganho_locacao()
+//   trg_notify_nova_demanda_locacao: CREATE TRIGGER trg_notify_nova_demanda_locacao AFTER INSERT ON public.demandas_locacao FOR EACH ROW EXECUTE FUNCTION notify_nova_demanda()
 //   update_demandas_locacao_updated_at: CREATE TRIGGER update_demandas_locacao_updated_at BEFORE UPDATE ON public.demandas_locacao FOR EACH ROW EXECUTE FUNCTION set_updated_at()
 // Table: demandas_vendas
 //   audit_demandas_vendas: CREATE TRIGGER audit_demandas_vendas AFTER INSERT OR DELETE OR UPDATE ON public.demandas_vendas FOR EACH ROW EXECUTE FUNCTION audit_log_function()
 //   criar_prazo_vendas_trigger: CREATE TRIGGER criar_prazo_vendas_trigger AFTER INSERT ON public.demandas_vendas FOR EACH ROW EXECUTE FUNCTION criar_prazo_captacao()
 //   pontuacao_ganho_vendas_trigger: CREATE TRIGGER pontuacao_ganho_vendas_trigger AFTER UPDATE ON public.demandas_vendas FOR EACH ROW EXECUTE FUNCTION trg_pontuacao_ganho_vendas()
+//   trg_notify_nova_demanda_vendas: CREATE TRIGGER trg_notify_nova_demanda_vendas AFTER INSERT ON public.demandas_vendas FOR EACH ROW EXECUTE FUNCTION notify_nova_demanda()
 //   update_demandas_vendas_updated_at: CREATE TRIGGER update_demandas_vendas_updated_at BEFORE UPDATE ON public.demandas_vendas FOR EACH ROW EXECUTE FUNCTION set_updated_at()
 // Table: imoveis_captados
 //   audit_imoveis_captados: CREATE TRIGGER audit_imoveis_captados AFTER INSERT OR DELETE OR UPDATE ON public.imoveis_captados FOR EACH ROW EXECUTE FUNCTION audit_log_function()
 //   marcar_prazo_imovel_trigger: CREATE TRIGGER marcar_prazo_imovel_trigger AFTER INSERT ON public.imoveis_captados FOR EACH ROW EXECUTE FUNCTION marcar_prazo_respondido_imovel()
 //   pontuacao_imovel_trigger: CREATE TRIGGER pontuacao_imovel_trigger AFTER INSERT ON public.imoveis_captados FOR EACH ROW EXECUTE FUNCTION trg_pontuacao_imovel()
+//   trg_notify_imovel_atualizado: CREATE TRIGGER trg_notify_imovel_atualizado AFTER UPDATE ON public.imoveis_captados FOR EACH ROW EXECUTE FUNCTION notify_imovel_atualizado()
+//   trg_notify_novo_imovel: CREATE TRIGGER trg_notify_novo_imovel AFTER INSERT ON public.imoveis_captados FOR EACH ROW EXECUTE FUNCTION notify_novo_imovel()
 //   update_imoveis_captados_updated_at: CREATE TRIGGER update_imoveis_captados_updated_at BEFORE UPDATE ON public.imoveis_captados FOR EACH ROW EXECUTE FUNCTION set_updated_at()
 // Table: respostas_captador
 //   marcar_prazo_resposta_trigger: CREATE TRIGGER marcar_prazo_resposta_trigger AFTER INSERT ON public.respostas_captador FOR EACH ROW EXECUTE FUNCTION marcar_prazo_respondido_resposta()
+//   trg_notify_resposta_captador: CREATE TRIGGER trg_notify_resposta_captador AFTER INSERT ON public.respostas_captador FOR EACH ROW EXECUTE FUNCTION notify_resposta_captador()
 //   update_respostas_captador_updated_at: CREATE TRIGGER update_respostas_captador_updated_at BEFORE UPDATE ON public.respostas_captador FOR EACH ROW EXECUTE FUNCTION set_updated_at()
 // Table: users
 //   audit_users: CREATE TRIGGER audit_users AFTER INSERT OR DELETE OR UPDATE ON public.users FOR EACH ROW EXECUTE FUNCTION audit_log_function()
@@ -1195,6 +1434,10 @@ export const Constants = {
 //   CREATE INDEX idx_imoveis_captados_status_captacao ON public.imoveis_captados USING btree (status_captacao)
 //   CREATE INDEX idx_imoveis_captados_user_captador_id ON public.imoveis_captados USING btree (user_captador_id)
 //   CREATE UNIQUE INDEX imoveis_captados_codigo_imovel_key ON public.imoveis_captados USING btree (codigo_imovel)
+// Table: notificacoes
+//   CREATE INDEX idx_notificacoes_created ON public.notificacoes USING btree (created_at DESC)
+//   CREATE INDEX idx_notificacoes_lido ON public.notificacoes USING btree (usuario_id, lido)
+//   CREATE INDEX idx_notificacoes_usuario ON public.notificacoes USING btree (usuario_id)
 // Table: respostas_captador
 //   CREATE INDEX idx_respostas_captador_cap_id ON public.respostas_captador USING btree (captador_id)
 //   CREATE INDEX idx_respostas_captador_dem_loc ON public.respostas_captador USING btree (demanda_locacao_id)
