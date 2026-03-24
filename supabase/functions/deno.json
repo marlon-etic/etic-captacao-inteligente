@@ -1,5 +1,6 @@
 {
   "_versions": {
-    "admin-users": 2
+    "admin-users": 2,
+    "monitor-realtime": 1
   }
 }
