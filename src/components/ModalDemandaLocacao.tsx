@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { z } from 'zod'
 import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Check, ChevronDown, X } from 'lucide-react'
+import { Check, X } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import {
   Form,
@@ -29,21 +29,8 @@ import { supabase } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import { useKeyboard } from '@/hooks/use-keyboard'
 import { useIsMobile } from '@/hooks/use-mobile'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { LocationSelector } from '@/components/LocationSelector'
 import useAppStore from '@/stores/useAppStore'
-
-const BAIRROS_OPCOES = [
-  'Vila Mariana',
-  'Pinheiros',
-  'Itaim Bibi',
-  'Mooca',
-  'Tatuapé',
-  'Vila Madalena',
-  'Consolação',
-  'Bela Vista',
-  'Lapa',
-  'Vila Leopoldina',
-]
 
 const formSchema = z
   .object({
@@ -64,7 +51,10 @@ const formSchema = z
       .optional()
       .or(z.literal('')),
     tipo_demanda: z.enum(['Venda', 'Aluguel']).default('Aluguel'),
-    bairros: z.array(z.string()).min(1, 'Selecione pelo menos um bairro'),
+    bairros: z
+      .array(z.string())
+      .min(1, 'Selecione pelo menos um bairro')
+      .max(20, 'Máximo 20 bairros'),
     valor_minimo: z.coerce.number().positive('Deve ser maior que zero'),
     valor_maximo: z.coerce.number().positive('Deve ser maior que zero'),
     dormitorios: z.coerce.number().min(0, 'Mínimo 0').max(10, 'Máximo 10'),
@@ -80,95 +70,6 @@ const formSchema = z
 interface Props {
   isOpen: boolean
   onClose: () => void
-}
-
-function BairrosDropdownLocacao({ field }: { field: any }) {
-  const [open, setOpen] = useState(false)
-  const isMobile = useIsMobile()
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          type="button"
-          variant="outline"
-          className={cn(
-            'w-full justify-between bg-white border-gray-300 font-normal min-h-[48px]',
-            !field.value?.length && 'text-muted-foreground',
-            open && 'border-[#1A3A52] ring-2 ring-[#1A3A52] ring-offset-0',
-          )}
-        >
-          <span className="truncate">
-            {field.value?.length > 0
-              ? `${field.value.length} bairros selecionados`
-              : 'Selecione os bairros alvo...'}
-          </span>
-          <ChevronDown className="h-4 w-4 opacity-50 shrink-0 ml-2" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent
-        className={cn(
-          'p-0 z-[1050] bg-white border border-gray-200 shadow-xl',
-          isMobile ? 'w-[calc(100vw-32px)]' : 'w-[400px]',
-        )}
-        align="start"
-      >
-        <div className="flex flex-col">
-          <div
-            className="max-h-[250px] overflow-y-auto overscroll-contain"
-            style={{ WebkitOverflowScrolling: 'touch' }}
-          >
-            {BAIRROS_OPCOES.map((b) => {
-              const isSelected = field.value?.includes(b)
-              return (
-                <div
-                  key={b}
-                  onClick={() => {
-                    const cur = field.value || []
-                    field.onChange(isSelected ? cur.filter((v: string) => v !== b) : [...cur, b])
-                  }}
-                  className={cn(
-                    'flex items-center gap-3 px-4 py-3 cursor-pointer border-b border-gray-50 last:border-0 transition-colors',
-                    isSelected ? 'bg-[#F5F8FA]' : 'hover:bg-gray-50',
-                  )}
-                >
-                  <div
-                    className={cn(
-                      'h-5 w-5 border rounded flex items-center justify-center transition-colors shrink-0',
-                      isSelected ? 'bg-[#1A3A52] border-[#1A3A52]' : 'border-gray-300',
-                    )}
-                  >
-                    {isSelected && <Check className="h-3 w-3 text-white" />}
-                  </div>
-                  <span
-                    className={cn(
-                      'text-[14px]',
-                      isSelected ? 'text-[#1A3A52] font-semibold' : 'text-gray-800',
-                    )}
-                  >
-                    {b}
-                  </span>
-                </div>
-              )
-            })}
-          </div>
-          <div className="p-3 border-t border-gray-100 bg-gray-50 flex justify-between items-center shrink-0">
-            <span className="text-xs text-gray-500 font-medium">
-              {field.value?.length || 0} selecionados
-            </span>
-            <Button
-              size="sm"
-              type="button"
-              onClick={() => setOpen(false)}
-              className="bg-[#1A3A52] text-white hover:bg-[#1A3A52]/90"
-            >
-              Concluir
-            </Button>
-          </div>
-        </div>
-      </PopoverContent>
-    </Popover>
-  )
 }
 
 function ProgressBar({ control }: { control: any }) {
@@ -261,12 +162,10 @@ export function ModalDemandaLocacao({ isOpen, onClose }: Props) {
 
       if (error) throw error
 
-      // Dispara evento global para o componente de dashboard do criador processar em <1s sem recarregar a tela
       window.dispatchEvent(
         new CustomEvent('demanda-created', { detail: { tipo: 'Aluguel', data } }),
       )
 
-      // Atualiza o estado global legado para compatibilidade com a view dos Captadores em fallback
       addDemand({
         clientName: values.nome_cliente,
         phone: values.telefone || undefined,
@@ -434,7 +333,11 @@ export function ModalDemandaLocacao({ isOpen, onClose }: Props) {
                     <FormItem className="md:col-span-2">
                       <FormLabel className="text-gray-800 font-bold">Bairros</FormLabel>
                       <FormControl>
-                        <BairrosDropdownLocacao field={field} />
+                        <LocationSelector
+                          value={field.value}
+                          onChange={field.onChange}
+                          error={!!form.formState.errors.bairros}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -552,7 +455,6 @@ export function ModalDemandaLocacao({ isOpen, onClose }: Props) {
                   )}
                 />
               </div>
-              {/* Spacer for mobile to avoid the fixed footer covering last input */}
               {isMobile && <div className="h-[80px] md:hidden w-full shrink-0" />}
             </form>
           </Form>

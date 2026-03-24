@@ -11,7 +11,10 @@ export const formSchema = z
     tipo_imovel: z.enum(['Casa', 'Apartamento', 'Terreno'], {
       required_error: 'Selecione o tipo de imóvel',
     }),
-    bairros: z.array(z.string()).min(1, 'Selecione pelo menos um bairro'),
+    bairros: z
+      .array(z.string())
+      .min(1, 'Selecione pelo menos um bairro')
+      .max(20, 'Máximo de 20 bairros'),
     valor_minimo: z.coerce.number().min(0).optional().or(z.literal('')),
     valor_maximo: z.coerce.number().min(0).optional().or(z.literal('')),
     dormitorios: z.coerce.number().min(0).max(10).optional().or(z.literal('')),
@@ -30,16 +33,3 @@ export const formSchema = z
   )
 
 export type FormValues = z.infer<typeof formSchema>
-
-export const BAIRROS_LIST = [
-  'Vila Mariana',
-  'Pinheiros',
-  'Itaim Bibi',
-  'Mooca',
-  'Tatuapé',
-  'Vila Madalena',
-  'Consolação',
-  'Bela Vista',
-  'Lapa',
-  'Vila Leopoldina',
-]

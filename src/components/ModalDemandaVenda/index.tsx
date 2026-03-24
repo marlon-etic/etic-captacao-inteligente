@@ -20,105 +20,15 @@ import {
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
-import { Check, CheckSquare, ChevronDown } from 'lucide-react'
+import { CheckSquare } from 'lucide-react'
 import { insertDemandaVenda } from '@/services/demandas_vendas'
 import { cn } from '@/lib/utils'
-import { formSchema, FormValues, BAIRROS_LIST } from './schema'
+import { formSchema, FormValues } from './schema'
 import { useEffect, useMemo, useState } from 'react'
 import { useKeyboard } from '@/hooks/use-keyboard'
 import { useIsMobile } from '@/hooks/use-mobile'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { LocationSelector } from '@/components/LocationSelector'
 import useAppStore from '@/stores/useAppStore'
-
-function BairrosDropdownVenda({ field }: { field: any }) {
-  const [open, setOpen] = useState(false)
-  const isMobile = useIsMobile()
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          type="button"
-          variant="outline"
-          className={cn(
-            'w-full justify-between bg-white border-gray-300 font-normal min-h-[48px]',
-            !field.value?.length && 'text-muted-foreground',
-            open && 'border-[#1A3A52] ring-2 ring-[#1A3A52] ring-offset-0',
-          )}
-        >
-          <span className="truncate">
-            {field.value?.length > 0
-              ? `${field.value.length} bairros selecionados`
-              : 'Selecione os bairros...'}
-          </span>
-          <ChevronDown className="h-4 w-4 opacity-50 shrink-0 ml-2" />
-        </Button>
-      </PopoverTrigger>
-
-      <PopoverContent
-        className={cn(
-          'p-0 z-[1050] bg-white border border-gray-200 shadow-xl',
-          isMobile ? 'w-[calc(100vw-32px)]' : 'w-[400px]',
-        )}
-        align="start"
-      >
-        <div className="flex flex-col">
-          <div
-            className="max-h-[250px] overflow-y-auto overscroll-contain"
-            style={{ WebkitOverflowScrolling: 'touch' }}
-          >
-            {BAIRROS_LIST.map((b) => {
-              const isSelected = field.value?.includes(b)
-              return (
-                <div
-                  key={b}
-                  onClick={() => {
-                    const cur = field.value || []
-                    field.onChange(isSelected ? cur.filter((x: string) => x !== b) : [...cur, b])
-                  }}
-                  className={cn(
-                    'flex items-center gap-3 px-4 py-3 cursor-pointer border-b border-gray-50 last:border-0 transition-colors',
-                    isSelected ? 'bg-[#F5F8FA]' : 'hover:bg-gray-50',
-                  )}
-                >
-                  <div
-                    className={cn(
-                      'h-5 w-5 border rounded flex items-center justify-center shrink-0 transition-colors',
-                      isSelected ? 'bg-[#1A3A52] border-[#1A3A52]' : 'border-gray-300',
-                    )}
-                  >
-                    {isSelected && <Check className="h-3 w-3 text-white" />}
-                  </div>
-                  <span
-                    className={cn(
-                      'text-[14px]',
-                      isSelected ? 'text-[#1A3A52] font-semibold' : 'text-gray-800',
-                    )}
-                  >
-                    {b}
-                  </span>
-                </div>
-              )
-            })}
-          </div>
-          <div className="p-3 border-t border-gray-100 bg-gray-50 flex justify-between items-center shrink-0">
-            <span className="text-xs text-gray-500 font-medium">
-              {field.value?.length || 0} selecionados
-            </span>
-            <Button
-              size="sm"
-              type="button"
-              onClick={() => setOpen(false)}
-              className="bg-[#1A3A52] text-white hover:bg-[#1A3A52]/90"
-            >
-              Concluir
-            </Button>
-          </div>
-        </div>
-      </PopoverContent>
-    </Popover>
-  )
-}
 
 function FormSummary({
   control,
@@ -205,12 +115,10 @@ export function ModalDemandaVenda({ isOpen, onClose }: { isOpen: boolean; onClos
         necessidades_especificas: values.necessidades_especificas || null,
       })
 
-      // Update imediato local em <1s
       window.dispatchEvent(
         new CustomEvent('demanda-created', { detail: { tipo: 'Venda', data: result } }),
       )
 
-      // Fallback legado
       addDemand({
         clientName: values.nome_cliente,
         phone: values.telefone || undefined,
@@ -345,7 +253,11 @@ export function ModalDemandaVenda({ isOpen, onClose }: { isOpen: boolean; onClos
                     <FormItem>
                       <FormLabel className="text-gray-800 font-bold">Bairros *</FormLabel>
                       <FormControl>
-                        <BairrosDropdownVenda field={field} />
+                        <LocationSelector
+                          value={field.value}
+                          onChange={field.onChange}
+                          error={!!form.formState.errors.bairros}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -466,7 +378,6 @@ export function ModalDemandaVenda({ isOpen, onClose }: { isOpen: boolean; onClos
                   </FormItem>
                 )}
               />
-              {/* Spacer for mobile to avoid the fixed footer covering last input */}
               {isMobile && <div className="h-[80px] md:hidden w-full shrink-0" />}
             </form>
           </Form>

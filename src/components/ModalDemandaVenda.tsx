@@ -1,8 +1,8 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Check, ChevronDown } from 'lucide-react'
+import { Check } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import {
   Form,
@@ -27,19 +27,7 @@ import { supabase } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import { useKeyboard } from '@/hooks/use-keyboard'
 import { useIsMobile } from '@/hooks/use-mobile'
-
-const BAIRROS_OPCOES = [
-  'Vila Mariana',
-  'Pinheiros',
-  'Itaim Bibi',
-  'Mooca',
-  'Tatuapé',
-  'Vila Madalena',
-  'Consolação',
-  'Bela Vista',
-  'Lapa',
-  'Vila Leopoldina',
-]
+import { LocationSelector } from '@/components/LocationSelector'
 
 const formSchema = z
   .object({
@@ -60,7 +48,10 @@ const formSchema = z
       .optional()
       .or(z.literal('')),
     tipo_imovel: z.enum(['Casa', 'Apartamento', 'Terreno']).default('Apartamento'),
-    bairros: z.array(z.string()).min(1, 'Selecione pelo menos um bairro'),
+    bairros: z
+      .array(z.string())
+      .min(1, 'Selecione pelo menos um bairro')
+      .max(20, 'Máximo 20 bairros'),
     valor_minimo: z.coerce.number().positive('Deve ser maior que zero'),
     valor_maximo: z.coerce.number().positive('Deve ser maior que zero'),
     dormitorios: z.coerce.number().min(0, 'Mínimo 0').max(10, 'Máximo 10'),
@@ -81,8 +72,6 @@ interface Props {
 export function ModalDemandaVenda({ isOpen, onClose }: Props) {
   const { toast } = useToast()
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [bairrosOpen, setBairrosOpen] = useState(false)
-  const dropdownRef = useRef<HTMLDivElement>(null)
 
   const { isKeyboardOpen, viewportHeight } = useKeyboard()
   const isMobile = useIsMobile()
@@ -106,16 +95,8 @@ export function ModalDemandaVenda({ isOpen, onClose }: Props) {
   })
 
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setBairrosOpen(false)
-      }
-    }
-    if (bairrosOpen) {
-      document.addEventListener('mousedown', handleClickOutside)
-    }
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [bairrosOpen])
+    if (!isOpen) form.reset()
+  }, [isOpen, form])
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>, onChange: any) => {
     let v = e.target.value.replace(/\D/g, '')
@@ -286,96 +267,11 @@ export function ModalDemandaVenda({ isOpen, onClose }: Props) {
                     <FormItem className="md:col-span-2">
                       <FormLabel className="text-gray-700 font-bold">Bairros</FormLabel>
                       <FormControl>
-                        <div className="relative" ref={dropdownRef}>
-                          <div
-                            className={cn(
-                              'w-full min-h-[48px] border rounded-lg px-4 py-3 flex justify-between items-center bg-white cursor-pointer transition-colors',
-                              form.formState.errors.bairros
-                                ? 'border-red-500'
-                                : 'border-gray-300 hover:border-[#1A3A52]',
-                              bairrosOpen && 'border-[#1A3A52] ring-2 ring-[#1A3A52] ring-offset-0',
-                            )}
-                            onClick={() => setBairrosOpen(!bairrosOpen)}
-                          >
-                            <div className="flex flex-wrap gap-1 items-center flex-1">
-                              {field.value.length ? (
-                                <span className="font-semibold text-[#1A3A52]">
-                                  {field.value.length} bairros selecionados
-                                </span>
-                              ) : (
-                                <span className="text-gray-400">Selecione os bairros alvo...</span>
-                              )}
-                            </div>
-                            <ChevronDown className="h-4 w-4 opacity-50 shrink-0 ml-2" />
-                          </div>
-
-                          {bairrosOpen && (
-                            <div className="absolute top-full left-0 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-[0_10px_40px_-10px_rgba(0,0,0,0.3)] z-[99999] flex flex-col overflow-hidden">
-                              <div
-                                className="max-h-[250px] overflow-y-auto"
-                                style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
-                                onWheel={(e) => e.stopPropagation()}
-                                onTouchMove={(e) => e.stopPropagation()}
-                              >
-                                {BAIRROS_OPCOES.map((b) => {
-                                  const isSelected = field.value.includes(b)
-                                  return (
-                                    <div
-                                      key={b}
-                                      className={cn(
-                                        'flex items-center gap-3 px-4 py-3 cursor-pointer border-b border-gray-50 last:border-0 transition-colors',
-                                        isSelected ? 'bg-[#F5F8FA]' : 'hover:bg-gray-50',
-                                      )}
-                                      onClick={(e) => {
-                                        e.preventDefault()
-                                        e.stopPropagation()
-                                        field.onChange(
-                                          isSelected
-                                            ? field.value.filter((v: string) => v !== b)
-                                            : [...field.value, b],
-                                        )
-                                      }}
-                                    >
-                                      <div
-                                        className={cn(
-                                          'h-5 w-5 border rounded flex items-center justify-center transition-colors shrink-0',
-                                          isSelected
-                                            ? 'bg-[#1A3A52] border-[#1A3A52]'
-                                            : 'border-gray-300',
-                                        )}
-                                      >
-                                        {isSelected && <Check className="h-3 w-3 text-white" />}
-                                      </div>
-                                      <span
-                                        className={cn(
-                                          'text-[14px]',
-                                          isSelected
-                                            ? 'text-[#1A3A52] font-semibold'
-                                            : 'text-gray-800',
-                                        )}
-                                      >
-                                        {b}
-                                      </span>
-                                    </div>
-                                  )
-                                })}
-                              </div>
-                              <div className="p-3 border-t border-gray-100 bg-gray-50 flex justify-between items-center">
-                                <span className="text-xs text-gray-500 font-medium">
-                                  {field.value.length} selecionados
-                                </span>
-                                <Button
-                                  size="sm"
-                                  type="button"
-                                  onClick={() => setBairrosOpen(false)}
-                                  className="bg-[#1A3A52] text-white hover:bg-[#1A3A52]/90"
-                                >
-                                  Concluir
-                                </Button>
-                              </div>
-                            </div>
-                          )}
-                        </div>
+                        <LocationSelector
+                          value={field.value}
+                          onChange={field.onChange}
+                          error={!!form.formState.errors.bairros}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -494,7 +390,6 @@ export function ModalDemandaVenda({ isOpen, onClose }: Props) {
                     </FormItem>
                   )}
                 />
-                {/* Spacer for mobile to avoid the fixed footer covering last input */}
                 {isMobile && <div className="h-[80px] md:hidden w-full shrink-0 md:col-span-2" />}
               </div>
             </form>

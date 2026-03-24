@@ -28,7 +28,10 @@ const formSchema = z
     nome_cliente: z.string().min(1, 'Obrigatório'),
     telefone: z.string().optional(),
     email: z.string().email('Email inválido').optional().or(z.literal('')),
-    bairros: z.array(z.string()).min(1, 'Selecione pelo menos um bairro'),
+    bairros: z
+      .array(z.string())
+      .min(1, 'Selecione pelo menos um bairro')
+      .max(20, 'Máximo de 20 bairros'),
     valor_minimo: z.coerce.number().min(0),
     valor_maximo: z.coerce.number().min(0),
     dormitorios: z.coerce.number().min(0),
@@ -203,7 +206,12 @@ export function EditDemandModal({
                     <FormItem>
                       <FormLabel className="font-bold text-gray-800">Bairros *</FormLabel>
                       <FormControl>
-                        <LocationSelector value={field.value} onChange={field.onChange} />
+                        <LocationSelector
+                          value={field.value}
+                          onChange={field.onChange}
+                          demandId={demand?.id}
+                          demandType={demand?.tipo}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
