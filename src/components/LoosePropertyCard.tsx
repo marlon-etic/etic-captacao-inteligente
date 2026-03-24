@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { MapPin, Calendar, Bed, Car, Bath, UserCircle, Share2, ExternalLink } from 'lucide-react'
 import { CapturedProperty } from '@/types'
 import { Card, CardContent } from '@/components/ui/card'
@@ -7,6 +8,7 @@ import { useToast } from '@/hooks/use-toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { getPropertyPublicUrl } from '@/lib/propertyUrl'
 import { cn } from '@/lib/utils'
+import { VinculacaoModal } from './VinculacaoModal'
 
 export function LoosePropertyCard({
   property,
@@ -21,6 +23,7 @@ export function LoosePropertyCard({
 }) {
   const { toast } = useToast()
   const publicUrl = getPropertyPublicUrl(property.code)
+  const [isVinculacaoModalOpen, setIsVinculacaoModalOpen] = useState(false)
 
   const handleCopyLink = async (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -41,187 +44,207 @@ export function LoosePropertyCard({
     }
   }
 
+  const handleOpenVinculacao = () => {
+    setIsVinculacaoModalOpen(true)
+  }
+
+  const handleVinculacaoSuccess = () => {
+    if (onLink) onLink(property)
+    else if (onClaim) onClaim(property)
+  }
+
   return (
-    <Card className="overflow-hidden flex flex-col h-full border-[2px] border-[#2E5F8A] hover:shadow-[0_8px_24px_rgba(26,58,82,0.15)] relative transition-all bg-[#FFFFFF] rounded-[12px]">
-      <div className="relative h-48 w-full bg-[#F5F5F5]">
-        <img
-          src={
-            property.photoUrl ||
-            `https://img.usecurling.com/p/400/300?q=house&seed=${property.code}`
-          }
-          alt="Imóvel Disponível"
-          className="w-full h-full object-cover"
-        />
-        <div className="absolute top-2 right-2">
-          <Badge
-            variant="outline"
-            className="font-bold shadow-sm bg-[#FFFFFF] text-[#1A3A52] border-[#2E5F8A]"
-          >
-            🔓 Disponível
-          </Badge>
+    <>
+      <Card className="overflow-hidden flex flex-col h-full border-[2px] border-[#2E5F8A] hover:shadow-[0_8px_24px_rgba(26,58,82,0.15)] relative transition-all bg-[#FFFFFF] rounded-[12px]">
+        <div className="relative h-48 w-full bg-[#F5F5F5]">
+          <img
+            src={
+              property.photoUrl ||
+              `https://img.usecurling.com/p/400/300?q=house&seed=${property.code}`
+            }
+            alt="Imóvel Disponível"
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute top-2 right-2">
+            <Badge
+              variant="outline"
+              className="font-bold shadow-sm bg-[#FFFFFF] text-[#1A3A52] border-[#2E5F8A]"
+            >
+              🔓 Disponível
+            </Badge>
+          </div>
         </div>
-      </div>
-      <CardContent className="p-[16px] flex-grow flex flex-col gap-2">
-        <div className="flex justify-between items-start gap-2">
-          <h4 className="font-bold text-[18px] line-clamp-1 flex-1 text-[#1A3A52]">
-            {property.propertyType === 'Aluguel' ? '🏠 Locação' : '🏢 Venda'}
-          </h4>
-          <span className="font-bold text-[#4CAF50] whitespace-nowrap text-[16px]">
-            {new Intl.NumberFormat('pt-BR', {
-              style: 'currency',
-              currency: 'BRL',
-              maximumFractionDigits: 0,
-            }).format(property.value)}
-          </span>
-        </div>
+        <CardContent className="p-[16px] flex-grow flex flex-col gap-2">
+          <div className="flex justify-between items-start gap-2">
+            <h4 className="font-bold text-[18px] line-clamp-1 flex-1 text-[#1A3A52]">
+              {property.propertyType === 'Aluguel' ? '🏠 Locação' : '🏢 Venda'}
+            </h4>
+            <span className="font-bold text-[#4CAF50] whitespace-nowrap text-[16px]">
+              {new Intl.NumberFormat('pt-BR', {
+                style: 'currency',
+                currency: 'BRL',
+                maximumFractionDigits: 0,
+              }).format(property.value)}
+            </span>
+          </div>
 
-        <p className="text-[14px] text-[#333333] font-medium flex items-center gap-1.5 mt-1">
-          <span>🏷️ Código:</span>
-          <a
-            href={publicUrl || '#'}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={cn(
-              'font-bold text-[#1A3A52] hover:underline',
-              !publicUrl && 'pointer-events-none text-gray-400',
+          <p className="text-[14px] text-[#333333] font-medium flex items-center gap-1.5 mt-1">
+            <span>🏷️ Código:</span>
+            <a
+              href={publicUrl || '#'}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={cn(
+                'font-bold text-[#1A3A52] hover:underline',
+                !publicUrl && 'pointer-events-none text-gray-400',
+              )}
+              onClick={(e) => {
+                if (!publicUrl) e.preventDefault()
+                e.stopPropagation()
+              }}
+            >
+              {property.code || 'N/A'}
+            </a>
+          </p>
+
+          <p className="text-[14px] text-[#333333] font-medium flex items-center gap-1.5 mt-1">
+            <MapPin className="w-4 h-4 shrink-0 text-[#1A3A52]" />
+            <span className="truncate">
+              {property.bairro_tipo === 'outro' && <span className="mr-1">🔹</span>}
+              {Array.isArray(property.neighborhood)
+                ? property.neighborhood.join(', ')
+                : property.neighborhood}
+            </span>
+          </p>
+
+          <div className="flex gap-3 text-[12px] text-[#333333] mt-1 font-medium">
+            {property.bedrooms !== undefined && (
+              <span className="flex items-center gap-1">
+                <Bed className="w-4 h-4 text-[#1A3A52]" /> {property.bedrooms} dorms
+              </span>
             )}
-            onClick={(e) => {
-              if (!publicUrl) e.preventDefault()
-              e.stopPropagation()
-            }}
-          >
-            {property.code || 'N/A'}
-          </a>
-        </p>
+            {property.bathrooms !== undefined && (
+              <span className="flex items-center gap-1">
+                <Bath className="w-4 h-4 text-[#1A3A52]" /> {property.bathrooms} banhs
+              </span>
+            )}
+            {property.parkingSpots !== undefined && (
+              <span className="flex items-center gap-1">
+                <Car className="w-4 h-4 text-[#1A3A52]" /> {property.parkingSpots} vagas
+              </span>
+            )}
+          </div>
 
-        <p className="text-[14px] text-[#333333] font-medium flex items-center gap-1.5 mt-1">
-          <MapPin className="w-4 h-4 shrink-0 text-[#1A3A52]" />
-          <span className="truncate">
-            {property.bairro_tipo === 'outro' && <span className="mr-1">🔹</span>}
-            {property.neighborhood}
-          </span>
-        </p>
+          <div className="mt-3 flex flex-col gap-1.5 text-[12px] text-[#333333] bg-[#F5F5F5] p-3 rounded-[8px] border border-[#E5E5E5]">
+            <p className="flex items-center gap-1.5 font-medium">
+              <Calendar className="w-4 h-4 shrink-0 text-[#1A3A52]" />
+              Captação: {new Date(property.capturedAt || '').toLocaleDateString('pt-BR')}
+            </p>
+            <p className="flex items-center gap-1.5 font-medium">
+              <UserCircle className="w-4 h-4 shrink-0 text-[#1A3A52]" />
+              Captador:{' '}
+              <span className="font-bold text-[#1A3A52]">{property.captador_name || 'N/A'}</span>
+            </p>
+          </div>
 
-        <div className="flex gap-3 text-[12px] text-[#333333] mt-1 font-medium">
-          {property.bedrooms !== undefined && (
-            <span className="flex items-center gap-1">
-              <Bed className="w-4 h-4 text-[#1A3A52]" /> {property.bedrooms} dorms
-            </span>
+          {property.obs && (
+            <p className="text-[12px] text-[#999999] mt-2 line-clamp-2 italic leading-tight">
+              "{property.obs}"
+            </p>
           )}
-          {property.bathrooms !== undefined && (
-            <span className="flex items-center gap-1">
-              <Bath className="w-4 h-4 text-[#1A3A52]" /> {property.bathrooms} banhs
-            </span>
-          )}
-          {property.parkingSpots !== undefined && (
-            <span className="flex items-center gap-1">
-              <Car className="w-4 h-4 text-[#1A3A52]" /> {property.parkingSpots} vagas
-            </span>
-          )}
-        </div>
+        </CardContent>
 
-        <div className="mt-3 flex flex-col gap-1.5 text-[12px] text-[#333333] bg-[#F5F5F5] p-3 rounded-[8px] border border-[#E5E5E5]">
-          <p className="flex items-center gap-1.5 font-medium">
-            <Calendar className="w-4 h-4 shrink-0 text-[#1A3A52]" />
-            Captação: {new Date(property.capturedAt || '').toLocaleDateString('pt-BR')}
-          </p>
-          <p className="flex items-center gap-1.5 font-medium">
-            <UserCircle className="w-4 h-4 shrink-0 text-[#1A3A52]" />
-            Captador:{' '}
-            <span className="font-bold text-[#1A3A52]">{property.captador_name || 'N/A'}</span>
-          </p>
-        </div>
+        <div className="p-[16px] pt-0 mt-auto flex flex-col gap-2">
+          <div className="flex flex-row gap-[8px] w-full mb-2">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  className={cn(
+                    'flex-1 font-bold min-h-[44px]',
+                    publicUrl
+                      ? 'bg-[#1A3A52] hover:bg-[#153045] text-white'
+                      : 'bg-[#E5E5E5] text-[#999999] hover:bg-[#E5E5E5] cursor-not-allowed',
+                  )}
+                  disabled={!publicUrl}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    if (publicUrl) window.open(publicUrl, '_blank')
+                  }}
+                >
+                  <ExternalLink className="w-[16px] h-[16px] mr-[6px]" />
+                  Ver no site
+                </Button>
+              </TooltipTrigger>
+              {!publicUrl && (
+                <TooltipContent>
+                  <p>Imóvel sem código cadastrado</p>
+                </TooltipContent>
+              )}
+            </Tooltip>
 
-        {property.obs && (
-          <p className="text-[12px] text-[#999999] mt-2 line-clamp-2 italic leading-tight">
-            "{property.obs}"
-          </p>
-        )}
-      </CardContent>
-
-      <div className="p-[16px] pt-0 mt-auto flex flex-col gap-2">
-        <div className="flex flex-row gap-[8px] w-full mb-2">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                className={cn(
-                  'flex-1 font-bold min-h-[44px]',
-                  publicUrl
-                    ? 'bg-[#1A3A52] hover:bg-[#153045] text-white'
-                    : 'bg-[#E5E5E5] text-[#999999] hover:bg-[#E5E5E5] cursor-not-allowed',
-                )}
-                disabled={!publicUrl}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  if (publicUrl) window.open(publicUrl, '_blank')
-                }}
-              >
-                <ExternalLink className="w-[16px] h-[16px] mr-[6px]" />
-                Ver no site
-              </Button>
-            </TooltipTrigger>
-            {!publicUrl && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    'w-[44px] h-[44px] p-0 shrink-0 border-[2px]',
+                    publicUrl
+                      ? 'border-[#2E5F8A] text-[#1A3A52] hover:bg-[#F5F5F5]'
+                      : 'border-[#E5E5E5] text-[#999999] hover:bg-transparent cursor-not-allowed',
+                  )}
+                  disabled={!publicUrl}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    if (publicUrl) handleCopyLink(e)
+                  }}
+                  title="Compartilhar"
+                >
+                  <Share2 className="w-[16px] h-[16px]" />
+                </Button>
+              </TooltipTrigger>
               <TooltipContent>
-                <p>Imóvel sem código cadastrado</p>
+                <p>{publicUrl ? 'Compartilhar' : 'Imóvel sem código cadastrado'}</p>
               </TooltipContent>
-            )}
-          </Tooltip>
+            </Tooltip>
+          </div>
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="outline"
-                className={cn(
-                  'w-[44px] h-[44px] p-0 shrink-0 border-[2px]',
-                  publicUrl
-                    ? 'border-[#2E5F8A] text-[#1A3A52] hover:bg-[#F5F5F5]'
-                    : 'border-[#E5E5E5] text-[#999999] hover:bg-transparent cursor-not-allowed',
-                )}
-                disabled={!publicUrl}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  if (publicUrl) handleCopyLink(e)
-                }}
-                title="Compartilhar"
-              >
-                <Share2 className="w-[16px] h-[16px]" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>{publicUrl ? 'Compartilhar' : 'Imóvel sem código cadastrado'}</p>
-            </TooltipContent>
-          </Tooltip>
-        </div>
-
-        {onLink ? (
-          <Button
-            size="sm"
-            className="w-full bg-[#1A3A52] hover:bg-[#2E5F8A] text-white shadow-[0_2px_4px_rgba(26,58,82,0.1)] font-bold min-h-[44px]"
-            onClick={() => onLink(property)}
-          >
-            🔗 VINCULAR A UM CLIENTE
-          </Button>
-        ) : onClaim ? (
           <Button
             size="sm"
             className="w-full bg-[#1A3A52] hover:bg-[#2E5F8A] text-white shadow-sm font-semibold min-h-[44px]"
-            onClick={() => onClaim(property)}
+            onClick={handleOpenVinculacao}
           >
-            🔗 Vincular a um Cliente
+            🔗 VINCULAR A UM CLIENTE
           </Button>
-        ) : null}
 
-        {onIgnore && (
-          <Button
-            size="sm"
-            variant="outline"
-            className="w-full min-h-[44px] font-bold border-[#E5E5E5] text-[#333333] hover:bg-[#F5F5F5]"
-            onClick={() => onIgnore(property.code)}
-          >
-            ❌ Não me interessa
-          </Button>
-        )}
-      </div>
-    </Card>
+          {onIgnore && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="w-full min-h-[44px] font-bold border-[#E5E5E5] text-[#333333] hover:bg-[#F5F5F5]"
+              onClick={() => onIgnore(property.code)}
+            >
+              ❌ Não me interessa
+            </Button>
+          )}
+        </div>
+      </Card>
+
+      <VinculacaoModal
+        isOpen={isVinculacaoModalOpen}
+        onClose={() => setIsVinculacaoModalOpen(false)}
+        onSuccess={handleVinculacaoSuccess}
+        imovel={{
+          id: property.id || '',
+          codigo_imovel: property.code,
+          endereco: Array.isArray(property.neighborhood)
+            ? property.neighborhood.join(', ')
+            : property.neighborhood,
+          preco: property.value,
+          dormitorios: property.bedrooms,
+          vagas: property.parkingSpots,
+          tipo: property.propertyType,
+        }}
+      />
+    </>
   )
 }

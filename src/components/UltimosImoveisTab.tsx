@@ -30,12 +30,14 @@ import { useNavigate } from 'react-router-dom'
 import { getPropertyPublicUrl } from '@/lib/propertyUrl'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useToast } from '@/hooks/use-toast'
+import { VinculacaoModal, VinculacaoImovelData } from './VinculacaoModal'
 
 export function UltimosImoveisTab() {
   const [periodo, setPeriodo] = useState<'24h' | '7d' | '30d' | 'todos'>('30d')
   const [tipoFiltro, setTipoFiltro] = useState<'todos' | 'meus'>('todos')
+  const [imovelParaVincular, setImovelParaVincular] = useState<VinculacaoImovelData | null>(null)
 
-  const { imoveis, loading } = useUltimosImoveis(periodo, tipoFiltro)
+  const { imoveis, loading, refresh } = useUltimosImoveis(periodo, tipoFiltro)
   const navigate = useNavigate()
   const { toast } = useToast()
 
@@ -195,6 +197,15 @@ export function UltimosImoveisTab() {
                           className="h-8 text-[12px] gap-1.5 text-[#1D4ED8] hover:text-[#1e3a8a] hover:bg-[#3B82F6]/10 font-bold px-2"
                           onClick={(e) => {
                             e.stopPropagation()
+                            setImovelParaVincular({
+                              id: imovel.id,
+                              codigo_imovel: imovel.codigo_imovel,
+                              endereco: imovel.endereco,
+                              preco: imovel.preco,
+                              dormitorios: imovel.dormitorios,
+                              vagas: imovel.vagas,
+                              tipo: (imovel.demanda_tipo as 'Venda' | 'Aluguel') || undefined,
+                            })
                           }}
                         >
                           <LinkIcon className="w-3.5 h-3.5" /> Vincular
@@ -247,6 +258,15 @@ export function UltimosImoveisTab() {
           })}
         </div>
       )}
+
+      <VinculacaoModal
+        isOpen={!!imovelParaVincular}
+        onClose={() => setImovelParaVincular(null)}
+        imovel={imovelParaVincular}
+        onSuccess={() => {
+          refresh()
+        }}
+      />
     </div>
   )
 }
