@@ -109,9 +109,10 @@ export interface PropertyAction {
 }
 
 export interface CapturedProperty {
+  id?: string
   code: string
   value: number
-  neighborhood: string[]
+  neighborhood: string[] | string
   bairro_tipo?: 'listado' | 'outro'
   docCompleta: boolean
   obs?: string
@@ -146,6 +147,12 @@ export interface CapturedProperty {
   parkingSpots?: number
   discarded?: boolean
   discardReason?: string
+  etapa_funil?: string
+  data_visita?: string
+  data_fechamento?: string
+  dormitorios?: number
+  vagas?: number
+  observacoes?: string
 }
 
 export interface Demand {

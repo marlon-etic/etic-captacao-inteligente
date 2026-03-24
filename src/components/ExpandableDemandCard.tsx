@@ -37,6 +37,47 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false)
   const [isNaoEncontreiModalOpen, setIsNaoEncontreiModalOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isPrioritizing, setIsPrioritizing] = useState(false)
+
+  const isOwnerOrAdmin =
+    currentUser?.role === 'admin' ||
+    currentUser?.role === 'gestor' ||
+    demand.sdr_id === currentUser?.id ||
+    demand.corretor_id === currentUser?.id
+
+  const togglePriority = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (isPrioritizing || !isOwnerOrAdmin) return
+    setIsPrioritizing(true)
+
+    const table = demand.tipo === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
+    const newStatus = !demand.is_prioritaria
+
+    try {
+      const { error } = await supabase
+        .from(table)
+        .update({ is_prioritaria: newStatus })
+        .eq('id', demand.id)
+
+      if (error) throw error
+
+      toast({
+        title: newStatus ? '⭐ Demanda Priorizada' : 'Prioridade Removida',
+        description: newStatus
+          ? 'A demanda subiu para o topo do feed dos captadores.'
+          : 'A demanda voltou à posição normal.',
+        className: newStatus ? 'bg-[#FCD34D] text-[#854D0E] border-none' : '',
+      })
+    } catch (err: any) {
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível alterar a prioridade.',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsPrioritizing(false)
+    }
+  }
 
   const latestResp = demand.respostas_captador?.[0]
   const isNaoEncontrei = latestResp?.resposta === 'nao_encontrei'
@@ -54,6 +95,13 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
     statusConfig = {
       label: 'ATENDIDA / EM NEGOCIAÇÃO',
       bg: 'bg-blue-500',
+      text: 'text-white',
+      icon: CheckCircle2,
+    }
+  } else if (demand.status_demanda === 'ganho') {
+    statusConfig = {
+      label: 'NEGÓCIO FECHADO',
+      bg: 'bg-[#10B981]',
       text: 'text-white',
       icon: CheckCircle2,
     }
@@ -167,11 +215,14 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
         ? 'Pendente'
         : demand.status_demanda === 'atendida'
           ? 'Atendida'
-          : 'Perdida',
+          : demand.status_demanda === 'ganho'
+            ? 'Ganho'
+            : 'Perdida',
     createdAt: demand.created_at,
     isPrioritized: demand.is_prioritaria,
     createdBy: demand.sdr_id || demand.corretor_id || '',
     capturedProperties: demand.imoveis_captados?.map((i) => ({
+      id: i.id,
       code: i.codigo_imovel,
       value: i.preco,
       neighborhood: i.endereco,
@@ -179,6 +230,12 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
       status: i.status_captacao,
       captador_id: i.user_captador_id,
       captador_name: i.captador_nome,
+      etapa_funil: i.etapa_funil || 'capturado',
+      data_visita: i.data_visita,
+      data_fechamento: i.data_fechamento,
+      dormitorios: i.dormitorios,
+      vagas: i.vagas,
+      observacoes: i.observacoes,
     })),
   } as any
 
@@ -195,11 +252,11 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
       >
         <div
           className={cn(
-            'px-4 py-2.5 flex items-center shadow-sm border-b bg-white flex-wrap gap-2 justify-between',
+            'px-4 py-2.5 flex items-center shadow-sm border-b bg-white flex-wrap gap-2 justify-between relative',
             demand.is_prioritaria ? 'border-[#FCD34D]/50' : 'border-[#E5E5E5]/50',
           )}
         >
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap pr-8">
             <div
               className={cn(
                 'flex items-center gap-2 font-black text-[11px] uppercase tracking-widest px-2 py-1 rounded shadow-sm',
@@ -222,11 +279,35 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
               </Badge>
             )}
           </div>
-          {prazo && demand.status_demanda === 'aberta' && prazo.status !== 'respondido' && (
-            <div className="flex flex-col items-end">
+
+          <div className="flex items-center gap-2 shrink-0">
+            {prazo && demand.status_demanda === 'aberta' && prazo.status !== 'respondido' && (
               <PrazoCounter prazoResposta={prazo.prazo_resposta} isExpired={isPrazoExpired} />
-            </div>
-          )}
+            )}
+
+            {isOwnerOrAdmin && (
+              <button
+                onClick={togglePriority}
+                disabled={isPrioritizing}
+                className={cn(
+                  'flex items-center justify-center w-8 h-8 rounded-full transition-all border shadow-sm focus:outline-none focus:ring-2 focus:ring-[#F59E0B] focus:ring-offset-1 disabled:opacity-50 shrink-0 absolute right-4 sm:relative sm:right-auto',
+                  demand.is_prioritaria
+                    ? 'bg-[#FFFBEB] border-[#FCD34D] hover:bg-[#FEF3C7]'
+                    : 'bg-white border-[#E5E5E5] hover:bg-[#F5F5F5] hover:border-[#FCD34D] group-hover:border-[#FCD34D]/50',
+                )}
+                title={demand.is_prioritaria ? 'Remover prioridade' : 'Marcar como prioritária'}
+              >
+                <Star
+                  className={cn(
+                    'w-4 h-4 transition-all',
+                    demand.is_prioritaria
+                      ? 'fill-[#F59E0B] text-[#F59E0B]'
+                      : 'text-[#999999] hover:text-[#F59E0B]',
+                  )}
+                />
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="p-4 flex flex-col gap-3">

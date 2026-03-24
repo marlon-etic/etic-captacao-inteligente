@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge'
 import { Demand } from '@/types'
 import useAppStore from '@/stores/useAppStore'
 import { cn } from '@/lib/utils'
+import { ImovelCapturadoCard } from './ImovelCapturadoCard'
 
 interface Props {
   open: boolean
@@ -36,7 +37,7 @@ export function DemandDetailsModal({
   onLost,
   onEncontrei,
 }: Props) {
-  const { getSimilarDemands, users } = useAppStore()
+  const { getSimilarDemands, users, currentUser } = useAppStore()
 
   if (!demand) {
     return (
@@ -87,6 +88,11 @@ export function DemandDetailsModal({
     : demand.timeframe === 'Média'
       ? 'text-[#FF9800]'
       : 'text-[#4CAF50]'
+
+  const isOwnerOrAdmin =
+    currentUser?.role === 'admin' ||
+    currentUser?.role === 'gestor' ||
+    currentUser?.id === demand.createdBy
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -179,27 +185,35 @@ export function DemandDetailsModal({
             </div>
 
             {/* Histórico/Imóveis */}
-            {demand.capturedProperties && demand.capturedProperties.length > 0 && (
-              <div className="bg-white p-5 rounded-[12px] border border-[#E5E5E5] shadow-sm">
-                <span className="text-[12px] text-[#999999] font-black uppercase tracking-wider flex items-center gap-1.5 mb-3 border-b border-[#F5F5F5] pb-2">
-                  📦 Imóveis Capturados ({demand.capturedProperties.length})
-                </span>
-                <div className="flex flex-col gap-2">
+            <div className="bg-white p-5 rounded-[12px] border border-[#E5E5E5] shadow-sm">
+              <span className="text-[12px] text-[#999999] font-black uppercase tracking-wider flex items-center gap-1.5 mb-4 border-b border-[#F5F5F5] pb-2">
+                📦 Imóveis Capturados ({demand.capturedProperties?.length || 0})
+              </span>
+
+              {demand.capturedProperties && demand.capturedProperties.length > 0 ? (
+                <div className="flex flex-col gap-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                   {demand.capturedProperties.map((p, i) => (
-                    <div
-                      key={i}
-                      className="flex justify-between items-center p-3 bg-[#F5F5F5] rounded-lg"
-                    >
-                      <div className="flex flex-col">
-                        <span className="font-bold text-[#1A3A52]">{p.code}</span>
-                        <span className="text-[12px] text-[#666666]">{p.neighborhood}</span>
-                      </div>
-                      <Badge className="bg-[#4CAF50] text-white border-none">{p.status}</Badge>
-                    </div>
+                    <ImovelCapturadoCard
+                      key={p.id || i}
+                      property={p}
+                      demand={demand}
+                      isOwnerOrAdmin={isOwnerOrAdmin}
+                    />
                   ))}
                 </div>
-              </div>
-            )}
+              ) : (
+                <div className="bg-[#F8FAFC] p-6 rounded-[8px] border border-[#E5E5E5] text-center flex flex-col items-center gap-2">
+                  <span className="text-[24px]">🏠</span>
+                  <p className="text-[14px] text-[#666666] font-medium leading-snug">
+                    Nenhum imóvel capturado ainda.
+                    <br />
+                    <span className="text-[#999999]">
+                      Aguardando os captadores encontrarem opções.
+                    </span>
+                  </p>
+                </div>
+              )}
+            </div>
 
             {/* Informações Adicionais */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-[12px] opacity-70">

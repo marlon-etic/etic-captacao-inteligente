@@ -69,7 +69,6 @@ export function CapturePropertyModal({ demand, isOpen, onClose, onSuccess }: Pro
     try {
       const extraInfo = `Dorms: ${bedrooms || 'Indif'}, Vagas: ${parking || 'Indif'}. Obs: ${notes || '-'}`
 
-      // Requisito: Vinculação Automática com demanda_id e demanda_tipo
       const payload = {
         codigo_imovel: code.toUpperCase(),
         endereco: address,
@@ -80,9 +79,12 @@ export function CapturePropertyModal({ demand, isOpen, onClose, onSuccess }: Pro
         demanda_locacao_id: demand.tipo === 'Aluguel' ? demand.id : null,
         demanda_venda_id: demand.tipo === 'Venda' ? demand.id : null,
         localizacao_texto: extraInfo,
+        dormitorios: bedrooms ? Number(bedrooms) : null,
+        vagas: parking ? Number(parking) : null,
+        observacoes: notes,
+        etapa_funil: 'capturado',
       }
 
-      // Inserção < 1 segundo para o banco de dados
       const { error } = await supabase.from('imoveis_captados').insert(payload)
 
       if (error) {

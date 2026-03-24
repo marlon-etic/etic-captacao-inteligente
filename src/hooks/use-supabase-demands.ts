@@ -12,6 +12,12 @@ export interface SupabaseCapturedProperty {
   created_at: string
   status_captacao: string
   captador_nome?: string
+  etapa_funil?: string
+  data_visita?: string
+  data_fechamento?: string
+  dormitorios?: number
+  vagas?: number
+  observacoes?: string
 }
 
 export interface SupabasePrazo {
@@ -110,6 +116,12 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
           .map((i: any) => ({
             ...i,
             captador_nome: userMap.get(i.user_captador_id || i.captador_id) || 'Captador',
+            etapa_funil: i.etapa_funil || 'capturado',
+            data_visita: i.data_visita,
+            data_fechamento: i.data_fechamento,
+            dormitorios: i.dormitorios,
+            vagas: i.vagas,
+            observacoes: i.observacoes || i.localizacao_texto,
           }))
           .sort(
             (a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
@@ -210,7 +222,12 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
                 const captador = usersRef.current.find(
                   (u) => u.id === (imv.user_captador_id || imv.captador_id),
                 )
-                const enrichedImv = { ...imv, captador_nome: captador?.name || 'Captador' }
+                const enrichedImv = {
+                  ...imv,
+                  captador_nome: captador?.name || 'Captador',
+                  etapa_funil: imv.etapa_funil || 'capturado',
+                  observacoes: imv.observacoes || imv.localizacao_texto,
+                }
 
                 const user = currentUserRef.current
                 if (user && (d.sdr_id === user.id || d.corretor_id === user.id)) {
@@ -237,13 +254,48 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
         { event: 'UPDATE', schema: 'public', table: 'imoveis_captados' },
         (payload) => {
           const imv = payload.new
+          const oldImv = payload.old
+
+          if (oldImv && imv.etapa_funil && imv.etapa_funil !== oldImv.etapa_funil) {
+            const user = currentUserRef.current
+            const captadorId = imv.user_captador_id || imv.captador_id
+            if (user && user.role === 'captador' && captadorId === user.id) {
+              if (imv.etapa_funil === 'visitado') {
+                toast({
+                  title: 'Aviso',
+                  description: `O imóvel ${imv.codigo_imovel} foi marcado como VISITADO.`,
+                  className: 'bg-[#FBBF24] text-[#854D0E] border-none',
+                })
+              } else if (imv.etapa_funil === 'fechado') {
+                toast({
+                  title: '🎉 Parabéns!',
+                  description: `Seu imóvel ${imv.codigo_imovel} fechou negócio! +30 pontos creditados.`,
+                  className: 'bg-[#10B981] text-white border-none shadow-lg',
+                })
+              } else if (imv.etapa_funil === 'perdido') {
+                toast({
+                  title: 'Aviso',
+                  description: `O imóvel ${imv.codigo_imovel} foi marcado como Perdido.`,
+                  className: 'bg-[#EF4444] text-white border-none',
+                })
+              }
+            }
+          }
+
           setDemands((prev) =>
             prev.map((d) => {
               if (d.id === imv.demanda_locacao_id || d.id === imv.demanda_venda_id) {
                 return {
                   ...d,
                   imoveis_captados: (d.imoveis_captados || []).map((i: any) =>
-                    i.id === imv.id ? { ...i, ...imv } : i,
+                    i.id === imv.id
+                      ? {
+                          ...i,
+                          ...imv,
+                          etapa_funil: imv.etapa_funil || i.etapa_funil,
+                          observacoes: imv.observacoes || imv.localizacao_texto || i.observacoes,
+                        }
+                      : i,
                   ),
                 }
               }
