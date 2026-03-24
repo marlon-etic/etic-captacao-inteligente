@@ -369,6 +369,7 @@ export type Database = {
           etapa_funil: string | null
           fotos: string[] | null
           id: string
+          landlord_id: string | null
           localizacao_texto: string | null
           observacoes: string | null
           preco: number | null
@@ -392,6 +393,7 @@ export type Database = {
           etapa_funil?: string | null
           fotos?: string[] | null
           id?: string
+          landlord_id?: string | null
           localizacao_texto?: string | null
           observacoes?: string | null
           preco?: number | null
@@ -415,6 +417,7 @@ export type Database = {
           etapa_funil?: string | null
           fotos?: string[] | null
           id?: string
+          landlord_id?: string | null
           localizacao_texto?: string | null
           observacoes?: string | null
           preco?: number | null
@@ -447,6 +450,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "imoveis_captados_landlord_id_fkey"
+            columns: ["landlord_id"]
+            isOneToOne: false
+            referencedRelation: "landlord_profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "imoveis_captados_user_captador_id_fkey"
             columns: ["user_captador_id"]
             isOneToOne: false
@@ -454,6 +464,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      landlord_profiles: {
+        Row: {
+          codigo_locador: string | null
+          created_at: string | null
+          email: string
+          id: string
+          name: string
+          phone: string | null
+          property_codes: Json | null
+          total_imoveis: number | null
+          total_revenue: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          codigo_locador?: string | null
+          created_at?: string | null
+          email: string
+          id?: string
+          name: string
+          phone?: string | null
+          property_codes?: Json | null
+          total_imoveis?: number | null
+          total_revenue?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          codigo_locador?: string | null
+          created_at?: string | null
+          email?: string
+          id?: string
+          name?: string
+          phone?: string | null
+          property_codes?: Json | null
+          total_imoveis?: number | null
+          total_revenue?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       notificacoes: {
         Row: {
@@ -615,6 +667,50 @@ export type Database = {
           },
         ]
       }
+      property_performance: {
+        Row: {
+          average_tenant_score: number | null
+          created_at: string | null
+          maintenance_costs: number | null
+          months_occupied: number | null
+          net_revenue: number | null
+          property_id: string
+          total_revenue: number | null
+          updated_at: string | null
+          vacancy_rate: number | null
+        }
+        Insert: {
+          average_tenant_score?: number | null
+          created_at?: string | null
+          maintenance_costs?: number | null
+          months_occupied?: number | null
+          net_revenue?: number | null
+          property_id: string
+          total_revenue?: number | null
+          updated_at?: string | null
+          vacancy_rate?: number | null
+        }
+        Update: {
+          average_tenant_score?: number | null
+          created_at?: string | null
+          maintenance_costs?: number | null
+          months_occupied?: number | null
+          net_revenue?: number | null
+          property_id?: string
+          total_revenue?: number | null
+          updated_at?: string | null
+          vacancy_rate?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_performance_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: true
+            referencedRelation: "imoveis_captados"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       respostas_captador: {
         Row: {
           captador_id: string
@@ -669,6 +765,71 @@ export type Database = {
             columns: ["demanda_venda_id"]
             isOneToOne: false
             referencedRelation: "demandas_vendas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenant_proposals: {
+        Row: {
+          created_at: string | null
+          employment_status: string | null
+          id: string
+          message: string | null
+          monthly_income: number | null
+          property_id: string
+          proposed_move_date: string | null
+          response_date: string | null
+          response_message: string | null
+          status: string | null
+          tenant_email: string
+          tenant_id: string | null
+          tenant_name: string
+          tenant_phone: string
+          tenant_score: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          employment_status?: string | null
+          id?: string
+          message?: string | null
+          monthly_income?: number | null
+          property_id: string
+          proposed_move_date?: string | null
+          response_date?: string | null
+          response_message?: string | null
+          status?: string | null
+          tenant_email: string
+          tenant_id?: string | null
+          tenant_name: string
+          tenant_phone: string
+          tenant_score?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          employment_status?: string | null
+          id?: string
+          message?: string | null
+          monthly_income?: number | null
+          property_id?: string
+          proposed_move_date?: string | null
+          response_date?: string | null
+          response_message?: string | null
+          status?: string | null
+          tenant_email?: string
+          tenant_id?: string | null
+          tenant_name?: string
+          tenant_phone?: string
+          tenant_score?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_proposals_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "imoveis_captados"
             referencedColumns: ["id"]
           },
         ]
@@ -1078,6 +1239,19 @@ export const Constants = {
 //   dormitorios: integer (nullable)
 //   vagas: integer (nullable)
 //   observacoes: text (nullable)
+//   landlord_id: uuid (nullable)
+// Table: landlord_profiles
+//   id: uuid (not null, default: gen_random_uuid())
+//   user_id: uuid (not null)
+//   name: text (not null)
+//   email: text (not null)
+//   phone: text (nullable)
+//   codigo_locador: text (nullable)
+//   property_codes: jsonb (nullable, default: '[]'::jsonb)
+//   total_imoveis: integer (nullable, default: 0)
+//   total_revenue: numeric (nullable, default: 0)
+//   created_at: timestamp with time zone (nullable, default: now())
+//   updated_at: timestamp with time zone (nullable, default: now())
 // Table: notificacoes
 //   id: uuid (not null, default: gen_random_uuid())
 //   usuario_id: uuid (not null)
@@ -1106,6 +1280,16 @@ export const Constants = {
 //   prazo_resposta: timestamp with time zone (not null)
 //   prorrogacoes_usadas: integer (nullable, default: 0)
 //   status: character varying (nullable, default: 'ativo'::character varying)
+// Table: property_performance
+//   property_id: uuid (not null)
+//   total_revenue: numeric (nullable, default: 0)
+//   months_occupied: integer (nullable, default: 0)
+//   vacancy_rate: numeric (nullable, default: 0)
+//   average_tenant_score: integer (nullable, default: 0)
+//   maintenance_costs: numeric (nullable, default: 0)
+//   net_revenue: numeric (nullable, default: 0)
+//   created_at: timestamp with time zone (nullable, default: now())
+//   updated_at: timestamp with time zone (nullable, default: now())
 // Table: respostas_captador
 //   id: uuid (not null, default: gen_random_uuid())
 //   demanda_locacao_id: uuid (nullable)
@@ -1116,6 +1300,23 @@ export const Constants = {
 //   created_at: timestamp with time zone (nullable, default: now())
 //   updated_at: timestamp with time zone (nullable, default: now())
 //   observacao: text (nullable)
+// Table: tenant_proposals
+//   id: uuid (not null, default: gen_random_uuid())
+//   property_id: uuid (not null)
+//   tenant_id: uuid (nullable)
+//   tenant_name: text (not null)
+//   tenant_email: text (not null)
+//   tenant_phone: text (not null)
+//   tenant_score: integer (nullable, default: 0)
+//   monthly_income: numeric (nullable, default: 0)
+//   employment_status: text (nullable)
+//   proposed_move_date: date (nullable)
+//   message: text (nullable)
+//   status: text (nullable, default: 'pending'::text)
+//   response_date: timestamp with time zone (nullable)
+//   response_message: text (nullable)
+//   created_at: timestamp with time zone (nullable, default: now())
+//   updated_at: timestamp with time zone (nullable, default: now())
 // Table: users
 //   id: uuid (not null)
 //   email: character varying (not null)
@@ -1184,10 +1385,14 @@ export const Constants = {
 //   CHECK imoveis_captados_comissao_percentual_check: CHECK (((comissao_percentual >= (0)::numeric) AND (comissao_percentual <= (100)::numeric)))
 //   FOREIGN KEY imoveis_captados_demanda_locacao_id_fkey: FOREIGN KEY (demanda_locacao_id) REFERENCES demandas_locacao(id) ON DELETE SET NULL
 //   FOREIGN KEY imoveis_captados_demanda_venda_id_fkey: FOREIGN KEY (demanda_venda_id) REFERENCES demandas_vendas(id) ON DELETE SET NULL
+//   FOREIGN KEY imoveis_captados_landlord_id_fkey: FOREIGN KEY (landlord_id) REFERENCES landlord_profiles(id) ON DELETE SET NULL
 //   PRIMARY KEY imoveis_captados_pkey: PRIMARY KEY (id)
 //   CHECK imoveis_captados_preco_check: CHECK ((preco > (0)::numeric))
 //   CHECK imoveis_captados_status_captacao_check: CHECK (((status_captacao)::text = ANY ((ARRAY['pendente'::character varying, 'capturado'::character varying, 'visitado'::character varying, 'fechado'::character varying, 'perdido'::character varying])::text[])))
 //   FOREIGN KEY imoveis_captados_user_captador_id_fkey: FOREIGN KEY (user_captador_id) REFERENCES users(id) ON DELETE SET NULL
+// Table: landlord_profiles
+//   PRIMARY KEY landlord_profiles_pkey: PRIMARY KEY (id)
+//   FOREIGN KEY landlord_profiles_user_id_fkey: FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
 // Table: notificacoes
 //   PRIMARY KEY notificacoes_pkey: PRIMARY KEY (id)
 //   FOREIGN KEY notificacoes_usuario_id_fkey: FOREIGN KEY (usuario_id) REFERENCES users(id) ON DELETE CASCADE
@@ -1204,6 +1409,9 @@ export const Constants = {
 //   FOREIGN KEY prazos_captacao_demanda_venda_id_fkey: FOREIGN KEY (demanda_venda_id) REFERENCES demandas_vendas(id) ON DELETE CASCADE
 //   PRIMARY KEY prazos_captacao_pkey: PRIMARY KEY (id)
 //   CHECK prazos_captacao_status_check: CHECK (((status)::text = ANY ((ARRAY['ativo'::character varying, 'vencido'::character varying, 'respondido'::character varying, 'sem_resposta_24h'::character varying, 'sem_resposta_final'::character varying])::text[])))
+// Table: property_performance
+//   PRIMARY KEY property_performance_pkey: PRIMARY KEY (property_id)
+//   FOREIGN KEY property_performance_property_id_fkey: FOREIGN KEY (property_id) REFERENCES imoveis_captados(id) ON DELETE CASCADE
 // Table: respostas_captador
 //   CHECK check_demanda_link_respostas: CHECK ((((demanda_locacao_id IS NOT NULL) AND (demanda_venda_id IS NULL)) OR ((demanda_locacao_id IS NULL) AND (demanda_venda_id IS NOT NULL))))
 //   CHECK check_motivo_nao_encontrei: CHECK ((((resposta)::text = 'encontrei'::text) OR (((resposta)::text = 'nao_encontrei'::text) AND (motivo IS NOT NULL) AND (TRIM(BOTH FROM motivo) <> ''::text))))
@@ -1212,6 +1420,9 @@ export const Constants = {
 //   FOREIGN KEY respostas_captador_demanda_venda_id_fkey: FOREIGN KEY (demanda_venda_id) REFERENCES demandas_vendas(id) ON DELETE CASCADE
 //   PRIMARY KEY respostas_captador_pkey: PRIMARY KEY (id)
 //   CHECK respostas_captador_resposta_check: CHECK (((resposta)::text = ANY ((ARRAY['encontrei'::character varying, 'nao_encontrei'::character varying])::text[])))
+// Table: tenant_proposals
+//   PRIMARY KEY tenant_proposals_pkey: PRIMARY KEY (id)
+//   FOREIGN KEY tenant_proposals_property_id_fkey: FOREIGN KEY (property_id) REFERENCES imoveis_captados(id) ON DELETE CASCADE
 // Table: users
 //   CHECK users_email_check: CHECK (((email)::text ~ '^[A-Za-z0-9._%-]+@[A-Za-z0-9.-]+[.][A-Za-z]+
 ::text))
@@ -1268,6 +1479,11 @@ export const Constants = {
 //   Policy "SDRs update captures linked to own locacao demands" (UPDATE, PERMISSIVE) roles={authenticated}
 //     USING: true
 //     WITH CHECK: true
+// Table: landlord_profiles
+//   Policy "Users can update own landlord profile" (UPDATE, PERMISSIVE) roles={authenticated}
+//     USING: (user_id = auth.uid())
+//   Policy "Users can view own landlord profile" (SELECT, PERMISSIVE) roles={authenticated}
+//     USING: (user_id = auth.uid())
 // Table: notificacoes
 //   Policy "System can insert notifications" (INSERT, PERMISSIVE) roles={public}
 //     WITH CHECK: true
@@ -1285,6 +1501,9 @@ export const Constants = {
 //     WITH CHECK: true
 //   Policy "Captadores can update prazos" (UPDATE, PERMISSIVE) roles={public}
 //     USING: true
+// Table: property_performance
+//   Policy "Landlords can view own property performance" (SELECT, PERMISSIVE) roles={authenticated}
+//     USING: (EXISTS ( SELECT 1    FROM (imoveis_captados ic      JOIN landlord_profiles lp ON ((ic.landlord_id = lp.id)))   WHERE ((ic.id = property_performance.property_id) AND (lp.user_id = auth.uid()))))
 // Table: respostas_captador
 //   Policy "Admin sees all respostas" (ALL, PERMISSIVE) roles={public}
 //     USING: (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND (users.role = 'admin'::user_role))))
@@ -1294,6 +1513,11 @@ export const Constants = {
 //     WITH CHECK: (captador_id = auth.uid())
 //   Policy "Captadores manage own respostas" (ALL, PERMISSIVE) roles={public}
 //     USING: (captador_id = auth.uid())
+// Table: tenant_proposals
+//   Policy "Landlords can update own proposals" (UPDATE, PERMISSIVE) roles={authenticated}
+//     USING: (EXISTS ( SELECT 1    FROM (imoveis_captados ic      JOIN landlord_profiles lp ON ((ic.landlord_id = lp.id)))   WHERE ((ic.id = tenant_proposals.property_id) AND (lp.user_id = auth.uid()))))
+//   Policy "Landlords can view own proposals" (SELECT, PERMISSIVE) roles={authenticated}
+//     USING: (EXISTS ( SELECT 1    FROM (imoveis_captados ic      JOIN landlord_profiles lp ON ((ic.landlord_id = lp.id)))   WHERE ((ic.id = tenant_proposals.property_id) AND (lp.user_id = auth.uid()))))
 // Table: users
 //   Policy "Authenticated users can read users" (SELECT, PERMISSIVE) roles={authenticated}
 //     USING: true
