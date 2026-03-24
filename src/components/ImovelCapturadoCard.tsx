@@ -1,13 +1,15 @@
 import { CapturedProperty, Demand } from '@/types'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Eye, CheckCircle2, RotateCcw, Building2, MapPin } from 'lucide-react'
+import { Eye, CheckCircle2, RotateCcw, Building2, MapPin, Share2, ExternalLink } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { SupabaseCapturedProperty } from '@/hooks/use-supabase-demands'
 import useAppStore from '@/stores/useAppStore'
 import { supabase } from '@/lib/supabase/client'
 import { toast } from '@/hooks/use-toast'
 import { useState } from 'react'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { getPropertyPublicUrl } from '@/lib/propertyUrl'
 
 interface Props {
   property: SupabaseCapturedProperty | CapturedProperty
@@ -41,6 +43,27 @@ export function ImovelCapturadoCard({ property, demand, isOwnerOrAdmin = true }:
 
   const isVisitado = p.etapa_funil === 'visitado'
   const isFechado = p.etapa_funil === 'fechado'
+
+  const publicUrl = getPropertyPublicUrl(p.code)
+
+  const handleCopyLink = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!publicUrl) return
+    try {
+      await navigator.clipboard.writeText(publicUrl)
+      toast({
+        title: 'Sucesso',
+        description: 'Link copiado para clipboard!',
+        duration: 3000,
+      })
+    } catch (err) {
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível copiar o link',
+        variant: 'destructive',
+      })
+    }
+  }
 
   const updateEtapa = async (novaEtapa: string) => {
     if (!p.id || isUpdating) return
@@ -124,6 +147,43 @@ export function ImovelCapturadoCard({ property, demand, isOwnerOrAdmin = true }:
           <Building2 className="w-4 h-4 text-[#3B82F6] shrink-0" />
           Captador: <strong className="text-[#333333]">{p.captador_nome}</strong>
         </span>
+      </div>
+
+      <div className="flex gap-2 mt-1">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              size="sm"
+              variant="outline"
+              className="flex-1 font-bold text-[12px] text-[#333333] border-[#E5E5E5] hover:bg-[#F5F5F5] h-8"
+              disabled={!publicUrl}
+              onClick={(e) => {
+                e.stopPropagation()
+                if (publicUrl) window.open(publicUrl, '_blank')
+              }}
+            >
+              <ExternalLink className="w-3.5 h-3.5 mr-1.5" /> Ver no site
+            </Button>
+          </TooltipTrigger>
+          {!publicUrl && <TooltipContent>Imóvel sem código cadastrado</TooltipContent>}
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              size="icon"
+              variant="outline"
+              className="w-8 h-8 shrink-0 text-[#333333] border-[#E5E5E5] hover:bg-[#F5F5F5]"
+              disabled={!publicUrl}
+              onClick={handleCopyLink}
+            >
+              <Share2 className="w-3.5 h-3.5" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            {publicUrl ? 'Compartilhar' : 'Imóvel sem código cadastrado'}
+          </TooltipContent>
+        </Tooltip>
       </div>
 
       {isOwnerOrAdmin && (

@@ -22,9 +22,14 @@ import {
   DollarSign,
   User,
   Link as LinkIcon,
+  Share2,
+  ExternalLink,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useNavigate } from 'react-router-dom'
+import { getPropertyPublicUrl } from '@/lib/propertyUrl'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { useToast } from '@/hooks/use-toast'
 
 export function UltimosImoveisTab() {
   const [periodo, setPeriodo] = useState<'24h' | '7d' | '30d' | 'todos'>('30d')
@@ -32,6 +37,25 @@ export function UltimosImoveisTab() {
 
   const { imoveis, loading } = useUltimosImoveis(periodo, tipoFiltro)
   const navigate = useNavigate()
+  const { toast } = useToast()
+
+  const handleCopyLink = async (e: React.MouseEvent, url: string) => {
+    e.stopPropagation()
+    try {
+      await navigator.clipboard.writeText(url)
+      toast({
+        title: 'Sucesso',
+        description: 'Link copiado para clipboard!',
+        duration: 3000,
+      })
+    } catch (err) {
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível copiar o link',
+        variant: 'destructive',
+      })
+    }
+  }
 
   return (
     <div className="space-y-4 animate-fade-in pb-8">
@@ -80,99 +104,147 @@ export function UltimosImoveisTab() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-[16px]">
-          {imoveis.map((imovel) => (
-            <Card
-              key={imovel.id}
-              onClick={() => {
-                if (imovel.demanda_id) {
-                  navigate(`/app/demandas?id=${imovel.demanda_id}`)
-                } else {
-                  navigate(`/app/disponivel-geral`)
-                }
-              }}
-              className={cn(
-                'overflow-hidden transition-all hover:shadow-md border-l-[6px] cursor-pointer',
-                imovel.is_minha_demanda
-                  ? 'border-l-[#10B981]'
-                  : !imovel.has_demanda
-                    ? 'border-l-[#3B82F6]'
-                    : 'border-l-[#F59E0B]',
-              )}
-            >
-              <CardContent className="p-4 space-y-3">
-                <div className="flex justify-between items-start">
-                  <Badge
-                    variant="outline"
-                    className="font-mono bg-[#F5F5F5] text-[#333333] border-[#E5E5E5]"
-                  >
-                    {imovel.codigo_imovel}
-                  </Badge>
-                  <span className="text-[12px] font-medium text-[#666666] flex items-center gap-1 bg-[#F9FAFB] px-2 py-1 rounded-md">
-                    <Calendar className="w-3.5 h-3.5" />
-                    {formatDistanceToNow(new Date(imovel.created_at), {
-                      addSuffix: true,
-                      locale: ptBR,
-                    })}
-                  </span>
-                </div>
+          {imoveis.map((imovel) => {
+            const publicUrl = imovel.codigo_imovel ? getPropertyPublicUrl(imovel.codigo_imovel) : ''
 
-                <div className="space-y-1.5">
-                  <div className="font-black text-[20px] text-[#1A3A52] flex items-center gap-1.5">
-                    <DollarSign className="w-5 h-5 text-[#10B981]" />
-                    R$ {imovel.preco.toLocaleString('pt-BR')}
-                  </div>
-                  <div className="text-[14px] text-[#333333] flex items-start gap-1.5 font-medium">
-                    <MapPin className="w-4 h-4 mt-0.5 shrink-0 text-[#666666]" />
-                    <span className="line-clamp-2 leading-tight">
-                      {imovel.endereco || 'Endereço não informado'}
+            return (
+              <Card
+                key={imovel.id}
+                onClick={() => {
+                  if (imovel.demanda_id) {
+                    navigate(`/app/demandas?id=${imovel.demanda_id}`)
+                  } else {
+                    navigate(`/app/disponivel-geral`)
+                  }
+                }}
+                className={cn(
+                  'overflow-hidden transition-all hover:shadow-md border-l-[6px] cursor-pointer',
+                  imovel.is_minha_demanda
+                    ? 'border-l-[#10B981]'
+                    : !imovel.has_demanda
+                      ? 'border-l-[#3B82F6]'
+                      : 'border-l-[#F59E0B]',
+                )}
+              >
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex justify-between items-start">
+                    <Badge
+                      variant="outline"
+                      className="font-mono bg-[#F5F5F5] text-[#333333] border-[#E5E5E5]"
+                    >
+                      {imovel.codigo_imovel}
+                    </Badge>
+                    <span className="text-[12px] font-medium text-[#666666] flex items-center gap-1 bg-[#F9FAFB] px-2 py-1 rounded-md">
+                      <Calendar className="w-3.5 h-3.5" />
+                      {formatDistanceToNow(new Date(imovel.created_at), {
+                        addSuffix: true,
+                        locale: ptBR,
+                      })}
                     </span>
                   </div>
-                </div>
 
-                <div className="flex items-center gap-3 text-[13px] text-[#666666] font-bold">
-                  <div className="flex items-center gap-1 bg-[#F5F5F5] px-2 py-1 rounded-md">
-                    <Bed className="w-4 h-4" /> {imovel.dormitorios}
+                  <div className="space-y-1.5">
+                    <div className="font-black text-[20px] text-[#1A3A52] flex items-center gap-1.5">
+                      <DollarSign className="w-5 h-5 text-[#10B981]" />
+                      R$ {imovel.preco.toLocaleString('pt-BR')}
+                    </div>
+                    <div className="text-[14px] text-[#333333] flex items-start gap-1.5 font-medium">
+                      <MapPin className="w-4 h-4 mt-0.5 shrink-0 text-[#666666]" />
+                      <span className="line-clamp-2 leading-tight">
+                        {imovel.endereco || 'Endereço não informado'}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1 bg-[#F5F5F5] px-2 py-1 rounded-md">
-                    <Car className="w-4 h-4" /> {imovel.vagas}
-                  </div>
-                  <div className="flex items-center gap-1 ml-auto bg-[#E8F0F8] text-[#1A3A52] px-2 py-1 rounded-md max-w-[120px]">
-                    <User className="w-3.5 h-3.5 shrink-0" />{' '}
-                    <span className="truncate">{imovel.captador_nome}</span>
-                  </div>
-                </div>
 
-                <div className="pt-3 border-t border-[#E5E5E5] flex items-center justify-between">
-                  <span
-                    className={cn(
-                      'text-[12px] font-black px-2.5 py-1 rounded-[6px] uppercase tracking-wide',
-                      imovel.is_minha_demanda
-                        ? 'bg-[#10B981]/10 text-[#059669]'
-                        : !imovel.has_demanda
-                          ? 'bg-[#3B82F6]/10 text-[#1D4ED8]'
-                          : 'bg-[#F59E0B]/10 text-[#B45309]',
-                    )}
-                  >
-                    {imovel.is_minha_demanda
-                      ? 'Sua Demanda'
-                      : !imovel.has_demanda
-                        ? 'Disponível (Genérico)'
-                        : 'Demanda de Outro'}
-                  </span>
+                  <div className="flex items-center gap-3 text-[13px] text-[#666666] font-bold">
+                    <div className="flex items-center gap-1 bg-[#F5F5F5] px-2 py-1 rounded-md">
+                      <Bed className="w-4 h-4" /> {imovel.dormitorios}
+                    </div>
+                    <div className="flex items-center gap-1 bg-[#F5F5F5] px-2 py-1 rounded-md">
+                      <Car className="w-4 h-4" /> {imovel.vagas}
+                    </div>
+                    <div className="flex items-center gap-1 ml-auto bg-[#E8F0F8] text-[#1A3A52] px-2 py-1 rounded-md max-w-[120px]">
+                      <User className="w-3.5 h-3.5 shrink-0" />{' '}
+                      <span className="truncate">{imovel.captador_nome}</span>
+                    </div>
+                  </div>
 
-                  {!imovel.has_demanda && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-8 text-[12px] gap-1.5 text-[#1D4ED8] hover:text-[#1e3a8a] hover:bg-[#3B82F6]/10 font-bold px-2"
-                    >
-                      <LinkIcon className="w-3.5 h-3.5" /> Vincular
-                    </Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                  <div className="pt-3 border-t border-[#E5E5E5] flex flex-col gap-3">
+                    <div className="flex items-center justify-between">
+                      <span
+                        className={cn(
+                          'text-[12px] font-black px-2.5 py-1 rounded-[6px] uppercase tracking-wide',
+                          imovel.is_minha_demanda
+                            ? 'bg-[#10B981]/10 text-[#059669]'
+                            : !imovel.has_demanda
+                              ? 'bg-[#3B82F6]/10 text-[#1D4ED8]'
+                              : 'bg-[#F59E0B]/10 text-[#B45309]',
+                        )}
+                      >
+                        {imovel.is_minha_demanda
+                          ? 'Sua Demanda'
+                          : !imovel.has_demanda
+                            ? 'Disponível (Genérico)'
+                            : 'Demanda de Outro'}
+                      </span>
+
+                      {!imovel.has_demanda && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 text-[12px] gap-1.5 text-[#1D4ED8] hover:text-[#1e3a8a] hover:bg-[#3B82F6]/10 font-bold px-2"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                          }}
+                        >
+                          <LinkIcon className="w-3.5 h-3.5" /> Vincular
+                        </Button>
+                      )}
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="flex-1 font-bold text-[12px] text-[#333333] border-[#E5E5E5] hover:bg-[#F5F5F5] h-9"
+                            disabled={!publicUrl}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              if (publicUrl) window.open(publicUrl, '_blank')
+                            }}
+                          >
+                            <ExternalLink className="w-3.5 h-3.5 mr-1.5" /> Ver no site
+                          </Button>
+                        </TooltipTrigger>
+                        {!publicUrl && (
+                          <TooltipContent>Imóvel sem código cadastrado</TooltipContent>
+                        )}
+                      </Tooltip>
+
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            size="icon"
+                            variant="outline"
+                            className="w-9 h-9 shrink-0 text-[#333333] border-[#E5E5E5] hover:bg-[#F5F5F5]"
+                            disabled={!publicUrl}
+                            onClick={(e) => handleCopyLink(e, publicUrl)}
+                          >
+                            <Share2 className="w-4 h-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {publicUrl ? 'Compartilhar' : 'Imóvel sem código cadastrado'}
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          })}
         </div>
       )}
     </div>

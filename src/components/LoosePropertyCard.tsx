@@ -1,4 +1,4 @@
-import { MapPin, Calendar, Bed, Car, Bath, UserCircle } from 'lucide-react'
+import { MapPin, Calendar, Bed, Car, Bath, UserCircle, Share2, ExternalLink } from 'lucide-react'
 import { CapturedProperty } from '@/types'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -28,13 +28,14 @@ export function LoosePropertyCard({
     try {
       await navigator.clipboard.writeText(publicUrl)
       toast({
-        title: 'Link copiado!',
-        description: 'A URL do imóvel foi copiada para a área de transferência.',
+        title: 'Sucesso',
+        description: 'Link copiado para clipboard!',
+        duration: 3000,
       })
     } catch (err) {
       toast({
-        title: 'Erro ao copiar link',
-        description: 'Não foi possível copiar a URL.',
+        title: 'Erro',
+        description: 'Não foi possível copiar o link',
         variant: 'destructive',
       })
     }
@@ -149,39 +150,47 @@ export function LoosePropertyCard({
                     ? 'bg-[#1A3A52] hover:bg-[#153045] text-white'
                     : 'bg-[#E5E5E5] text-[#999999] hover:bg-[#E5E5E5] cursor-not-allowed',
                 )}
+                disabled={!publicUrl}
                 onClick={(e) => {
                   e.stopPropagation()
                   if (publicUrl) window.open(publicUrl, '_blank')
                 }}
               >
-                🔗 Ver Imóvel
+                <ExternalLink className="w-[16px] h-[16px] mr-[6px]" />
+                Ver no site
+              </Button>
+            </TooltipTrigger>
+            {!publicUrl && (
+              <TooltipContent>
+                <p>Imóvel sem código cadastrado</p>
+              </TooltipContent>
+            )}
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  'w-[44px] h-[44px] p-0 shrink-0 border-[2px]',
+                  publicUrl
+                    ? 'border-[#2E5F8A] text-[#1A3A52] hover:bg-[#F5F5F5]'
+                    : 'border-[#E5E5E5] text-[#999999] hover:bg-transparent cursor-not-allowed',
+                )}
+                disabled={!publicUrl}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  if (publicUrl) handleCopyLink(e)
+                }}
+                title="Compartilhar"
+              >
+                <Share2 className="w-[16px] h-[16px]" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>
-              <p>
-                {publicUrl
-                  ? 'Visualizar imóvel em www.eticimoveis.com.br'
-                  : 'Código do imóvel não informado'}
-              </p>
+              <p>{publicUrl ? 'Compartilhar' : 'Imóvel sem código cadastrado'}</p>
             </TooltipContent>
           </Tooltip>
-
-          <Button
-            variant="outline"
-            className={cn(
-              'w-[44px] h-[44px] p-0 shrink-0 border-[2px]',
-              publicUrl
-                ? 'border-[#2E5F8A] text-[#1A3A52] hover:bg-[#F5F5F5]'
-                : 'border-[#E5E5E5] text-[#999999] hover:bg-transparent cursor-not-allowed',
-            )}
-            onClick={(e) => {
-              e.stopPropagation()
-              if (publicUrl) handleCopyLink(e)
-            }}
-            title="Copiar Link"
-          >
-            📋
-          </Button>
         </div>
 
         {onLink ? (
