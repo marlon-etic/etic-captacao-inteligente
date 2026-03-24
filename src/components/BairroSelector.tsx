@@ -141,9 +141,20 @@ export function BairroSelector({
         </div>
       </div>
 
+      {/*
+        CRITICAL FIX: 
+        Added min-h-0 to flex child to prevent flexbox overflow issues.
+        Added onWheelCapture and onTouchMoveCapture with stopPropagation.
+        This prevents Radix UI's react-remove-scroll from blocking the native 
+        mouse wheel or touch scroll events inside this container.
+      */}
       <div
-        className="flex-1 overflow-y-auto overscroll-contain bg-white pb-6"
+        className="flex-1 overflow-y-auto overscroll-contain bg-white pb-6 min-h-0"
         style={{ WebkitOverflowScrolling: 'touch' }}
+        onWheel={(e) => e.stopPropagation()}
+        onWheelCapture={(e) => e.stopPropagation()}
+        onTouchMove={(e) => e.stopPropagation()}
+        onTouchMoveCapture={(e) => e.stopPropagation()}
       >
         {filteredRegions.length === 0 ? (
           <p className="text-center text-[#999999] text-[14px] py-6">
