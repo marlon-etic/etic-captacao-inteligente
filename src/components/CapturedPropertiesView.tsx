@@ -11,6 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useSupabaseProperties } from '@/hooks/use-supabase-properties'
 import { SyncIndicator } from './SyncIndicator'
 import { VinculacaoModal } from './VinculacaoModal'
+import { PropertyDetailsModal } from './PropertyDetailsModal'
 
 interface Props {
   filterType?: 'Venda' | 'Aluguel'
@@ -44,8 +45,9 @@ export function CapturedPropertiesView({
   const [actionDemand, setActionDemand] = useState<Demand | null>(null)
   const [actionProperty, setActionProperty] = useState<CapturedProperty | null>(null)
   const [vincularProperty, setVincularProperty] = useState<CapturedProperty | null>(null)
+  const [detailsProperty, setDetailsProperty] = useState<CapturedProperty | null>(null)
   const [actionType, setActionType] = useState<
-    'visita' | 'proposta' | 'negocio' | 'lost' | 'history' | 'details' | 'edit' | null
+    'visita' | 'proposta' | 'negocio' | 'lost' | 'history' | 'edit' | null
   >(null)
 
   const FILTERS: FilterDef[] = [
@@ -163,8 +165,19 @@ export function CapturedPropertiesView({
     demand: Demand | undefined,
     property: CapturedProperty,
   ) => {
+    if (import.meta.env.DEV) {
+      console.log(`🔘 [Action] CapturedPropertiesView handleAction: ${type}`, {
+        propertyCode: property.code,
+      })
+    }
+
     if (type === 'vincular') {
       setVincularProperty(property)
+      return
+    }
+    if (type === 'details') {
+      setActionDemand(demand || null)
+      setDetailsProperty(property)
       return
     }
     if (
@@ -185,6 +198,25 @@ export function CapturedPropertiesView({
     setActionDemand(null)
     setActionProperty(null)
   }
+
+  const mappedDetails = useMemo(() => {
+    if (!detailsProperty) return null
+    return {
+      id: detailsProperty.id || 'temp',
+      codigo_imovel: detailsProperty.code,
+      endereco: detailsProperty.neighborhood,
+      preco: detailsProperty.value,
+      tipo: detailsProperty.propertyType || actionDemand?.type || 'Venda',
+      dormitorios: detailsProperty.bedrooms,
+      vagas: detailsProperty.parkingSpots,
+      captador_nome: detailsProperty.captador_name,
+      created_at: detailsProperty.capturedAt || new Date().toISOString(),
+      observacoes: detailsProperty.obs,
+      demanda: actionDemand
+        ? { clientName: actionDemand.clientName, type: actionDemand.type }
+        : null,
+    }
+  }, [detailsProperty, actionDemand])
 
   return (
     <div className="flex flex-col lg:flex-row gap-[24px] items-start w-full animate-fade-in transition-opacity duration-150 ease-in relative z-0">
@@ -280,6 +312,16 @@ export function CapturedPropertiesView({
         }
         onSuccess={() => setVincularProperty(null)}
       />
+
+      {detailsProperty && (
+        <PropertyDetailsModal
+          property={mappedDetails}
+          onClose={() => {
+            setDetailsProperty(null)
+            setActionDemand(null)
+          }}
+        />
+      )}
 
       <SyncIndicator isSyncing={syncing} />
     </div>

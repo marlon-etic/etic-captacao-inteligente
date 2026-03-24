@@ -47,12 +47,18 @@ export function ImovelDetailsSheet({ imovel, onClose, onVincular }: ImovelDetail
 
   const publicUrl = imovel.codigo_imovel ? getPropertyPublicUrl(imovel.codigo_imovel) : ''
 
-  const handleCopyLink = async () => {
+  const handleCopyLink = async (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (import.meta.env.DEV) {
+      console.log(`🔘 [Click] ImovelDetailsSheet Action: compartilhar`, { url: publicUrl })
+    }
     if (!publicUrl) return
     try {
       await navigator.clipboard.writeText(publicUrl)
       toast({ title: 'Sucesso', description: 'Link copiado para clipboard!' })
     } catch (err) {
+      if (import.meta.env.DEV) console.error('Erro ao copiar link', err)
       toast({
         title: 'Erro',
         description: 'Não foi possível copiar o link',
@@ -103,8 +109,8 @@ export function ImovelDetailsSheet({ imovel, onClose, onVincular }: ImovelDetail
                 </CarouselContent>
                 {fotos.length > 1 && (
                   <>
-                    <CarouselPrevious className="left-3 bg-white/90 hover:bg-white border-none shadow-md" />
-                    <CarouselNext className="right-3 bg-white/90 hover:bg-white border-none shadow-md" />
+                    <CarouselPrevious className="left-3 bg-white/90 hover:bg-white border-none shadow-md z-10" />
+                    <CarouselNext className="right-3 bg-white/90 hover:bg-white border-none shadow-md z-10" />
                   </>
                 )}
               </Carousel>
@@ -217,9 +223,16 @@ export function ImovelDetailsSheet({ imovel, onClose, onVincular }: ImovelDetail
           <div className="flex gap-2 w-full">
             <Button
               variant="outline"
-              className="flex-1 font-bold h-[48px] text-[14px] border-[#E5E5E5] hover:bg-[#F8FAFC] text-[#333333]"
+              className="flex-1 font-bold h-[48px] text-[14px] border-[#E5E5E5] hover:bg-[#F8FAFC] text-[#333333] relative z-10"
               disabled={!publicUrl}
-              onClick={() => {
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                if (import.meta.env.DEV) {
+                  console.log(`🔘 [Click] ImovelDetailsSheet Action: ver no site`, {
+                    url: publicUrl,
+                  })
+                }
                 if (publicUrl) window.open(publicUrl, '_blank')
               }}
             >
@@ -227,7 +240,7 @@ export function ImovelDetailsSheet({ imovel, onClose, onVincular }: ImovelDetail
             </Button>
             <Button
               variant="outline"
-              className="flex-1 font-bold h-[48px] text-[14px] border-[#E5E5E5] hover:bg-[#F8FAFC] text-[#333333]"
+              className="flex-1 font-bold h-[48px] text-[14px] border-[#E5E5E5] hover:bg-[#F8FAFC] text-[#333333] relative z-10"
               disabled={!publicUrl}
               onClick={handleCopyLink}
             >
@@ -237,8 +250,15 @@ export function ImovelDetailsSheet({ imovel, onClose, onVincular }: ImovelDetail
 
           {!imovel.has_demanda && (
             <Button
-              className="w-full font-bold h-[48px] bg-[#10B981] hover:bg-[#059669] text-white text-[14px] shadow-sm"
-              onClick={() => onVincular(imovel)}
+              className="w-full font-bold h-[48px] bg-[#10B981] hover:bg-[#059669] text-white text-[14px] shadow-sm relative z-10"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                if (import.meta.env.DEV) {
+                  console.log(`🔘 [Click] ImovelDetailsSheet Action: vincular`, { id: imovel.id })
+                }
+                onVincular(imovel)
+              }}
             >
               <LinkIcon className="w-4 h-4 mr-2" /> Vincular a um Cliente
             </Button>

@@ -26,7 +26,11 @@ export function LoosePropertyCard({
   const [isVinculacaoModalOpen, setIsVinculacaoModalOpen] = useState(false)
 
   const handleCopyLink = async (e: React.MouseEvent) => {
+    e.preventDefault()
     e.stopPropagation()
+    if (import.meta.env.DEV) {
+      console.log(`🔘 [Click] LoosePropertyCard Action: compartilhar`, { url: publicUrl })
+    }
     if (!publicUrl) return
     try {
       await navigator.clipboard.writeText(publicUrl)
@@ -36,6 +40,7 @@ export function LoosePropertyCard({
         duration: 3000,
       })
     } catch (err) {
+      if (import.meta.env.DEV) console.error('Erro ao copiar link', err)
       toast({
         title: 'Erro',
         description: 'Não foi possível copiar o link',
@@ -44,7 +49,14 @@ export function LoosePropertyCard({
     }
   }
 
-  const handleOpenVinculacao = () => {
+  const handleOpenVinculacao = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (import.meta.env.DEV) {
+      console.log(`🔘 [Click] LoosePropertyCard Action: vincular a um cliente`, {
+        code: property.code,
+      })
+    }
     setIsVinculacaoModalOpen(true)
   }
 
@@ -55,8 +67,8 @@ export function LoosePropertyCard({
 
   return (
     <>
-      <Card className="overflow-hidden flex flex-col h-full border-[2px] border-[#2E5F8A] hover:shadow-[0_8px_24px_rgba(26,58,82,0.15)] relative transition-all bg-[#FFFFFF] rounded-[12px]">
-        <div className="relative h-48 w-full bg-[#F5F5F5]">
+      <Card className="overflow-hidden flex flex-col h-full border-[2px] border-[#2E5F8A] hover:shadow-[0_8px_24px_rgba(26,58,82,0.15)] relative transition-all bg-[#FFFFFF] rounded-[12px] z-0">
+        <div className="relative h-48 w-full bg-[#F5F5F5] pointer-events-none">
           <img
             src={
               property.photoUrl ||
@@ -74,7 +86,7 @@ export function LoosePropertyCard({
             </Badge>
           </div>
         </div>
-        <CardContent className="p-[16px] flex-grow flex flex-col gap-2">
+        <CardContent className="p-[16px] flex-grow flex flex-col gap-2 pointer-events-none">
           <div className="flex justify-between items-start gap-2">
             <h4 className="font-bold text-[18px] line-clamp-1 flex-1 text-[#1A3A52]">
               {property.propertyType === 'Aluguel' ? '🏠 Locação' : '🏢 Venda'}
@@ -88,19 +100,24 @@ export function LoosePropertyCard({
             </span>
           </div>
 
-          <p className="text-[14px] text-[#333333] font-medium flex items-center gap-1.5 mt-1">
+          <p className="text-[14px] text-[#333333] font-medium flex items-center gap-1.5 mt-1 pointer-events-auto">
             <span>🏷️ Código:</span>
             <a
               href={publicUrl || '#'}
               target="_blank"
               rel="noopener noreferrer"
               className={cn(
-                'font-bold text-[#1A3A52] hover:underline',
+                'font-bold text-[#1A3A52] hover:underline relative z-10',
                 !publicUrl && 'pointer-events-none text-gray-400',
               )}
               onClick={(e) => {
-                if (!publicUrl) e.preventDefault()
                 e.stopPropagation()
+                if (import.meta.env.DEV) {
+                  console.log(`🔘 [Click] LoosePropertyCard Action: url clicked`, {
+                    url: publicUrl,
+                  })
+                }
+                if (!publicUrl) e.preventDefault()
               }}
             >
               {property.code || 'N/A'}
@@ -154,20 +171,26 @@ export function LoosePropertyCard({
           )}
         </CardContent>
 
-        <div className="p-[16px] pt-0 mt-auto flex flex-col gap-2">
+        <div className="p-[16px] pt-0 mt-auto flex flex-col gap-2 relative z-10">
           <div className="flex flex-row gap-[8px] w-full mb-2">
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   className={cn(
-                    'flex-1 font-bold min-h-[44px]',
+                    'flex-1 font-bold min-h-[44px] relative z-10',
                     publicUrl
                       ? 'bg-[#1A3A52] hover:bg-[#153045] text-white'
                       : 'bg-[#E5E5E5] text-[#999999] hover:bg-[#E5E5E5] cursor-not-allowed',
                   )}
                   disabled={!publicUrl}
                   onClick={(e) => {
+                    e.preventDefault()
                     e.stopPropagation()
+                    if (import.meta.env.DEV) {
+                      console.log(`🔘 [Click] LoosePropertyCard Action: ver no site`, {
+                        url: publicUrl,
+                      })
+                    }
                     if (publicUrl) window.open(publicUrl, '_blank')
                   }}
                 >
@@ -187,16 +210,13 @@ export function LoosePropertyCard({
                 <Button
                   variant="outline"
                   className={cn(
-                    'w-[44px] h-[44px] p-0 shrink-0 border-[2px]',
+                    'w-[44px] h-[44px] p-0 shrink-0 border-[2px] relative z-10',
                     publicUrl
                       ? 'border-[#2E5F8A] text-[#1A3A52] hover:bg-[#F5F5F5]'
                       : 'border-[#E5E5E5] text-[#999999] hover:bg-transparent cursor-not-allowed',
                   )}
                   disabled={!publicUrl}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    if (publicUrl) handleCopyLink(e)
-                  }}
+                  onClick={handleCopyLink}
                   title="Compartilhar"
                 >
                   <Share2 className="w-[16px] h-[16px]" />
@@ -210,7 +230,7 @@ export function LoosePropertyCard({
 
           <Button
             size="sm"
-            className="w-full bg-[#1A3A52] hover:bg-[#2E5F8A] text-white shadow-sm font-semibold min-h-[44px]"
+            className="w-full bg-[#1A3A52] hover:bg-[#2E5F8A] text-white shadow-sm font-semibold min-h-[44px] relative z-10"
             onClick={handleOpenVinculacao}
           >
             🔗 VINCULAR A UM CLIENTE
@@ -220,8 +240,17 @@ export function LoosePropertyCard({
             <Button
               size="sm"
               variant="outline"
-              className="w-full min-h-[44px] font-bold border-[#E5E5E5] text-[#333333] hover:bg-[#F5F5F5]"
-              onClick={() => onIgnore(property.code)}
+              className="w-full min-h-[44px] font-bold border-[#E5E5E5] text-[#333333] hover:bg-[#F5F5F5] relative z-10"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                if (import.meta.env.DEV) {
+                  console.log(`🔘 [Click] LoosePropertyCard Action: ignorar`, {
+                    code: property.code,
+                  })
+                }
+                onIgnore(property.code)
+              }}
             >
               ❌ Não me interessa
             </Button>

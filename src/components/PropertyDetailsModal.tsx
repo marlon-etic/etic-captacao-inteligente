@@ -14,8 +14,8 @@ export function PropertyDetailsModal({ property, onClose }: Props) {
 
   return (
     <Dialog open={!!property} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="w-[95vw] max-w-lg rounded-2xl p-0 overflow-hidden bg-white">
-        <DialogHeader className="p-5 bg-slate-50 border-b border-gray-100">
+      <DialogContent className="w-[95vw] max-w-lg rounded-2xl p-0 overflow-hidden bg-white z-[1100]">
+        <DialogHeader className="p-5 bg-slate-50 border-b border-gray-100 relative z-10">
           <DialogTitle className="flex items-center justify-between text-xl font-black text-[#1A3A52]">
             <span>Detalhes do Imóvel</span>
             <Badge className="bg-[#1A3A52] px-3 py-1 shadow-sm text-sm">
@@ -24,9 +24,9 @@ export function PropertyDetailsModal({ property, onClose }: Props) {
           </DialogTitle>
         </DialogHeader>
 
-        <div className="p-5 space-y-6 max-h-[75vh] overflow-y-auto">
+        <div className="p-5 space-y-6 max-h-[75vh] overflow-y-auto relative z-0">
           {/* Header Stats */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-4 pointer-events-none">
             <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-100 shadow-sm">
               <p className="text-[11px] text-emerald-600 font-black uppercase tracking-wider mb-1">
                 Valor
@@ -46,7 +46,7 @@ export function PropertyDetailsModal({ property, onClose }: Props) {
           </div>
 
           {/* Main Info */}
-          <div className="space-y-5 bg-gray-50 p-4 rounded-xl border border-gray-100">
+          <div className="space-y-5 bg-gray-50 p-4 rounded-xl border border-gray-100 pointer-events-none">
             <div className="flex gap-3">
               <MapPin className="w-5 h-5 text-gray-400 shrink-0 mt-0.5" />
               <div>
@@ -77,7 +77,7 @@ export function PropertyDetailsModal({ property, onClose }: Props) {
           </div>
 
           {/* Features Grid */}
-          <div className="grid grid-cols-3 gap-3 border-y border-gray-100 py-5">
+          <div className="grid grid-cols-3 gap-3 border-y border-gray-100 py-5 pointer-events-none">
             <div className="flex flex-col items-center justify-center p-3 bg-white border border-gray-100 rounded-xl shadow-sm">
               <p className="text-[10px] text-gray-500 font-bold uppercase mb-1">Dormitórios</p>
               <p className="text-2xl font-black text-[#1A3A52]">{property.dormitorios || 0}</p>
@@ -95,7 +95,7 @@ export function PropertyDetailsModal({ property, onClose }: Props) {
           </div>
 
           {/* Demand Linked */}
-          <div>
+          <div className="pointer-events-none">
             <div className="flex items-center gap-2 mb-3">
               <User className="w-4 h-4 text-gray-400" />
               <p className="text-[11px] text-gray-500 font-black uppercase tracking-wider">
@@ -133,7 +133,7 @@ export function PropertyDetailsModal({ property, onClose }: Props) {
 
           {/* Observations */}
           {property.observacoes && (
-            <div>
+            <div className="pointer-events-none">
               <div className="flex items-center gap-2 mb-3">
                 <FileText className="w-4 h-4 text-gray-400" />
                 <p className="text-[11px] text-gray-500 font-black uppercase tracking-wider">

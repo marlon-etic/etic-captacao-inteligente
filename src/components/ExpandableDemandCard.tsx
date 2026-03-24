@@ -46,7 +46,10 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
     demand.corretor_id === currentUser?.id
 
   const togglePriority = async (e: React.MouseEvent) => {
+    e.preventDefault()
     e.stopPropagation()
+    if (import.meta.env.DEV)
+      console.log(`🔘 [Click] ExpandableDemandCard Action: prioritize`, { id: demand.id })
     if (isPrioritizing || !isOwnerOrAdmin) return
     setIsPrioritizing(true)
 
@@ -134,12 +137,18 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
   }
 
   const handleEncontrei = (e: React.MouseEvent) => {
+    e.preventDefault()
     e.stopPropagation()
+    if (import.meta.env.DEV)
+      console.log(`🔘 [Click] ExpandableDemandCard Action: encontrei`, { id: demand.id })
     setIsCaptureModalOpen(true)
   }
 
   const handleNaoEncontrei = (e: React.MouseEvent) => {
+    e.preventDefault()
     e.stopPropagation()
+    if (import.meta.env.DEV)
+      console.log(`🔘 [Click] ExpandableDemandCard Action: nao_encontrei`, { id: demand.id })
     setIsNaoEncontreiModalOpen(true)
   }
 
@@ -186,7 +195,10 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
     }
   }
 
-  const openDetails = () => {
+  const openDetails = (e: React.MouseEvent) => {
+    e.preventDefault() // prevent default if it's within a link or something
+    if (import.meta.env.DEV)
+      console.log(`🔘 [Click] ExpandableDemandCard Card Action: details`, { id: demand.id })
     setIsDetailsModalOpen(true)
   }
 
@@ -244,7 +256,7 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
       <Card
         onClick={openDetails}
         className={cn(
-          'w-full relative overflow-hidden rounded-[16px] border shadow-sm hover:shadow-md transition-all duration-200 bg-gradient-to-b cursor-pointer group',
+          'w-full relative overflow-hidden rounded-[16px] border shadow-sm hover:shadow-md transition-all duration-200 bg-gradient-to-b cursor-pointer group z-0',
           demand.is_prioritaria
             ? 'from-[#FFFBEB] to-white border-[#FCD34D]'
             : 'from-[#F2FBF5] to-white border-[#E5E5E5]',
@@ -290,7 +302,7 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
                 onClick={togglePriority}
                 disabled={isPrioritizing}
                 className={cn(
-                  'flex items-center justify-center w-8 h-8 rounded-full transition-all border shadow-sm focus:outline-none focus:ring-2 focus:ring-[#F59E0B] focus:ring-offset-1 disabled:opacity-50 shrink-0 absolute right-4 sm:relative sm:right-auto',
+                  'flex items-center justify-center w-8 h-8 rounded-full transition-all border shadow-sm focus:outline-none focus:ring-2 focus:ring-[#F59E0B] focus:ring-offset-1 disabled:opacity-50 shrink-0 absolute right-4 sm:relative sm:right-auto relative z-10',
                   demand.is_prioritaria
                     ? 'bg-[#FFFBEB] border-[#FCD34D] hover:bg-[#FEF3C7]'
                     : 'bg-white border-[#E5E5E5] hover:bg-[#F5F5F5] hover:border-[#FCD34D] group-hover:border-[#FCD34D]/50',
@@ -310,7 +322,7 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
           </div>
         </div>
 
-        <div className="p-4 flex flex-col gap-3">
+        <div className="p-4 flex flex-col gap-3 pointer-events-none">
           <h3
             className="text-[18px] font-black text-[#1A3A52] leading-tight pr-24 line-clamp-1 group-hover:text-[#2E5F8A] transition-colors"
             title={demand.nome_cliente}
@@ -358,29 +370,29 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
                 'Nenhum cliente específico — qualquer imóvel que se encaixe serve!'}
             </p>
           </div>
-
-          {(demand.status_demanda === 'aberta' || demand.status_demanda === 'sem_resposta_24h') &&
-            currentUser?.role === 'captador' && (
-              <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-[#E5E5E5]">
-                <Button
-                  onClick={handleEncontrei}
-                  disabled={isSubmitting}
-                  className="w-full min-h-[48px] bg-[#10B981] hover:bg-[#059669] text-white font-bold text-[14px] lg:text-[16px] px-1 lg:px-2 shadow-[0_4px_12px_rgba(16,185,129,0.3)] transition-transform hover:scale-[1.02] z-10"
-                >
-                  <CheckCircle className="w-4 h-4 lg:w-5 lg:h-5 mr-1.5 shrink-0" />{' '}
-                  <span className="truncate">ENCONTREI</span>
-                </Button>
-                <Button
-                  onClick={handleNaoEncontrei}
-                  disabled={isSubmitting}
-                  className="w-full min-h-[48px] bg-[#EF4444] hover:bg-[#DC2626] text-white font-bold text-[14px] lg:text-[16px] px-1 lg:px-2 shadow-[0_4px_12px_rgba(239,68,68,0.3)] transition-transform hover:scale-[1.02] z-10"
-                >
-                  <XCircle className="w-4 h-4 lg:w-5 lg:h-5 mr-1.5 shrink-0" />{' '}
-                  <span className="truncate">NÃO ENCONTREI</span>
-                </Button>
-              </div>
-            )}
         </div>
+
+        {(demand.status_demanda === 'aberta' || demand.status_demanda === 'sem_resposta_24h') &&
+          currentUser?.role === 'captador' && (
+            <div className="grid grid-cols-2 gap-2 mt-3 p-4 pt-3 border-t border-[#E5E5E5]">
+              <Button
+                onClick={handleEncontrei}
+                disabled={isSubmitting}
+                className="w-full min-h-[48px] bg-[#10B981] hover:bg-[#059669] text-white font-bold text-[14px] lg:text-[16px] px-1 lg:px-2 shadow-[0_4px_12px_rgba(16,185,129,0.3)] transition-transform hover:scale-[1.02] relative z-10"
+              >
+                <CheckCircle className="w-4 h-4 lg:w-5 lg:h-5 mr-1.5 shrink-0" />{' '}
+                <span className="truncate">ENCONTREI</span>
+              </Button>
+              <Button
+                onClick={handleNaoEncontrei}
+                disabled={isSubmitting}
+                className="w-full min-h-[48px] bg-[#EF4444] hover:bg-[#DC2626] text-white font-bold text-[14px] lg:text-[16px] px-1 lg:px-2 shadow-[0_4px_12px_rgba(239,68,68,0.3)] transition-transform hover:scale-[1.02] relative z-10"
+              >
+                <XCircle className="w-4 h-4 lg:w-5 lg:h-5 mr-1.5 shrink-0" />{' '}
+                <span className="truncate">NÃO ENCONTREI</span>
+              </Button>
+            </div>
+          )}
       </Card>
 
       <DemandDetailsModal

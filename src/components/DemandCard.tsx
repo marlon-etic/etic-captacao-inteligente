@@ -22,7 +22,7 @@ interface DemandCardProps {
 }
 
 const InfoItem = ({ label, value }: { label: string; value: React.ReactNode }) => (
-  <div className="flex flex-col gap-[4px]">
+  <div className="flex flex-col gap-[4px] pointer-events-none">
     <span className="text-[12px] text-[#333333] leading-tight font-medium">{label}</span>
     <span className="text-[16px] font-bold text-[#1A3A52] break-words whitespace-normal leading-tight">
       {value}
@@ -191,7 +191,12 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
   else if (slaLevel === 'red') indicatorColor = 'bg-[#F44336]'
   else if (slaLevel === 'orange') indicatorColor = 'bg-[#FF9800]'
 
-  const handleProrrogar = async () => {
+  const handleProrrogar = async (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (import.meta.env.DEV) {
+      console.log(`🔘 [Click] DemandCard Action: prorrogar`, { id: demand.id })
+    }
     if (!prazoDb || isExtending) return
     setIsExtending(true)
     try {
@@ -222,7 +227,7 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
     >
       <Card
         className={cn(
-          'w-full h-full p-[16px] flex flex-col rounded-[12px] transition-all duration-300 ease-in-out shadow-[0_4px_12px_rgba(26,58,82,0.1)] hover:shadow-[0_8px_24px_rgba(26,58,82,0.15)] relative overflow-hidden',
+          'w-full h-full p-[16px] flex flex-col rounded-[12px] transition-all duration-300 ease-in-out shadow-[0_4px_12px_rgba(26,58,82,0.1)] hover:shadow-[0_8px_24px_rgba(26,58,82,0.15)] relative overflow-hidden z-0',
           cardBg,
           isJustPrioritized && 'animate-glow-pulse',
           isJustLost && 'animate-fade-out opacity-0',
@@ -249,7 +254,7 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
           </div>
         )}
 
-        <div className="flex justify-between items-start mb-4 gap-2 z-0 relative">
+        <div className="flex justify-between items-start mb-4 gap-2 z-0 relative pointer-events-none">
           <div
             className={cn(
               'flex items-center justify-start px-3 py-1.5 gap-[6px] rounded-[6px] shadow-[0_2px_4px_rgba(26,58,82,0.1)] shrink-0 overflow-hidden min-h-[28px]',
@@ -276,7 +281,7 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start pb-4 z-0 relative">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start pb-4 z-0 relative pointer-events-none">
           <h3 className="text-[20px] font-bold text-[#1A3A52] break-words whitespace-normal leading-tight m-0 pr-2">
             {demand.clientName}
           </h3>
@@ -297,7 +302,7 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
         </div>
 
         {isPending && !isLost && (
-          <div className="pb-4 z-0 relative">
+          <div className="pb-4 z-0 relative pointer-events-none">
             <Progress
               value={slaProgress}
               className="h-[8px] bg-[#F5F5F5] shadow-[inset_0_1px_2px_rgba(26,58,82,0.1)]"
@@ -308,7 +313,7 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
 
         <div
           className={cn(
-            'grid grid-cols-1 min-[480px]:grid-cols-2 gap-[16px] py-4 border-t flex-1 z-0 relative transition-colors duration-300',
+            'grid grid-cols-1 min-[480px]:grid-cols-2 gap-[16px] py-4 border-t flex-1 z-0 relative transition-colors duration-300 pointer-events-none',
             isLost ? 'border-[#999999]/30' : isNew ? 'border-[#4CAF50]/20' : 'border-[#2E5F8A]/20',
           )}
         >
@@ -333,7 +338,7 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
 
         <div
           className={cn(
-            'flex flex-col gap-[8px] pt-4 mt-auto border-t shrink-0 z-0 relative transition-colors duration-300',
+            'flex flex-col gap-[8px] pt-4 mt-auto border-t shrink-0 z-10 relative transition-colors duration-300',
             isLost
               ? 'border-[#999999]/30 opacity-80 grayscale'
               : isNew
@@ -344,10 +349,17 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
           <div className="flex flex-col xl:flex-row gap-[8px] w-full">
             <Button
               className={cn(
-                'min-h-[44px] w-full xl:w-auto flex-1 font-bold whitespace-normal break-words text-[14px]',
+                'min-h-[44px] w-full xl:w-auto flex-1 font-bold whitespace-normal break-words text-[14px] relative z-10',
                 btnSoft,
               )}
-              onClick={() => setShowDetails(true)}
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                if (import.meta.env.DEV) {
+                  console.log(`🔘 [Click] DemandCard Action: details`, { id: demand.id })
+                }
+                setShowDetails(true)
+              }}
             >
               <Eye className="w-4 h-4 mr-2" /> Ver Detalhes
             </Button>
@@ -358,19 +370,35 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
                   <>
                     <Button
                       className={cn(
-                        'min-h-[44px] flex-1 font-bold whitespace-normal break-words text-[14px] px-2 shadow-md transition-transform hover:scale-[1.02]',
+                        'min-h-[44px] flex-1 font-bold whitespace-normal break-words text-[14px] px-2 shadow-md transition-transform hover:scale-[1.02] relative z-10',
                         btnSolid,
                       )}
-                      onClick={() => onAction?.(demand.id, 'encontrei')}
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        if (import.meta.env.DEV) {
+                          console.log(`🔘 [Click] DemandCard Action: encontrei`, { id: demand.id })
+                        }
+                        onAction?.(demand.id, 'encontrei')
+                      }}
                       disabled={isLost}
                     >
                       ✅ Encontrei
                     </Button>
                     <Button
                       className={cn(
-                        'min-h-[44px] flex-1 font-bold whitespace-normal break-words text-[14px] px-2 shadow-md transition-transform hover:scale-[1.02] bg-[#EF4444] hover:bg-[#DC2626] text-white border-none',
+                        'min-h-[44px] flex-1 font-bold whitespace-normal break-words text-[14px] px-2 shadow-md transition-transform hover:scale-[1.02] bg-[#EF4444] hover:bg-[#DC2626] text-white border-none relative z-10',
                       )}
-                      onClick={() => onAction?.(demand.id, 'nao_encontrei')}
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        if (import.meta.env.DEV) {
+                          console.log(`🔘 [Click] DemandCard Action: nao_encontrei`, {
+                            id: demand.id,
+                          })
+                        }
+                        onAction?.(demand.id, 'nao_encontrei')
+                      }}
                       disabled={isLost}
                     >
                       ❌ Não Encontrei
@@ -380,7 +408,7 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
                 {isPending && !isLost && (prazoDb?.prorrogacoes_usadas || 0) < 3 && (
                   <Button
                     className={cn(
-                      'min-h-[44px] flex-1 font-bold whitespace-normal break-words text-[14px] px-2 shadow-md transition-transform hover:scale-[1.02] bg-[#3B82F6] hover:bg-[#2563EB] text-white border-none',
+                      'min-h-[44px] flex-1 font-bold whitespace-normal break-words text-[14px] px-2 shadow-md transition-transform hover:scale-[1.02] bg-[#3B82F6] hover:bg-[#2563EB] text-white border-none relative z-10',
                     )}
                     onClick={handleProrrogar}
                     disabled={isExtending}
@@ -395,24 +423,36 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
           <div className="flex flex-row w-full gap-[8px]">
             <Button
               className={cn(
-                'min-h-[44px] flex-1 font-bold whitespace-normal break-words text-[14px]',
+                'min-h-[44px] flex-1 font-bold whitespace-normal break-words text-[14px] relative z-10',
                 'bg-transparent text-[#1A3A52] hover:bg-[#F5F5F5] border-[2px] border-[#1A3A52]',
               )}
-              onClick={() =>
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                if (import.meta.env.DEV) {
+                  console.log(`🔘 [Click] DemandCard Action: contato`, { id: demand.id })
+                }
                 logSolicitorContactAttempt(
                   demand.id,
                   'interno',
                   'Olá, gostaria de falar sobre esta demanda.',
                 )
-              }
+              }}
             >
               💬 Contato
             </Button>
             {canMarkLost && (
               <Button
                 variant="destructive"
-                className="min-h-[44px] flex-1 font-bold whitespace-normal break-words text-[14px]"
-                onClick={() => setShowLostModal(true)}
+                className="min-h-[44px] flex-1 font-bold whitespace-normal break-words text-[14px] relative z-10"
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  if (import.meta.env.DEV) {
+                    console.log(`🔘 [Click] DemandCard Action: lost modal`, { id: demand.id })
+                  }
+                  setShowLostModal(true)
+                }}
               >
                 ❌ Perdida
               </Button>

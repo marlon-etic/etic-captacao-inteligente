@@ -44,13 +44,28 @@ export function CapturedPropertyCard({
     return new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 }).format(val)
   }
 
-  const handleAction = (type: 'visita' | 'negocio' | 'details' | 'edit' | 'vincular') => {
+  const handleActionClick = (
+    e: React.MouseEvent,
+    type: 'visita' | 'negocio' | 'details' | 'edit' | 'vincular',
+  ) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (import.meta.env.DEV) {
+      console.log(`🔘 [Click] CapturedPropertyCard Action: ${type}`, { code: property.code })
+    }
     if (onAction) {
       onAction(type, demand, property)
     }
   }
 
-  const handleWhatsApp = () => {
+  const handleWhatsApp = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (import.meta.env.DEV) {
+      console.log(`🔘 [Click] CapturedPropertyCard Action: whatsapp`, {
+        phone: solicitanteUser?.phone,
+      })
+    }
     if (solicitanteUser?.phone) {
       const phone = solicitanteUser.phone.replace(/\D/g, '')
       const msg = encodeURIComponent(
@@ -69,7 +84,11 @@ export function CapturedPropertyCard({
   const publicUrl = getPropertyPublicUrl(property.code)
 
   const handleCopyLink = async (e: React.MouseEvent) => {
+    e.preventDefault()
     e.stopPropagation()
+    if (import.meta.env.DEV) {
+      console.log(`🔘 [Click] CapturedPropertyCard Action: compartilhar`, { url: publicUrl })
+    }
     if (!publicUrl) return
     try {
       await navigator.clipboard.writeText(publicUrl)
@@ -79,6 +98,7 @@ export function CapturedPropertyCard({
         duration: 3000,
       })
     } catch (err) {
+      if (import.meta.env.DEV) console.error('Erro ao copiar link', err)
       toast({
         title: 'Erro',
         description: 'Não foi possível copiar o link',
@@ -109,13 +129,13 @@ export function CapturedPropertyCard({
     currentUser?.role === 'gestor'
 
   const interactiveClass = isCaptador
-    ? 'text-[#1A3A52] cursor-pointer hover:underline transition-colors'
+    ? 'text-[#1A3A52] cursor-pointer hover:underline transition-colors relative z-10'
     : 'text-[#333333]'
 
   return (
     <Card className="w-full h-full min-h-[160px] rounded-[12px] border-[2px] border-[#2E5F8A] hover:shadow-[0_8px_16px_rgba(26,58,82,0.15)] flex flex-col bg-[#FFFFFF] transition-all duration-200 p-[16px]">
       <CardContent className="p-0 flex flex-col flex-1">
-        <div className="flex justify-between items-start mb-[12px] gap-[8px]">
+        <div className="flex justify-between items-start mb-[12px] gap-[8px] z-0">
           <Badge className="font-bold text-[10px] text-white px-2 py-1 bg-[#1A3A52]">
             {isAluguel ? '🏠 ALUGUEL' : '🏢 VENDA'}
           </Badge>
@@ -129,11 +149,11 @@ export function CapturedPropertyCard({
           </div>
         </div>
 
-        <div className="flex flex-col gap-[6px] flex-grow">
+        <div className="flex flex-col gap-[6px] flex-grow z-0 relative">
           <div className="text-[14px] leading-tight flex items-center gap-1">
             <span
               className={cn(interactiveClass, 'font-bold')}
-              onClick={() => isCaptador && handleAction('edit')}
+              onClick={(e) => isCaptador && handleActionClick(e, 'edit')}
             >
               🏷️ Código:
             </span>
@@ -142,12 +162,15 @@ export function CapturedPropertyCard({
               target="_blank"
               rel="noopener noreferrer"
               className={cn(
-                'font-bold text-[#1A3A52] hover:underline',
+                'font-bold text-[#1A3A52] hover:underline relative z-10',
                 !publicUrl && 'pointer-events-none text-gray-400',
               )}
               onClick={(e) => {
-                if (!publicUrl) e.preventDefault()
                 e.stopPropagation()
+                if (import.meta.env.DEV) {
+                  console.log(`🔘 [Click] CapturedPropertyCard URL clicked`, { url: publicUrl })
+                }
+                if (!publicUrl) e.preventDefault()
               }}
             >
               {property.code || 'Não informado'}
@@ -155,19 +178,19 @@ export function CapturedPropertyCard({
           </div>
           <p
             className={cn('text-[12px] leading-tight', interactiveClass)}
-            onClick={() => isCaptador && handleAction('edit')}
+            onClick={(e) => isCaptador && handleActionClick(e, 'edit')}
           >
             📍 Localização: {property.neighborhood}
           </p>
           <p
             className={cn('text-[14px] font-bold mt-[2px]', interactiveClass)}
-            onClick={() => isCaptador && handleAction('edit')}
+            onClick={(e) => isCaptador && handleActionClick(e, 'edit')}
           >
             💰 Valor: R$ {formatPrice(property.value)}
           </p>
           <p
             className={cn('text-[12px] mt-[2px]', interactiveClass)}
-            onClick={() => isCaptador && handleAction('edit')}
+            onClick={(e) => isCaptador && handleActionClick(e, 'edit')}
           >
             🏠 Perfil: {property.bedrooms || 0} dorm, {property.bathrooms || 0} banh,{' '}
             {property.parkingSpots || 0} vagas
@@ -187,30 +210,36 @@ export function CapturedPropertyCard({
               'mt-[8px] pt-[8px] border-t border-[#E5E5E5] text-[12px]',
               isCaptador ? interactiveClass : 'text-[#333333]',
             )}
-            onClick={() => isCaptador && handleAction('edit')}
+            onClick={(e) => isCaptador && handleActionClick(e, 'edit')}
           >
             📝 Observações: <span className="italic">{property.obs || 'Nenhuma observação'}</span>
           </div>
         </div>
 
-        <div className="flex flex-col gap-[8px] mt-[16px] w-full">
+        <div className="flex flex-col gap-[8px] mt-[16px] w-full z-10 relative">
           <div className="flex flex-row gap-[8px] w-full">
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   className={cn(
-                    'flex-1 font-bold min-h-[44px]',
+                    'flex-1 font-bold min-h-[44px] relative z-10',
                     publicUrl
                       ? 'bg-[#1A3A52] enabled:hover:bg-[#153045] text-white'
                       : 'bg-[#E5E5E5] text-[#999999]',
                   )}
                   disabled={!publicUrl}
                   onClick={(e) => {
+                    e.preventDefault()
                     e.stopPropagation()
+                    if (import.meta.env.DEV) {
+                      console.log(`🔘 [Click] CapturedPropertyCard Action: ver no site`, {
+                        url: publicUrl,
+                      })
+                    }
                     if (publicUrl) window.open(publicUrl, '_blank')
                   }}
                 >
-                  <ExternalLink className="w-[16px] h-[16px]" />
+                  <ExternalLink className="w-[16px] h-[16px] mr-[6px]" />
                   Ver no site
                 </Button>
               </TooltipTrigger>
@@ -226,16 +255,13 @@ export function CapturedPropertyCard({
                 <Button
                   variant="outline"
                   className={cn(
-                    'w-[44px] h-[44px] p-0 shrink-0 border-[2px]',
+                    'w-[44px] h-[44px] p-0 shrink-0 border-[2px] relative z-10',
                     publicUrl
                       ? 'border-[#2E5F8A] text-[#1A3A52] enabled:hover:bg-[#F5F5F5]'
                       : 'border-[#E5E5E5] text-[#999999]',
                   )}
                   disabled={!publicUrl}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    if (publicUrl) handleCopyLink(e)
-                  }}
+                  onClick={handleCopyLink}
                   title="Compartilhar"
                 >
                   <Share2 className="w-[16px] h-[16px]" />
@@ -252,25 +278,25 @@ export function CapturedPropertyCard({
               <>
                 <Button
                   variant="outline"
-                  className="flex-1 min-h-[44px] border-[#2E5F8A] text-[#1A3A52] enabled:hover:bg-[#F5F5F5] font-bold text-[12px] px-2"
-                  onClick={() => handleAction('edit')}
+                  className="flex-1 min-h-[44px] border-[#2E5F8A] text-[#1A3A52] enabled:hover:bg-[#F5F5F5] font-bold text-[12px] px-2 relative z-10"
+                  onClick={(e) => handleActionClick(e, 'edit')}
                 >
-                  <Edit2 className="w-[14px] h-[14px]" />
+                  <Edit2 className="w-[14px] h-[14px] mr-1" />
                   Editar
                 </Button>
                 <Button
                   variant="outline"
-                  className="flex-1 min-h-[44px] border-[#2E5F8A] text-[#1A3A52] enabled:hover:bg-[#F5F5F5] font-bold text-[12px] px-2"
-                  onClick={() => handleAction('details')}
+                  className="flex-1 min-h-[44px] border-[#2E5F8A] text-[#1A3A52] enabled:hover:bg-[#F5F5F5] font-bold text-[12px] px-2 relative z-10"
+                  onClick={(e) => handleActionClick(e, 'details')}
                 >
-                  <BookOpen className="w-[14px] h-[14px]" />
+                  <BookOpen className="w-[14px] h-[14px] mr-1" />
                   Ver Detalhes
                 </Button>
                 <Button
-                  className="w-full min-h-[44px] bg-[#25D366] enabled:hover:bg-[#128C7E] text-white font-bold text-[12px] px-2 border border-transparent"
+                  className="w-full min-h-[44px] bg-[#25D366] enabled:hover:bg-[#128C7E] text-white font-bold text-[12px] px-2 border border-transparent relative z-10"
                   onClick={handleWhatsApp}
                 >
-                  <MessageCircle className="w-[14px] h-[14px]" />
+                  <MessageCircle className="w-[14px] h-[14px] mr-1" />
                   Contatar Solicitante
                 </Button>
               </>
@@ -279,39 +305,39 @@ export function CapturedPropertyCard({
             {isSDRCorretorAdmin && (
               <>
                 <Button
-                  className="flex-1 min-h-[44px] bg-[#10B981] enabled:hover:bg-[#059669] text-white font-bold text-[12px] px-2 border border-transparent shadow-sm"
-                  onClick={() => handleAction('vincular')}
+                  className="flex-1 min-h-[44px] bg-[#10B981] enabled:hover:bg-[#059669] text-white font-bold text-[12px] px-2 border border-transparent shadow-sm relative z-10"
+                  onClick={(e) => handleActionClick(e, 'vincular')}
                 >
-                  <Link2 className="w-[14px] h-[14px]" />
+                  <Link2 className="w-[14px] h-[14px] mr-1" />
                   <span className="hidden sm:inline">VINCULAR</span>
                   <span className="sm:hidden">Vincular</span>
                 </Button>
                 {!isClosed && !isVisita && (
                   <Button
-                    className="flex-1 min-h-[44px] bg-[#FF9800] enabled:hover:bg-[#F57C00] text-white font-bold text-[12px] px-2 border border-transparent shadow-sm"
-                    onClick={() => handleAction('visita')}
+                    className="flex-1 min-h-[44px] bg-[#FF9800] enabled:hover:bg-[#F57C00] text-white font-bold text-[12px] px-2 border border-transparent shadow-sm relative z-10"
+                    onClick={(e) => handleActionClick(e, 'visita')}
                   >
-                    <Eye className="w-[14px] h-[14px]" />
+                    <Eye className="w-[14px] h-[14px] mr-1" />
                     <span className="hidden sm:inline">VISITA AGENDADA</span>
                     <span className="sm:hidden">Visita</span>
                   </Button>
                 )}
                 {isVisita && (
                   <Button
-                    className="flex-1 min-h-[44px] bg-[#4CAF50] enabled:hover:bg-[#388E3C] text-white font-bold text-[12px] px-2 border border-transparent shadow-sm"
-                    onClick={() => handleAction('negocio')}
+                    className="flex-1 min-h-[44px] bg-[#4CAF50] enabled:hover:bg-[#388E3C] text-white font-bold text-[12px] px-2 border border-transparent shadow-sm relative z-10"
+                    onClick={(e) => handleActionClick(e, 'negocio')}
                   >
-                    <Handshake className="w-[14px] h-[14px]" />
+                    <Handshake className="w-[14px] h-[14px] mr-1" />
                     <span className="hidden sm:inline">NEGÓCIO FECHADO</span>
                     <span className="sm:hidden">Fechado</span>
                   </Button>
                 )}
                 <Button
                   variant="outline"
-                  className="flex-1 min-h-[44px] border-[#2E5F8A] text-[#1A3A52] enabled:hover:bg-[#F5F5F5] font-bold text-[12px] px-2"
-                  onClick={() => handleAction('details')}
+                  className="flex-1 min-h-[44px] border-[#2E5F8A] text-[#1A3A52] enabled:hover:bg-[#F5F5F5] font-bold text-[12px] px-2 relative z-10"
+                  onClick={(e) => handleActionClick(e, 'details')}
                 >
-                  <BookOpen className="w-[14px] h-[14px]" />
+                  <BookOpen className="w-[14px] h-[14px] mr-1" />
                   <span className="hidden sm:inline">Ver Detalhes</span>
                   <span className="sm:hidden">Detalhes</span>
                 </Button>

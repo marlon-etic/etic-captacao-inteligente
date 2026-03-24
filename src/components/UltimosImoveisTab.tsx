@@ -43,7 +43,11 @@ export function UltimosImoveisTab() {
   const { toast } = useToast()
 
   const handleCopyLink = async (e: React.MouseEvent, url: string) => {
+    e.preventDefault()
     e.stopPropagation()
+    if (import.meta.env.DEV) {
+      console.log(`🔘 [Click] UltimosImoveisTab Action: compartilhar`, { url })
+    }
     try {
       await navigator.clipboard.writeText(url)
       toast({
@@ -52,6 +56,7 @@ export function UltimosImoveisTab() {
         duration: 3000,
       })
     } catch (err) {
+      if (import.meta.env.DEV) console.error('Erro ao copiar link', err)
       toast({
         title: 'Erro',
         description: 'Não foi possível copiar o link',
@@ -113,9 +118,16 @@ export function UltimosImoveisTab() {
             return (
               <Card
                 key={imovel.id}
-                onClick={() => setSelectedImovel(imovel)}
+                onClick={(e) => {
+                  if (import.meta.env.DEV) {
+                    console.log(`🔘 [Click] UltimosImoveisTab Card Action: details`, {
+                      id: imovel.id,
+                    })
+                  }
+                  setSelectedImovel(imovel)
+                }}
                 className={cn(
-                  'overflow-hidden transition-all hover:shadow-lg border-l-[6px] cursor-pointer hover:-translate-y-1',
+                  'overflow-hidden transition-all hover:shadow-lg border-l-[6px] cursor-pointer hover:-translate-y-1 relative z-0',
                   imovel.is_minha_demanda
                     ? 'border-l-[#10B981]'
                     : !imovel.has_demanda
@@ -123,8 +135,8 @@ export function UltimosImoveisTab() {
                       : 'border-l-[#F59E0B]',
                 )}
               >
-                <CardContent className="p-4 space-y-3">
-                  <div className="flex justify-between items-start">
+                <CardContent className="p-4 space-y-3 pointer-events-none relative z-0">
+                  <div className="flex justify-between items-start pointer-events-auto">
                     <Badge
                       variant="outline"
                       className="font-mono bg-[#F5F5F5] text-[#333333] border-[#E5E5E5]"
@@ -140,7 +152,7 @@ export function UltimosImoveisTab() {
                     </span>
                   </div>
 
-                  <div className="space-y-1.5">
+                  <div className="space-y-1.5 pointer-events-auto">
                     <div className="font-black text-[20px] text-[#1A3A52] flex items-center gap-1.5">
                       <DollarSign className="w-5 h-5 text-[#10B981]" />
                       R$ {imovel.preco.toLocaleString('pt-BR')}
@@ -153,7 +165,7 @@ export function UltimosImoveisTab() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3 text-[13px] text-[#666666] font-bold">
+                  <div className="flex items-center gap-3 text-[13px] text-[#666666] font-bold pointer-events-auto">
                     <div className="flex items-center gap-1 bg-[#F5F5F5] px-2 py-1 rounded-md">
                       <Bed className="w-4 h-4" /> {imovel.dormitorios}
                     </div>
@@ -166,7 +178,7 @@ export function UltimosImoveisTab() {
                     </div>
                   </div>
 
-                  <div className="pt-3 border-t border-[#E5E5E5] flex flex-col gap-3">
+                  <div className="pt-3 border-t border-[#E5E5E5] flex flex-col gap-3 pointer-events-auto relative z-10">
                     <div className="flex items-center justify-between">
                       <span
                         className={cn(
@@ -189,9 +201,15 @@ export function UltimosImoveisTab() {
                         <Button
                           size="sm"
                           variant="ghost"
-                          className="h-8 text-[12px] gap-1.5 text-[#1D4ED8] hover:text-[#1e3a8a] hover:bg-[#3B82F6]/10 font-bold px-2 z-10 relative"
+                          className="h-8 text-[12px] gap-1.5 text-[#1D4ED8] hover:text-[#1e3a8a] hover:bg-[#3B82F6]/10 font-bold px-2 relative z-10"
                           onClick={(e) => {
+                            e.preventDefault()
                             e.stopPropagation()
+                            if (import.meta.env.DEV) {
+                              console.log(`🔘 [Click] UltimosImoveisTab Action: vincular`, {
+                                id: imovel.id,
+                              })
+                            }
                             setImovelParaVincular({
                               id: imovel.id,
                               codigo_imovel: imovel.codigo_imovel,
@@ -208,16 +226,22 @@ export function UltimosImoveisTab() {
                       )}
                     </div>
 
-                    <div className="flex gap-2 z-10 relative">
+                    <div className="flex gap-2 relative z-10">
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button
                             size="sm"
                             variant="outline"
-                            className="flex-1 font-bold text-[12px] text-[#333333] border-[#E5E5E5] hover:bg-[#F5F5F5] h-9"
+                            className="flex-1 font-bold text-[12px] text-[#333333] border-[#E5E5E5] hover:bg-[#F5F5F5] h-9 relative z-10"
                             disabled={!publicUrl}
                             onClick={(e) => {
+                              e.preventDefault()
                               e.stopPropagation()
+                              if (import.meta.env.DEV) {
+                                console.log(`🔘 [Click] UltimosImoveisTab Action: ver no site`, {
+                                  url: publicUrl,
+                                })
+                              }
                               if (publicUrl) window.open(publicUrl, '_blank')
                             }}
                           >
@@ -234,7 +258,7 @@ export function UltimosImoveisTab() {
                           <Button
                             size="icon"
                             variant="outline"
-                            className="w-9 h-9 shrink-0 text-[#333333] border-[#E5E5E5] hover:bg-[#F5F5F5]"
+                            className="w-9 h-9 shrink-0 text-[#333333] border-[#E5E5E5] hover:bg-[#F5F5F5] relative z-10"
                             disabled={!publicUrl}
                             onClick={(e) => handleCopyLink(e, publicUrl)}
                           >

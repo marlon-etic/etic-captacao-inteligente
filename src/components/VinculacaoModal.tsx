@@ -158,7 +158,17 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
 
   const isMatchValid = matchData !== null && matchData.percent >= 60
 
-  const handleVincular = async () => {
+  const handleVincular = async (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault()
+      e.stopPropagation()
+    }
+    if (import.meta.env.DEV) {
+      console.log(`🔘 [Click] VinculacaoModal Action: vincular`, {
+        imovelId: imovel?.id,
+        demandId: selectedDemand?.id,
+      })
+    }
     if (!imovel || !selectedDemand || !isMatchValid) return
 
     // Check if already linked
@@ -209,8 +219,8 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[700px] bg-white p-0 gap-0 overflow-hidden rounded-[16px] shadow-2xl flex flex-col max-h-[85vh]">
-        <DialogHeader className="p-[24px] border-b border-[#E5E5E5] bg-[#F8FAFC] shrink-0">
+      <DialogContent className="sm:max-w-[700px] bg-white p-0 gap-0 overflow-hidden rounded-[16px] shadow-2xl flex flex-col max-h-[85vh] z-[1100]">
+        <DialogHeader className="p-[24px] border-b border-[#E5E5E5] bg-[#F8FAFC] shrink-0 relative z-10 pointer-events-none">
           <DialogTitle className="text-[20px] font-black text-[#1A3A52]">
             Vincular Cliente ao Imóvel {imovel?.codigo_imovel}
           </DialogTitle>
@@ -219,21 +229,25 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="p-[24px] flex flex-col gap-[24px] overflow-y-auto flex-1">
+        <div className="p-[24px] flex flex-col gap-[24px] overflow-y-auto flex-1 relative z-0">
           {/* Seletor de Demanda */}
-          <div className="space-y-2">
+          <div className="space-y-2 relative z-10">
             <label className="text-[14px] font-bold text-[#333333]">
               Selecione o Cliente / Demanda
             </label>
             {availableDemands.length > 0 ? (
               <Select value={selectedDemandId} onValueChange={setSelectedDemandId}>
-                <SelectTrigger className="w-full h-[48px] bg-white">
+                <SelectTrigger className="w-full h-[48px] bg-white relative z-10">
                   <SelectValue placeholder="Escolha uma demanda aberta..." />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-[1200]">
                   <ScrollArea className="h-[250px]">
                     {availableDemands.map((d) => (
-                      <SelectItem key={d.id} value={d.id} className="py-3">
+                      <SelectItem
+                        key={d.id}
+                        value={d.id}
+                        className="py-3 cursor-pointer relative z-10"
+                      >
                         <div className="flex flex-col text-left">
                           <span className="font-bold text-[#1A3A52] text-[14px]">
                             {d.nome_cliente}
@@ -249,7 +263,7 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
                 </SelectContent>
               </Select>
             ) : (
-              <div className="p-4 bg-[#FFFBEB] text-[#B45309] border border-[#FDE68A] rounded-[8px] text-[14px] font-medium">
+              <div className="p-4 bg-[#FFFBEB] text-[#B45309] border border-[#FDE68A] rounded-[8px] text-[14px] font-medium pointer-events-none">
                 Nenhuma demanda aberta disponível para vinculação no momento.
               </div>
             )}
@@ -257,17 +271,15 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
 
           {/* Área de Comparação */}
           {selectedDemand && matchData && (
-            <div className="flex flex-col animate-fade-in">
-              <div className="flex items-center justify-between bg-white border border-[#E5E5E5] rounded-t-[12px] p-4 shadow-sm relative z-10">
+            <div className="flex flex-col animate-fade-in pointer-events-none">
+              <div className="flex items-center justify-between bg-white border border-[#E5E5E5] rounded-t-[12px] p-4 shadow-sm relative z-0">
                 <span className="font-bold text-[#333333] text-[14px]">
                   Compatibilidade com o cliente:
                 </span>
                 <Badge
                   className={cn(
                     'text-[14px] font-black px-3 py-1 shadow-sm border-none',
-                    matchData.percent >= 60
-                      ? 'bg-[#10B981] hover:bg-[#059669] text-white'
-                      : 'bg-[#EF4444] hover:bg-[#DC2626] text-white',
+                    matchData.percent >= 60 ? 'bg-[#10B981] text-white' : 'bg-[#EF4444] text-white',
                   )}
                 >
                   {matchData.percent}% Match
@@ -335,8 +347,16 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
           )}
         </div>
 
-        <DialogFooter className="p-[20px] border-t border-[#E5E5E5] bg-[#F8FAFC] flex gap-3 justify-end items-center sm:justify-end shrink-0">
-          <Button variant="outline" onClick={onClose} className="font-bold min-w-[120px]">
+        <DialogFooter className="p-[20px] border-t border-[#E5E5E5] bg-[#F8FAFC] flex gap-3 justify-end items-center sm:justify-end shrink-0 relative z-10">
+          <Button
+            variant="outline"
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              onClose()
+            }}
+            className="font-bold min-w-[120px] relative z-10"
+          >
             Cancelar
           </Button>
           <Tooltip>
@@ -348,7 +368,7 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
                   isLoading={isLinking}
                   loadingText="Vinculando..."
                   className={cn(
-                    'font-bold transition-all shadow-sm min-w-[160px]',
+                    'font-bold transition-all shadow-sm min-w-[160px] relative z-10',
                     isMatchValid
                       ? 'bg-[#10B981] enabled:hover:bg-[#059669] text-white border-transparent'
                       : 'bg-[#E5E5E5] text-[#999999] border-transparent',
@@ -359,7 +379,7 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
               </div>
             </TooltipTrigger>
             {selectedDemand && !isMatchValid && (
-              <TooltipContent className="bg-gray-900 text-white p-2 text-xs font-medium">
+              <TooltipContent className="bg-gray-900 text-white p-2 text-xs font-medium z-[1200]">
                 <p>Compatibilidade insuficiente para vincular (mínimo 60%)</p>
               </TooltipContent>
             )}

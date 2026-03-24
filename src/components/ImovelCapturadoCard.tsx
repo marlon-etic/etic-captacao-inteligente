@@ -47,7 +47,11 @@ export function ImovelCapturadoCard({ property, demand, isOwnerOrAdmin = true }:
   const publicUrl = getPropertyPublicUrl(p.code)
 
   const handleCopyLink = async (e: React.MouseEvent) => {
+    e.preventDefault()
     e.stopPropagation()
+    if (import.meta.env.DEV) {
+      console.log(`🔘 [Click] ImovelCapturadoCard Action: compartilhar`, { url: publicUrl })
+    }
     if (!publicUrl) return
     try {
       await navigator.clipboard.writeText(publicUrl)
@@ -57,6 +61,7 @@ export function ImovelCapturadoCard({ property, demand, isOwnerOrAdmin = true }:
         duration: 3000,
       })
     } catch (err) {
+      if (import.meta.env.DEV) console.error('Erro ao copiar link', err)
       toast({
         title: 'Erro',
         description: 'Não foi possível copiar o link',
@@ -149,20 +154,26 @@ export function ImovelCapturadoCard({ property, demand, isOwnerOrAdmin = true }:
         </span>
       </div>
 
-      <div className="flex gap-2 mt-1">
+      <div className="flex gap-2 mt-1 relative z-10">
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
               size="sm"
               variant="outline"
-              className="flex-1 font-bold text-[12px] text-[#333333] border-[#E5E5E5] enabled:hover:bg-[#F5F5F5] h-[44px]"
+              className="flex-1 font-bold text-[12px] text-[#333333] border-[#E5E5E5] enabled:hover:bg-[#F5F5F5] h-[44px] relative z-10"
               disabled={!publicUrl}
               onClick={(e) => {
+                e.preventDefault()
                 e.stopPropagation()
+                if (import.meta.env.DEV) {
+                  console.log(`🔘 [Click] ImovelCapturadoCard Action: ver no site`, {
+                    url: publicUrl,
+                  })
+                }
                 if (publicUrl) window.open(publicUrl, '_blank')
               }}
             >
-              <ExternalLink className="w-4 h-4" /> Ver no site
+              <ExternalLink className="w-4 h-4 mr-2" /> Ver no site
             </Button>
           </TooltipTrigger>
           {!publicUrl && <TooltipContent>Imóvel sem código cadastrado</TooltipContent>}
@@ -173,7 +184,7 @@ export function ImovelCapturadoCard({ property, demand, isOwnerOrAdmin = true }:
             <Button
               size="icon"
               variant="outline"
-              className="w-[44px] h-[44px] shrink-0 text-[#333333] border-[#E5E5E5] enabled:hover:bg-[#F5F5F5]"
+              className="w-[44px] h-[44px] shrink-0 text-[#333333] border-[#E5E5E5] enabled:hover:bg-[#F5F5F5] relative z-10"
               disabled={!publicUrl}
               onClick={handleCopyLink}
             >
@@ -187,29 +198,45 @@ export function ImovelCapturadoCard({ property, demand, isOwnerOrAdmin = true }:
       </div>
 
       {isOwnerOrAdmin && (
-        <div className="flex flex-col sm:flex-row gap-2 mt-2 pt-3 border-t border-[#E5E5E5]">
+        <div className="flex flex-col sm:flex-row gap-2 mt-2 pt-3 border-t border-[#E5E5E5] relative z-10">
           {!isFechado && !isVisitado && (
             <Button
               size="sm"
               variant="outline"
-              className="flex-1 font-bold border-[#F59E0B] text-[#B45309] enabled:hover:bg-[#FFFBEB] h-[44px]"
-              onClick={() => updateEtapa('visitado')}
+              className="flex-1 font-bold border-[#F59E0B] text-[#B45309] enabled:hover:bg-[#FFFBEB] h-[44px] relative z-10"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                if (import.meta.env.DEV) {
+                  console.log(`🔘 [Click] ImovelCapturadoCard Action: marcar visitado`, {
+                    id: p.id,
+                  })
+                }
+                updateEtapa('visitado')
+              }}
               isLoading={isUpdating}
               loadingText="Salvando..."
             >
-              <Eye className="w-4 h-4" /> Marcar como Visitado
+              <Eye className="w-4 h-4 mr-1" /> Marcar como Visitado
             </Button>
           )}
 
           {!isFechado && (
             <Button
               size="sm"
-              className="flex-1 font-bold bg-[#10B981] enabled:hover:bg-[#059669] text-white h-[44px] shadow-sm border border-transparent"
-              onClick={() => updateEtapa('fechado')}
+              className="flex-1 font-bold bg-[#10B981] enabled:hover:bg-[#059669] text-white h-[44px] shadow-sm border border-transparent relative z-10"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                if (import.meta.env.DEV) {
+                  console.log(`🔘 [Click] ImovelCapturadoCard Action: marcar fechado`, { id: p.id })
+                }
+                updateEtapa('fechado')
+              }}
               isLoading={isUpdating}
               loadingText="Salvando..."
             >
-              <CheckCircle2 className="w-4 h-4" /> Marcar como Fechado
+              <CheckCircle2 className="w-4 h-4 mr-1" /> Marcar como Fechado
             </Button>
           )}
 
@@ -217,12 +244,19 @@ export function ImovelCapturadoCard({ property, demand, isOwnerOrAdmin = true }:
             <Button
               size="sm"
               variant="outline"
-              className="font-bold text-[#666666] enabled:hover:text-[#1A3A52] shrink-0 h-[44px]"
-              onClick={() => updateEtapa(isFechado ? 'visitado' : 'capturado')}
+              className="font-bold text-[#666666] enabled:hover:text-[#1A3A52] shrink-0 h-[44px] relative z-10"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                if (import.meta.env.DEV) {
+                  console.log(`🔘 [Click] ImovelCapturadoCard Action: desfazer etapa`, { id: p.id })
+                }
+                updateEtapa(isFechado ? 'visitado' : 'capturado')
+              }}
               isLoading={isUpdating}
               loadingText="Desfazendo..."
             >
-              <RotateCcw className="w-4 h-4" /> Desfazer
+              <RotateCcw className="w-4 h-4 mr-1" /> Desfazer
             </Button>
           )}
         </div>

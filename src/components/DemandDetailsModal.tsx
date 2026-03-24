@@ -42,24 +42,30 @@ export function DemandDetailsModal({
   if (!demand) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="p-[24px] bg-[#FFFFFF] border-[2px] border-[#E5E5E5] rounded-[12px] flex flex-col items-center justify-center min-h-[200px]">
+        <DialogContent className="p-[24px] bg-[#FFFFFF] border-[2px] border-[#E5E5E5] rounded-[12px] flex flex-col items-center justify-center min-h-[200px] z-[1100]">
           <div className="text-center text-[16px] leading-[24px] text-[#F44336] font-bold flex flex-col items-center gap-3">
             <span className="text-[32px] opacity-80">⚠️</span>
             Erro ao carregar. Tente novamente.
           </div>
-          <div className="flex gap-3 mt-[24px] w-full max-w-[200px]">
+          <div className="flex gap-3 mt-[24px] w-full max-w-[200px] relative z-10">
             <Button
-              onClick={() => onOpenChange(false)}
-              className="flex-1 min-h-[44px] text-[14px] font-bold bg-[#F5F5F5] text-[#333333] hover:bg-[#E5E5E5]"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                onOpenChange(false)
+              }}
+              className="flex-1 min-h-[44px] text-[14px] font-bold bg-[#F5F5F5] text-[#333333] hover:bg-[#E5E5E5] relative z-10"
             >
               Fechar
             </Button>
             <Button
-              onClick={() => {
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
                 onOpenChange(false)
                 setTimeout(() => onOpenChange(true), 300)
               }}
-              className="flex-1 min-h-[44px] text-[14px] font-bold bg-[#1A3A52] text-white hover:bg-[#2E5F8A] gap-2"
+              className="flex-1 min-h-[44px] text-[14px] font-bold bg-[#1A3A52] text-white hover:bg-[#2E5F8A] gap-2 relative z-10"
             >
               <RefreshCw className="w-4 h-4" /> Tentar
             </Button>
@@ -68,8 +74,6 @@ export function DemandDetailsModal({
       </Dialog>
     )
   }
-
-  const similarDemands = getSimilarDemands(demand.id)
 
   const formatPrice = (val?: number) => {
     if (!val) return '0'
@@ -96,8 +100,8 @@ export function DemandDetailsModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-full h-[100dvh] sm:h-[85vh] sm:max-w-[700px] p-0 flex flex-col rounded-none sm:rounded-[16px] border-0 sm:border-[2px] sm:border-[#2E5F8A]/20 gap-0 overflow-hidden bg-[#F8FAFC] shadow-2xl">
-        <DialogHeader className="p-[16px] md:p-[24px] border-b border-[#E5E5E5] shrink-0 flex flex-row items-center justify-between bg-white text-left relative z-10 shadow-sm">
+      <DialogContent className="max-w-full h-[100dvh] sm:h-[85vh] sm:max-w-[700px] p-0 flex flex-col rounded-none sm:rounded-[16px] border-0 sm:border-[2px] sm:border-[#2E5F8A]/20 gap-0 overflow-hidden bg-[#F8FAFC] shadow-2xl z-[1100]">
+        <DialogHeader className="p-[16px] md:p-[24px] border-b border-[#E5E5E5] shrink-0 flex flex-row items-center justify-between bg-white text-left relative z-10 shadow-sm pointer-events-none">
           <div className="flex flex-col gap-1 pr-8">
             <DialogTitle className="text-[22px] font-black leading-tight text-[#1A3A52] m-0 p-0">
               {demand.clientName}
@@ -114,15 +118,15 @@ export function DemandDetailsModal({
               Solicitado por {creatorName}
             </span>
           </div>
-          <DialogClose className="absolute right-4 top-[50%] -translate-y-1/2 w-10 h-10 md:w-8 md:h-8 flex items-center justify-center rounded-full bg-[#F5F5F5] hover:bg-[#E5E5E5] transition-colors text-[#333333]">
+          <DialogClose className="absolute right-4 top-[50%] -translate-y-1/2 w-10 h-10 md:w-8 md:h-8 flex items-center justify-center rounded-full bg-[#F5F5F5] hover:bg-[#E5E5E5] transition-colors text-[#333333] pointer-events-auto">
             <X className="w-5 h-5" />
           </DialogClose>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto p-[16px] md:p-[24px] bg-[#F8FAFC]">
+        <div className="flex-1 overflow-y-auto p-[16px] md:p-[24px] bg-[#F8FAFC] relative z-0">
           <div className="space-y-[16px] pb-[24px]">
             {/* Localização e Budget (Destaque Principal) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pointer-events-none">
               <div className="bg-white p-5 rounded-[12px] border border-[#E5E5E5] shadow-sm flex flex-col gap-1">
                 <span className="text-[12px] text-[#999999] font-black uppercase tracking-wider flex items-center gap-1.5 mb-1">
                   📍 Localização Desejada
@@ -142,7 +146,7 @@ export function DemandDetailsModal({
             </div>
 
             {/* Especificações */}
-            <div className="bg-white p-5 rounded-[12px] border border-[#E5E5E5] shadow-sm">
+            <div className="bg-white p-5 rounded-[12px] border border-[#E5E5E5] shadow-sm pointer-events-none">
               <span className="text-[12px] text-[#999999] font-black uppercase tracking-wider flex items-center gap-1.5 mb-3 border-b border-[#F5F5F5] pb-2">
                 🏠 Especificações do Imóvel
               </span>
@@ -175,7 +179,7 @@ export function DemandDetailsModal({
             </div>
 
             {/* Observações */}
-            <div className="bg-[#E8F5E9] p-5 rounded-[12px] border border-[#A7F3D0] shadow-sm">
+            <div className="bg-[#E8F5E9] p-5 rounded-[12px] border border-[#A7F3D0] shadow-sm pointer-events-none">
               <span className="text-[12px] text-[#065F46] font-black uppercase tracking-wider flex items-center gap-1.5 mb-2">
                 📝 Detalhes e Observações
               </span>
@@ -185,13 +189,13 @@ export function DemandDetailsModal({
             </div>
 
             {/* Histórico/Imóveis */}
-            <div className="bg-white p-5 rounded-[12px] border border-[#E5E5E5] shadow-sm">
-              <span className="text-[12px] text-[#999999] font-black uppercase tracking-wider flex items-center gap-1.5 mb-4 border-b border-[#F5F5F5] pb-2">
+            <div className="bg-white p-5 rounded-[12px] border border-[#E5E5E5] shadow-sm relative z-0">
+              <span className="text-[12px] text-[#999999] font-black uppercase tracking-wider flex items-center gap-1.5 mb-4 border-b border-[#F5F5F5] pb-2 pointer-events-none">
                 📦 Imóveis Capturados ({demand.capturedProperties?.length || 0})
               </span>
 
               {demand.capturedProperties && demand.capturedProperties.length > 0 ? (
-                <div className="flex flex-col gap-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                <div className="flex flex-col gap-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar relative z-10">
                   {demand.capturedProperties.map((p, i) => (
                     <ImovelCapturadoCard
                       key={p.id || i}
@@ -202,7 +206,7 @@ export function DemandDetailsModal({
                   ))}
                 </div>
               ) : (
-                <div className="bg-[#F8FAFC] p-6 rounded-[8px] border border-[#E5E5E5] text-center flex flex-col items-center gap-2">
+                <div className="bg-[#F8FAFC] p-6 rounded-[8px] border border-[#E5E5E5] text-center flex flex-col items-center gap-2 pointer-events-none">
                   <span className="text-[24px]">🏠</span>
                   <p className="text-[14px] text-[#666666] font-medium leading-snug">
                     Nenhum imóvel capturado ainda.
@@ -216,7 +220,7 @@ export function DemandDetailsModal({
             </div>
 
             {/* Informações Adicionais */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-[12px] opacity-70">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-[12px] opacity-70 pointer-events-none">
               <div className="bg-white p-4 rounded-[12px] border border-[#E5E5E5]">
                 <span className="text-[11px] text-[#999999] font-bold uppercase block mb-1">
                   Status
@@ -238,11 +242,17 @@ export function DemandDetailsModal({
         </div>
 
         {/* Rodapé Dinâmico */}
-        <DialogFooter className="p-[16px] md:p-[20px] border-t border-[#E5E5E5] shrink-0 flex flex-col sm:flex-row gap-[12px] bg-white z-10 shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
+        <DialogFooter className="p-[16px] md:p-[20px] border-t border-[#E5E5E5] shrink-0 flex flex-col sm:flex-row gap-[12px] bg-white z-10 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] relative">
           {onEncontrei && (
             <Button
-              className="min-h-[56px] w-full text-[16px] font-black bg-[#10B981] hover:bg-[#059669] text-white shadow-[0_4px_12px_rgba(16,185,129,0.3)] animate-pulse-green"
-              onClick={onEncontrei}
+              className="min-h-[56px] w-full text-[16px] font-black bg-[#10B981] hover:bg-[#059669] text-white shadow-[0_4px_12px_rgba(16,185,129,0.3)] animate-pulse-green relative z-10"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                if (import.meta.env.DEV)
+                  console.log(`🔘 [Click] DemandDetailsModal Action: encontrei`)
+                onEncontrei()
+              }}
             >
               <CheckCircle2 className="w-5 h-5 mr-2" /> ENCONTREI UM IMÓVEL
             </Button>
@@ -250,8 +260,12 @@ export function DemandDetailsModal({
 
           {!onEncontrei && onPrioritize && (
             <Button
-              className="min-h-[48px] w-full sm:flex-1 text-[14px] font-bold bg-[#F44336] hover:bg-[#d32f2f] text-white border-none"
-              onClick={() => {
+              className="min-h-[48px] w-full sm:flex-1 text-[14px] font-bold bg-[#F44336] hover:bg-[#d32f2f] text-white border-none relative z-10"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                if (import.meta.env.DEV)
+                  console.log(`🔘 [Click] DemandDetailsModal Action: priorizar`)
                 onOpenChange(false)
                 onPrioritize()
               }}
@@ -262,8 +276,12 @@ export function DemandDetailsModal({
 
           {!onEncontrei && onLost && (
             <Button
-              className="min-h-[48px] w-full sm:flex-1 text-[14px] font-bold bg-[#999999] hover:bg-[#777777] text-white border-none"
-              onClick={() => {
+              className="min-h-[48px] w-full sm:flex-1 text-[14px] font-bold bg-[#999999] hover:bg-[#777777] text-white border-none relative z-10"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                if (import.meta.env.DEV)
+                  console.log(`🔘 [Click] DemandDetailsModal Action: perdido`)
                 onOpenChange(false)
                 onLost()
               }}
@@ -275,8 +293,12 @@ export function DemandDetailsModal({
           {!onEncontrei && (
             <Button
               variant="outline"
-              className="min-h-[48px] w-full sm:flex-1 text-[14px] font-bold"
-              onClick={() => onOpenChange(false)}
+              className="min-h-[48px] w-full sm:flex-1 text-[14px] font-bold relative z-10"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                onOpenChange(false)
+              }}
             >
               Fechar
             </Button>
