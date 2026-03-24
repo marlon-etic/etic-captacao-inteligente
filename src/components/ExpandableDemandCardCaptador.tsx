@@ -33,11 +33,7 @@ import { CapturePropertyModal } from './CapturePropertyModal'
 import { NaoEncontreiModal } from './NaoEncontreiModal'
 import { PrazoCounter } from './PrazoCounter'
 
-export function ExpandableDemandCardCaptador({
-  demand,
-}: {
-  demand: SupabaseDemand
-}) {
+export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDemand }) {
   const [expanded, setExpanded] = useState(false)
   const [detailsModalOpen, setDetailsModalOpen] = useState(false)
   const [captureModalOpen, setCaptureModalOpen] = useState(false)

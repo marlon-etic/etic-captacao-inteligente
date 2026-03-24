@@ -5,6 +5,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { AppStoreProvider } from '@/stores/useAppStore'
 import { AuthProvider } from '@/hooks/use-auth'
 import { GlobalPontuacaoListener } from '@/components/GlobalPontuacaoListener'
+import { GlobalNotificationListener } from '@/components/GlobalNotificationListener'
 import Layout from '@/components/Layout'
 import Index from '@/pages/Index'
 import EsqueciSenha from '@/pages/EsqueciSenha'
@@ -37,6 +38,7 @@ const App = () => (
   <AuthProvider>
     <AppStoreProvider>
       <GlobalPontuacaoListener />
+      <GlobalNotificationListener />
       <BrowserRouter future={{ v7_startTransition: false, v7_relativeSplatPath: false }}>
         <TooltipProvider>
           <Toaster />

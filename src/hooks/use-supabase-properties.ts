@@ -63,7 +63,7 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
       tipo,
       etapa_funil: p.etapa_funil,
       data_visita: p.data_visita,
-      data_fechamento: p.data_fechamento
+      data_fechamento: p.data_fechamento,
     }
   }, [])
 
@@ -144,7 +144,9 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
         (payload) => {
           console.log('[DEBUG] Evento recebido (UPDATE imoveis_captados - props):', payload)
           setProperties((prev) => {
-            const newState = prev.map((p) => (p.id === payload.new.id ? { ...p, ...payload.new } : p))
+            const newState = prev.map((p) =>
+              p.id === payload.new.id ? { ...p, ...payload.new } : p,
+            )
             console.log('[DEBUG] Estado atualizado (UPDATE imoveis_captados - props):', newState)
             return newState
           })

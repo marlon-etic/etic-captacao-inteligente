@@ -33,8 +33,6 @@ export function useSupabasePontuacao() {
     mounted.current = true
     fetchPontuacoes()
 
-    console.log('[DEBUG] Subscription criada: pontuacao_captador')
-
     // Sincronização Bidirecional em Tempo Real
     const sub = supabase
       .channel('realtime_pontuacao_sync')
@@ -42,15 +40,12 @@ export function useSupabasePontuacao() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'pontuacao_captador' },
         (payload) => {
-          console.log('[DEBUG] Evento recebido (pontuacao_captador):', payload)
           if (mounted.current) {
             if (payload.eventType === 'INSERT') {
               const newPoint = payload.new as Pontuacao
               setPontuacoes((prev) => {
                 if (prev.some((p) => p.id === newPoint.id)) return prev
-                const newState = [newPoint, ...prev]
-                console.log('[DEBUG] Estado atualizado (INSERT pontuacao_captador):', newState)
-                return newState
+                return [newPoint, ...prev]
               })
 
               if (currentUser && newPoint.captador_id === currentUser.id) {
@@ -59,8 +54,7 @@ export function useSupabasePontuacao() {
                   msg = `Você ganhou +${newPoint.pontos} pontos! Captura vinculada a uma demanda.`
                 else if (newPoint.tipo_pontuacao === 'captura_sem_demanda')
                   msg = `Você ganhou +${newPoint.pontos} pontos! Nova captura de imóvel avulso.`
-                else if (newPoint.tipo_pontuacao === 'ganho_confirmado')
-                  msg = `Você ganhou +${newPoint.pontos} pontos! Um negócio foi confirmado a partir da sua captação.`
+                // Removemos o toast para 'ganho_confirmado' pois o GlobalNotificationListener já dispara o aviso de Fechado
 
                 if (msg) {
                   toast({
@@ -72,18 +66,10 @@ export function useSupabasePontuacao() {
                 }
               }
             } else if (payload.eventType === 'DELETE') {
-              setPontuacoes((prev) => {
-                const newState = prev.filter(p => p.id !== payload.old.id)
-                console.log('[DEBUG] Estado atualizado (DELETE pontuacao_captador):', newState)
-                return newState
-              })
+              setPontuacoes((prev) => prev.filter((p) => p.id !== payload.old.id))
             } else if (payload.eventType === 'UPDATE') {
               const newPoint = payload.new as Pontuacao
-              setPontuacoes((prev) => {
-                const newState = prev.map(p => p.id === newPoint.id ? newPoint : p)
-                console.log('[DEBUG] Estado atualizado (UPDATE pontuacao_captador):', newState)
-                return newState
-              })
+              setPontuacoes((prev) => prev.map((p) => (p.id === newPoint.id ? newPoint : p)))
             }
           }
         },

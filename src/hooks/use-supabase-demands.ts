@@ -1,6 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase/client'
-import { toast } from '@/hooks/use-toast'
 import useAppStore from '@/stores/useAppStore'
 
 export interface SupabaseCapturedProperty {
@@ -55,19 +54,13 @@ export interface SupabaseDemand {
 export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
   const [demands, setDemands] = useState<SupabaseDemand[]>([])
   const [loading, setLoading] = useState(true)
-  const { users, currentUser } = useAppStore()
+  const { users } = useAppStore()
 
-  // Use refs to access latest state inside real-time subscriptions without re-subscribing
   const usersRef = useRef(users)
-  const currentUserRef = useRef(currentUser)
 
   useEffect(() => {
     usersRef.current = users
   }, [users])
-
-  useEffect(() => {
-    currentUserRef.current = currentUser
-  }, [currentUser])
 
   const sortDemands = useCallback((list: SupabaseDemand[]) => {
     return [...list].sort((a, b) => {
@@ -165,16 +158,10 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
 
     const table = type === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
 
-    console.log(`[DEBUG] Subscription criada: ${table}`)
-    console.log(`[DEBUG] Subscription criada: imoveis_captados`)
-    console.log(`[DEBUG] Subscription criada: respostas_captador`)
-    console.log(`[DEBUG] Subscription criada: prazos_captacao`)
-
-    // Sincronização Bidirecional em Tempo Real - Atualizações Locais Otimizadas O(1)
+    // Sincronização Bidirecional em Tempo Real - Apenas Atualiza Estado (Notificações movidas para GlobalNotificationListener)
     const channel = supabase
       .channel(`realtime_sync_${type}`)
       .on('postgres_changes', { event: '*', schema: 'public', table }, (payload) => {
-        console.log(`[DEBUG] Evento recebido (${table}):`, payload)
         if (payload.eventType === 'INSERT') {
           const d = payload.new
           setDemands((prev) => {
@@ -182,14 +169,12 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
             const newDemand = formatData([
               { ...d, imoveis_captados: [], respostas_captador: [], prazos_captacao: [] },
             ])[0]
-            const newState = sortDemands([newDemand, ...prev])
-            console.log(`[DEBUG] Estado atualizado (INSERT ${table}):`, newState)
-            return newState
+            return sortDemands([newDemand, ...prev])
           })
         } else if (payload.eventType === 'UPDATE') {
           const d = payload.new
           setDemands((prev) => {
-            const newState = sortDemands(
+            return sortDemands(
               prev.map((x) =>
                 x.id === d.id
                   ? {
@@ -201,7 +186,8 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
                       observacoes: d.observacoes || d.necessidades_especificas || x.observacoes,
                       nivel_urgencia: d.nivel_urgencia || d.urgencia || x.nivel_urgencia,
                       status_demanda: d.status_demanda || x.status_demanda,
-                      is_prioritaria: d.is_prioritaria !== undefined ? d.is_prioritaria : x.is_prioritaria,
+                      is_prioritaria:
+                        d.is_prioritaria !== undefined ? d.is_prioritaria : x.is_prioritaria,
                       respostas_captador: x.respostas_captador,
                       imoveis_captados: x.imoveis_captados,
                       prazos_captacao: x.prazos_captacao,
@@ -209,25 +195,18 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
                   : x,
               ),
             )
-            console.log(`[DEBUG] Estado atualizado (UPDATE ${table}):`, newState)
-            return newState
           })
         } else if (payload.eventType === 'DELETE') {
-          setDemands((prev) => {
-            const newState = prev.filter((x) => x.id !== payload.old.id)
-            console.log(`[DEBUG] Estado atualizado (DELETE ${table}):`, newState)
-            return newState
-          })
+          setDemands((prev) => prev.filter((x) => x.id !== payload.old.id))
         }
       })
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'imoveis_captados' },
         (payload) => {
-          console.log('[DEBUG] Evento recebido (INSERT imoveis_captados):', payload)
           const imv = payload.new
           setDemands((prev) => {
-            const newState = prev.map((d) => {
+            return prev.map((d) => {
               if (d.id === imv.demanda_locacao_id || d.id === imv.demanda_venda_id) {
                 if (d.imoveis_captados?.some((i: any) => i.id === imv.id)) return d
 
@@ -241,15 +220,6 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
                   observacoes: imv.observacoes || imv.localizacao_texto,
                 }
 
-                const user = currentUserRef.current
-                if (user && (d.sdr_id === user.id || d.corretor_id === user.id)) {
-                  toast({
-                    title: '🏠 Novo Imóvel Captado!',
-                    description: `${enrichedImv.captador_nome} encontrou um imóvel para ${d.nome_cliente}.`,
-                    className: 'bg-[#10B981] text-white border-none shadow-lg',
-                  })
-                }
-
                 return {
                   ...d,
                   status_demanda: 'atendida',
@@ -258,8 +228,6 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
               }
               return d
             })
-            console.log('[DEBUG] Estado atualizado (INSERT imoveis_captados):', newState)
-            return newState
           })
         },
       )
@@ -267,45 +235,16 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'imoveis_captados' },
         (payload) => {
-          console.log('[DEBUG] Evento recebido (UPDATE imoveis_captados):', payload)
           const imv = payload.new
-          const oldImv = payload.old
-
-          if (oldImv && imv.etapa_funil && imv.etapa_funil !== oldImv.etapa_funil) {
-            const user = currentUserRef.current
-            const captadorId = imv.user_captador_id || imv.captador_id
-            if (user && user.role === 'captador' && captadorId === user.id) {
-              if (imv.etapa_funil === 'visitado') {
-                toast({
-                  title: 'Aviso',
-                  description: `O imóvel ${imv.codigo_imovel} foi marcado como VISITADO.`,
-                  className: 'bg-[#FBBF24] text-[#854D0E] border-none',
-                })
-              } else if (imv.etapa_funil === 'fechado') {
-                toast({
-                  title: '🎉 Parabéns!',
-                  description: `Seu imóvel ${imv.codigo_imovel} fechou negócio! +30 pontos creditados.`,
-                  className: 'bg-[#10B981] text-white border-none shadow-lg',
-                })
-              } else if (imv.etapa_funil === 'perdido') {
-                toast({
-                  title: 'Aviso',
-                  description: `O imóvel ${imv.codigo_imovel} foi marcado como Perdido.`,
-                  className: 'bg-[#EF4444] text-white border-none',
-                })
-              }
-            }
-          }
-
           setDemands((prev) => {
-            const newState = prev.map((d) => {
+            return prev.map((d) => {
               if (d.id === imv.demanda_locacao_id || d.id === imv.demanda_venda_id) {
                 let newStatus = d.status_demanda
                 if (imv.etapa_funil === 'fechado') {
                   newStatus = 'ganho'
                 } else if (d.status_demanda === 'ganho' && imv.etapa_funil !== 'fechado') {
                   const otherClosed = (d.imoveis_captados || []).some(
-                    (i: any) => i.id !== imv.id && i.etapa_funil === 'fechado'
+                    (i: any) => i.id !== imv.id && i.etapa_funil === 'fechado',
                   )
                   if (!otherClosed) newStatus = 'atendida'
                 }
@@ -327,8 +266,6 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
               }
               return d
             })
-            console.log('[DEBUG] Estado atualizado (UPDATE imoveis_captados):', newState)
-            return newState
           })
         },
       )
@@ -336,47 +273,24 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'respostas_captador' },
         (payload) => {
-          console.log('[DEBUG] Evento recebido (INSERT respostas_captador):', payload)
           const resp = payload.new
           setDemands((prev) => {
-            const newState = prev.map((d) => {
+            return prev.map((d) => {
               if (d.id === resp.demanda_locacao_id || d.id === resp.demanda_venda_id) {
-                const user = currentUserRef.current
-                if (user && (d.sdr_id === user.id || d.corretor_id === user.id)) {
-                  const captador = usersRef.current.find((u) => u.id === resp.captador_id)
-
-                  if (resp.resposta === 'nao_encontrei') {
-                    toast({
-                      title: 'Feedback de Busca',
-                      description: `Captador ${captador?.name || 'Desconhecido'} não encontrou imóvel para ${d.nome_cliente} - Motivo: ${resp.motivo}`,
-                      className: 'bg-[#F97316] text-white border-none shadow-lg',
-                      duration: 5000,
-                    })
-                  } else {
-                    toast({
-                      title: '📢 Feedback de Busca',
-                      description: `${captador?.name || 'Captador'}: Encontrei!`,
-                      className: 'bg-[#10B981] text-white border-none shadow-lg',
-                    })
-                  }
-                }
-
                 let newStatus = d.status_demanda
                 if (resp.resposta === 'nao_encontrei') {
-                   if (resp.motivo === 'Fora do mercado') newStatus = 'impossivel'
-                   else if (resp.motivo === 'Buscando outras opções') newStatus = 'aberta'
+                  if (resp.motivo === 'Fora do mercado') newStatus = 'impossivel'
+                  else if (resp.motivo === 'Buscando outras opções') newStatus = 'aberta'
                 }
 
-                return { 
-                  ...d, 
+                return {
+                  ...d,
                   status_demanda: newStatus,
-                  respostas_captador: [resp, ...(d.respostas_captador || [])] 
+                  respostas_captador: [resp, ...(d.respostas_captador || [])],
                 }
               }
               return d
             })
-            console.log('[DEBUG] Estado atualizado (INSERT respostas_captador):', newState)
-            return newState
           })
         },
       )
@@ -384,39 +298,11 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'prazos_captacao' },
         (payload) => {
-          console.log('[DEBUG] Evento recebido (prazos_captacao):', payload)
           if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
             const newP = payload.new
-            const oldP = payload.old
-
             setDemands((prev) => {
-              const newState = prev.map((d) => {
+              return prev.map((d) => {
                 if (d.id === newP.demanda_locacao_id || d.id === newP.demanda_venda_id) {
-                  const user = currentUserRef.current
-                  const isOwner = user && (d.sdr_id === user.id || d.corretor_id === user.id)
-
-                  if (payload.eventType === 'UPDATE' && oldP && isOwner) {
-                    if (newP.prorrogacoes_usadas > (oldP.prorrogacoes_usadas || 0)) {
-                      toast({
-                        title: '⏳ Prazo Prorrogado',
-                        description: `O prazo da demanda de ${d.nome_cliente} foi prorrogado (+48h).`,
-                        className: 'bg-[#3B82F6] text-white border-none shadow-lg',
-                      })
-                    }
-                    if (
-                      (newP.status === 'sem_resposta_24h' ||
-                        newP.status === 'sem_resposta_final') &&
-                      oldP.status === 'ativo'
-                    ) {
-                      toast({
-                        title: '🚨 Prazo Esgotado',
-                        description: `A demanda de ${d.nome_cliente} ficou sem resposta e está parada.`,
-                        variant: 'destructive',
-                        className: 'border-none shadow-lg',
-                      })
-                    }
-                  }
-
                   let currentPrazos = d.prazos_captacao || []
                   if (currentPrazos.some((p) => p.id === newP.id)) {
                     currentPrazos = currentPrazos.map((p) => (p.id === newP.id ? newP : p))
@@ -428,8 +314,6 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
                 }
                 return d
               })
-              console.log('[DEBUG] Estado atualizado (prazos_captacao):', newState)
-              return newState
             })
           }
         },

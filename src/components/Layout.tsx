@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Outlet, Navigate, useLocation } from 'react-router-dom'
+import { Outlet, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar'
 import { AppSidebar } from '@/components/AppSidebar'
 import { AppHeader } from '@/components/AppHeader'
@@ -16,12 +16,24 @@ export default function Layout() {
   const { currentUser, sessionExpiresAt, logout, isRestoringUser } = useAppStore()
   const { session, loading } = useAuth()
   const location = useLocation()
+  const navigate = useNavigate()
   const { toast } = useToast()
 
   const [isAddPropertyModalOpen, setAddPropertyModalOpen] = useState(false)
   const [isNewDemandModalOpen, setNewDemandModalOpen] = useState(false)
 
-  // FIX: execute supabase.rpc properly with async/await to avoid the .catch is not a function error
+  // Listen to global navigation events dispatched from outside router components (e.g. Hooks/Toasts)
+  useEffect(() => {
+    const handleNavigate = (e: Event) => {
+      const customEvent = e as CustomEvent<string>
+      if (customEvent.detail) {
+        navigate(customEvent.detail)
+      }
+    }
+    window.addEventListener('navigate-to', handleNavigate)
+    return () => window.removeEventListener('navigate-to', handleNavigate)
+  }, [navigate])
+
   useEffect(() => {
     if (currentUser) {
       const updatePrazos = async () => {
