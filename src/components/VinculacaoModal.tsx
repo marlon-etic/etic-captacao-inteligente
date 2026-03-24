@@ -209,8 +209,8 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[700px] bg-white p-0 gap-0 overflow-hidden rounded-[16px] shadow-2xl">
-        <DialogHeader className="p-[24px] border-b border-[#E5E5E5] bg-[#F8FAFC]">
+      <DialogContent className="sm:max-w-[700px] bg-white p-0 gap-0 overflow-hidden rounded-[16px] shadow-2xl flex flex-col max-h-[85vh]">
+        <DialogHeader className="p-[24px] border-b border-[#E5E5E5] bg-[#F8FAFC] shrink-0">
           <DialogTitle className="text-[20px] font-black text-[#1A3A52]">
             Vincular Cliente ao Imóvel {imovel?.codigo_imovel}
           </DialogTitle>
@@ -219,7 +219,7 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="p-[24px] flex flex-col gap-[24px]">
+        <div className="p-[24px] flex flex-col gap-[24px] overflow-y-auto flex-1">
           {/* Seletor de Demanda */}
           <div className="space-y-2">
             <label className="text-[14px] font-bold text-[#333333]">
@@ -335,7 +335,7 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
           )}
         </div>
 
-        <DialogFooter className="p-[20px] border-t border-[#E5E5E5] bg-[#F8FAFC] flex gap-3 justify-end items-center sm:justify-end">
+        <DialogFooter className="p-[20px] border-t border-[#E5E5E5] bg-[#F8FAFC] flex gap-3 justify-end items-center sm:justify-end shrink-0">
           <Button variant="outline" onClick={onClose} className="font-bold min-h-[44px]">
             Cancelar
           </Button>

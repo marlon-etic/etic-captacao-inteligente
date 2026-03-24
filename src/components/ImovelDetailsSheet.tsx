@@ -68,8 +68,8 @@ export function ImovelDetailsSheet({ imovel, onClose, onVincular }: ImovelDetail
 
   return (
     <Sheet open={!!imovel} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent className="w-full sm:max-w-[500px] p-0 flex flex-col bg-[#F8FAFC] border-l border-[#E5E5E5] shadow-2xl">
-        <SheetHeader className="p-6 border-b border-[#E5E5E5] bg-white z-10 relative">
+      <SheetContent className="w-full sm:max-w-[500px] p-0 flex flex-col bg-[#F8FAFC] border-l border-[#E5E5E5] shadow-2xl overflow-hidden">
+        <SheetHeader className="p-6 border-b border-[#E5E5E5] bg-white z-10 relative shrink-0">
           <div className="flex justify-between items-start pr-8">
             <SheetTitle className="text-[22px] font-black text-[#1A3A52] flex items-center gap-2">
               <Building className="w-6 h-6 text-[#3B82F6]" /> {imovel.codigo_imovel}
@@ -83,7 +83,7 @@ export function ImovelDetailsSheet({ imovel, onClose, onVincular }: ImovelDetail
           </SheetDescription>
         </SheetHeader>
 
-        <ScrollArea className="flex-1">
+        <ScrollArea className="flex-1 min-h-0 h-full w-full">
           <div className="p-6 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             {/* Fotos */}
             <div className="rounded-[12px] overflow-hidden border border-[#E5E5E5] shadow-sm bg-white">
@@ -213,7 +213,7 @@ export function ImovelDetailsSheet({ imovel, onClose, onVincular }: ImovelDetail
           </div>
         </ScrollArea>
 
-        <SheetFooter className="p-4 border-t border-[#E5E5E5] bg-white flex flex-col gap-3 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-10 relative">
+        <SheetFooter className="p-4 border-t border-[#E5E5E5] bg-white flex flex-col gap-3 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-10 relative shrink-0">
           <div className="flex gap-2 w-full">
             <Button
               variant="outline"
