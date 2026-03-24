@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
-import { CheckCircle2, Circle, X } from 'lucide-react'
+import { CheckCircle2, Circle } from 'lucide-react'
 
 interface Props {
   isOpen: boolean
@@ -24,8 +24,9 @@ export function NaoEncontreiModal({ isOpen, onClose, onConfirm }: Props) {
   const [option, setOption] = useState<string>('')
   const [obs, setObs] = useState<string>('')
   const [error, setError] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (!option) {
       setError('Selecione um motivo')
       return
@@ -35,19 +36,24 @@ export function NaoEncontreiModal({ isOpen, onClose, onConfirm }: Props) {
       return
     }
     setError('')
-    onConfirm(option, obs)
+    setIsSubmitting(true)
 
-    setTimeout(() => {
-      setOption('')
-      setObs('')
-    }, 300)
+    try {
+      await Promise.resolve(onConfirm(option, obs))
+    } finally {
+      setIsSubmitting(false)
+      setTimeout(() => {
+        setOption('')
+        setObs('')
+      }, 300)
+    }
   }
 
   return (
     <Dialog
       open={isOpen}
       onOpenChange={(val) => {
-        if (!val) {
+        if (!val && !isSubmitting) {
           onClose()
           setTimeout(() => {
             setOption('')
@@ -74,14 +80,17 @@ export function NaoEncontreiModal({ isOpen, onClose, onConfirm }: Props) {
                 <div
                   key={opt}
                   onClick={() => {
-                    setOption(opt)
-                    setError('')
+                    if (!isSubmitting) {
+                      setOption(opt)
+                      setError('')
+                    }
                   }}
                   className={cn(
                     'flex items-center gap-3 p-4 rounded-[12px] border-[2px] cursor-pointer transition-all duration-200',
                     option === opt
                       ? 'border-[#EF4444] bg-[#FEF2F2] shadow-sm'
                       : 'border-[#E5E5E5] bg-[#FFFFFF] hover:border-[#EF4444]/50',
+                    isSubmitting && 'opacity-50 cursor-not-allowed pointer-events-none',
                   )}
                 >
                   {option === opt ? (
@@ -111,6 +120,7 @@ export function NaoEncontreiModal({ isOpen, onClose, onConfirm }: Props) {
                   onChange={(e) => setObs(e.target.value.slice(0, 500))}
                   placeholder="Descreva o motivo detalhadamente..."
                   className="min-h-[80px] resize-none focus-visible:ring-[#EF4444] text-[16px]"
+                  disabled={isSubmitting}
                 />
                 <div className="text-right text-[12px] text-[#999999] font-medium">
                   {obs.length}/500
@@ -128,6 +138,7 @@ export function NaoEncontreiModal({ isOpen, onClose, onConfirm }: Props) {
                   onChange={(e) => setObs(e.target.value.slice(0, 500))}
                   placeholder="Detalhes adicionais..."
                   className="min-h-[80px] resize-none focus-visible:ring-[#EF4444] text-[16px]"
+                  disabled={isSubmitting}
                 />
                 <div className="text-right text-[12px] text-[#999999] font-medium">
                   {obs.length}/500
@@ -153,13 +164,16 @@ export function NaoEncontreiModal({ isOpen, onClose, onConfirm }: Props) {
                   setError('')
                 }, 300)
               }}
-              className="w-full sm:w-1/2 min-h-[48px] font-bold text-[16px] bg-[#6B7280] border-none text-white hover:bg-[#4B5563]"
+              disabled={isSubmitting}
+              className="w-full sm:w-1/2 min-h-[48px] font-bold text-[16px] bg-[#6B7280] border-transparent text-white enabled:hover:bg-[#4B5563]"
             >
               Cancelar
             </Button>
             <Button
               onClick={handleConfirm}
-              className="w-full sm:w-1/2 min-h-[48px] font-bold text-[16px] bg-[#10B981] text-white hover:bg-[#059669] shadow-[0_4px_12px_rgba(16,185,129,0.3)] transition-transform hover:scale-[1.02]"
+              isLoading={isSubmitting}
+              loadingText="Enviando..."
+              className="w-full sm:w-1/2 min-h-[48px] font-bold text-[16px] bg-[#10B981] text-white enabled:hover:bg-[#059669] border-transparent shadow-[0_4px_12px_rgba(16,185,129,0.3)] transition-transform enabled:active:scale-[0.98]"
             >
               Confirmar
             </Button>

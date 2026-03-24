@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
-import { Eye, EyeOff, Loader2, AlertTriangle } from 'lucide-react'
+import { Eye, EyeOff, AlertTriangle } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -401,19 +401,11 @@ export function UserModal({ isOpen, onClose, user }: UserModalProps) {
                 </Button>
                 <Button
                   type="submit"
-                  disabled={isProcessingUser}
-                  className="w-full sm:w-auto h-12 bg-[#4CAF50] hover:bg-[#388E3C] text-white font-bold px-8 transition-all"
+                  isLoading={isProcessingUser}
+                  loadingText="Processando..."
+                  className="w-full sm:w-auto h-12 bg-[#4CAF50] enabled:hover:bg-[#388E3C] border-transparent text-white font-bold px-8 transition-all"
                 >
-                  {isProcessingUser ? (
-                    <>
-                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                      Processando...
-                    </>
-                  ) : user ? (
-                    '💾 Salvar Alterações'
-                  ) : (
-                    '✅ Criar Usuário'
-                  )}
+                  {user ? '💾 Salvar Alterações' : '✅ Criar Usuário'}
                 </Button>
               </div>
             </form>

@@ -155,14 +155,14 @@ export function ImovelCapturadoCard({ property, demand, isOwnerOrAdmin = true }:
             <Button
               size="sm"
               variant="outline"
-              className="flex-1 font-bold text-[12px] text-[#333333] border-[#E5E5E5] hover:bg-[#F5F5F5] h-8"
+              className="flex-1 font-bold text-[12px] text-[#333333] border-[#E5E5E5] enabled:hover:bg-[#F5F5F5] h-[44px]"
               disabled={!publicUrl}
               onClick={(e) => {
                 e.stopPropagation()
                 if (publicUrl) window.open(publicUrl, '_blank')
               }}
             >
-              <ExternalLink className="w-3.5 h-3.5 mr-1.5" /> Ver no site
+              <ExternalLink className="w-4 h-4" /> Ver no site
             </Button>
           </TooltipTrigger>
           {!publicUrl && <TooltipContent>Imóvel sem código cadastrado</TooltipContent>}
@@ -173,11 +173,11 @@ export function ImovelCapturadoCard({ property, demand, isOwnerOrAdmin = true }:
             <Button
               size="icon"
               variant="outline"
-              className="w-8 h-8 shrink-0 text-[#333333] border-[#E5E5E5] hover:bg-[#F5F5F5]"
+              className="w-[44px] h-[44px] shrink-0 text-[#333333] border-[#E5E5E5] enabled:hover:bg-[#F5F5F5]"
               disabled={!publicUrl}
               onClick={handleCopyLink}
             >
-              <Share2 className="w-3.5 h-3.5" />
+              <Share2 className="w-4 h-4" />
             </Button>
           </TooltipTrigger>
           <TooltipContent>
@@ -192,22 +192,24 @@ export function ImovelCapturadoCard({ property, demand, isOwnerOrAdmin = true }:
             <Button
               size="sm"
               variant="outline"
-              className="flex-1 font-bold border-[#F59E0B] text-[#B45309] hover:bg-[#FFFBEB]"
+              className="flex-1 font-bold border-[#F59E0B] text-[#B45309] enabled:hover:bg-[#FFFBEB] h-[44px]"
               onClick={() => updateEtapa('visitado')}
-              disabled={isUpdating}
+              isLoading={isUpdating}
+              loadingText="Salvando..."
             >
-              <Eye className="w-4 h-4 mr-1.5" /> Marcar como Visitado
+              <Eye className="w-4 h-4" /> Marcar como Visitado
             </Button>
           )}
 
           {!isFechado && (
             <Button
               size="sm"
-              className="flex-1 font-bold bg-[#10B981] hover:bg-[#059669] text-white shadow-sm"
+              className="flex-1 font-bold bg-[#10B981] enabled:hover:bg-[#059669] text-white h-[44px] shadow-sm border border-transparent"
               onClick={() => updateEtapa('fechado')}
-              disabled={isUpdating}
+              isLoading={isUpdating}
+              loadingText="Salvando..."
             >
-              <CheckCircle2 className="w-4 h-4 mr-1.5" /> Marcar como Fechado
+              <CheckCircle2 className="w-4 h-4" /> Marcar como Fechado
             </Button>
           )}
 
@@ -215,11 +217,12 @@ export function ImovelCapturadoCard({ property, demand, isOwnerOrAdmin = true }:
             <Button
               size="sm"
               variant="outline"
-              className="font-bold text-[#666666] hover:text-[#1A3A52] shrink-0"
+              className="font-bold text-[#666666] enabled:hover:text-[#1A3A52] shrink-0 h-[44px]"
               onClick={() => updateEtapa(isFechado ? 'visitado' : 'capturado')}
-              disabled={isUpdating}
+              isLoading={isUpdating}
+              loadingText="Desfazendo..."
             >
-              <RotateCcw className="w-4 h-4 mr-1.5" /> Desfazer
+              <RotateCcw className="w-4 h-4" /> Desfazer
             </Button>
           )}
         </div>

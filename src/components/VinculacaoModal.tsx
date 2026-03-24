@@ -162,7 +162,7 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
     if (!imovel || !selectedDemand || !isMatchValid) return
 
     // Check if already linked
-    if (selectedDemand.imoveis_captados?.some((i) => i.id === imovel.id)) {
+    if (selectedDemand.imoveis_captados?.some((i: any) => i.id === imovel.id)) {
       toast({
         title: 'Aviso',
         description: 'Este imóvel já está vinculado a este cliente',
@@ -336,7 +336,7 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
         </div>
 
         <DialogFooter className="p-[20px] border-t border-[#E5E5E5] bg-[#F8FAFC] flex gap-3 justify-end items-center sm:justify-end shrink-0">
-          <Button variant="outline" onClick={onClose} className="font-bold min-h-[44px]">
+          <Button variant="outline" onClick={onClose} className="font-bold min-w-[120px]">
             Cancelar
           </Button>
           <Tooltip>
@@ -345,14 +345,16 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
                 <Button
                   disabled={!selectedDemand || !isMatchValid || isLinking}
                   onClick={handleVincular}
+                  isLoading={isLinking}
+                  loadingText="Vinculando..."
                   className={cn(
-                    'font-bold transition-all shadow-sm min-w-[160px] min-h-[44px]',
+                    'font-bold transition-all shadow-sm min-w-[160px]',
                     isMatchValid
-                      ? 'bg-[#10B981] hover:bg-[#059669] text-white border-none'
-                      : 'bg-[#E5E5E5] text-[#999999] cursor-not-allowed border-none',
+                      ? 'bg-[#10B981] enabled:hover:bg-[#059669] text-white border-transparent'
+                      : 'bg-[#E5E5E5] text-[#999999] border-transparent',
                   )}
                 >
-                  {isLinking ? 'Vinculando...' : 'Vincular Cliente'}
+                  Vincular Cliente
                 </Button>
               </div>
             </TooltipTrigger>

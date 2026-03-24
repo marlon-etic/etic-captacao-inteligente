@@ -201,8 +201,8 @@ export function CapturedPropertyCard({
                   className={cn(
                     'flex-1 font-bold min-h-[44px]',
                     publicUrl
-                      ? 'bg-[#1A3A52] hover:bg-[#153045] text-white'
-                      : 'bg-[#E5E5E5] text-[#999999] hover:bg-[#E5E5E5] cursor-not-allowed',
+                      ? 'bg-[#1A3A52] enabled:hover:bg-[#153045] text-white'
+                      : 'bg-[#E5E5E5] text-[#999999]',
                   )}
                   disabled={!publicUrl}
                   onClick={(e) => {
@@ -210,7 +210,7 @@ export function CapturedPropertyCard({
                     if (publicUrl) window.open(publicUrl, '_blank')
                   }}
                 >
-                  <ExternalLink className="w-[16px] h-[16px] mr-[6px]" />
+                  <ExternalLink className="w-[16px] h-[16px]" />
                   Ver no site
                 </Button>
               </TooltipTrigger>
@@ -228,8 +228,8 @@ export function CapturedPropertyCard({
                   className={cn(
                     'w-[44px] h-[44px] p-0 shrink-0 border-[2px]',
                     publicUrl
-                      ? 'border-[#2E5F8A] text-[#1A3A52] hover:bg-[#F5F5F5]'
-                      : 'border-[#E5E5E5] text-[#999999] hover:bg-transparent cursor-not-allowed',
+                      ? 'border-[#2E5F8A] text-[#1A3A52] enabled:hover:bg-[#F5F5F5]'
+                      : 'border-[#E5E5E5] text-[#999999]',
                   )}
                   disabled={!publicUrl}
                   onClick={(e) => {
@@ -252,25 +252,25 @@ export function CapturedPropertyCard({
               <>
                 <Button
                   variant="outline"
-                  className="flex-1 min-h-[44px] border-[#2E5F8A] text-[#1A3A52] hover:bg-[#F5F5F5] font-bold text-[12px] px-2"
+                  className="flex-1 min-h-[44px] border-[#2E5F8A] text-[#1A3A52] enabled:hover:bg-[#F5F5F5] font-bold text-[12px] px-2"
                   onClick={() => handleAction('edit')}
                 >
-                  <Edit2 className="w-[14px] h-[14px] mr-[4px]" />
+                  <Edit2 className="w-[14px] h-[14px]" />
                   Editar
                 </Button>
                 <Button
                   variant="outline"
-                  className="flex-1 min-h-[44px] border-[#2E5F8A] text-[#1A3A52] hover:bg-[#F5F5F5] font-bold text-[12px] px-2"
+                  className="flex-1 min-h-[44px] border-[#2E5F8A] text-[#1A3A52] enabled:hover:bg-[#F5F5F5] font-bold text-[12px] px-2"
                   onClick={() => handleAction('details')}
                 >
-                  <BookOpen className="w-[14px] h-[14px] mr-[4px]" />
+                  <BookOpen className="w-[14px] h-[14px]" />
                   Ver Detalhes
                 </Button>
                 <Button
-                  className="w-full min-h-[44px] bg-[#25D366] hover:bg-[#128C7E] text-white font-bold text-[12px] px-2"
+                  className="w-full min-h-[44px] bg-[#25D366] enabled:hover:bg-[#128C7E] text-white font-bold text-[12px] px-2 border border-transparent"
                   onClick={handleWhatsApp}
                 >
-                  <MessageCircle className="w-[14px] h-[14px] mr-[4px]" />
+                  <MessageCircle className="w-[14px] h-[14px]" />
                   Contatar Solicitante
                 </Button>
               </>
@@ -279,39 +279,39 @@ export function CapturedPropertyCard({
             {isSDRCorretorAdmin && (
               <>
                 <Button
-                  className="flex-1 min-h-[44px] bg-[#10B981] hover:bg-[#059669] text-white font-bold text-[12px] px-2 shadow-sm"
+                  className="flex-1 min-h-[44px] bg-[#10B981] enabled:hover:bg-[#059669] text-white font-bold text-[12px] px-2 border border-transparent shadow-sm"
                   onClick={() => handleAction('vincular')}
                 >
-                  <Link2 className="w-[14px] h-[14px] sm:mr-[4px]" />
+                  <Link2 className="w-[14px] h-[14px]" />
                   <span className="hidden sm:inline">VINCULAR</span>
                   <span className="sm:hidden">Vincular</span>
                 </Button>
                 {!isClosed && !isVisita && (
                   <Button
-                    className="flex-1 min-h-[44px] bg-[#FF9800] hover:bg-[#F57C00] text-white font-bold text-[12px] px-2 shadow-sm"
+                    className="flex-1 min-h-[44px] bg-[#FF9800] enabled:hover:bg-[#F57C00] text-white font-bold text-[12px] px-2 border border-transparent shadow-sm"
                     onClick={() => handleAction('visita')}
                   >
-                    <Eye className="w-[14px] h-[14px] sm:mr-[4px]" />
+                    <Eye className="w-[14px] h-[14px]" />
                     <span className="hidden sm:inline">VISITA AGENDADA</span>
                     <span className="sm:hidden">Visita</span>
                   </Button>
                 )}
                 {isVisita && (
                   <Button
-                    className="flex-1 min-h-[44px] bg-[#4CAF50] hover:bg-[#388E3C] text-white font-bold text-[12px] px-2 shadow-sm"
+                    className="flex-1 min-h-[44px] bg-[#4CAF50] enabled:hover:bg-[#388E3C] text-white font-bold text-[12px] px-2 border border-transparent shadow-sm"
                     onClick={() => handleAction('negocio')}
                   >
-                    <Handshake className="w-[14px] h-[14px] sm:mr-[4px]" />
+                    <Handshake className="w-[14px] h-[14px]" />
                     <span className="hidden sm:inline">NEGÓCIO FECHADO</span>
                     <span className="sm:hidden">Fechado</span>
                   </Button>
                 )}
                 <Button
                   variant="outline"
-                  className="flex-1 min-h-[44px] border-[#2E5F8A] text-[#1A3A52] hover:bg-[#F5F5F5] font-bold text-[12px] px-2"
+                  className="flex-1 min-h-[44px] border-[#2E5F8A] text-[#1A3A52] enabled:hover:bg-[#F5F5F5] font-bold text-[12px] px-2"
                   onClick={() => handleAction('details')}
                 >
-                  <BookOpen className="w-[14px] h-[14px] sm:mr-[4px]" />
+                  <BookOpen className="w-[14px] h-[14px]" />
                   <span className="hidden sm:inline">Ver Detalhes</span>
                   <span className="sm:hidden">Detalhes</span>
                 </Button>

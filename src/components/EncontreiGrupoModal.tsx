@@ -42,6 +42,7 @@ export function EncontreiGrupoModal({ isOpen, onClose, demandIds }: Props) {
   const [obs, setObs] = useState('')
 
   const [errors, setErrors] = useState<{ code?: string; value?: string }>({})
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleCodeChange = (val: string) => {
     const sanitized = val.replace(/[^a-zA-Z0-9]/g, '').toUpperCase()
@@ -54,7 +55,7 @@ export function EncontreiGrupoModal({ isOpen, onClose, demandIds }: Props) {
     if (Number(val) > 0) setErrors((prev) => ({ ...prev, value: undefined }))
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const newErrors: any = {}
     if (!code) newErrors.code = 'Código é obrigatório'
     if (!value || Number(value) <= 0) newErrors.value = 'Valor deve ser maior que zero'
@@ -63,6 +64,8 @@ export function EncontreiGrupoModal({ isOpen, onClose, demandIds }: Props) {
       setErrors(newErrors)
       return
     }
+
+    setIsSubmitting(true)
 
     const payload = {
       code,
@@ -74,26 +77,34 @@ export function EncontreiGrupoModal({ isOpen, onClose, demandIds }: Props) {
       obs,
     }
 
-    const res = submitGroupCapture(demandIds, payload)
-    if (res.success) {
-      onClose()
-      setCode('')
-      setNeighborhood('')
-      setValue('')
-      setBedrooms('')
-      setBathrooms('')
-      setParkingSpots('')
-      setObs('')
-    } else {
-      if (res.message === 'Código já cadastrado') {
-        setErrors({ code: 'Código já cadastrado' })
+    try {
+      // Wrapper to ensure UI update
+      const res = await new Promise<any>((resolve) =>
+        setTimeout(() => resolve(submitGroupCapture(demandIds, payload)), 300),
+      )
+
+      if (res.success) {
+        onClose()
+        setCode('')
+        setNeighborhood('')
+        setValue('')
+        setBedrooms('')
+        setBathrooms('')
+        setParkingSpots('')
+        setObs('')
+      } else {
+        if (res.message === 'Código já cadastrado') {
+          setErrors({ code: 'Código já cadastrado' })
+        }
+        toast({ title: 'Erro', description: res.message, variant: 'destructive' })
       }
-      toast({ title: 'Erro', description: res.message, variant: 'destructive' })
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={(v) => !v && onClose()}>
+    <Dialog open={isOpen} onOpenChange={(v) => !v && !isSubmitting && onClose()}>
       <DialogContent className="max-w-2xl p-0 overflow-hidden bg-white border-[2px] border-[#1A3A52] rounded-[12px] h-[85vh] sm:h-auto max-h-[85vh] flex flex-col">
         <DialogHeader className="p-4 md:p-6 border-b border-[#E5E5E5] bg-[#F5F5F5] shrink-0">
           <DialogTitle className="text-xl font-bold text-[#1A3A52]">
@@ -116,6 +127,7 @@ export function EncontreiGrupoModal({ isOpen, onClose, demandIds }: Props) {
                   onChange={(e) => handleCodeChange(e.target.value)}
                   placeholder="Ex: AP123"
                   className="min-h-[48px]"
+                  disabled={isSubmitting}
                 />
                 {errors.code && (
                   <p className="text-[#F44336] text-xs mt-1 font-bold">{errors.code}</p>
@@ -123,7 +135,11 @@ export function EncontreiGrupoModal({ isOpen, onClose, demandIds }: Props) {
               </div>
               <div>
                 <Label className="font-bold text-[#333333]">Bairro</Label>
-                <Select value={neighborhood} onValueChange={setNeighborhood}>
+                <Select
+                  value={neighborhood}
+                  onValueChange={setNeighborhood}
+                  disabled={isSubmitting}
+                >
                   <SelectTrigger className="min-h-[48px]">
                     <SelectValue placeholder="Selecione o bairro..." />
                   </SelectTrigger>
@@ -151,6 +167,7 @@ export function EncontreiGrupoModal({ isOpen, onClose, demandIds }: Props) {
                 onChange={(e) => handleValueChange(e.target.value)}
                 placeholder="Ex: 500000"
                 className="min-h-[48px]"
+                disabled={isSubmitting}
               />
               {errors.value && (
                 <p className="text-[#F44336] text-xs mt-1 font-bold">{errors.value}</p>
@@ -165,6 +182,7 @@ export function EncontreiGrupoModal({ isOpen, onClose, demandIds }: Props) {
                   value={bedrooms}
                   onChange={(e) => setBedrooms(e.target.value)}
                   className="min-h-[48px]"
+                  disabled={isSubmitting}
                 />
               </div>
               <div>
@@ -174,6 +192,7 @@ export function EncontreiGrupoModal({ isOpen, onClose, demandIds }: Props) {
                   value={bathrooms}
                   onChange={(e) => setBathrooms(e.target.value)}
                   className="min-h-[48px]"
+                  disabled={isSubmitting}
                 />
               </div>
               <div>
@@ -183,6 +202,7 @@ export function EncontreiGrupoModal({ isOpen, onClose, demandIds }: Props) {
                   value={parkingSpots}
                   onChange={(e) => setParkingSpots(e.target.value)}
                   className="min-h-[48px]"
+                  disabled={isSubmitting}
                 />
               </div>
             </div>
@@ -194,6 +214,7 @@ export function EncontreiGrupoModal({ isOpen, onClose, demandIds }: Props) {
                 onChange={(e) => setObs(e.target.value)}
                 placeholder="Detalhes adicionais do imóvel..."
                 className="min-h-[80px] resize-none"
+                disabled={isSubmitting}
               />
             </div>
           </div>
@@ -203,13 +224,16 @@ export function EncontreiGrupoModal({ isOpen, onClose, demandIds }: Props) {
           <Button
             variant="outline"
             onClick={onClose}
+            disabled={isSubmitting}
             className="w-full sm:w-auto min-h-[48px] font-bold text-[14px]"
           >
             Cancelar
           </Button>
           <Button
             onClick={handleSubmit}
-            className="w-full sm:w-auto min-h-[48px] font-bold text-[14px] bg-[#4CAF50] hover:bg-[#388E3C] text-white"
+            isLoading={isSubmitting}
+            loadingText="Salvando..."
+            className="w-full sm:w-auto min-h-[48px] font-bold text-[14px] bg-[#4CAF50] enabled:hover:bg-[#388E3C] border-transparent text-white"
           >
             ✅ CONFIRMAR CAPTAÇÃO
           </Button>
