@@ -17,6 +17,9 @@ export interface SupabaseCapturedPropertyWithDemand {
   observacoes?: string
   demanda?: any
   tipo?: string
+  etapa_funil?: string
+  data_visita?: string
+  data_fechamento?: string
 }
 
 export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
@@ -58,6 +61,9 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
           }
         : null,
       tipo,
+      etapa_funil: p.etapa_funil,
+      data_visita: p.data_visita,
+      data_fechamento: p.data_fechamento
     }
   }, [])
 
@@ -119,6 +125,8 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
     let mounted = true
     if (mounted) fetchProperties()
 
+    console.log(`[DEBUG] Subscription criada: imoveis_captados (${filterType || 'all'})`)
+
     // Sincronização Bidirecional Direta (Otimizada sem polling)
     const channel = supabase
       .channel(`properties_realtime_${filterType || 'all'}`)
@@ -126,6 +134,7 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'imoveis_captados' },
         (payload) => {
+          console.log('[DEBUG] Evento recebido (INSERT imoveis_captados - props):', payload)
           fetchSingleProperty(payload.new.id)
         },
       )
@@ -133,9 +142,12 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'imoveis_captados' },
         (payload) => {
-          setProperties((prev) =>
-            prev.map((p) => (p.id === payload.new.id ? { ...p, ...payload.new } : p)),
-          )
+          console.log('[DEBUG] Evento recebido (UPDATE imoveis_captados - props):', payload)
+          setProperties((prev) => {
+            const newState = prev.map((p) => (p.id === payload.new.id ? { ...p, ...payload.new } : p))
+            console.log('[DEBUG] Estado atualizado (UPDATE imoveis_captados - props):', newState)
+            return newState
+          })
           // Refresh relations if demand link changed, though rare
           if (
             payload.old &&
@@ -150,7 +162,12 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
         'postgres_changes',
         { event: 'DELETE', schema: 'public', table: 'imoveis_captados' },
         (payload) => {
-          setProperties((prev) => prev.filter((p) => p.id !== payload.old.id))
+          console.log('[DEBUG] Evento recebido (DELETE imoveis_captados - props):', payload)
+          setProperties((prev) => {
+            const newState = prev.filter((p) => p.id !== payload.old.id)
+            console.log('[DEBUG] Estado atualizado (DELETE imoveis_captados - props):', newState)
+            return newState
+          })
         },
       )
       .subscribe()

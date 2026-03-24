@@ -69,14 +69,6 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
     currentUserRef.current = currentUser
   }, [currentUser])
 
-  // Atualizador global de prazos a cada 1 minuto (se fallback do cron)
-  useEffect(() => {
-    const interval = setInterval(() => {
-      supabase.rpc('atualizar_prazos_vencidos').catch(() => {})
-    }, 60000)
-    return () => clearInterval(interval)
-  }, [])
-
   const sortDemands = useCallback((list: SupabaseDemand[]) => {
     return [...list].sort((a, b) => {
       if (a.is_prioritaria && !b.is_prioritaria) return -1
@@ -173,10 +165,16 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
 
     const table = type === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
 
+    console.log(`[DEBUG] Subscription criada: ${table}`)
+    console.log(`[DEBUG] Subscription criada: imoveis_captados`)
+    console.log(`[DEBUG] Subscription criada: respostas_captador`)
+    console.log(`[DEBUG] Subscription criada: prazos_captacao`)
+
     // Sincronização Bidirecional em Tempo Real - Atualizações Locais Otimizadas O(1)
     const channel = supabase
       .channel(`realtime_sync_${type}`)
       .on('postgres_changes', { event: '*', schema: 'public', table }, (payload) => {
+        console.log(`[DEBUG] Evento recebido (${table}):`, payload)
         if (payload.eventType === 'INSERT') {
           const d = payload.new
           setDemands((prev) => {
@@ -184,12 +182,14 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
             const newDemand = formatData([
               { ...d, imoveis_captados: [], respostas_captador: [], prazos_captacao: [] },
             ])[0]
-            return sortDemands([newDemand, ...prev])
+            const newState = sortDemands([newDemand, ...prev])
+            console.log(`[DEBUG] Estado atualizado (INSERT ${table}):`, newState)
+            return newState
           })
         } else if (payload.eventType === 'UPDATE') {
           const d = payload.new
-          setDemands((prev) =>
-            sortDemands(
+          setDemands((prev) => {
+            const newState = sortDemands(
               prev.map((x) =>
                 x.id === d.id
                   ? {
@@ -200,22 +200,34 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
                       valor_maximo: d.valor_maximo || d.orcamento_max || x.valor_maximo,
                       observacoes: d.observacoes || d.necessidades_especificas || x.observacoes,
                       nivel_urgencia: d.nivel_urgencia || d.urgencia || x.nivel_urgencia,
+                      status_demanda: d.status_demanda || x.status_demanda,
+                      is_prioritaria: d.is_prioritaria !== undefined ? d.is_prioritaria : x.is_prioritaria,
+                      respostas_captador: x.respostas_captador,
+                      imoveis_captados: x.imoveis_captados,
+                      prazos_captacao: x.prazos_captacao,
                     }
                   : x,
               ),
-            ),
-          )
+            )
+            console.log(`[DEBUG] Estado atualizado (UPDATE ${table}):`, newState)
+            return newState
+          })
         } else if (payload.eventType === 'DELETE') {
-          setDemands((prev) => prev.filter((x) => x.id !== payload.old.id))
+          setDemands((prev) => {
+            const newState = prev.filter((x) => x.id !== payload.old.id)
+            console.log(`[DEBUG] Estado atualizado (DELETE ${table}):`, newState)
+            return newState
+          })
         }
       })
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'imoveis_captados' },
         (payload) => {
+          console.log('[DEBUG] Evento recebido (INSERT imoveis_captados):', payload)
           const imv = payload.new
-          setDemands((prev) =>
-            prev.map((d) => {
+          setDemands((prev) => {
+            const newState = prev.map((d) => {
               if (d.id === imv.demanda_locacao_id || d.id === imv.demanda_venda_id) {
                 if (d.imoveis_captados?.some((i: any) => i.id === imv.id)) return d
 
@@ -245,14 +257,17 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
                 }
               }
               return d
-            }),
-          )
+            })
+            console.log('[DEBUG] Estado atualizado (INSERT imoveis_captados):', newState)
+            return newState
+          })
         },
       )
       .on(
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'imoveis_captados' },
         (payload) => {
+          console.log('[DEBUG] Evento recebido (UPDATE imoveis_captados):', payload)
           const imv = payload.new
           const oldImv = payload.old
 
@@ -282,11 +297,22 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
             }
           }
 
-          setDemands((prev) =>
-            prev.map((d) => {
+          setDemands((prev) => {
+            const newState = prev.map((d) => {
               if (d.id === imv.demanda_locacao_id || d.id === imv.demanda_venda_id) {
+                let newStatus = d.status_demanda
+                if (imv.etapa_funil === 'fechado') {
+                  newStatus = 'ganho'
+                } else if (d.status_demanda === 'ganho' && imv.etapa_funil !== 'fechado') {
+                  const otherClosed = (d.imoveis_captados || []).some(
+                    (i: any) => i.id !== imv.id && i.etapa_funil === 'fechado'
+                  )
+                  if (!otherClosed) newStatus = 'atendida'
+                }
+
                 return {
                   ...d,
+                  status_demanda: newStatus,
                   imoveis_captados: (d.imoveis_captados || []).map((i: any) =>
                     i.id === imv.id
                       ? {
@@ -300,17 +326,20 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
                 }
               }
               return d
-            }),
-          )
+            })
+            console.log('[DEBUG] Estado atualizado (UPDATE imoveis_captados):', newState)
+            return newState
+          })
         },
       )
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'respostas_captador' },
         (payload) => {
+          console.log('[DEBUG] Evento recebido (INSERT respostas_captador):', payload)
           const resp = payload.new
-          setDemands((prev) =>
-            prev.map((d) => {
+          setDemands((prev) => {
+            const newState = prev.map((d) => {
               if (d.id === resp.demanda_locacao_id || d.id === resp.demanda_venda_id) {
                 const user = currentUserRef.current
                 if (user && (d.sdr_id === user.id || d.corretor_id === user.id)) {
@@ -331,23 +360,37 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
                     })
                   }
                 }
-                return { ...d, respostas_captador: [resp, ...(d.respostas_captador || [])] }
+
+                let newStatus = d.status_demanda
+                if (resp.resposta === 'nao_encontrei') {
+                   if (resp.motivo === 'Fora do mercado') newStatus = 'impossivel'
+                   else if (resp.motivo === 'Buscando outras opções') newStatus = 'aberta'
+                }
+
+                return { 
+                  ...d, 
+                  status_demanda: newStatus,
+                  respostas_captador: [resp, ...(d.respostas_captador || [])] 
+                }
               }
               return d
-            }),
-          )
+            })
+            console.log('[DEBUG] Estado atualizado (INSERT respostas_captador):', newState)
+            return newState
+          })
         },
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'prazos_captacao' },
         (payload) => {
+          console.log('[DEBUG] Evento recebido (prazos_captacao):', payload)
           if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
             const newP = payload.new
             const oldP = payload.old
 
-            setDemands((prev) =>
-              prev.map((d) => {
+            setDemands((prev) => {
+              const newState = prev.map((d) => {
                 if (d.id === newP.demanda_locacao_id || d.id === newP.demanda_venda_id) {
                   const user = currentUserRef.current
                   const isOwner = user && (d.sdr_id === user.id || d.corretor_id === user.id)
@@ -384,8 +427,10 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
                   return { ...d, prazos_captacao: currentPrazos }
                 }
                 return d
-              }),
-            )
+              })
+              console.log('[DEBUG] Estado atualizado (prazos_captacao):', newState)
+              return newState
+            })
           }
         },
       )

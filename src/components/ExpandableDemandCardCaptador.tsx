@@ -35,10 +35,8 @@ import { PrazoCounter } from './PrazoCounter'
 
 export function ExpandableDemandCardCaptador({
   demand,
-  onUpdate,
 }: {
   demand: SupabaseDemand
-  onUpdate?: () => void
 }) {
   const [expanded, setExpanded] = useState(false)
   const [detailsModalOpen, setDetailsModalOpen] = useState(false)
@@ -138,7 +136,6 @@ export function ExpandableDemandCardCaptador({
       })
 
       setNaoEncontreiModalOpen(false)
-      if (onUpdate) onUpdate()
     } catch (err: any) {
       toast({
         title: 'Erro ao registrar resposta',
@@ -192,7 +189,6 @@ export function ExpandableDemandCardCaptador({
         description: `Novo prazo de +48h.`,
         className: 'bg-[#10B981] text-white border-none',
       })
-      if (onUpdate) onUpdate()
     } catch (err: any) {
       toast({ title: 'Erro ao prorrogar', description: err.message, variant: 'destructive' })
     } finally {
@@ -404,14 +400,16 @@ export function ExpandableDemandCardCaptador({
                             variant="outline"
                             className={cn(
                               'text-[9px] h-5 py-0 px-2 uppercase border-none font-bold shrink-0',
-                              imovel.status_captacao === 'fechado'
+                              imovel.etapa_funil === 'fechado'
                                 ? 'bg-[#D1FAE5] text-[#065F46]'
-                                : imovel.status_captacao === 'perdido'
+                                : imovel.etapa_funil === 'perdido'
                                   ? 'bg-[#FEE2E2] text-[#EF4444]'
-                                  : 'bg-[#E0E7FF] text-[#047857]',
+                                  : imovel.etapa_funil === 'visitado'
+                                    ? 'bg-[#FEF3C7] text-[#B45309]'
+                                    : 'bg-[#E0E7FF] text-[#3730A3]',
                             )}
                           >
-                            {imovel.status_captacao || 'Pendente'}
+                            {imovel.etapa_funil || 'Pendente'}
                           </Badge>
                         </div>
                         <div className="text-[12px] text-[#666666] flex flex-col gap-2 font-medium">
@@ -457,7 +455,7 @@ export function ExpandableDemandCardCaptador({
         isOpen={captureModalOpen}
         onClose={() => setCaptureModalOpen(false)}
         onSuccess={() => {
-          if (onUpdate) onUpdate()
+          setCaptureModalOpen(false)
         }}
       />
 

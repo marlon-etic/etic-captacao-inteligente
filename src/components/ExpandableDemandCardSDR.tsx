@@ -21,10 +21,9 @@ import { toast } from '@/hooks/use-toast'
 
 interface Props {
   demand: SupabaseDemand
-  onUpdate?: () => void
 }
 
-export function ExpandableDemandCardSDR({ demand, onUpdate }: Props) {
+export function ExpandableDemandCardSDR({ demand }: Props) {
   const { currentUser } = useAppStore()
   const [isPrioritizing, setIsPrioritizing] = useState(false)
 
@@ -73,8 +72,6 @@ export function ExpandableDemandCardSDR({ demand, onUpdate }: Props) {
           : 'A demanda voltou à posição normal.',
         className: newStatus ? 'bg-[#FCD34D] text-[#854D0E] border-none' : '',
       })
-
-      if (onUpdate) onUpdate()
     } catch (err: any) {
       toast({
         title: 'Erro',

@@ -260,7 +260,7 @@ export function MyDemandsViewCaptador({ filterType }: Props) {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-[16px] w-full items-stretch">
             {filteredDemands.map((demand) => (
-              <ExpandableDemandCardCaptador key={demand.id} demand={demand} onUpdate={refresh} />
+              <ExpandableDemandCardCaptador key={demand.id} demand={demand} />
             ))}
           </div>
         )}

@@ -243,7 +243,7 @@ export function MyDemandsView({ filterType }: Props) {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-[16px] w-full items-stretch">
             {filteredDemands.map((demand) => (
-              <ExpandableDemandCardSDR key={demand.id} demand={demand} onUpdate={refresh} />
+              <ExpandableDemandCardSDR key={demand.id} demand={demand} />
             ))}
           </div>
         )}
