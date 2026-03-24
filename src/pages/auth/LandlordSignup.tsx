@@ -72,6 +72,7 @@ export default function LandlordSignup() {
                 <Input
                   required
                   placeholder="Seu nome"
+                  autoComplete="name"
                   className="pl-10 h-12"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -89,6 +90,7 @@ export default function LandlordSignup() {
                   required
                   type="email"
                   placeholder="seu@email.com"
+                  autoComplete="username"
                   className="pl-10 h-12"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
@@ -105,6 +107,7 @@ export default function LandlordSignup() {
                 <Input
                   required
                   placeholder="(11) 99999-9999"
+                  autoComplete="tel"
                   className="pl-10 h-12"
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
@@ -122,6 +125,7 @@ export default function LandlordSignup() {
                   required
                   type="password"
                   placeholder="••••••••"
+                  autoComplete="new-password"
                   className="pl-10 h-12"
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
@@ -139,6 +143,7 @@ export default function LandlordSignup() {
                   required
                   type="password"
                   placeholder="••••••••"
+                  autoComplete="new-password"
                   className="pl-10 h-12"
                   value={formData.confirmPassword}
                   onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}

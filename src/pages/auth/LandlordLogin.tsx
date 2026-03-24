@@ -63,6 +63,7 @@ export default function LandlordLogin() {
                   id="email"
                   type="email"
                   placeholder="seu@email.com"
+                  autoComplete="username"
                   className="pl-10 h-12"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -83,6 +84,7 @@ export default function LandlordLogin() {
                   id="password"
                   type="password"
                   placeholder="••••••••"
+                  autoComplete="current-password"
                   className="pl-10 h-12"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}

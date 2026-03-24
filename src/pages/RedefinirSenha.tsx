@@ -160,6 +160,7 @@ export default function RedefinirSenha() {
                   id="pass"
                   type={showPass ? 'text' : 'password'}
                   placeholder="••••••••"
+                  autoComplete="new-password"
                   className="pl-[40px] pr-[40px] h-[48px] text-[16px] focus-visible:ring-[#10B981]"
                   value={pass}
                   onChange={(e) => setPass(e.target.value)}
@@ -204,6 +205,7 @@ export default function RedefinirSenha() {
                   id="confirm"
                   type={showConfirm ? 'text' : 'password'}
                   placeholder="••••••••"
+                  autoComplete="new-password"
                   className="pl-[40px] pr-[40px] h-[48px] text-[16px] focus-visible:ring-[#10B981]"
                   value={confirm}
                   onChange={(e) => setConfirm(e.target.value)}

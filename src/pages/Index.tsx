@@ -230,6 +230,7 @@ export default function Index() {
                   id="email"
                   type="email"
                   placeholder="seu@email.com"
+                  autoComplete="username"
                   className="pl-[40px]"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -250,6 +251,7 @@ export default function Index() {
                   id="password"
                   type="password"
                   placeholder="••••••••"
+                  autoComplete="current-password"
                   className="pl-[40px]"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -287,6 +289,7 @@ export default function Index() {
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-[8px]">
               <Button
+                type="button"
                 variant="secondary"
                 onClick={() => quickLogin('captador@etic.com')}
                 className="text-[12px]"
@@ -295,6 +298,7 @@ export default function Index() {
                 Captador
               </Button>
               <Button
+                type="button"
                 variant="secondary"
                 onClick={() => quickLogin('sdr@etic.com')}
                 className="text-[12px]"
@@ -303,6 +307,7 @@ export default function Index() {
                 SDR
               </Button>
               <Button
+                type="button"
                 variant="secondary"
                 onClick={() => quickLogin('corretor@etic.com')}
                 className="text-[12px]"
@@ -311,6 +316,7 @@ export default function Index() {
                 Corretor
               </Button>
               <Button
+                type="button"
                 variant="secondary"
                 onClick={() => quickLogin('admin@etic.com')}
                 className="text-[12px]"

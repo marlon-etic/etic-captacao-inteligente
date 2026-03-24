@@ -113,6 +113,7 @@ export default function EsqueciSenha() {
                       id="email"
                       type="email"
                       placeholder="seu@email.com"
+                      autoComplete="email"
                       className="pl-[40px] h-[48px] text-[16px] focus-visible:ring-[#10B981]"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}

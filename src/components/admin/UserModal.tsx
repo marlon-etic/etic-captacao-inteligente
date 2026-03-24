@@ -217,7 +217,12 @@ export function UserModal({ isOpen, onClose, user }: UserModalProps) {
                   <FormItem>
                     <FormLabel>Nome Completo</FormLabel>
                     <FormControl>
-                      <Input placeholder="Ex: João Silva" {...field} disabled={isProcessingUser} />
+                      <Input
+                        placeholder="Ex: João Silva"
+                        autoComplete="name"
+                        {...field}
+                        disabled={isProcessingUser}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -233,6 +238,7 @@ export function UserModal({ isOpen, onClose, user }: UserModalProps) {
                       <Input
                         placeholder="joao@etic.com"
                         type="email"
+                        autoComplete="username"
                         {...field}
                         disabled={isProcessingUser}
                       />
@@ -282,7 +288,12 @@ export function UserModal({ isOpen, onClose, user }: UserModalProps) {
                   <FormItem>
                     <FormLabel>WhatsApp (opcional)</FormLabel>
                     <FormControl>
-                      <Input placeholder="(11) 99999-9999" {...field} disabled={isProcessingUser} />
+                      <Input
+                        placeholder="(11) 99999-9999"
+                        autoComplete="tel"
+                        {...field}
+                        disabled={isProcessingUser}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -299,6 +310,7 @@ export function UserModal({ isOpen, onClose, user }: UserModalProps) {
                         <Input
                           type={showPass ? 'text' : 'password'}
                           placeholder={user ? 'Deixe em branco para não alterar' : '••••••••'}
+                          autoComplete="new-password"
                           {...field}
                           disabled={isProcessingUser}
                         />
@@ -343,6 +355,7 @@ export function UserModal({ isOpen, onClose, user }: UserModalProps) {
                       <Input
                         type={showPass ? 'text' : 'password'}
                         placeholder="••••••••"
+                        autoComplete="new-password"
                         {...field}
                         disabled={isProcessingUser}
                       />
