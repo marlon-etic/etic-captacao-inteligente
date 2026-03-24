@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase/client'
 
 export const useConnectionHeartbeat = () => {
   const missedBeats = useRef(0)
+  const lastBeatTime = useRef(Date.now())
 
   useEffect(() => {
     let mounted = true
@@ -14,8 +15,16 @@ export const useConnectionHeartbeat = () => {
     })
 
     channel.subscribe((status) => {
-      if (import.meta.env.VITE_DEBUG_MODE && status !== 'SUBSCRIBED') {
-        console.log(`[Heartbeat] Channel status: ${status}`)
+      if (import.meta.env.VITE_DEBUG_MODE) {
+        if (status !== 'SUBSCRIBED') {
+          console.log(
+            `[Diagnostic - Heartbeat Channel] Status: ${status} às ${new Date().toLocaleTimeString()}`,
+          )
+        } else {
+          console.log(
+            `[Diagnostic - Reconnection] Reconexão ou conexão inicial estabelecida às: ${new Date().toLocaleTimeString()}`,
+          )
+        }
       }
     })
 
@@ -27,6 +36,15 @@ export const useConnectionHeartbeat = () => {
         timeoutId = setTimeout(beat, 20000)
         return
       }
+
+      const now = Date.now()
+      if (import.meta.env.VITE_DEBUG_MODE) {
+        const diff = now - lastBeatTime.current
+        console.log(
+          `[Diagnostic - Heartbeat] Disparado às ${new Date(now).toLocaleTimeString()} (Intervalo: ${diff}ms)`,
+        )
+      }
+      lastBeatTime.current = now
 
       // Jitter aleatório (±2s) para evitar colisão de pacotes (Heartbeat ao redor de 20s)
       const jitter = Math.floor(Math.random() * 4000) - 2000
@@ -53,11 +71,15 @@ export const useConnectionHeartbeat = () => {
           }
 
           missedBeats.current = 0
+          if (import.meta.env.VITE_DEBUG_MODE) {
+            console.log(`[Diagnostic - Heartbeat] ACK recebido em ${Date.now() - start}ms`)
+          }
         } else {
           // Fallback silencioso via query REST se WebSocket não estiver montado
           const controller = new AbortController()
           const tid = setTimeout(() => controller.abort(), 5000)
 
+          const start = Date.now()
           const { error } = await supabase
             .from('users')
             .select('id')
@@ -67,17 +89,25 @@ export const useConnectionHeartbeat = () => {
           clearTimeout(tid)
           if (error) throw error
           missedBeats.current = 0
+
+          if (import.meta.env.VITE_DEBUG_MODE) {
+            console.log(`[Diagnostic - Heartbeat Fallback] Resposta em ${Date.now() - start}ms`)
+          }
         }
       } catch (err: any) {
         missedBeats.current += 1
         if (import.meta.env.VITE_DEBUG_MODE) {
-          console.warn(`[Heartbeat] Falhou (${missedBeats.current}/2):`, err.message)
+          console.warn(
+            `[Diagnostic - Heartbeat] Falhou (${missedBeats.current}/2):`,
+            err.message,
+            `às ${new Date().toLocaleTimeString()}`,
+          )
         }
 
         if (missedBeats.current >= 2) {
           if (import.meta.env.VITE_DEBUG_MODE) {
             console.error(
-              '[Heartbeat] 2 falhas consecutivas. Forçando reconexão imediata do Realtime...',
+              `[Diagnostic - Reconnection] 2 falhas consecutivas. Forçando reconexão imediata do Realtime às ${new Date().toLocaleTimeString()}`,
             )
           }
           // Reinicia rigorosamente todo o engine Realtime para limpar falhas e recuperar WebSockets mortos
@@ -94,8 +124,8 @@ export const useConnectionHeartbeat = () => {
       }
     }
 
-    // Aguarda startup do app e aciona primeiro ciclo
-    timeoutId = setTimeout(beat, 20000)
+    // Offset inicial para o heartbeat não chocar com loads iniciais do app
+    timeoutId = setTimeout(beat, 5000)
 
     return () => {
       mounted = false

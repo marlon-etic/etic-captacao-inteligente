@@ -70,6 +70,8 @@ export function useSmartSync() {
         throw new Error('Circuit breaker ativo. Aguardando...')
       }
 
+      const reqStart = Date.now()
+
       const promise = (async () => {
         let attempt = 0
         while (attempt < 6) {
@@ -77,11 +79,22 @@ export function useSmartSync() {
 
           const controller = new AbortController()
           const timeoutId = setTimeout(() => controller.abort(), 30000)
+          const tryStart = Date.now()
 
           try {
             const res = await fetcher(controller.signal)
             clearTimeout(timeoutId)
             consecutiveFailures = 0 // Reseta falhas no sucesso
+
+            if (import.meta.env.VITE_DEBUG_MODE) {
+              const duration = Date.now() - tryStart
+              if (duration > 5000) {
+                console.warn(
+                  `[Diagnostic - Performance] Requisição lenta detectada: ${key} demorou ${duration}ms`,
+                )
+              }
+            }
+
             return res
           } catch (err: any) {
             clearTimeout(timeoutId)
@@ -91,9 +104,11 @@ export function useSmartSync() {
             consecutiveFailures++
 
             if (import.meta.env.VITE_DEBUG_MODE) {
+              const tryDuration = Date.now() - tryStart
               console.error(
-                `[Sync] Falha ${key} (${attempt}/5):`,
+                `[Diagnostic - Request Failure] Falha ${key} (${attempt}/5) em ${tryDuration}ms:`,
                 isTimeout ? 'Timeout 30s excedido' : err.message,
+                `às ${new Date().toLocaleTimeString()}`,
               )
             }
 
@@ -127,7 +142,7 @@ export function useSmartSync() {
         throw new Error('Máximo de tentativas excedido')
       })()
 
-      inFlightRequests.set(key, { promise, timestamp: Date.now() })
+      inFlightRequests.set(key, { promise, timestamp: reqStart })
 
       try {
         return await promise
@@ -177,19 +192,38 @@ export function useConsolidatedSync({
 
     channel.subscribe((status) => {
       if (import.meta.env.VITE_DEBUG_MODE && status === 'CHANNEL_ERROR') {
-        console.log(`[ConsolidatedSync] Erro no canal ${channelName}`)
+        console.log(
+          `[Diagnostic - ConsolidatedSync] Erro no canal ${channelName} às ${new Date().toLocaleTimeString()}`,
+        )
       }
     })
 
-    // Polling rigorosamente desacoplado do Realtime operando a cada 60s
-    // Atua exclusivamente como fallback seguro de longa duração
-    const pollingInterval = setInterval(() => {
-      if (navigator.onLine) onFallbackPoll()
-    }, 60000)
+    // Desacoplamento do startup do polling com o heartbeat: introduzimos um delay inicial randômico (10-30s)
+    const initialDelay = 10000 + Math.random() * 20000
+
+    let pollingInterval: NodeJS.Timeout
+
+    const startPolling = () => {
+      // Polling rigorosamente desacoplado do Realtime operando a cada 60s
+      // Atua exclusivamente como fallback seguro de longa duração
+      pollingInterval = setInterval(() => {
+        if (navigator.onLine) {
+          if (import.meta.env.VITE_DEBUG_MODE) {
+            console.log(
+              `[Diagnostic - Polling] Executando fallback polling para ${channelName} às ${new Date().toLocaleTimeString()}`,
+            )
+          }
+          onFallbackPoll()
+        }
+      }, 60000)
+    }
+
+    const delayTimeout = setTimeout(startPolling, initialDelay)
 
     return () => {
       supabase.removeChannel(channel)
-      clearInterval(pollingInterval)
+      clearTimeout(delayTimeout)
+      if (pollingInterval) clearInterval(pollingInterval)
     }
   }, [channelName, setupRealtime, onFallbackPoll])
 }
