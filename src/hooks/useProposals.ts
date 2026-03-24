@@ -55,64 +55,40 @@ export const useProposals = (landlordId: string | undefined) => {
     }
   }, [landlordId, fetchProposals])
 
-  const { reconnect, stopPolling, toggleRealtime, isRealtimeEnabled, invokeCount } =
-    useRealtimeSync({
-      table: 'tenant_proposals',
-      enableRealtime: false, // Default desativado para isolamento (polling fallback default)
-      enablePollingFallback: true,
-      pollingFn: async () => {
-        if (landlordId) await fetchProposals(landlordId)
-        return null // Retorna null para usar o fetchProposals diretamente
-      },
-      onDataChange: (payload) => {
-        try {
-          console.log('[useProposals] onDataChange chamado:', payload)
-          setProposals((prev) => {
-            let updated = [...prev]
-
-            if (payload.eventType === 'INSERT') {
-              if (!updated.some((p) => p.id === payload.new.id)) {
-                updated = [payload.new as TenantProposal, ...updated]
-              }
-            } else if (payload.eventType === 'UPDATE') {
-              updated = updated.map((p) =>
-                p.id === payload.new.id ? ({ ...p, ...payload.new } as TenantProposal) : p,
-              )
-            } else if (payload.eventType === 'DELETE') {
-              updated = updated.filter((p) => p.id !== payload.old.id)
-            }
-
-            setPendingCount(updated.filter((p) => p.status === 'pending').length)
-            return updated
-          })
-
-          setIsConnected(true)
-          setSyncError(null)
-          setRetryCount(0)
-        } catch (updateErr) {
-          console.error('[useProposals] Erro no update state:', updateErr)
-        }
-      },
-      onError: (err) => {
-        console.error('[useProposals] Erro capturado:', err)
-        setSyncError(err)
-        setRetryCount((prev) => prev + 1)
-        setIsConnected(false)
-      },
-      maxRetries: 3,
-      initialBackoff: 1000,
-    })
-
-  // Log para double invoke
-  console.log('[useProposals] Hook invoke count:', invokeCount)
+  const { forcePoll, isPollingActive } = useRealtimeSync({
+    table: 'tenant_proposals',
+    enableRealtime: false, // OFF permanente
+    pollingInterval: 5000,
+    pollingFn: async () => {
+      if (landlordId) {
+        await fetchProposals(landlordId)
+      }
+      return null // Retorna null pois fetchProposals já atualiza o estado
+    },
+    onDataChange: (payload) => {
+      try {
+        console.log('[useProposals] Atualização via polling recebida')
+        setIsConnected(true)
+        setSyncError(null)
+        setRetryCount(0)
+      } catch (updateErr) {
+        console.error('[useProposals] Erro ao lidar com data change:', updateErr)
+      }
+    },
+    onError: (err) => {
+      console.error('[useProposals] Erro capturado:', err)
+      setSyncError(err)
+      setRetryCount((prev) => prev + 1)
+      setIsConnected(false)
+    },
+  })
 
   const handleManualRetry = useCallback(async () => {
     console.log('[useProposals] Retry manual acionado')
     setRetryCount(0)
     setSyncError(null)
-    stopPolling()
-    await reconnect()
-  }, [reconnect, stopPolling])
+    forcePoll()
+  }, [forcePoll])
 
   const respondToProposal = async (
     proposalId: string,
@@ -156,11 +132,12 @@ export const useProposals = (landlordId: string | undefined) => {
     syncError,
     retryCount,
     isConnected,
-    refreshProposals: () => landlordId && fetchProposals(landlordId),
+    refreshProposals: () => {
+      if (landlordId) fetchProposals(landlordId)
+    },
     respondToProposal,
     reconnect: handleManualRetry,
-    invokeCount,
-    toggleRealtime,
-    isRealtimeEnabled,
+    isPollingActive,
+    forcePoll,
   }
 }

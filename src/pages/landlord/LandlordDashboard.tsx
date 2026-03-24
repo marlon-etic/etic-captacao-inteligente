@@ -6,7 +6,7 @@ import { PropertyCard } from '@/components/landlord/PropertyCard'
 import { ProposalCard } from '@/components/landlord/ProposalCard'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { DashboardStats } from '@/types/landlord'
-import { Building, Key, Bell, DollarSign, ToggleRight, ToggleLeft } from 'lucide-react'
+import { Building, Key, Bell, DollarSign, RefreshCw } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { ConnectionStatus } from '@/components/common/ConnectionStatus'
 import { SyncErrorBoundary } from '@/components/SyncErrorBoundary'
@@ -36,9 +36,8 @@ export default function LandlordDashboard() {
     retryCount,
     reconnect,
     respondToProposal,
-    invokeCount,
-    toggleRealtime,
-    isRealtimeEnabled,
+    isPollingActive,
+    forcePoll,
   } = useProposals(landlordProfile?.id)
 
   const isConnected = authConnected && propsConnected && proposalsConnected
@@ -78,20 +77,14 @@ export default function LandlordDashboard() {
 
   return (
     <div className="px-4 sm:px-6 lg:px-8 py-8 max-w-7xl mx-auto animate-fade-in-up relative">
-      <SyncErrorBoundary
-        error={syncError}
-        onRetry={reconnect}
-        retryCount={retryCount}
-        toggleRealtime={toggleRealtime}
-        isRealtimeEnabled={isRealtimeEnabled}
-      >
+      <SyncErrorBoundary error={syncError} onRetry={reconnect} retryCount={retryCount}>
         {!isConnected && !syncError && (
           <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6 rounded-r-lg shadow-sm">
             <div className="flex">
               <div className="ml-3">
                 <p className="text-sm text-yellow-800 font-medium">
-                  ⚠️ Problemas de conexão detectados. O sistema está tentando reconectar
-                  automaticamente para sincronizar seus dados.
+                  ⚠️ Problemas de conexão detectados. O sistema está tentando consultar os dados
+                  automaticamente em background.
                 </p>
               </div>
             </div>
@@ -100,26 +93,23 @@ export default function LandlordDashboard() {
 
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
           <h2 className="text-2xl md:text-3xl font-black text-[#1A3A52] tracking-tight">
-            Dashboard{' '}
-            <span className="text-xs text-gray-400 font-normal ml-2 tracking-normal">
-              (Invoke: {invokeCount})
-            </span>
+            Dashboard
           </h2>
 
           <button
-            onClick={toggleRealtime}
+            onClick={forcePoll}
             className={`flex items-center gap-2 px-3 py-1.5 border font-bold rounded-lg text-xs shadow-sm transition-colors ${
-              isRealtimeEnabled
+              isPollingActive
                 ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'
                 : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
             }`}
           >
-            {isRealtimeEnabled ? (
-              <ToggleRight className="w-4 h-4 text-green-600" />
+            {isPollingActive ? (
+              <RefreshCw className="w-4 h-4 text-green-600 animate-spin" />
             ) : (
-              <ToggleLeft className="w-4 h-4 text-gray-400" />
+              <RefreshCw className="w-4 h-4 text-gray-400" />
             )}
-            Realtime Mode: {isRealtimeEnabled ? 'ON' : 'Polling'}
+            Atualizar Agora (Polling: {isPollingActive ? 'ON' : 'OFF'})
           </button>
         </div>
 
