@@ -258,7 +258,9 @@ export const useRealtimeSync = ({
       if (subscriptionRef.current) {
         try {
           supabase.removeChannel(subscriptionRef.current)
-        } catch (e) {}
+        } catch (e) {
+          // Ignore error on cleanup
+        }
         subscriptionRef.current = null
       }
       isCleaningUpRef.current = false
