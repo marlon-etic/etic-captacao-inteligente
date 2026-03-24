@@ -205,31 +205,41 @@ export function ExpandableDemandCardCaptador({
 
   return (
     <>
-      <Card className="w-full relative overflow-hidden rounded-[16px] border border-[#E5E5E5] shadow-sm hover:shadow-md transition-all duration-200 bg-gradient-to-b from-[#F2FBF5] to-white flex flex-col h-full">
-        {demand.is_prioritaria && (
-          <div className="absolute top-11 right-3 z-10 bg-[#FCD34D] text-[#854D0E] text-[10px] font-black px-2.5 py-1 rounded-full flex items-center gap-1.5 shadow-sm border border-[#F59E0B]">
-            <Star className="w-3 h-3 fill-current" /> PRIORITÁRIA
-          </div>
+      <Card
+        className={cn(
+          'w-full relative overflow-hidden rounded-[16px] border shadow-sm hover:shadow-md transition-all duration-200 bg-gradient-to-b flex flex-col h-full',
+          demand.is_prioritaria
+            ? 'from-[#FFFBEB] to-white border-[#FCD34D]'
+            : 'from-[#F2FBF5] to-white border-[#E5E5E5]',
         )}
-
+      >
         <div
           className={cn(
-            'px-4 py-2.5 flex items-center justify-between shadow-sm border-b border-[#E5E5E5]/50 bg-white',
+            'px-4 py-2.5 flex items-center shadow-sm border-b bg-white flex-wrap gap-2 justify-between',
+            demand.is_prioritaria ? 'border-[#FCD34D]/50' : 'border-[#E5E5E5]/50',
           )}
         >
-          <div
-            className={cn(
-              'flex items-center gap-2 font-black text-[11px] uppercase tracking-widest px-2 py-1 rounded shadow-sm',
-              statusConfig.bg,
-              statusConfig.text,
-            )}
-          >
-            <statusConfig.icon className="w-3.5 h-3.5" />
-            {statusConfig.label}
-            {isBrandNew && (
-              <span className="ml-1 bg-white/20 px-1.5 py-0.5 rounded-sm text-[9px] animate-pulse">
-                NOVA
-              </span>
+          <div className="flex items-center gap-2 flex-wrap">
+            <div
+              className={cn(
+                'flex items-center gap-2 font-black text-[11px] uppercase tracking-widest px-2 py-1 rounded shadow-sm',
+                statusConfig.bg,
+                statusConfig.text,
+              )}
+            >
+              <statusConfig.icon className="w-3.5 h-3.5" />
+              {statusConfig.label}
+              {isBrandNew && (
+                <span className="ml-1 bg-white/20 px-1.5 py-0.5 rounded-sm text-[9px] animate-pulse">
+                  NOVA
+                </span>
+              )}
+            </div>
+
+            {demand.is_prioritaria && (
+              <Badge className="bg-[#FCD34D] text-[#854D0E] hover:bg-[#FCD34D] text-[10px] font-black px-2 py-1 flex items-center gap-1 shadow-sm border border-[#F59E0B]">
+                <Star className="w-3 h-3 fill-current" /> PRIORITÁRIA
+              </Badge>
             )}
           </div>
           {prazo &&

@@ -19,6 +19,7 @@ import {
   CheckCircle,
   X,
   History,
+  Star,
 } from 'lucide-react'
 import { ScrollArea } from '@/components/ui/scroll-area'
 
@@ -59,11 +60,11 @@ export function DemandDetailModal({ demand, isOpen, onClose, onFoundProperty }: 
       <DialogContent className="w-full max-w-[calc(100%-32px)] md:max-w-2xl lg:max-w-3xl h-[95vh] md:h-[85vh] p-0 flex flex-col rounded-[16px] bg-[#FFFFFF] border-0 shadow-2xl overflow-hidden z-[100]">
         <DialogHeader className="p-4 md:p-6 border-b border-[#E5E5E5] shrink-0 bg-[#F8FAFC] flex flex-row items-center justify-between sticky top-0 z-10">
           <div className="flex flex-col gap-1 text-left pr-8">
-            <DialogTitle className="text-xl md:text-2xl text-[#1A3A52] font-black flex items-center gap-2">
+            <DialogTitle className="text-xl md:text-2xl text-[#1A3A52] font-black flex items-center gap-2 flex-wrap">
               Detalhes da Demanda
               {demand.is_prioritaria && (
-                <span className="bg-[#FCD34D] text-[#854D0E] text-[10px] md:text-[12px] font-black px-2.5 py-1 rounded-full flex items-center gap-1 uppercase tracking-wide">
-                  ⭐ Prioritária
+                <span className="bg-[#FCD34D] text-[#854D0E] text-[10px] md:text-[12px] font-black px-2.5 py-1 rounded-full flex items-center gap-1 uppercase tracking-wide border border-[#F59E0B] shadow-sm">
+                  <Star className="w-3.5 h-3.5 fill-current" /> Prioritária
                 </span>
               )}
             </DialogTitle>

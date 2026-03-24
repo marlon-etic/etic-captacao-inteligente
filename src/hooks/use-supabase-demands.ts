@@ -71,6 +71,14 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
     return () => clearInterval(interval)
   }, [])
 
+  const sortDemands = useCallback((list: SupabaseDemand[]) => {
+    return [...list].sort((a, b) => {
+      if (a.is_prioritaria && !b.is_prioritaria) return -1
+      if (!a.is_prioritaria && b.is_prioritaria) return 1
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    })
+  }, [])
+
   const formatData = useCallback(
     (data: any[]) => {
       const userMap = new Map((usersRef.current || []).map((u) => [u.id, u.name]))
@@ -135,9 +143,7 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
             const recentLocal = prev.filter(
               (p) => !fetchedIds.has(p.id) && Date.now() - new Date(p.created_at).getTime() < 5000,
             )
-            return [...recentLocal, ...fetchedFormatted].sort(
-              (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-            )
+            return sortDemands([...recentLocal, ...fetchedFormatted])
           })
         }
       } catch (err: any) {
@@ -146,7 +152,7 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
         if (!isBackground) setLoading(false)
       }
     },
-    [type, formatData],
+    [type, formatData, sortDemands],
   )
 
   useEffect(() => {
@@ -166,23 +172,25 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
             const newDemand = formatData([
               { ...d, imoveis_captados: [], respostas_captador: [], prazos_captacao: [] },
             ])[0]
-            return [newDemand, ...prev]
+            return sortDemands([newDemand, ...prev])
           })
         } else if (payload.eventType === 'UPDATE') {
           const d = payload.new
           setDemands((prev) =>
-            prev.map((x) =>
-              x.id === d.id
-                ? {
-                    ...x,
-                    ...d,
-                    nome_cliente: d.nome_cliente || d.cliente_nome || x.nome_cliente,
-                    bairros: d.bairros || d.localizacoes || x.bairros,
-                    valor_maximo: d.valor_maximo || d.orcamento_max || x.valor_maximo,
-                    observacoes: d.observacoes || d.necessidades_especificas || x.observacoes,
-                    nivel_urgencia: d.nivel_urgencia || d.urgencia || x.nivel_urgencia,
-                  }
-                : x,
+            sortDemands(
+              prev.map((x) =>
+                x.id === d.id
+                  ? {
+                      ...x,
+                      ...d,
+                      nome_cliente: d.nome_cliente || d.cliente_nome || x.nome_cliente,
+                      bairros: d.bairros || d.localizacoes || x.bairros,
+                      valor_maximo: d.valor_maximo || d.orcamento_max || x.valor_maximo,
+                      observacoes: d.observacoes || d.necessidades_especificas || x.observacoes,
+                      nivel_urgencia: d.nivel_urgencia || d.urgencia || x.nivel_urgencia,
+                    }
+                  : x,
+              ),
             ),
           )
         } else if (payload.eventType === 'DELETE') {
@@ -335,7 +343,7 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
       mounted = false
       supabase.removeChannel(channel)
     }
-  }, [fetchDemands, type, formatData])
+  }, [fetchDemands, type, formatData, sortDemands])
 
   return { demands, loading, refresh: () => fetchDemands(false) }
 }

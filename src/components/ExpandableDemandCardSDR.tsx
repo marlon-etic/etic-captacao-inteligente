@@ -10,16 +10,24 @@ import {
   Car,
   Clock,
   CheckCircle,
+  Star,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { PrazoCounter } from './PrazoCounter'
+import useAppStore from '@/stores/useAppStore'
+import { useState } from 'react'
+import { supabase } from '@/lib/supabase/client'
+import { toast } from '@/hooks/use-toast'
 
 interface Props {
   demand: SupabaseDemand
   onUpdate?: () => void
 }
 
-export function ExpandableDemandCardSDR({ demand }: Props) {
+export function ExpandableDemandCardSDR({ demand, onUpdate }: Props) {
+  const { currentUser } = useAppStore()
+  const [isPrioritizing, setIsPrioritizing] = useState(false)
+
   const isSale = demand.tipo === 'Venda'
   const hasProperties = demand.imoveis_captados && demand.imoveis_captados.length > 0
 
@@ -36,13 +44,57 @@ export function ExpandableDemandCardSDR({ demand }: Props) {
     prazo?.status === 'sem_resposta_24h' ||
     prazo?.status === 'sem_resposta_final'
 
+  const isOwnerOrAdmin =
+    currentUser?.role === 'admin' ||
+    currentUser?.role === 'gestor' ||
+    demand.sdr_id === currentUser?.id ||
+    demand.corretor_id === currentUser?.id
+
+  const togglePriority = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (isPrioritizing || !isOwnerOrAdmin) return
+    setIsPrioritizing(true)
+
+    const table = demand.tipo === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
+    const newStatus = !demand.is_prioritaria
+
+    try {
+      const { error } = await supabase
+        .from(table)
+        .update({ is_prioritaria: newStatus })
+        .eq('id', demand.id)
+
+      if (error) throw error
+
+      toast({
+        title: newStatus ? '⭐ Demanda Priorizada' : 'Prioridade Removida',
+        description: newStatus
+          ? 'A demanda subiu para o topo do feed dos captadores.'
+          : 'A demanda voltou à posição normal.',
+        className: newStatus ? 'bg-[#FCD34D] text-[#854D0E] border-none' : '',
+      })
+
+      if (onUpdate) onUpdate()
+    } catch (err: any) {
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível alterar a prioridade.',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsPrioritizing(false)
+    }
+  }
+
   return (
     <Card
       className={cn(
         'w-full flex flex-col rounded-[16px] overflow-hidden transition-all duration-500 ease-in-out h-full',
         hasProperties
           ? 'border-[2px] border-[#4CAF50] bg-[#F2FBF5] shadow-[0_4px_16px_rgba(76,175,80,0.15)]'
-          : 'border-[1px] border-[#E5E5E5] bg-white shadow-sm hover:shadow-md',
+          : demand.is_prioritaria
+            ? 'border-[2px] border-[#FCD34D] bg-[#FFFBEB] shadow-[0_4px_16px_rgba(252,211,77,0.15)]'
+            : 'border-[1px] border-[#E5E5E5] bg-white shadow-sm hover:shadow-md',
         cardAnimation,
       )}
     >
@@ -50,19 +102,30 @@ export function ExpandableDemandCardSDR({ demand }: Props) {
       <div
         className={cn(
           'p-4 border-b flex justify-between items-start shrink-0 transition-colors duration-500',
-          hasProperties ? 'border-[#4CAF50]/20' : 'border-[#E5E5E5]',
+          hasProperties
+            ? 'border-[#4CAF50]/20'
+            : demand.is_prioritaria
+              ? 'border-[#FCD34D]/50'
+              : 'border-[#E5E5E5]',
         )}
       >
         <div className="flex flex-col gap-1 pr-4">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <Badge
               className={cn(
-                'text-[10px] font-bold px-2 py-0.5',
+                'text-[10px] font-bold px-2 py-0.5 border-none',
                 isSale ? 'bg-[#FF9800]' : 'bg-[#1A3A52]',
               )}
             >
               {isSale ? 'VENDA' : 'ALUGUEL'}
             </Badge>
+
+            {demand.is_prioritaria && (
+              <Badge className="bg-[#FCD34D] text-[#854D0E] hover:bg-[#FCD34D] text-[10px] font-black px-2 py-0.5 flex items-center gap-1 shadow-sm border border-[#F59E0B]">
+                <Star className="w-3 h-3 fill-current" /> PRIORITÁRIA
+              </Badge>
+            )}
+
             <span className="text-[12px] font-bold text-[#666666]">
               {new Date(demand.created_at).toLocaleDateString('pt-BR')}
             </span>
@@ -74,7 +137,30 @@ export function ExpandableDemandCardSDR({ demand }: Props) {
             {demand.nome_cliente}
           </h3>
         </div>
-        <div className="flex flex-col items-end gap-1.5 shrink-0">
+        <div className="flex flex-col items-end gap-2 shrink-0">
+          <div className="flex items-center gap-2">
+            {isOwnerOrAdmin && (
+              <button
+                onClick={togglePriority}
+                disabled={isPrioritizing}
+                className={cn(
+                  'flex items-center justify-center w-8 h-8 rounded-full transition-all border shadow-sm focus:outline-none focus:ring-2 focus:ring-[#F59E0B] focus:ring-offset-1 disabled:opacity-50 shrink-0',
+                  demand.is_prioritaria
+                    ? 'bg-[#FFFBEB] border-[#FCD34D] hover:bg-[#FEF3C7]'
+                    : 'bg-white border-[#E5E5E5] hover:bg-[#F5F5F5]',
+                )}
+                title={demand.is_prioritaria ? 'Remover prioridade' : 'Marcar como prioritária'}
+              >
+                <Star
+                  className={cn(
+                    'w-4 h-4 transition-all',
+                    demand.is_prioritaria ? 'fill-[#F59E0B] text-[#F59E0B]' : 'text-[#999999]',
+                  )}
+                />
+              </button>
+            )}
+          </div>
+
           {hasProperties ? (
             <Badge className="bg-[#4CAF50] hover:bg-[#388E3C] text-white border-none font-bold text-[12px] px-2 py-1 flex items-center gap-1 shadow-sm shrink-0 transition-transform hover:scale-105">
               <CheckCircle className="w-3.5 h-3.5" />
@@ -82,12 +168,12 @@ export function ExpandableDemandCardSDR({ demand }: Props) {
               {demand.imoveis_captados.length > 1 ? 'S' : ''}
             </Badge>
           ) : demand.status_demanda === 'aberta' ? (
-            <>
+            <div className="flex flex-col items-end">
               {prazo && prazo.status !== 'respondido' && (
                 <PrazoCounter prazoResposta={prazo.prazo_resposta} isExpired={isPrazoExpired} />
               )}
               {prazo && prazo.prorrogacoes_usadas > 0 && prazo.status !== 'respondido' && (
-                <span className="text-[9px] font-bold text-[#666666]">
+                <span className="text-[9px] font-bold text-[#666666] mt-0.5">
                   {prazo.prorrogacoes_usadas}/3 Prorrog.
                 </span>
               )}
@@ -99,7 +185,7 @@ export function ExpandableDemandCardSDR({ demand }: Props) {
                   Aguardando
                 </Badge>
               )}
-            </>
+            </div>
           ) : (
             <Badge
               variant="outline"
