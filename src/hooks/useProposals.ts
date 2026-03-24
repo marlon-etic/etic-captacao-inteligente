@@ -55,7 +55,7 @@ export const useProposals = (landlordId: string | undefined) => {
     }
   }, [landlordId, fetchProposals])
 
-  const { reconnect, stopPolling } = useRealtimeSync({
+  const { reconnect, stopPolling, invokeCount } = useRealtimeSync({
     table: 'tenant_proposals',
     enablePollingFallback: true,
     pollingFn: async () => {
@@ -63,29 +63,33 @@ export const useProposals = (landlordId: string | undefined) => {
       return null // Retorna null para evitar loop genérico de updates via hook e reusar o estado de fetchProposals
     },
     onDataChange: (payload) => {
-      console.log('[useProposals] onDataChange chamado:', payload)
-      setProposals((prev) => {
-        let updated = [...prev]
+      try {
+        console.log('[useProposals] onDataChange chamado:', payload)
+        setProposals((prev) => {
+          let updated = [...prev]
 
-        if (payload.eventType === 'INSERT') {
-          if (!updated.some((p) => p.id === payload.new.id)) {
-            updated = [payload.new as TenantProposal, ...updated]
+          if (payload.eventType === 'INSERT') {
+            if (!updated.some((p) => p.id === payload.new.id)) {
+              updated = [payload.new as TenantProposal, ...updated]
+            }
+          } else if (payload.eventType === 'UPDATE') {
+            updated = updated.map((p) =>
+              p.id === payload.new.id ? ({ ...p, ...payload.new } as TenantProposal) : p,
+            )
+          } else if (payload.eventType === 'DELETE') {
+            updated = updated.filter((p) => p.id !== payload.old.id)
           }
-        } else if (payload.eventType === 'UPDATE') {
-          updated = updated.map((p) =>
-            p.id === payload.new.id ? ({ ...p, ...payload.new } as TenantProposal) : p,
-          )
-        } else if (payload.eventType === 'DELETE') {
-          updated = updated.filter((p) => p.id !== payload.old.id)
-        }
 
-        setPendingCount(updated.filter((p) => p.status === 'pending').length)
-        return updated
-      })
+          setPendingCount(updated.filter((p) => p.status === 'pending').length)
+          return updated
+        })
 
-      setIsConnected(true)
-      setSyncError(null)
-      setRetryCount(0)
+        setIsConnected(true)
+        setSyncError(null)
+        setRetryCount(0)
+      } catch (updateErr) {
+        console.error('[useProposals] Erro no update state:', updateErr)
+      }
     },
     onError: (err) => {
       console.error('[useProposals] Erro capturado:', err)
@@ -94,15 +98,18 @@ export const useProposals = (landlordId: string | undefined) => {
       setIsConnected(false)
     },
     maxRetries: 3,
-    initialBackoff: 2000,
+    initialBackoff: 1000,
   })
 
-  const handleManualRetry = useCallback(() => {
+  // Log para double invoke
+  console.log('[useProposals] Hook invoke count:', invokeCount)
+
+  const handleManualRetry = useCallback(async () => {
     console.log('[useProposals] Retry manual acionado')
     setRetryCount(0)
     setSyncError(null)
     stopPolling()
-    reconnect()
+    await reconnect()
   }, [reconnect, stopPolling])
 
   const respondToProposal = async (
@@ -150,5 +157,6 @@ export const useProposals = (landlordId: string | undefined) => {
     refreshProposals: () => landlordId && fetchProposals(landlordId),
     respondToProposal,
     reconnect: handleManualRetry,
+    invokeCount,
   }
 }

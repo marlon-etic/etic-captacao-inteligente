@@ -36,6 +36,7 @@ export default function LandlordDashboard() {
     retryCount,
     reconnect,
     respondToProposal,
+    invokeCount,
   } = useProposals(landlordProfile?.id)
 
   const isConnected = authConnected && propsConnected && proposalsConnected
@@ -90,7 +91,8 @@ export default function LandlordDashboard() {
         )}
 
         <h2 className="text-2xl md:text-3xl font-black mb-6 text-[#1A3A52] tracking-tight">
-          Dashboard
+          Dashboard{' '}
+          <span className="text-xs text-gray-400 font-normal ml-2">(Invoke: {invokeCount})</span>
         </h2>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-10">

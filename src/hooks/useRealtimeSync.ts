@@ -13,12 +13,17 @@ interface RealtimeSyncOptions {
   pollingFn?: () => Promise<any[] | null>
 }
 
+const logWithTimestamp = (prefix: string, message: any, error?: Error) => {
+  const timestamp = new Date().toISOString()
+  console.log(`[${timestamp}] [Realtime-${prefix}]`, message, error ? { stack: error.stack } : '')
+}
+
 export const useRealtimeSync = ({
   table,
   filter,
   onDataChange,
   onError,
-  maxRetries = 5,
+  maxRetries = 3, // Reduzido para debug rápido
   initialBackoff = 1000,
   enablePollingFallback = true,
   pollingFn,
@@ -30,38 +35,55 @@ export const useRealtimeSync = ({
   const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined)
   const pollingIntervalRef = useRef<NodeJS.Timeout | undefined>(undefined)
   const isCleaningUpRef = useRef(false)
+  const invokeCountRef = useRef(0) // Detecta double invoke (StrictMode)
   const realtimeFailedRef = useRef(0)
 
+  // Teste RLS com try-catch
   const testRLSAndPermissions = useCallback(async () => {
     if (!authUser?.id) return false
 
     try {
-      console.log(`[DEBUG-RLS] Testando query em ${table} para user ${authUser.id}`)
-      const { data, error } = await supabase.from(table).select('id').limit(1)
+      logWithTimestamp('RLS-TEST', `Iniciando teste para ${table}, user: ${authUser.id}`)
+
+      const query = supabase.from(table).select('id').limit(1).single() // Força erro se vazio para testar a resposta
+
+      const { data, error } = await query
 
       if (error) {
-        console.error(`[DEBUG-RLS] Erro RLS/Permissões:`, error.message)
-        onError?.(new Error(`RLS Error: ${error.message}`))
+        // PGRST116 significa 0 rows returned, o que é normal se não houver dados ainda, a permissão não foi negada.
+        if (error.code === 'PGRST116') {
+          logWithTimestamp('RLS-TEST', '✅ Sucesso. 0 linhas (PGRST116 esperado).')
+          return true
+        }
+
+        logWithTimestamp('RLS-TEST', 'Erro detectado:', error)
+        onError?.(new Error(`RLS/Perm Error: ${error.message}`))
         return false
       }
 
-      console.log(`[DEBUG-RLS] ✅ Query OK. Dados encontrados:`, data?.length || 0)
+      logWithTimestamp('RLS-TEST', `✅ Sucesso. Dados encontrados:`, data)
       return true
     } catch (err) {
-      console.error(`[DEBUG-RLS] Falha no teste:`, err)
+      const error = err as Error
+      logWithTimestamp('RLS-TEST', 'Catch no teste:', error)
+      onError?.(error)
       return false
     }
   }, [authUser?.id, table, onError])
 
+  // Polling com try-catch
   const startPolling = useCallback(async () => {
     if (!enablePollingFallback || !authUser?.id) return
 
-    console.log(`[POLLING] Ativando fallback polling para ${table}`)
+    logWithTimestamp(
+      'POLLING',
+      `Ativando fallback para ${table}. Falhas realtime: ${realtimeFailedRef.current}`,
+    )
     realtimeFailedRef.current++
 
     const pollData = async () => {
       try {
-        console.log(`[POLLING] Consultando ${table}...`)
+        logWithTimestamp('POLLING', 'Consultando dados...')
 
         let data: any[] | null = null
 
@@ -73,138 +95,149 @@ export const useRealtimeSync = ({
             .select('*')
             .order('created_at', { ascending: false })
             .limit(50)
-          if (error) throw error
+
+          if (error) throw new Error(`Polling Error: ${error.message}`)
           data = resData
         }
 
         if (data && data.length > 0) {
-          console.log(`[POLLING] Dados atualizados via polling:`, data.length)
+          logWithTimestamp('POLLING', `Atualizando ${data.length} itens`)
           data.forEach((item) => onDataChange({ new: item, eventType: 'UPDATE' }))
         }
       } catch (err) {
-        console.error(`[POLLING] Erro na consulta:`, err)
-        onError?.(err as Error)
+        const error = err as Error
+        logWithTimestamp('POLLING', 'Erro na poll:', error)
+        onError?.(error)
       }
     }
 
     await pollData()
     if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current)
-    pollingIntervalRef.current = setInterval(pollData, 10000)
+    pollingIntervalRef.current = setInterval(pollData, 5000) // 5s para debug rápido
   }, [authUser?.id, table, onDataChange, onError, enablePollingFallback, pollingFn])
 
+  // Setup com try-catch total
   const setupSubscription = useCallback(async () => {
-    const rlsOk = await testRLSAndPermissions()
-    if (!rlsOk) {
-      console.error(`[Realtime] ❌ RLS falhou. Ativando polling fallback.`)
-      if (enablePollingFallback) startPolling()
-      return
-    }
-
-    if (!authUser?.id) {
-      console.warn(`[Realtime] ❌ AuthUser inválido:`, authUser)
-      return
-    }
-
-    if (isCleaningUpRef.current) {
-      console.log('[Realtime] Limpeza em progresso, abortando setup')
-      return
-    }
+    invokeCountRef.current++
+    logWithTimestamp('SETUP', `Invoke #${invokeCountRef.current}. User: ${authUser?.id || 'NULL'}`)
 
     try {
-      if (subscriptionRef.current) {
-        console.log('[Realtime] Removendo canal anterior...')
-        await supabase.removeChannel(subscriptionRef.current)
-        subscriptionRef.current = null
+      const rlsOk = await testRLSAndPermissions()
+      if (!rlsOk) {
+        logWithTimestamp('SETUP', 'RLS falhou - ativando polling imediato')
+        startPolling()
+        return
+      }
+
+      if (isCleaningUpRef.current) {
+        logWithTimestamp('SETUP', 'Cleanup ativo - abortando')
+        return
+      }
+
+      // Cleanup forçado
+      try {
+        if (subscriptionRef.current) {
+          logWithTimestamp('SETUP', 'Removendo canal antigo...')
+          await supabase.removeChannel(subscriptionRef.current)
+          subscriptionRef.current = null
+        }
+      } catch (cleanupErr) {
+        logWithTimestamp('SETUP', 'Erro no cleanup - ignorando:', cleanupErr as Error)
       }
 
       const channelName = `${table}-changes-${authUser.id}-${Date.now()}`
-      let query = supabase.channel(channelName).on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: table,
-          filter: filter || undefined,
-        },
-        (payload) => {
-          console.log(`[Realtime] 📦 Payload recebido:`, {
-            eventType: payload.eventType,
-            table: payload.table,
-            new: payload.new ? 'Sim' : 'Não',
-            old: payload.old ? 'Sim' : 'Não',
-          })
-          retryCountRef.current = 0
-          backoffRef.current = initialBackoff
-          onDataChange(payload)
-        },
-      )
+      logWithTimestamp('SETUP', `Criando canal: ${channelName}. Filtro: ${filter || 'none'}`)
 
-      query
+      let query = supabase.channel(channelName)
+
+      // Listeners com try-catch interno
+      query = query
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: table,
+            filter: filter || undefined,
+          },
+          (payload) => {
+            try {
+              logWithTimestamp('PAYLOAD', `Evento recebido: ${payload.eventType}`, undefined)
+              retryCountRef.current = 0
+              backoffRef.current = initialBackoff
+              onDataChange(payload)
+            } catch (payloadErr) {
+              logWithTimestamp('PAYLOAD', 'Erro processando payload:', payloadErr as Error)
+              onError?.(payloadErr as Error)
+            }
+          },
+        )
         .on('subscribe', (status: string, err?: Error) => {
           if (status === 'SUBSCRIBED') {
-            console.log(`✅ [Realtime] Canal ${channelName} inscrito com sucesso!`)
+            logWithTimestamp(
+              'SUBSCRIBE',
+              `✅ Canal ${channelName} conectado! Invoke: ${invokeCountRef.current}`,
+            )
             retryCountRef.current = 0
             backoffRef.current = initialBackoff
             realtimeFailedRef.current = 0
           } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-            console.error(`❌ [Realtime] Erro no canal (${status}):`, err)
-            onError?.(new Error(`Canal Error: ${status}`))
+            logWithTimestamp('ERROR', 'Erro no canal:', err || new Error(status))
+            onError?.(new Error(`Channel Error: ${status}`))
           }
         })
-        .on('system', (message: any) => {
-          console.warn('[Realtime] Sistema:', message)
+        .on('broadcast', (payload) => {
+          logWithTimestamp('BROADCAST', 'Evento broadcast:', payload) // Para debug extra
+        })
+        .on('presence', (payload) => {
+          logWithTimestamp('PRESENCE', 'Evento presence:', payload) // Se ativado
         })
 
       subscriptionRef.current = query
-      console.log(`[Realtime] Subscribing ao canal ${channelName}...`)
 
-      query.subscribe(async (status: string) => {
-        if (status === 'SUBSCRIBED') {
-          console.log(`[Realtime] ✅ Subscription status:`, status)
-        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          throw new Error(`Subscribe Error: ${status}`)
-        }
-      })
+      try {
+        logWithTimestamp('SETUP', 'Chamando query.subscribe()...')
+        query.subscribe(async (status: string, err?: Error) => {
+          logWithTimestamp('SUBSCRIBE-CALLBACK', `Status: ${status}`)
+          if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+            throw new Error(`Subscribe Error: ${status}`)
+          }
+        })
+      } catch (subErr) {
+        throw new Error(`Subscribe Error: ${(subErr as Error).message}`)
+      }
+
+      logWithTimestamp('SETUP', '✅ Setup agendado.')
     } catch (error) {
       const err = error as Error
-      console.error(`❌ [Realtime] Erro completo no setup:`, {
-        message: err.message,
-        stack: err.stack,
-        table,
-        filter,
-        authUserId: authUser?.id,
-      })
-
+      logWithTimestamp('SETUP', 'Catch geral no setup:', err)
       realtimeFailedRef.current++
-      if (realtimeFailedRef.current >= 3 && enablePollingFallback) {
-        console.log(
-          `[Realtime] Ativando polling após ${realtimeFailedRef.current} falhas realtime.`,
-        )
+
+      if (realtimeFailedRef.current >= 2 && enablePollingFallback) {
         startPolling()
       }
 
       if (retryCountRef.current < maxRetries) {
         retryCountRef.current++
-        console.log(
-          `⏳ [Realtime] Retry ${retryCountRef.current}/${maxRetries} em ${backoffRef.current}ms`,
+        const waitTime = backoffRef.current
+        logWithTimestamp(
+          'RETRY',
+          `Tentativa ${retryCountRef.current}/${maxRetries} em ${waitTime}ms`,
         )
 
-        timeoutRef.current = setTimeout(() => {
+        timeoutRef.current = setTimeout(async () => {
           if (!isCleaningUpRef.current) {
-            setupSubscription()
+            await setupSubscription() // Await para chain
           }
-        }, backoffRef.current)
+        }, waitTime)
 
-        backoffRef.current = Math.min(backoffRef.current * 2 + Math.random() * 1000, 30000)
+        backoffRef.current = Math.min(backoffRef.current * 2 + Math.random() * 500, 15000) // Jitter menor para debug
       } else {
-        const maxRetriesError = new Error(
-          `Falha realtime após ${maxRetries} tentativas. Verifique RLS e auth.`,
-        )
-        onError?.(maxRetriesError)
+        onError?.(new Error(`Max retries. Stack: ${err.stack}`))
       }
     }
   }, [
-    authUser,
+    authUser?.id,
     table,
     filter,
     onDataChange,
@@ -217,47 +250,63 @@ export const useRealtimeSync = ({
   ])
 
   useEffect(() => {
-    console.log('[Realtime] useEffect ativado | AuthUser:', authUser?.id ? 'OK' : 'NULL')
+    logWithTimestamp('EFFECT', 'useEffect rodando. Auth ready:', !!authUser?.id)
     if (!authUser?.id) {
-      console.warn('[Realtime] Aguardando authUser...')
-      return
+      logWithTimestamp('EFFECT', 'Aguardando auth - sem setup')
+      return undefined // Cleanup não roda se não setup
     }
 
     setupSubscription()
 
     return () => {
-      console.log('[Realtime] Cleanup useEffect...')
+      logWithTimestamp('CLEANUP', 'Iniciando cleanup useEffect')
       isCleaningUpRef.current = true
 
-      if (timeoutRef.current) clearTimeout(timeoutRef.current)
-      if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current)
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current)
+        timeoutRef.current = undefined
+      }
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current)
+        pollingIntervalRef.current = undefined
+      }
 
       if (subscriptionRef.current) {
-        supabase.removeChannel(subscriptionRef.current)
+        try {
+          supabase.removeChannel(subscriptionRef.current)
+        } catch (cleanupErr) {
+          logWithTimestamp('CLEANUP', 'Erro removendo channel:', cleanupErr as Error)
+        }
         subscriptionRef.current = null
       }
 
+      // Força GC para channels globalmente (se exposto pelo SDK)
+      if (typeof window !== 'undefined' && 'supabase' in window) {
+        // Reservado para limpeza agressiva se necessário
+      }
+
       isCleaningUpRef.current = false
-      console.log('[Realtime] Cleanup concluído.')
+      logWithTimestamp('CLEANUP', 'Cleanup finalizado')
     }
   }, [authUser?.id, setupSubscription])
 
-  const reconnect = useCallback(() => {
-    console.log('[Realtime] 🔄 Reconexão forçada manual')
+  const reconnect = useCallback(async () => {
+    logWithTimestamp('RECONNECT', 'Manual chamado')
     realtimeFailedRef.current = 0
     retryCountRef.current = 0
     backoffRef.current = initialBackoff
     if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current)
-    setupSubscription()
+    await setupSubscription()
   }, [setupSubscription, initialBackoff])
 
   const stopPolling = useCallback(() => {
     if (pollingIntervalRef.current) {
       clearInterval(pollingIntervalRef.current)
       pollingIntervalRef.current = undefined
-      console.log('[POLLING] Parado.')
+      logWithTimestamp('POLLING', 'Parado manualmente')
     }
   }, [])
 
-  return { reconnect, stopPolling }
+  // Expor invoke count para debug
+  return { reconnect, stopPolling, invokeCount: invokeCountRef.current }
 }
