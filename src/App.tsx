@@ -30,6 +30,7 @@ import E2ETester from '@/pages/admin/E2ETester'
 import PerformanceTester from '@/pages/admin/PerformanceTester'
 import RealtimeTester from '@/pages/admin/RealtimeTester'
 import IntegrationTester from '@/pages/admin/IntegrationTester'
+import ResilienceTester from '@/pages/admin/ResilienceTester'
 import PontuacaoPage from '@/pages/dashboard/PontuacaoPage'
 import HistoricoPage from '@/pages/dashboard/HistoricoPage'
 import PerdidosPage from '@/pages/dashboard/PerdidosPage'
@@ -125,6 +126,7 @@ const AppContent = () => {
             <Route path="performance-tester" element={<PerformanceTester />} />
             <Route path="realtime-tester" element={<RealtimeTester />} />
             <Route path="integration-tester" element={<IntegrationTester />} />
+            <Route path="resilience-tester" element={<ResilienceTester />} />
             <Route path="pontuacao" element={<PontuacaoPage />} />
             <Route path="historico" element={<HistoricoPage />} />
             <Route path="perdidos" element={<PerdidosPage />} />
