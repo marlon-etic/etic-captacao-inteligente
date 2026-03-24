@@ -8,20 +8,26 @@ import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { DashboardStats } from '@/types/landlord'
 import { Building, Key, Bell, DollarSign } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { ConnectionStatus } from '@/components/common/ConnectionStatus'
 
 export default function LandlordDashboard() {
-  const { landlordProfile } = useLandlordAuth()
+  const { landlordProfile, isConnected: authConnected } = useLandlordAuth()
   const {
     properties,
     propertyPerformance,
     loading: propsLoading,
+    isConnected: propsConnected,
   } = useProperties(landlordProfile?.id)
   const {
     proposals,
     pendingCount,
     loading: proposalsLoading,
+    isConnected: proposalsConnected,
+    error: proposalError,
     respondToProposal,
   } = useProposals(landlordProfile?.id)
+
+  const isConnected = authConnected && propsConnected && proposalsConnected
 
   const stats: DashboardStats = useMemo(() => {
     const occupiedProperties = properties.filter(
@@ -45,7 +51,20 @@ export default function LandlordDashboard() {
   if (propsLoading || proposalsLoading) return <LoadingSpinner />
 
   return (
-    <div className="px-4 sm:px-6 lg:px-8 py-8 max-w-7xl mx-auto animate-fade-in-up">
+    <div className="px-4 sm:px-6 lg:px-8 py-8 max-w-7xl mx-auto animate-fade-in-up relative">
+      {!isConnected && (
+        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6 rounded-r-lg shadow-sm">
+          <div className="flex">
+            <div className="ml-3">
+              <p className="text-sm text-yellow-800 font-medium">
+                ⚠️ Problemas de conexão detectados. O sistema está tentando reconectar
+                automaticamente para sincronizar seus dados.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <h2 className="text-2xl md:text-3xl font-black mb-6 text-[#1A3A52] tracking-tight">
         Visão Geral
       </h2>
@@ -159,6 +178,8 @@ export default function LandlordDashboard() {
           </div>
         )}
       </div>
+
+      <ConnectionStatus isConnected={isConnected} error={proposalError} />
     </div>
   )
 }

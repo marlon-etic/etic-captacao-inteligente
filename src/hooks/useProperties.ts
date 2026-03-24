@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { Property, PropertyPerformance } from '@/types/landlord'
 import { fetchPropertyDetailsFromVistaSoft } from '@/services/vistaSoftService'
@@ -10,16 +10,32 @@ export const useProperties = (landlordId: string | undefined) => {
   )
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [isConnected, setIsConnected] = useState(true)
 
-  const fetchProperties = async (id: string) => {
+  const retryCountRef = useRef(0)
+  const maxRetries = 3
+
+  useEffect(() => {
+    if (landlordId) {
+      fetchProperties(landlordId)
+    }
+  }, [landlordId])
+
+  const fetchProperties = async (id: string, retryCount = 0) => {
     try {
       setLoading(true)
+      setError(null)
+
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 20000)
 
       const { data, error } = await supabase
         .from('imoveis_captados')
         .select('*')
         .eq('landlord_id', id)
         .order('created_at', { ascending: false })
+
+      clearTimeout(timeoutId)
 
       if (error) throw error
 
@@ -45,40 +61,56 @@ export const useProperties = (landlordId: string | undefined) => {
       setProperties(mappedProperties)
 
       if (mappedProperties.length > 0) {
+        await enrichPropertiesWithVistaSoftData(mappedProperties)
         await fetchPropertyPerformance(mappedProperties.map((p) => p.id))
-        enrichPropertiesWithVistaSoftData(mappedProperties)
       }
 
       setError(null)
+      setIsConnected(true)
+      retryCountRef.current = 0
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao carregar propriedades')
+      const errorMsg = err instanceof Error ? err.message : 'Erro ao carregar propriedades'
+      console.error('Erro ao buscar propriedades:', errorMsg)
+      setError(errorMsg)
+      setIsConnected(false)
+
+      if (retryCount < maxRetries) {
+        const delay = Math.min(1000 * Math.pow(2, retryCount), 10000)
+        console.log(`Retentando em ${delay}ms (tentativa ${retryCount + 1}/${maxRetries})`)
+
+        setTimeout(() => {
+          fetchProperties(id, retryCount + 1)
+        }, delay)
+      }
     } finally {
       setLoading(false)
     }
   }
 
-  useEffect(() => {
-    if (landlordId) {
-      fetchProperties(landlordId)
-    } else {
-      setProperties([])
-      setLoading(false)
-    }
-  }, [landlordId])
-
   const enrichPropertiesWithVistaSoftData = async (props: Property[]) => {
     try {
-      const enrichedProperties = await Promise.all(
-        props.map(async (property) => {
-          if (!property.code) return property
-          try {
-            const vistaSoftData = await fetchPropertyDetailsFromVistaSoft(property.code)
-            return { ...property, ...vistaSoftData }
-          } catch {
-            return property
-          }
-        }),
-      )
+      const batchSize = 5
+      const enrichedProperties = [...props]
+
+      for (let i = 0; i < props.length; i += batchSize) {
+        const batch = props.slice(i, i + batchSize)
+
+        await Promise.all(
+          batch.map(async (property) => {
+            if (!property.code) return
+            try {
+              const vistaSoftData = await fetchPropertyDetailsFromVistaSoft(property.code)
+              const index = enrichedProperties.findIndex((p) => p.id === property.id)
+              if (index !== -1) {
+                enrichedProperties[index] = { ...enrichedProperties[index], ...vistaSoftData }
+              }
+            } catch (err) {
+              console.error(`Erro ao enriquecer propriedade ${property.code}:`, err)
+            }
+          }),
+        )
+      }
+
       setProperties(enrichedProperties)
     } catch (err) {
       console.error('Erro ao enriquecer dados da VistaSoft:', err)
@@ -87,6 +119,8 @@ export const useProperties = (landlordId: string | undefined) => {
 
   const fetchPropertyPerformance = async (propertyIds: string[]) => {
     try {
+      if (propertyIds.length === 0) return
+
       const { data, error } = await supabase
         .from('property_performance')
         .select('*')
@@ -110,6 +144,7 @@ export const useProperties = (landlordId: string | undefined) => {
     propertyPerformance,
     loading,
     error,
+    isConnected,
     refreshProperties: () => landlordId && fetchProperties(landlordId),
   }
 }

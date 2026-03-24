@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase/client'
 import { LandlordProfile } from '@/types/landlord'
@@ -8,55 +8,102 @@ export const useLandlordAuth = () => {
   const [landlordProfile, setLandlordProfile] = useState<LandlordProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [isConnected, setIsConnected] = useState(true)
+
+  const retryCountRef = useRef(0)
+  const maxRetries = 3
 
   useEffect(() => {
     let mounted = true
+    checkConnection()
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (mounted) {
         setSession(session)
-        if (session) fetchLandlordProfile(session.user.id)
-        else setLoading(false)
+        if (session) {
+          fetchLandlordProfile(session.user.id)
+        } else {
+          setLoading(false)
+        }
       }
     })
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
+      console.log('Auth state changed:', _event)
       if (mounted) {
         setSession(session)
-        if (session) fetchLandlordProfile(session.user.id)
-        else {
+        if (session) {
+          fetchLandlordProfile(session.user.id)
+        } else {
           setLandlordProfile(null)
           setLoading(false)
         }
       }
     })
 
+    const connectionCheckInterval = setInterval(() => {
+      checkConnection()
+    }, 30000)
+
     return () => {
       mounted = false
-      subscription.unsubscribe()
+      subscription?.unsubscribe()
+      clearInterval(connectionCheckInterval)
     }
   }, [])
 
-  const fetchLandlordProfile = async (userId: string) => {
+  const checkConnection = async () => {
+    try {
+      const { error } = await supabase.from('users').select('id').limit(1)
+
+      if (error) throw error
+
+      setIsConnected(true)
+      retryCountRef.current = 0
+    } catch (err) {
+      console.error('Erro ao verificar conexão:', err)
+      setIsConnected(false)
+    }
+  }
+
+  const fetchLandlordProfile = async (userId: string, retryCount = 0) => {
     try {
       setLoading(true)
+
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 15000)
+
       const { data, error } = await supabase
         .from('landlord_profiles')
         .select('*')
         .eq('user_id', userId)
         .single()
 
-      if (error) {
-        throw error
-      }
+      clearTimeout(timeoutId)
+
+      if (error) throw error
 
       setLandlordProfile(data)
       setError(null)
+      setIsConnected(true)
     } catch (err) {
-      console.warn('Failed to load landlord profile:', err)
-      setLandlordProfile(null)
+      const errorMsg = err instanceof Error ? err.message : 'Erro ao carregar perfil'
+      console.error('Erro ao buscar perfil:', errorMsg)
+      setError(errorMsg)
+      setIsConnected(false)
+
+      if (retryCount < maxRetries) {
+        const delay = Math.min(1000 * Math.pow(2, retryCount), 10000)
+        console.log(`Retentando fetch de perfil em ${delay}ms`)
+
+        setTimeout(() => {
+          fetchLandlordProfile(userId, retryCount + 1)
+        }, delay)
+      } else {
+        setLandlordProfile(null)
+      }
     } finally {
       setLoading(false)
     }
@@ -106,6 +153,7 @@ export const useLandlordAuth = () => {
     landlordProfile,
     loading,
     error,
+    isConnected,
     login,
     signup,
     logout,
