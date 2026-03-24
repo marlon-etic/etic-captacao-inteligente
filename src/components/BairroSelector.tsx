@@ -108,7 +108,7 @@ export function BairroSelector({
     }).filter(Boolean) as typeof REGIONS_DATA
   }, [search])
 
-  const displayValue = () => {
+  const displayValueNode = () => {
     if (!selectedBairros || selectedBairros.length === 0)
       return (
         <span className="text-[#999999] truncate flex-1 text-left">Selecione os bairros...</span>
@@ -126,7 +126,7 @@ export function BairroSelector({
     )
   }
 
-  const ListContent = () => (
+  const listContentNode = (
     <div className="flex flex-col h-full overflow-hidden">
       <div className="p-3 border-b border-[#E0E0E0] shrink-0 sticky top-0 bg-white z-10">
         <div className="relative">
@@ -208,7 +208,7 @@ export function BairroSelector({
     </div>
   )
 
-  const TriggerButton = () => (
+  const triggerButtonNode = (
     <div
       className={cn(
         'flex min-h-[48px] w-full items-center justify-between rounded-[8px] border bg-[#FFFFFF] px-[16px] py-[12px] text-[16px] hover:border-[#1A3A52] transition-colors focus:outline-none focus:ring-2 focus:ring-[#1A3A52] focus:ring-offset-0 cursor-pointer select-none',
@@ -218,7 +218,7 @@ export function BairroSelector({
       onClick={() => setOpen(!open)}
     >
       <div className="flex items-center gap-2 flex-1 overflow-hidden">
-        {displayValue()}
+        {displayValueNode()}
 
         {saveStatus === 'saving' && (
           <Badge
@@ -244,7 +244,7 @@ export function BairroSelector({
   if (isMobile) {
     return (
       <>
-        <TriggerButton />
+        {triggerButtonNode}
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogContent className="w-screen h-screen max-w-none m-0 p-0 rounded-none flex flex-col bg-white overflow-hidden gap-0 z-[99999] animate-in slide-in-from-bottom-full duration-300">
             <DialogHeader className="p-4 border-b border-[#E0E0E0] shrink-0 bg-[#F5F5F5] flex flex-row items-center justify-between">
@@ -258,7 +258,7 @@ export function BairroSelector({
               </DialogClose>
             </DialogHeader>
             <div className="flex-1 overflow-hidden min-h-0 bg-white flex flex-col">
-              <ListContent />
+              {listContentNode}
             </div>
           </DialogContent>
         </Dialog>
@@ -269,9 +269,7 @@ export function BairroSelector({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <div className="w-full relative">
-          <TriggerButton />
-        </div>
+        <div className="w-full relative">{triggerButtonNode}</div>
       </PopoverTrigger>
       <PopoverContent
         className="w-[400px] p-0 border-[#E0E0E0] shadow-2xl rounded-[12px] z-[9999] overflow-hidden flex flex-col bg-white"
@@ -279,7 +277,7 @@ export function BairroSelector({
         align="start"
         sideOffset={8}
       >
-        <ListContent />
+        {listContentNode}
       </PopoverContent>
     </Popover>
   )
