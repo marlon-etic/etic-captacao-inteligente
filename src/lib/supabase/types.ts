@@ -15,6 +15,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      api_error_logs: {
+        Row: {
+          api_name: string
+          created_at: string | null
+          endpoint: string | null
+          error_message: string
+          id: string
+          payload: Json | null
+        }
+        Insert: {
+          api_name: string
+          created_at?: string | null
+          endpoint?: string | null
+          error_message: string
+          id?: string
+          payload?: Json | null
+        }
+        Update: {
+          api_name?: string
+          created_at?: string | null
+          endpoint?: string | null
+          error_message?: string
+          id?: string
+          payload?: Json | null
+        }
+        Relationships: []
+      }
       audit_log: {
         Row: {
           acao: string
@@ -64,6 +91,7 @@ export type Database = {
           created_at: string | null
           dormitorios: number | null
           email: string | null
+          grupo_id: string | null
           id: string
           is_prioritaria: boolean | null
           localizacoes: string[] | null
@@ -72,9 +100,11 @@ export type Database = {
           observacoes: string | null
           orcamento_max: number | null
           quartos: number | null
+          renda_mensal_estimada: number | null
           sdr_id: string | null
           status_demanda: string | null
           telefone: string | null
+          tenant_score: number | null
           tipo_demanda: string | null
           updated_at: string | null
           urgencia: string | null
@@ -90,6 +120,7 @@ export type Database = {
           created_at?: string | null
           dormitorios?: number | null
           email?: string | null
+          grupo_id?: string | null
           id?: string
           is_prioritaria?: boolean | null
           localizacoes?: string[] | null
@@ -98,9 +129,11 @@ export type Database = {
           observacoes?: string | null
           orcamento_max?: number | null
           quartos?: number | null
+          renda_mensal_estimada?: number | null
           sdr_id?: string | null
           status_demanda?: string | null
           telefone?: string | null
+          tenant_score?: number | null
           tipo_demanda?: string | null
           updated_at?: string | null
           urgencia?: string | null
@@ -116,6 +149,7 @@ export type Database = {
           created_at?: string | null
           dormitorios?: number | null
           email?: string | null
+          grupo_id?: string | null
           id?: string
           is_prioritaria?: boolean | null
           localizacoes?: string[] | null
@@ -124,9 +158,11 @@ export type Database = {
           observacoes?: string | null
           orcamento_max?: number | null
           quartos?: number | null
+          renda_mensal_estimada?: number | null
           sdr_id?: string | null
           status_demanda?: string | null
           telefone?: string | null
+          tenant_score?: number | null
           tipo_demanda?: string | null
           updated_at?: string | null
           urgencia?: string | null
@@ -137,7 +173,21 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "demandas_locacao_grupo_id_fkey"
+            columns: ["grupo_id"]
+            isOneToOne: false
+            referencedRelation: "grupos_demandas"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "demandas_locacao_sdr_id_fkey"
+            columns: ["sdr_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_demandas_locacao_sdr"
             columns: ["sdr_id"]
             isOneToOne: false
             referencedRelation: "users"
@@ -154,6 +204,7 @@ export type Database = {
           created_at: string | null
           dormitorios: number | null
           email: string | null
+          grupo_id: string | null
           id: string
           is_prioritaria: boolean | null
           localizacoes: string[] | null
@@ -180,6 +231,7 @@ export type Database = {
           created_at?: string | null
           dormitorios?: number | null
           email?: string | null
+          grupo_id?: string | null
           id?: string
           is_prioritaria?: boolean | null
           localizacoes?: string[] | null
@@ -206,6 +258,7 @@ export type Database = {
           created_at?: string | null
           dormitorios?: number | null
           email?: string | null
+          grupo_id?: string | null
           id?: string
           is_prioritaria?: boolean | null
           localizacoes?: string[] | null
@@ -232,7 +285,74 @@ export type Database = {
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "demandas_vendas_grupo_id_fkey"
+            columns: ["grupo_id"]
+            isOneToOne: false
+            referencedRelation: "grupos_demandas"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      grupos_demandas: {
+        Row: {
+          bairro: string
+          count_demandas: number | null
+          created_at: string | null
+          dormitorios: number | null
+          id: string
+          num_quartos: number | null
+          num_vagas: number | null
+          preco_maximo_group: number | null
+          preco_minimo_group: number | null
+          status: string | null
+          tier: string | null
+          tipo: string | null
+          tipologia: string | null
+          total_demandas_ativas: number | null
+          updated_at: string | null
+          vagas: number | null
+          valor_aluguel: number | null
+        }
+        Insert: {
+          bairro: string
+          count_demandas?: number | null
+          created_at?: string | null
+          dormitorios?: number | null
+          id?: string
+          num_quartos?: number | null
+          num_vagas?: number | null
+          preco_maximo_group?: number | null
+          preco_minimo_group?: number | null
+          status?: string | null
+          tier?: string | null
+          tipo?: string | null
+          tipologia?: string | null
+          total_demandas_ativas?: number | null
+          updated_at?: string | null
+          vagas?: number | null
+          valor_aluguel?: number | null
+        }
+        Update: {
+          bairro?: string
+          count_demandas?: number | null
+          created_at?: string | null
+          dormitorios?: number | null
+          id?: string
+          num_quartos?: number | null
+          num_vagas?: number | null
+          preco_maximo_group?: number | null
+          preco_minimo_group?: number | null
+          status?: string | null
+          tier?: string | null
+          tipo?: string | null
+          tipologia?: string | null
+          total_demandas_ativas?: number | null
+          updated_at?: string | null
+          vagas?: number | null
+          valor_aluguel?: number | null
+        }
+        Relationships: []
       }
       imoveis_captados: {
         Row: {
@@ -305,6 +425,13 @@ export type Database = {
           valor?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_imoveis_captador"
+            columns: ["user_captador_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "imoveis_captados_demanda_locacao_id_fkey"
             columns: ["demanda_locacao_id"]
@@ -579,12 +706,76 @@ export type Database = {
         }
         Relationships: []
       }
+      webhook_queue: {
+        Row: {
+          created_at: string | null
+          entity_id: string | null
+          event_type: string
+          id: string
+          last_error: string | null
+          max_retries: number | null
+          payload: Json
+          processed_at: string | null
+          retry_count: number | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          entity_id?: string | null
+          event_type: string
+          id?: string
+          last_error?: string | null
+          max_retries?: number | null
+          payload: Json
+          processed_at?: string | null
+          retry_count?: number | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          entity_id?: string | null
+          event_type?: string
+          id?: string
+          last_error?: string | null
+          max_retries?: number | null
+          payload?: Json
+          processed_at?: string | null
+          retry_count?: number | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
       atualizar_prazos_vencidos: { Args: never; Returns: undefined }
+      fn_calcular_tenant_score: {
+        Args: { p_renda_mensal: number; p_valor_aluguel: number }
+        Returns: number
+      }
+      fn_logar_falhas_api: {
+        Args: {
+          p_api: string
+          p_endpoint: string
+          p_message: string
+          p_payload?: Json
+        }
+        Returns: undefined
+      }
+      fn_processar_webhook_queue: {
+        Args: never
+        Returns: {
+          event_type: string
+          id: string
+          payload: Json
+          status: string
+        }[]
+      }
     }
     Enums: {
       notificacao_prioridade: "alta" | "normal" | "baixa"
@@ -744,6 +935,13 @@ export const Constants = {
 // --- COLUMN TYPES (actual PostgreSQL types) ---
 // Use this to know the real database type when writing migrations.
 // "string" in TypeScript types above may be uuid, text, varchar, timestamptz, etc.
+// Table: api_error_logs
+//   id: uuid (not null, default: gen_random_uuid())
+//   api_name: text (not null)
+//   endpoint: text (nullable)
+//   error_message: text (not null)
+//   payload: jsonb (nullable)
+//   created_at: timestamp with time zone (nullable, default: now())
 // Table: audit_log
 //   id: uuid (not null, default: gen_random_uuid())
 //   usuario_id: uuid (nullable)
@@ -778,6 +976,9 @@ export const Constants = {
 //   observacoes: text (nullable)
 //   tipo_demanda: character varying (nullable, default: 'Aluguel'::character varying)
 //   is_prioritaria: boolean (nullable, default: false)
+//   grupo_id: uuid (nullable)
+//   renda_mensal_estimada: numeric (nullable, default: 0)
+//   tenant_score: integer (nullable, default: 0)
 // Table: demandas_vendas
 //   id: uuid (not null, default: gen_random_uuid())
 //   cliente_nome: character varying (nullable)
@@ -803,6 +1004,25 @@ export const Constants = {
 //   status_demanda: character varying (nullable)
 //   necessidades_especificas: text (nullable)
 //   is_prioritaria: boolean (nullable, default: false)
+//   grupo_id: uuid (nullable)
+// Table: grupos_demandas
+//   id: uuid (not null, default: gen_random_uuid())
+//   bairro: text (not null)
+//   tipologia: text (nullable, default: 'Padrão'::text)
+//   valor_aluguel: numeric (nullable, default: 0)
+//   num_quartos: integer (nullable, default: 0)
+//   num_vagas: integer (nullable, default: 0)
+//   count_demandas: integer (nullable, default: 1)
+//   tier: text (nullable)
+//   preco_minimo_group: numeric (nullable, default: 0)
+//   preco_maximo_group: numeric (nullable, default: 0)
+//   dormitorios: integer (nullable, default: 0)
+//   vagas: integer (nullable, default: 0)
+//   tipo: character varying (nullable, default: 'locacao'::character varying)
+//   total_demandas_ativas: integer (nullable, default: 0)
+//   status: character varying (nullable, default: 'ativo'::character varying)
+//   created_at: timestamp with time zone (nullable, default: now())
+//   updated_at: timestamp with time zone (nullable, default: now())
 // Table: imoveis_captados
 //   id: uuid (not null, default: gen_random_uuid())
 //   captador_id: uuid (nullable)
@@ -872,27 +1092,45 @@ export const Constants = {
 //   status: character varying (nullable, default: 'ativo'::character varying)
 //   created_at: timestamp with time zone (nullable, default: now())
 //   updated_at: timestamp with time zone (nullable, default: now())
+// Table: webhook_queue
+//   id: uuid (not null, default: gen_random_uuid())
+//   event_type: text (not null)
+//   entity_id: uuid (nullable)
+//   payload: jsonb (not null)
+//   status: text (nullable, default: 'pending'::text)
+//   retry_count: integer (nullable, default: 0)
+//   max_retries: integer (nullable, default: 3)
+//   last_error: text (nullable)
+//   created_at: timestamp with time zone (nullable, default: now())
+//   updated_at: timestamp with time zone (nullable, default: now())
+//   processed_at: timestamp with time zone (nullable)
 
 // --- CONSTRAINTS ---
+// Table: api_error_logs
+//   PRIMARY KEY api_error_logs_pkey: PRIMARY KEY (id)
 // Table: audit_log
 //   PRIMARY KEY audit_log_pkey: PRIMARY KEY (id)
 //   FOREIGN KEY audit_log_usuario_id_fkey: FOREIGN KEY (usuario_id) REFERENCES users(id) ON DELETE SET NULL
 // Table: demandas_locacao
 //   CHECK check_valor_min_max_locacao: CHECK ((valor_maximo >= valor_minimo))
+//   CHECK chk_demandas_locacao_renda: CHECK ((renda_mensal_estimada >= (0)::numeric))
 //   CHECK demandas_locacao_dormitorios_check: CHECK (((dormitorios >= 0) AND (dormitorios <= 10)))
 //   CHECK demandas_locacao_email_check: CHECK (((email IS NULL) OR ((email)::text = ''::text) OR ((email)::text ~~ '%@%'::text)))
+//   FOREIGN KEY demandas_locacao_grupo_id_fkey: FOREIGN KEY (grupo_id) REFERENCES grupos_demandas(id) ON DELETE SET NULL
 //   CHECK demandas_locacao_nivel_urgencia_check: CHECK (((nivel_urgencia)::text = ANY ((ARRAY['Baixa'::character varying, 'Média'::character varying, 'Alta'::character varying, 'Urgente'::character varying, 'Até 15 dias'::character varying, 'Até 30 dias'::character varying, 'Até 90 dias ou +'::character varying])::text[])))
 //   PRIMARY KEY demandas_locacao_pkey: PRIMARY KEY (id)
 //   FOREIGN KEY demandas_locacao_sdr_id_fkey: FOREIGN KEY (sdr_id) REFERENCES users(id) ON DELETE SET NULL
 //   CHECK demandas_locacao_status_demanda_check: CHECK (((status_demanda)::text = ANY ((ARRAY['aberta'::character varying, 'atendida'::character varying, 'impossivel'::character varying, 'sem_resposta_24h'::character varying, 'ganho'::character varying])::text[])))
 //   CHECK demandas_locacao_telefone_check: CHECK (((telefone IS NULL) OR (((telefone)::text ~ '^\([0-9]{2}\) 9[0-9]{4}-[0-9]{4}'::text) AND (length((telefone)::text) = 15))))
 //   CHECK demandas_locacao_vagas_estacionamento_check: CHECK (((vagas_estacionamento >= 0) AND (vagas_estacionamento <= 10)))
+//   FOREIGN KEY fk_demandas_locacao_sdr: FOREIGN KEY (sdr_id) REFERENCES users(id) ON DELETE SET NULL
 // Table: demandas_vendas
 //   CHECK check_valor_min_max_vendas: CHECK ((valor_maximo >= valor_minimo))
 //   FOREIGN KEY demandas_vendas_corretor_id_fkey: FOREIGN KEY (corretor_id) REFERENCES users(id) ON DELETE SET NULL
 //   CHECK demandas_vendas_dormitorios_check: CHECK (((dormitorios >= 0) AND (dormitorios <= 10)))
 //   CHECK demandas_vendas_email_check: CHECK (((email)::text ~ '^[A-Za-z0-9._%-]+@[A-Za-z0-9.-]+[.][A-Za-z]+
 ::text))
+//   FOREIGN KEY demandas_vendas_grupo_id_fkey: FOREIGN KEY (grupo_id) REFERENCES grupos_demandas(id) ON DELETE SET NULL
 //   CHECK demandas_vendas_nivel_urgencia_check: CHECK (((nivel_urgencia)::text = ANY ((ARRAY['Baixa'::character varying, 'Média'::character varying, 'Alta'::character varying, 'Urgente'::character varying, 'Até 15 dias'::character varying, 'Até 30 dias'::character varying, 'Até 90 dias ou +'::character varying])::text[])))
 //   PRIMARY KEY demandas_vendas_pkey: PRIMARY KEY (id)
 //   CHECK demandas_vendas_status_demanda_check: CHECK (((status_demanda)::text = ANY ((ARRAY['aberta'::character varying, 'atendida'::character varying, 'impossivel'::character varying, 'sem_resposta_24h'::character varying, 'ganho'::character varying])::text[])))
@@ -900,7 +1138,10 @@ export const Constants = {
 ::text))
 //   CHECK demandas_vendas_tipo_imovel_check: CHECK (((tipo_imovel)::text = ANY ((ARRAY['Casa'::character varying, 'Apartamento'::character varying, 'Terreno'::character varying])::text[])))
 //   CHECK demandas_vendas_vagas_estacionamento_check: CHECK (((vagas_estacionamento >= 0) AND (vagas_estacionamento <= 10)))
+// Table: grupos_demandas
+//   PRIMARY KEY grupos_demandas_pkey: PRIMARY KEY (id)
 // Table: imoveis_captados
+//   FOREIGN KEY fk_imoveis_captador: FOREIGN KEY (user_captador_id) REFERENCES users(id) ON DELETE SET NULL
 //   UNIQUE imoveis_captados_codigo_imovel_key: UNIQUE (codigo_imovel)
 //   CHECK imoveis_captados_comissao_percentual_check: CHECK (((comissao_percentual >= (0)::numeric) AND (comissao_percentual <= (100)::numeric)))
 //   FOREIGN KEY imoveis_captados_demanda_locacao_id_fkey: FOREIGN KEY (demanda_locacao_id) REFERENCES demandas_locacao(id) ON DELETE SET NULL
@@ -940,6 +1181,9 @@ export const Constants = {
 //   FOREIGN KEY users_id_fkey: FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE
 //   PRIMARY KEY users_pkey: PRIMARY KEY (id)
 //   CHECK users_status_check: CHECK (((status)::text = ANY ((ARRAY['ativo'::character varying, 'inativo'::character varying])::text[])))
+// Table: webhook_queue
+//   PRIMARY KEY webhook_queue_pkey: PRIMARY KEY (id)
+//   CHECK webhook_queue_status_check: CHECK ((status = ANY (ARRAY['pending'::text, 'processing'::text, 'completed'::text, 'failed'::text])))
 
 // --- ROW LEVEL SECURITY POLICIES ---
 // Table: audit_log
@@ -1018,6 +1262,15 @@ export const Constants = {
 //   Policy "Users update own profile" (UPDATE, PERMISSIVE) roles={public}
 //     USING: (id = auth.uid())
 
+// --- WARNING: TABLES WITH RLS ENABLED BUT NO POLICIES ---
+// These tables have Row Level Security enabled but NO policies defined.
+// This means ALL queries (SELECT, INSERT, UPDATE, DELETE) will return ZERO rows
+// for non-superuser roles (including the anon and authenticated roles used by the app).
+// You MUST create RLS policies for these tables to allow data access.
+//   - api_error_logs
+//   - grupos_demandas
+//   - webhook_queue
+
 // --- DATABASE FUNCTIONS ---
 // FUNCTION atualizar_prazos_vencidos()
 //   CREATE OR REPLACE FUNCTION public.atualizar_prazos_vencidos()
@@ -1093,6 +1346,164 @@ export const Constants = {
 //           VALUES (NEW.id, NOW() + INTERVAL '24 hours');
 //       END IF;
 //       RETURN NEW;
+//   END;
+//   $function$
+//   
+// FUNCTION fn_agrupar_demandas_automaticamente()
+//   CREATE OR REPLACE FUNCTION public.fn_agrupar_demandas_automaticamente()
+//    RETURNS trigger
+//    LANGUAGE plpgsql
+//    SECURITY DEFINER
+//   AS $function$
+//   DECLARE
+//       v_grupo_id UUID;
+//       v_bairro TEXT;
+//   BEGIN
+//       v_bairro := COALESCE(NEW.bairros[1], 'Desconhecido');
+//       
+//       SELECT id INTO v_grupo_id
+//       FROM public.grupos_demandas
+//       WHERE bairro = v_bairro 
+//         AND (dormitorios = NEW.dormitorios OR num_quartos = NEW.dormitorios)
+//       LIMIT 1;
+//   
+//       IF v_grupo_id IS NULL THEN
+//           INSERT INTO public.grupos_demandas (bairro, tipologia, valor_aluguel, num_quartos, count_demandas, preco_maximo_group, dormitorios, tipo)
+//           VALUES (v_bairro, 'Padrão', COALESCE(NEW.valor_maximo, 0), COALESCE(NEW.dormitorios, 0), 1, COALESCE(NEW.valor_maximo, 0), COALESCE(NEW.dormitorios, 0), 'locacao')
+//           RETURNING id INTO v_grupo_id;
+//       ELSE
+//           UPDATE public.grupos_demandas
+//           SET count_demandas = count_demandas + 1, total_demandas_ativas = total_demandas_ativas + 1
+//           WHERE id = v_grupo_id;
+//       END IF;
+//   
+//       NEW.grupo_id := v_grupo_id;
+//       RETURN NEW;
+//   END;
+//   $function$
+//   
+// FUNCTION fn_atualizar_tenant_score()
+//   CREATE OR REPLACE FUNCTION public.fn_atualizar_tenant_score()
+//    RETURNS trigger
+//    LANGUAGE plpgsql
+//    SECURITY DEFINER
+//   AS $function$
+//   BEGIN
+//       NEW.tenant_score := public.fn_calcular_tenant_score(COALESCE(NEW.renda_mensal_estimada, 0), COALESCE(NEW.valor_maximo, 0));
+//       RETURN NEW;
+//   END;
+//   $function$
+//   
+// FUNCTION fn_calcular_tenant_score(numeric, numeric)
+//   CREATE OR REPLACE FUNCTION public.fn_calcular_tenant_score(p_renda_mensal numeric, p_valor_aluguel numeric)
+//    RETURNS integer
+//    LANGUAGE plpgsql
+//    IMMUTABLE
+//   AS $function$
+//   DECLARE
+//       score INTEGER := 50;
+//       comprometimento NUMERIC;
+//   BEGIN
+//       IF p_valor_aluguel > 0 AND p_renda_mensal > 0 THEN
+//           comprometimento := (p_valor_aluguel / p_renda_mensal) * 100;
+//           IF comprometimento <= 30 THEN score := score + 30;
+//           ELSIF comprometimento <= 40 THEN score := score + 15;
+//           ELSE score := score - 20;
+//           END IF;
+//       END IF;
+//       IF score > 100 THEN score := 100; END IF;
+//       IF score < 0 THEN score := 0; END IF;
+//       RETURN score;
+//   END;
+//   $function$
+//   
+// FUNCTION fn_calculate_points_on_insert()
+//   CREATE OR REPLACE FUNCTION public.fn_calculate_points_on_insert()
+//    RETURNS trigger
+//    LANGUAGE plpgsql
+//    SECURITY DEFINER
+//   AS $function$
+//   DECLARE
+//       cid UUID;
+//   BEGIN
+//       cid := COALESCE(NEW.user_captador_id, NEW.captador_id);
+//       IF cid IS NULL THEN
+//           RETURN NEW;
+//       END IF;
+//   
+//       IF NEW.demanda_locacao_id IS NOT NULL THEN
+//           INSERT INTO public.pontuacao_captador (captador_id, demanda_locacao_id, tipo_pontuacao, pontos)
+//           VALUES (cid, NEW.demanda_locacao_id, 'captura_com_demanda', 10);
+//       ELSIF NEW.demanda_venda_id IS NOT NULL THEN
+//           INSERT INTO public.pontuacao_captador (captador_id, demanda_venda_id, tipo_pontuacao, pontos)
+//           VALUES (cid, NEW.demanda_venda_id, 'captura_com_demanda', 10);
+//       ELSE
+//           INSERT INTO public.pontuacao_captador (captador_id, tipo_pontuacao, pontos)
+//           VALUES (cid, 'captura_sem_demanda', 3);
+//       END IF;
+//       
+//       RETURN NEW;
+//   END;
+//   $function$
+//   
+// FUNCTION fn_logar_falhas_api(text, text, text, jsonb)
+//   CREATE OR REPLACE FUNCTION public.fn_logar_falhas_api(p_api text, p_endpoint text, p_message text, p_payload jsonb DEFAULT NULL::jsonb)
+//    RETURNS void
+//    LANGUAGE plpgsql
+//    SECURITY DEFINER
+//   AS $function$
+//   BEGIN
+//       INSERT INTO public.api_error_logs (api_name, endpoint, error_message, payload)
+//       VALUES (p_api, p_endpoint, p_message, p_payload);
+//   END;
+//   $function$
+//   
+// FUNCTION fn_notify_new_demand_locacao()
+//   CREATE OR REPLACE FUNCTION public.fn_notify_new_demand_locacao()
+//    RETURNS trigger
+//    LANGUAGE plpgsql
+//    SECURITY DEFINER
+//   AS $function$
+//   DECLARE
+//       prioridade_val notificacao_prioridade;
+//   BEGIN
+//       IF NEW.nivel_urgencia IN ('Urgente', 'Alta') THEN 
+//           prioridade_val := 'alta';
+//       ELSIF NEW.nivel_urgencia IN ('Baixa') THEN 
+//           prioridade_val := 'baixa';
+//       ELSE 
+//           prioridade_val := 'normal'; 
+//       END IF;
+//   
+//       INSERT INTO public.notificacoes (usuario_id, tipo, titulo, mensagem, dados_relacionados, prioridade)
+//       SELECT id, 'nova_demanda', 
+//              'Nova demanda: ' || COALESCE(NEW.nome_cliente, NEW.cliente_nome, 'Cliente'), 
+//              COALESCE(array_to_string(NEW.bairros, ', '), '') || ' - R$ ' || COALESCE(NEW.valor_maximo, 0),
+//              jsonb_build_object('demanda_id', NEW.id, 'tipo_demanda', 'Aluguel'),
+//              prioridade_val
+//       FROM public.users WHERE role = 'captador';
+//       
+//       RETURN NEW;
+//   END;
+//   $function$
+//   
+// FUNCTION fn_processar_webhook_queue()
+//   CREATE OR REPLACE FUNCTION public.fn_processar_webhook_queue()
+//    RETURNS TABLE(id uuid, event_type text, payload jsonb, status text)
+//    LANGUAGE plpgsql
+//   AS $function$
+//   BEGIN
+//       RETURN QUERY
+//       UPDATE public.webhook_queue wq
+//       SET status = 'processing', updated_at = NOW()
+//       WHERE wq.id IN (
+//           SELECT w.id FROM public.webhook_queue w
+//           WHERE w.status = 'pending' OR (w.status = 'failed' AND w.retry_count < w.max_retries)
+//           ORDER BY w.created_at ASC
+//           LIMIT 10
+//           FOR UPDATE SKIP LOCKED
+//       )
+//       RETURNING wq.id, wq.event_type, wq.payload, wq.status;
 //   END;
 //   $function$
 //   
@@ -1398,7 +1809,9 @@ export const Constants = {
 //   audit_demandas_locacao: CREATE TRIGGER audit_demandas_locacao AFTER INSERT OR DELETE OR UPDATE ON public.demandas_locacao FOR EACH ROW EXECUTE FUNCTION audit_log_function()
 //   criar_prazo_locacao_trigger: CREATE TRIGGER criar_prazo_locacao_trigger AFTER INSERT ON public.demandas_locacao FOR EACH ROW EXECUTE FUNCTION criar_prazo_captacao()
 //   pontuacao_ganho_locacao_trigger: CREATE TRIGGER pontuacao_ganho_locacao_trigger AFTER UPDATE ON public.demandas_locacao FOR EACH ROW EXECUTE FUNCTION trg_pontuacao_ganho_locacao()
-//   trg_notify_nova_demanda_locacao: CREATE TRIGGER trg_notify_nova_demanda_locacao AFTER INSERT ON public.demandas_locacao FOR EACH ROW EXECUTE FUNCTION notify_nova_demanda()
+//   trg_agrupar_demanda_automaticamente: CREATE TRIGGER trg_agrupar_demanda_automaticamente BEFORE INSERT ON public.demandas_locacao FOR EACH ROW EXECUTE FUNCTION fn_agrupar_demandas_automaticamente()
+//   trg_atualizar_tenant_score: CREATE TRIGGER trg_atualizar_tenant_score BEFORE INSERT OR UPDATE OF renda_mensal_estimada, valor_maximo ON public.demandas_locacao FOR EACH ROW EXECUTE FUNCTION fn_atualizar_tenant_score()
+//   trg_notify_nova_demanda_locacao: CREATE TRIGGER trg_notify_nova_demanda_locacao AFTER INSERT ON public.demandas_locacao FOR EACH ROW EXECUTE FUNCTION fn_notify_new_demand_locacao()
 //   update_demandas_locacao_updated_at: CREATE TRIGGER update_demandas_locacao_updated_at BEFORE UPDATE ON public.demandas_locacao FOR EACH ROW EXECUTE FUNCTION set_updated_at()
 // Table: demandas_vendas
 //   audit_demandas_vendas: CREATE TRIGGER audit_demandas_vendas AFTER INSERT OR DELETE OR UPDATE ON public.demandas_vendas FOR EACH ROW EXECUTE FUNCTION audit_log_function()
@@ -1409,7 +1822,7 @@ export const Constants = {
 // Table: imoveis_captados
 //   audit_imoveis_captados: CREATE TRIGGER audit_imoveis_captados AFTER INSERT OR DELETE OR UPDATE ON public.imoveis_captados FOR EACH ROW EXECUTE FUNCTION audit_log_function()
 //   marcar_prazo_imovel_trigger: CREATE TRIGGER marcar_prazo_imovel_trigger AFTER INSERT ON public.imoveis_captados FOR EACH ROW EXECUTE FUNCTION marcar_prazo_respondido_imovel()
-//   pontuacao_imovel_trigger: CREATE TRIGGER pontuacao_imovel_trigger AFTER INSERT ON public.imoveis_captados FOR EACH ROW EXECUTE FUNCTION trg_pontuacao_imovel()
+//   pontuacao_imovel_trigger: CREATE TRIGGER pontuacao_imovel_trigger AFTER INSERT ON public.imoveis_captados FOR EACH ROW EXECUTE FUNCTION fn_calculate_points_on_insert()
 //   trg_notify_imovel_atualizado: CREATE TRIGGER trg_notify_imovel_atualizado AFTER UPDATE ON public.imoveis_captados FOR EACH ROW EXECUTE FUNCTION notify_imovel_atualizado()
 //   trg_notify_novo_imovel: CREATE TRIGGER trg_notify_novo_imovel AFTER INSERT ON public.imoveis_captados FOR EACH ROW EXECUTE FUNCTION notify_novo_imovel()
 //   update_imoveis_captados_updated_at: CREATE TRIGGER update_imoveis_captados_updated_at BEFORE UPDATE ON public.imoveis_captados FOR EACH ROW EXECUTE FUNCTION set_updated_at()
