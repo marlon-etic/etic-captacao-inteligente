@@ -2,6 +2,19 @@ import { useEffect, useState, useRef } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { TenantProposal } from '@/types/landlord'
 
+const RETRY_CONFIG = {
+  maxAttempts: 8,
+  initialDelay: 500,
+  maxDelay: 60000,
+  backoffMultiplier: 1.5,
+}
+
+const SUBSCRIPTION_CONFIG = {
+  reconnectInterval: 2000,
+  maxReconnectAttempts: 10,
+  heartbeatInterval: 5000,
+}
+
 export const useProposals = (landlordId: string | undefined) => {
   const [proposals, setProposals] = useState<TenantProposal[]>([])
   const [pendingCount, setPendingCount] = useState(0)
@@ -11,8 +24,7 @@ export const useProposals = (landlordId: string | undefined) => {
 
   const subscriptionRef = useRef<any>(null)
   const reconnectCountRef = useRef(0)
-  const maxReconnectAttempts = 5
-  const reconnectDelayMs = useRef(1000)
+  const reconnectDelayMs = useRef(RETRY_CONFIG.initialDelay)
 
   useEffect(() => {
     if (landlordId) {
@@ -52,7 +64,7 @@ export const useProposals = (landlordId: string | undefined) => {
       setPendingCount(pending)
 
       reconnectCountRef.current = 0
-      reconnectDelayMs.current = 1000
+      reconnectDelayMs.current = RETRY_CONFIG.initialDelay
       setIsConnected(true)
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Erro ao carregar propostas'
@@ -60,13 +72,16 @@ export const useProposals = (landlordId: string | undefined) => {
       setError(errorMsg)
       setIsConnected(false)
 
-      if (reconnectCountRef.current < maxReconnectAttempts) {
+      if (reconnectCountRef.current < RETRY_CONFIG.maxAttempts) {
         reconnectCountRef.current++
         const delay = reconnectDelayMs.current
-        reconnectDelayMs.current = Math.min(reconnectDelayMs.current * 2, 30000)
+        reconnectDelayMs.current = Math.min(
+          reconnectDelayMs.current * RETRY_CONFIG.backoffMultiplier,
+          RETRY_CONFIG.maxDelay,
+        )
 
         console.log(
-          `Tentando reconectar em ${delay}ms (tentativa ${reconnectCountRef.current}/${maxReconnectAttempts})`,
+          `Tentando reconectar em ${delay}ms (tentativa ${reconnectCountRef.current}/${RETRY_CONFIG.maxAttempts})`,
         )
 
         setTimeout(() => {
@@ -81,12 +96,14 @@ export const useProposals = (landlordId: string | undefined) => {
   const setupSubscriptions = (landlordId: string) => {
     try {
       if (subscriptionRef.current) {
+        console.log('🧹 Removendo subscription anterior...')
         supabase.removeChannel(subscriptionRef.current)
       }
 
-      const channelName = `proposals_${landlordId}_${Date.now()}`
+      const channelName = `proposals_${landlordId}_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
+      console.log(`📡 Criando subscription: ${channelName}`)
 
-      subscriptionRef.current = supabase
+      const subscription = supabase
         .channel(channelName, {
           config: {
             broadcast: { self: true },
@@ -97,7 +114,7 @@ export const useProposals = (landlordId: string | undefined) => {
           'postgres_changes',
           { event: '*', schema: 'public', table: 'tenant_proposals' },
           (payload) => {
-            console.log('Real-time update recebido:', payload)
+            console.log('✅ Real-time update recebido:', payload.eventType)
 
             if (payload.eventType === 'INSERT') {
               setProposals((prev) => [payload.new as TenantProposal, ...prev])
@@ -125,34 +142,70 @@ export const useProposals = (landlordId: string | undefined) => {
             }
 
             setIsConnected(true)
+            reconnectCountRef.current = 0
           },
         )
-        .on('system', { event: 'join' }, () => {
-          console.log('✅ Inscrito no canal de real-time')
+        .on('system', { event: 'subscribe' }, () => {
+          console.log('🟢 SUBSCRIBED ao canal')
           setIsConnected(true)
         })
-        .on('system', { event: 'error' }, (err) => {
-          console.error('❌ Erro no canal de real-time:', err)
+        .on('system', { event: 'unsubscribe' }, () => {
+          console.log('🔴 UNSUBSCRIBED do canal')
           setIsConnected(false)
         })
-        .subscribe(async (status) => {
-          console.log('Status da subscription:', status)
+        .on('system', { event: 'error' }, (err) => {
+          console.error('❌ Erro no canal:', err)
+          setIsConnected(false)
 
-          if (status === 'CHANNEL_ERROR') {
-            setIsConnected(false)
-            setTimeout(() => setupSubscriptions(landlordId), 3000)
-          } else if (status === 'SUBSCRIBED') {
-            setIsConnected(true)
+          if (reconnectCountRef.current < SUBSCRIPTION_CONFIG.maxReconnectAttempts) {
+            reconnectCountRef.current++
+            const delay = SUBSCRIPTION_CONFIG.reconnectInterval * reconnectCountRef.current
+            console.log(`⏳ Reconectando em ${delay}ms (tentativa ${reconnectCountRef.current})`)
+
+            setTimeout(() => {
+              setupSubscriptions(landlordId)
+            }, delay)
           }
         })
 
+      subscriptionRef.current = subscription
+
+      subscription.subscribe(async (status) => {
+        console.log(`📊 Status subscription: ${status}`)
+
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ Conectado ao realtime')
+          setIsConnected(true)
+          reconnectCountRef.current = 0
+        } else if (status === 'CHANNEL_ERROR' || status === 'CHANNEL_FAILED') {
+          console.error('❌ Erro na conexão:', status)
+          setIsConnected(false)
+
+          if (reconnectCountRef.current < SUBSCRIPTION_CONFIG.maxReconnectAttempts) {
+            reconnectCountRef.current++
+            const delay =
+              SUBSCRIPTION_CONFIG.reconnectInterval * Math.pow(1.5, reconnectCountRef.current)
+            console.log(`⏳ Reconectando em ${delay}ms...`)
+
+            setTimeout(
+              () => {
+                setupSubscriptions(landlordId)
+              },
+              Math.min(delay, 30000),
+            )
+          }
+        }
+      })
+
       return () => {
+        console.log('🧹 Limpando subscription...')
         if (subscriptionRef.current) {
           supabase.removeChannel(subscriptionRef.current)
         }
       }
     } catch (err) {
-      console.error('Erro ao setup subscriptions:', err)
+      console.error('❌ Erro ao setup subscriptions:', err)
+      setIsConnected(false)
       return () => {}
     }
   }

@@ -56,7 +56,10 @@ export const useLandlordAuth = () => {
 
   const checkConnection = async () => {
     try {
-      const { error } = await supabase.from('users').select('id').limit(1)
+      const { error } = await supabase
+        .from('users')
+        .select('id', { count: 'exact', head: true })
+        .limit(1)
 
       if (error) throw error
 

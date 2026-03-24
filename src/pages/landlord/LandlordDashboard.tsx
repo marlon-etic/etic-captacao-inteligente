@@ -11,7 +11,12 @@ import { Link } from 'react-router-dom'
 import { ConnectionStatus } from '@/components/common/ConnectionStatus'
 
 export default function LandlordDashboard() {
-  const { landlordProfile, isConnected: authConnected } = useLandlordAuth()
+  const {
+    session,
+    landlordProfile,
+    loading: authLoading,
+    isConnected: authConnected,
+  } = useLandlordAuth()
   const {
     properties,
     propertyPerformance,
@@ -31,7 +36,7 @@ export default function LandlordDashboard() {
 
   const stats: DashboardStats = useMemo(() => {
     const occupiedProperties = properties.filter(
-      (p) => p.status === 'fechado' || p.status === 'rented',
+      (p) => p.status === 'rented' || p.status === 'fechado',
     ).length
     const totalRevenue = properties.reduce((sum, p) => sum + (p.rent_value || 0), 0)
     const avgScore =
@@ -48,7 +53,19 @@ export default function LandlordDashboard() {
     }
   }, [properties, proposals, pendingCount])
 
-  if (propsLoading || proposalsLoading) return <LoadingSpinner />
+  if (authLoading || propsLoading || proposalsLoading) {
+    return <LoadingSpinner />
+  }
+
+  if (!session || !landlordProfile) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <p className="text-lg text-gray-700 font-medium">
+          Você precisa estar autenticado para acessar este painel.
+        </p>
+      </div>
+    )
+  }
 
   return (
     <div className="px-4 sm:px-6 lg:px-8 py-8 max-w-7xl mx-auto animate-fade-in-up relative">
@@ -66,7 +83,7 @@ export default function LandlordDashboard() {
       )}
 
       <h2 className="text-2xl md:text-3xl font-black mb-6 text-[#1A3A52] tracking-tight">
-        Visão Geral
+        Dashboard
       </h2>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-10">
@@ -109,7 +126,7 @@ export default function LandlordDashboard() {
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 flex items-center justify-between hover:shadow-md transition-shadow">
           <div>
             <p className="text-gray-500 text-xs font-bold uppercase tracking-wider">
-              Renda Base (Mês)
+              Renda Total Mensal
             </p>
             <p className="text-2xl md:text-3xl font-black text-[#1A3A52] mt-1 tracking-tight">
               R$ {stats.total_revenue.toLocaleString('pt-BR')}
@@ -150,7 +167,7 @@ export default function LandlordDashboard() {
         <div className="flex justify-between items-end mb-4 border-b border-gray-200 pb-2">
           <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
             <Building className="w-5 h-5 text-blue-500" />
-            Destaques dos Seus Imóveis
+            Seus Imóveis
           </h3>
           <Link
             to="/landlord/properties"
@@ -173,7 +190,7 @@ export default function LandlordDashboard() {
             <Building className="w-12 h-12 text-gray-300 mb-3" />
             <p className="text-gray-600 font-medium">Nenhum imóvel cadastrado ainda.</p>
             <p className="text-gray-400 text-sm mt-1">
-              Seus imóveis sincronizados aparecerão aqui.
+              Adicione seu primeiro imóvel para começar a receber propostas!
             </p>
           </div>
         )}
