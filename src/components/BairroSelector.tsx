@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react'
-import { Check, ChevronDown, Star, Diamond, Loader2, X, Search as SearchIcon } from 'lucide-react'
+import React, { useState } from 'react'
+import { Check, ChevronDown, Star, Diamond, RefreshCw, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import {
@@ -12,7 +12,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useIsMobile } from '@/hooks/use-mobile'
-import { REGIONS_DATA, normalizeString } from '@/lib/regions'
+import { REGIONS_DATA } from '@/lib/regions'
 
 interface BairroItemProps {
   nome: string
@@ -30,9 +30,9 @@ const BairroItem = React.memo(({ nome, isAncora, isSelected, onChange }: BairroI
         onChange(nome)
       }}
       className={cn(
-        'flex items-center gap-3 py-3 cursor-pointer transition-colors duration-200 min-h-[44px]',
-        isAncora ? 'px-4 bg-white' : 'pl-11 pr-4 bg-[#FAFAFA]',
-        isSelected ? 'bg-[#EFF6FF] hover:bg-[#EFF6FF]' : 'hover:bg-[#F3F4F6]',
+        'group flex items-center gap-3 py-3 cursor-pointer transition-colors duration-200 min-h-[44px]',
+        isAncora ? 'px-4 bg-white' : 'pl-[36px] pr-4 bg-white',
+        isSelected ? 'bg-[#EFF6FF] hover:bg-[#E0E7FF]' : 'hover:bg-[#F3F4F6] active:bg-[#EFF6FF]',
       )}
     >
       <div
@@ -41,20 +41,22 @@ const BairroItem = React.memo(({ nome, isAncora, isSelected, onChange }: BairroI
           isSelected ? 'bg-[#10B981] border-[#10B981]' : 'bg-white border-[#6B7280]',
         )}
       >
-        {isSelected && <Check className="h-3.5 w-3.5 text-white stroke-[3]" />}
+        {isSelected && (
+          <Check className="h-3.5 w-3.5 text-white stroke-[3] animate-in zoom-in-50 duration-200" />
+        )}
       </div>
 
       {isAncora ? (
         <Star
           className={cn(
-            'h-4 w-4 shrink-0 transition-colors',
+            'h-4 w-4 shrink-0 transition-colors duration-200',
             isSelected ? 'text-[#10B981] fill-[#10B981]' : 'text-[#1E3A8A] fill-[#1E3A8A]',
           )}
         />
       ) : (
         <Diamond
           className={cn(
-            'h-3 w-3 shrink-0 transition-colors',
+            'h-3 w-3 shrink-0 transition-colors duration-200',
             isSelected ? 'text-[#10B981] fill-[#10B981]' : 'text-[#38BDF8] fill-[#38BDF8]',
           )}
         />
@@ -62,9 +64,9 @@ const BairroItem = React.memo(({ nome, isAncora, isSelected, onChange }: BairroI
 
       <span
         className={cn(
-          'text-[14px] transition-colors',
+          'text-[14px] transition-colors duration-200',
           isAncora ? 'font-bold' : 'font-medium',
-          isSelected ? 'text-[#10B981]' : 'text-[#374151]',
+          isSelected ? 'text-[#10B981]' : 'text-[#6B7280]',
         )}
       >
         {nome}
@@ -93,30 +95,17 @@ export function BairroSelector({
   error = false,
 }: BairroSelectorProps) {
   const [open, setOpen] = useState(false)
-  const [search, setSearch] = useState('')
   const isMobile = useIsMobile()
-
-  const filteredRegions = useMemo(() => {
-    if (!search) return REGIONS_DATA
-    const term = normalizeString(search)
-    return REGIONS_DATA.map((r) => {
-      const isAnchorMatch = normalizeString(r.anchor).includes(term)
-      const matchingSatellites = r.satellites.filter((s) => normalizeString(s).includes(term))
-      if (isAnchorMatch) return r
-      if (matchingSatellites.length > 0) return { ...r, satellites: matchingSatellites }
-      return null
-    }).filter(Boolean) as typeof REGIONS_DATA
-  }, [search])
 
   const displayValueNode = () => {
     if (!selectedBairros || selectedBairros.length === 0)
       return (
         <span className="text-[#999999] truncate flex-1 text-left">Selecione os bairros...</span>
       )
-    if (selectedBairros.length === 1)
+    if (selectedBairros.length <= 2)
       return (
         <span className="text-[#1A3A52] font-bold truncate flex-1 text-left">
-          1 bairro selecionado
+          {selectedBairros.join(', ')}
         </span>
       )
     return (
@@ -128,65 +117,39 @@ export function BairroSelector({
 
   const listContentNode = (
     <div className="flex flex-col h-full overflow-hidden">
-      <div className="p-3 border-b border-[#E0E0E0] shrink-0 sticky top-0 bg-white z-10">
-        <div className="relative">
-          <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#999999]" />
-          <input
-            type="text"
-            placeholder="🔍 Buscar bairro..."
-            className="w-full h-[40px] pl-9 pr-4 rounded-[8px] bg-[#F5F5F5] border-transparent focus:outline-none focus:ring-2 focus:ring-[#1A3A52] text-[14px]"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-      </div>
-
-      {/*
-        CRITICAL FIX: 
-        Added min-h-0 to flex child to prevent flexbox overflow issues.
-        Added onWheelCapture and onTouchMoveCapture with stopPropagation.
-        This prevents Radix UI's react-remove-scroll from blocking the native 
-        mouse wheel or touch scroll events inside this container.
-      */}
       <div
-        className="flex-1 overflow-y-auto overscroll-contain bg-white pb-6 min-h-0"
+        className="flex-1 overflow-y-auto overscroll-contain bg-white pb-6 min-h-0 pt-2"
         style={{ WebkitOverflowScrolling: 'touch' }}
         onWheel={(e) => e.stopPropagation()}
         onWheelCapture={(e) => e.stopPropagation()}
         onTouchMove={(e) => e.stopPropagation()}
         onTouchMoveCapture={(e) => e.stopPropagation()}
       >
-        {filteredRegions.length === 0 ? (
-          <p className="text-center text-[#999999] text-[14px] py-6">
-            Nenhum bairro encontrado para "{search}"
-          </p>
-        ) : (
-          filteredRegions.map((region) => (
-            <div
-              key={region.anchor}
-              className="border-b border-[#F3F4F6] last:border-0 flex flex-col"
-            >
+        {REGIONS_DATA.map((region) => (
+          <div
+            key={region.anchor}
+            className="border-b border-[#F3F4F6] last:border-0 flex flex-col"
+          >
+            <BairroItem
+              nome={region.anchor}
+              isAncora={true}
+              isSelected={selectedBairros.includes(region.anchor)}
+              onChange={toggleAncora}
+            />
+            {region.satellites.map((satelite) => (
               <BairroItem
-                nome={region.anchor}
-                isAncora={true}
-                isSelected={selectedBairros.includes(region.anchor)}
-                onChange={toggleAncora}
+                key={satelite}
+                nome={satelite}
+                isAncora={false}
+                isSelected={selectedBairros.includes(satelite)}
+                onChange={toggleSatelite}
               />
-              {region.satellites.map((satelite) => (
-                <BairroItem
-                  key={satelite}
-                  nome={satelite}
-                  isAncora={false}
-                  isSelected={selectedBairros.includes(satelite)}
-                  onChange={toggleSatelite}
-                />
-              ))}
-            </div>
-          ))
-        )}
+            ))}
+          </div>
+        ))}
       </div>
 
-      <div className="p-3 border-t border-[#E0E0E0] flex items-center justify-between bg-white shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
+      <div className="p-3 border-t border-[#E0E0E0] flex items-center justify-between bg-white shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] z-10">
         <Button
           type="button"
           variant="ghost"
@@ -236,7 +199,7 @@ export function BairroSelector({
             variant="secondary"
             className="bg-[#EFF6FF] text-[#3B82F6] border border-[#BFDBFE] font-medium text-[10px] px-2 py-0 h-[22px] shrink-0"
           >
-            <Loader2 className="h-3 w-3 mr-1 animate-spin" /> Salvando...
+            <RefreshCw className="h-3 w-3 mr-1 animate-spin" /> Salvando...
           </Badge>
         )}
         {saveStatus === 'success' && (
@@ -257,7 +220,7 @@ export function BairroSelector({
       <>
         {triggerButtonNode}
         <Dialog open={open} onOpenChange={setOpen}>
-          <DialogContent className="w-screen h-screen max-w-none m-0 p-0 rounded-none flex flex-col bg-white overflow-hidden gap-0 z-[99999] animate-in slide-in-from-bottom-full duration-300">
+          <DialogContent className="w-screen h-[100dvh] max-w-none m-0 p-0 rounded-none flex flex-col bg-white overflow-hidden gap-0 z-[99999] animate-in slide-in-from-bottom-full duration-300">
             <DialogHeader className="p-4 border-b border-[#E0E0E0] shrink-0 bg-[#F5F5F5] flex flex-row items-center justify-between">
               <DialogTitle className="text-[18px] font-bold text-[#1A3A52] m-0">
                 Selecionar Bairros

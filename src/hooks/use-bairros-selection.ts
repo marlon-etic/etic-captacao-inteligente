@@ -54,8 +54,10 @@ export function useBairrosSelection(props?: UseBairrosSelectionProps) {
         setSaveStatus('error')
         toast({
           title: 'Erro ao salvar bairros. Tente novamente.',
+          description: 'Clique nesta notificação para tentar novamente.',
           variant: 'destructive',
-          duration: 5000,
+          duration: 10000,
+          onClick: () => saveBairrosToSupabase(bairrosToSave),
         })
       } finally {
         setIsSaving(false)
@@ -68,6 +70,11 @@ export function useBairrosSelection(props?: UseBairrosSelectionProps) {
     (next: string[]) => {
       if (next.length === 0 && demandId) {
         toast({ title: 'Selecione pelo menos um bairro', variant: 'destructive' })
+        return
+      }
+
+      if (next.length > 20) {
+        toast({ title: 'Máximo 20 bairros permitidos', variant: 'destructive' })
         return
       }
 
@@ -99,10 +106,6 @@ export function useBairrosSelection(props?: UseBairrosSelectionProps) {
       } else {
         const toAdd = allItems.filter((b) => !selectedBairros.includes(b))
         next = [...selectedBairros, ...toAdd]
-        if (next.length > 20) {
-          toast({ title: 'Máximo 20 bairros permitidos', variant: 'destructive' })
-          return
-        }
       }
 
       handleChange(next)
@@ -119,10 +122,6 @@ export function useBairrosSelection(props?: UseBairrosSelectionProps) {
         next = selectedBairros.filter((b) => b !== satelite)
       } else {
         next = [...selectedBairros, satelite]
-        if (next.length > 20) {
-          toast({ title: 'Máximo 20 bairros permitidos', variant: 'destructive' })
-          return
-        }
       }
 
       handleChange(next)
