@@ -255,14 +255,21 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
                 const user = currentUserRef.current
                 if (user && (d.sdr_id === user.id || d.corretor_id === user.id)) {
                   const captador = usersRef.current.find((u) => u.id === resp.captador_id)
-                  toast({
-                    title: '📢 Feedback de Busca',
-                    description: `${captador?.name || 'Captador'}: ${resp.resposta === 'nao_encontrei' ? resp.motivo : 'Encontrei!'}`,
-                    className:
-                      resp.resposta === 'nao_encontrei'
-                        ? 'bg-[#F59E0B] text-white border-none'
-                        : 'bg-[#10B981] text-white border-none',
-                  })
+
+                  if (resp.resposta === 'nao_encontrei') {
+                    toast({
+                      title: 'Feedback de Busca',
+                      description: `Captador ${captador?.name || 'Desconhecido'} não encontrou imóvel para ${d.nome_cliente} - Motivo: ${resp.motivo}`,
+                      className: 'bg-[#F97316] text-white border-none shadow-lg',
+                      duration: 5000,
+                    })
+                  } else {
+                    toast({
+                      title: '📢 Feedback de Busca',
+                      description: `${captador?.name || 'Captador'}: Encontrei!`,
+                      className: 'bg-[#10B981] text-white border-none shadow-lg',
+                    })
+                  }
                 }
                 return { ...d, respostas_captador: [resp, ...(d.respostas_captador || [])] }
               }

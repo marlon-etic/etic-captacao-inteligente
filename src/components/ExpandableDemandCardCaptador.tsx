@@ -21,6 +21,7 @@ import {
   Star,
   CheckCircle,
   XCircle,
+  Search,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { SupabaseDemand } from '@/hooks/use-supabase-demands'
@@ -47,19 +48,44 @@ export function ExpandableDemandCardCaptador({
   const { currentUser } = useAppStore()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const statusConfig =
-    demand.status_demanda === 'aberta'
-      ? { label: 'DISPONÍVEL PARA TODOS', bg: 'bg-[#10B981]', text: 'text-white', icon: Lock }
-      : demand.status_demanda === 'atendida'
-        ? {
-            label: 'ATENDIDA / EM NEGOCIAÇÃO',
-            bg: 'bg-blue-500',
-            text: 'text-white',
-            icon: CheckCircle2,
-          }
-        : demand.status_demanda === 'sem_resposta_24h'
-          ? { label: 'SEM RESPOSTA', bg: 'bg-yellow-500', text: 'text-white', icon: AlertTriangle }
-          : { label: 'PERDIDA / CANCELADA', bg: 'bg-gray-500', text: 'text-white', icon: X }
+  const latestResp = demand.respostas_captador?.[0]
+  const isNaoEncontrei = latestResp?.resposta === 'nao_encontrei'
+
+  let statusConfig = {
+    label: 'DISPONÍVEL PARA TODOS',
+    bg: 'bg-[#10B981]',
+    text: 'text-white',
+    icon: Lock,
+  }
+
+  if (demand.status_demanda === 'impossivel') {
+    statusConfig = { label: 'PERDIDA / CANCELADA', bg: 'bg-gray-500', text: 'text-white', icon: X }
+  } else if (demand.status_demanda === 'atendida') {
+    statusConfig = {
+      label: 'ATENDIDA / EM NEGOCIAÇÃO',
+      bg: 'bg-blue-500',
+      text: 'text-white',
+      icon: CheckCircle2,
+    }
+  } else if (demand.status_demanda === 'sem_resposta_24h') {
+    statusConfig = {
+      label: 'SEM RESPOSTA',
+      bg: 'bg-yellow-500',
+      text: 'text-white',
+      icon: AlertTriangle,
+    }
+  } else if (demand.status_demanda === 'aberta' && isNaoEncontrei) {
+    if (latestResp.motivo === 'Buscando outras opções') {
+      statusConfig = { label: 'BUSCANDO', bg: 'bg-[#F97316]', text: 'text-white', icon: Search }
+    } else {
+      statusConfig = {
+        label: 'NÃO ENCONTRADO',
+        bg: 'bg-[#EF4444]',
+        text: 'text-white',
+        icon: XCircle,
+      }
+    }
+  }
 
   const formatPrice = (val: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -97,6 +123,14 @@ export function ExpandableDemandCardCaptador({
 
       if (error) throw error
 
+      if (reason === 'Fora do mercado') {
+        const table = demand.tipo === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
+        await supabase.from(table).update({ status_demanda: 'impossivel' }).eq('id', demand.id)
+      } else if (reason === 'Buscando outras opções') {
+        const table = demand.tipo === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
+        await supabase.from(table).update({ status_demanda: 'aberta' }).eq('id', demand.id)
+      }
+
       toast({
         title: 'Feedback Enviado',
         description: `Sua resposta foi registrada e o solicitante notificado.`,
@@ -107,8 +141,8 @@ export function ExpandableDemandCardCaptador({
       if (onUpdate) onUpdate()
     } catch (err: any) {
       toast({
-        title: 'Erro ao enviar',
-        description: err.message || 'Tente novamente.',
+        title: 'Erro ao registrar resposta',
+        description: 'Tente novamente.',
         variant: 'destructive',
       })
     } finally {
@@ -304,17 +338,17 @@ export function ExpandableDemandCardCaptador({
                 <Button
                   onClick={handleEncontrei}
                   disabled={isSubmitting}
-                  className="w-full min-h-[44px] bg-[#10B981] hover:bg-[#059669] text-white font-black text-[11px] lg:text-[12px] px-1 lg:px-2 shadow-[0_4px_12px_rgba(16,185,129,0.3)] transition-transform hover:scale-[1.02]"
+                  className="w-full min-h-[48px] bg-[#10B981] hover:bg-[#059669] text-white font-bold text-[14px] lg:text-[16px] px-1 lg:px-2 shadow-[0_4px_12px_rgba(16,185,129,0.3)] transition-transform hover:scale-[1.02]"
                 >
-                  <CheckCircle className="w-3.5 h-3.5 mr-1" />{' '}
+                  <CheckCircle className="w-4 h-4 lg:w-5 lg:h-5 mr-1.5 shrink-0" />{' '}
                   <span className="truncate">ENCONTREI</span>
                 </Button>
                 <Button
                   onClick={handleNaoEncontrei}
                   disabled={isSubmitting}
-                  className="w-full min-h-[44px] bg-[#EF4444] hover:bg-[#DC2626] text-white font-black text-[11px] lg:text-[12px] px-1 lg:px-2 shadow-[0_4px_12px_rgba(239,68,68,0.3)] transition-transform hover:scale-[1.02]"
+                  className="w-full min-h-[48px] bg-[#EF4444] hover:bg-[#DC2626] text-white font-bold text-[14px] lg:text-[16px] px-1 lg:px-2 shadow-[0_4px_12px_rgba(239,68,68,0.3)] transition-transform hover:scale-[1.02]"
                 >
-                  <XCircle className="w-3.5 h-3.5 mr-1" />{' '}
+                  <XCircle className="w-4 h-4 lg:w-5 lg:h-5 mr-1.5 shrink-0" />{' '}
                   <span className="truncate">NÃO ENCONTREI</span>
                 </Button>
               </div>

@@ -17,32 +17,65 @@ import {
   AlertTriangle,
   X,
   CheckCircle2,
+  Search,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { SupabaseDemand } from '@/hooks/use-supabase-demands'
 import useAppStore from '@/stores/useAppStore'
+import { supabase } from '@/lib/supabase/client'
+import { useToast } from '@/hooks/use-toast'
 import { CapturePropertyModal } from './CapturePropertyModal'
 import { DemandDetailsModal } from './DemandDetailsModal'
+import { NaoEncontreiModal } from './NaoEncontreiModal'
 import { PrazoCounter } from './PrazoCounter'
 
 export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
   const { currentUser } = useAppStore()
+  const { toast } = useToast()
+
   const [isCaptureModalOpen, setIsCaptureModalOpen] = useState(false)
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false)
+  const [isNaoEncontreiModalOpen, setIsNaoEncontreiModalOpen] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const statusConfig =
-    demand.status_demanda === 'aberta'
-      ? { label: 'DISPONÍVEL PARA TODOS', bg: 'bg-[#10B981]', text: 'text-white', icon: Lock }
-      : demand.status_demanda === 'atendida'
-        ? {
-            label: 'ATENDIDA / EM NEGOCIAÇÃO',
-            bg: 'bg-blue-500',
-            text: 'text-white',
-            icon: CheckCircle2,
-          }
-        : demand.status_demanda === 'sem_resposta_24h'
-          ? { label: 'SEM RESPOSTA', bg: 'bg-yellow-500', text: 'text-white', icon: AlertTriangle }
-          : { label: 'PERDIDA / CANCELADA', bg: 'bg-gray-500', text: 'text-white', icon: X }
+  const latestResp = demand.respostas_captador?.[0]
+  const isNaoEncontrei = latestResp?.resposta === 'nao_encontrei'
+
+  let statusConfig = {
+    label: 'DISPONÍVEL PARA TODOS',
+    bg: 'bg-[#10B981]',
+    text: 'text-white',
+    icon: Lock,
+  }
+
+  if (demand.status_demanda === 'impossivel') {
+    statusConfig = { label: 'PERDIDA / CANCELADA', bg: 'bg-gray-500', text: 'text-white', icon: X }
+  } else if (demand.status_demanda === 'atendida') {
+    statusConfig = {
+      label: 'ATENDIDA / EM NEGOCIAÇÃO',
+      bg: 'bg-blue-500',
+      text: 'text-white',
+      icon: CheckCircle2,
+    }
+  } else if (demand.status_demanda === 'sem_resposta_24h') {
+    statusConfig = {
+      label: 'SEM RESPOSTA',
+      bg: 'bg-yellow-500',
+      text: 'text-white',
+      icon: AlertTriangle,
+    }
+  } else if (demand.status_demanda === 'aberta' && isNaoEncontrei) {
+    if (latestResp.motivo === 'Buscando outras opções') {
+      statusConfig = { label: 'BUSCANDO', bg: 'bg-[#F97316]', text: 'text-white', icon: Search }
+    } else {
+      statusConfig = {
+        label: 'NÃO ENCONTRADO',
+        bg: 'bg-[#EF4444]',
+        text: 'text-white',
+        icon: XCircle,
+      }
+    }
+  }
 
   const formatPrice = (val: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -59,6 +92,50 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
 
   const handleNaoEncontrei = (e: React.MouseEvent) => {
     e.stopPropagation()
+    setIsNaoEncontreiModalOpen(true)
+  }
+
+  const handleNaoEncontreiConfirm = async (reason: string, obs: string) => {
+    if (isSubmitting) return
+    setIsSubmitting(true)
+
+    try {
+      const payload = {
+        captador_id: currentUser?.id,
+        resposta: 'nao_encontrei',
+        motivo: reason,
+        observacao: obs,
+        demanda_locacao_id: demand.tipo === 'Aluguel' ? demand.id : null,
+        demanda_venda_id: demand.tipo === 'Venda' ? demand.id : null,
+      }
+
+      const { error } = await supabase.from('respostas_captador').insert(payload)
+      if (error) throw error
+
+      if (reason === 'Fora do mercado') {
+        const table = demand.tipo === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
+        await supabase.from(table).update({ status_demanda: 'impossivel' }).eq('id', demand.id)
+      } else if (reason === 'Buscando outras opções') {
+        const table = demand.tipo === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
+        await supabase.from(table).update({ status_demanda: 'aberta' }).eq('id', demand.id)
+      }
+
+      toast({
+        title: 'Feedback Enviado',
+        description: `Sua resposta foi registrada e o solicitante notificado.`,
+        className: 'bg-[#10B981] text-white border-none',
+      })
+
+      setIsNaoEncontreiModalOpen(false)
+    } catch (err: any) {
+      toast({
+        title: 'Erro ao registrar resposta',
+        description: 'Tente novamente.',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const openDetails = () => {
@@ -73,7 +150,6 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
     prazo?.status === 'sem_resposta_24h' ||
     prazo?.status === 'sem_resposta_final'
 
-  // Map SupabaseDemand to local Demand interface for the DemandDetailsModal
   const mappedDemand = {
     id: demand.id,
     clientName: demand.nome_cliente,
@@ -199,17 +275,18 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
               <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-[#E5E5E5]">
                 <Button
                   onClick={handleEncontrei}
-                  className="w-full min-h-[44px] bg-[#10B981] hover:bg-[#059669] text-white font-black text-[11px] lg:text-[12px] px-1 lg:px-2 shadow-[0_4px_12px_rgba(16,185,129,0.3)] z-10"
+                  disabled={isSubmitting}
+                  className="w-full min-h-[48px] bg-[#10B981] hover:bg-[#059669] text-white font-bold text-[14px] lg:text-[16px] px-1 lg:px-2 shadow-[0_4px_12px_rgba(16,185,129,0.3)] transition-transform hover:scale-[1.02] z-10"
                 >
-                  <CheckCircle className="w-3.5 h-3.5 lg:w-4 lg:h-4 mr-1 lg:mr-1.5 shrink-0" />{' '}
+                  <CheckCircle className="w-4 h-4 lg:w-5 lg:h-5 mr-1.5 shrink-0" />{' '}
                   <span className="truncate">ENCONTREI</span>
                 </Button>
                 <Button
                   onClick={handleNaoEncontrei}
-                  variant="outline"
-                  className="w-full min-h-[44px] text-[#EF4444] border-[#EF4444]/30 hover:bg-[#FEF2F2] font-bold text-[11px] lg:text-[12px] px-1 lg:px-2 z-10"
+                  disabled={isSubmitting}
+                  className="w-full min-h-[48px] bg-[#EF4444] hover:bg-[#DC2626] text-white font-bold text-[14px] lg:text-[16px] px-1 lg:px-2 shadow-[0_4px_12px_rgba(239,68,68,0.3)] transition-transform hover:scale-[1.02] z-10"
                 >
-                  <XCircle className="w-3.5 h-3.5 lg:w-4 lg:h-4 mr-1 lg:mr-1.5 shrink-0" />{' '}
+                  <XCircle className="w-4 h-4 lg:w-5 lg:h-5 mr-1.5 shrink-0" />{' '}
                   <span className="truncate">NÃO ENCONTREI</span>
                 </Button>
               </div>
@@ -239,6 +316,12 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
         onSuccess={() => {
           setIsCaptureModalOpen(false)
         }}
+      />
+
+      <NaoEncontreiModal
+        isOpen={isNaoEncontreiModalOpen}
+        onClose={() => setIsNaoEncontreiModalOpen(false)}
+        onConfirm={handleNaoEncontreiConfirm}
       />
     </>
   )
