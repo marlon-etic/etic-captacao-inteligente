@@ -647,7 +647,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           setIsProcessingUser(true)
           try {
             if (!password) throw new Error('Senha é obrigatória para novos usuários')
-            const { data, error } = await supabase.functions.invoke('admin-users', {
+
+            const reqPromise = supabase.functions.invoke('admin-users', {
               body: {
                 action: 'createUser',
                 payload: {
@@ -659,6 +660,13 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
                 },
               },
             })
+
+            const timeoutPromise = new Promise((_, reject) =>
+              setTimeout(() => reject(new Error('Timeout de 45s excedido na função Edge')), 45000),
+            )
+
+            const { data, error } = (await Promise.race([reqPromise, timeoutPromise])) as any
+
             if (error) throw new Error(error.message || 'Erro de rede ao criar usuário')
             if (data?.error) throw new Error(data.error)
           } finally {
@@ -676,9 +684,17 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
               status: payload.status,
             }
             if (password) bodyPayload.password = password
-            const { data, error } = await supabase.functions.invoke('admin-users', {
+
+            const reqPromise = supabase.functions.invoke('admin-users', {
               body: { action: 'updateUser', payload: bodyPayload },
             })
+
+            const timeoutPromise = new Promise((_, reject) =>
+              setTimeout(() => reject(new Error('Timeout de 45s excedido na função Edge')), 45000),
+            )
+
+            const { data, error } = (await Promise.race([reqPromise, timeoutPromise])) as any
+
             if (error) throw new Error(error.message || 'Erro de rede ao atualizar usuário')
             if (data?.error) throw new Error(data.error)
 

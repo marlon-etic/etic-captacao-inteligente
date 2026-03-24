@@ -19,19 +19,18 @@ export const useRealtimeSync = ({
   filter,
   onDataChange,
   onError,
-  pollingInterval = 30000,
   pollingFn,
 }: RealtimeSyncOptions) => {
   const { user: authUser } = useAuth()
   const { fetchWithResilience, circuitBreakerActive } = useSmartSync()
-  const pollingIntervalRef = useRef<NodeJS.Timeout | undefined>(undefined)
 
   const executePoll = useCallback(async () => {
     if (!authUser?.id) return
 
     try {
-      const data = await fetchWithResilience(`poll_${table}`, async () => {
+      const data = await fetchWithResilience(`poll_${table}`, async (signal) => {
         if (pollingFn) {
+          // O fallback wrapper controlará a promise abortando via timeout se exceder 30s
           return await pollingFn()
         } else {
           const { data: resData, error } = await supabase
@@ -39,6 +38,7 @@ export const useRealtimeSync = ({
             .select('*')
             .order('created_at', { ascending: false })
             .limit(50)
+            .abortSignal(signal!)
           if (error) throw error
           return resData
         }

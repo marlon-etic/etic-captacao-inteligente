@@ -54,13 +54,14 @@ export function useSmartSync() {
   }
 
   const fetchWithResilience = useCallback(
-    async <T>(key: string, fetcher: () => Promise<T>): Promise<T> => {
+    async <T>(key: string, fetcher: (signal?: AbortSignal) => Promise<T>): Promise<T> => {
       const existing = inFlightRequests.get(key)
       if (existing) {
         if (Date.now() - existing.timestamp < 30000) {
-          // Timeout de requisição em flight de 30s
+          // Mantém a promessa em andamento se < 30s
           return existing.promise
         } else {
+          // Limpa requisições "penduradas" há mais de 30s
           inFlightRequests.delete(key)
         }
       }
@@ -73,16 +74,32 @@ export function useSmartSync() {
         let attempt = 0
         while (attempt < 6) {
           if (!navigator.onLine) throw new Error('Offline')
+
+          const controller = new AbortController()
+          const timeoutId = setTimeout(() => controller.abort(), 30000)
+
           try {
-            const res = await fetcher()
+            const res = await fetcher(controller.signal)
+            clearTimeout(timeoutId)
             consecutiveFailures = 0 // Reseta falhas no sucesso
             return res
           } catch (err: any) {
+            clearTimeout(timeoutId)
+            const isTimeout = err.name === 'AbortError' || err.message?.includes('aborted')
+
             attempt++
             consecutiveFailures++
 
             if (import.meta.env.VITE_DEBUG_MODE) {
-              console.error(`[Sync] Falha ${key} (${attempt}/5):`, err.message)
+              console.error(
+                `[Sync] Falha ${key} (${attempt}/5):`,
+                isTimeout ? 'Timeout 30s excedido' : err.message,
+              )
+            }
+
+            if (isTimeout) {
+              // Em caso de requisição longa (>30s), cancelamos e falhamos direto para evitar fila travada
+              throw new Error('Operação demorou muito. Cancelada após 30s.')
             }
 
             if (consecutiveFailures >= 3 && attempt === 1) {
@@ -155,28 +172,24 @@ export function useConsolidatedSync({
 }) {
   useEffect(() => {
     const channel = supabase.channel(channelName)
-    let pollingInterval: NodeJS.Timeout | null = null
 
     setupRealtime(channel)
 
     channel.subscribe((status) => {
-      if (status === 'SUBSCRIBED') {
-        if (pollingInterval) {
-          clearInterval(pollingInterval)
-          pollingInterval = null
-        }
-      } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
-        if (!pollingInterval) {
-          pollingInterval = setInterval(() => {
-            if (navigator.onLine) onFallbackPoll()
-          }, 30000) // Polling como fallback a cada 30s
-        }
+      if (import.meta.env.VITE_DEBUG_MODE && status === 'CHANNEL_ERROR') {
+        console.log(`[ConsolidatedSync] Erro no canal ${channelName}`)
       }
     })
 
+    // Polling rigorosamente desacoplado do Realtime operando a cada 60s
+    // Atua exclusivamente como fallback seguro de longa duração
+    const pollingInterval = setInterval(() => {
+      if (navigator.onLine) onFallbackPoll()
+    }, 60000)
+
     return () => {
       supabase.removeChannel(channel)
-      if (pollingInterval) clearInterval(pollingInterval)
+      clearInterval(pollingInterval)
     }
   }, [channelName, setupRealtime, onFallbackPoll])
 }
