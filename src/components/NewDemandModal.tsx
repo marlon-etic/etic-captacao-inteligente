@@ -164,13 +164,23 @@ export function NewDemandModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
     try {
       const { data: authData } = await supabase.auth.getUser()
 
+      let formattedPhone = null
+      if (values.clientPhone) {
+        const digits = values.clientPhone.replace(/\D/g, '')
+        if (digits.length === 11) {
+          formattedPhone = `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`
+        } else if (digits.length === 10) {
+          formattedPhone = `(${digits.slice(0, 2)}) 9${digits.slice(2, 6)}-${digits.slice(6)}`
+        }
+      }
+
       if (authData?.user) {
         if (values.type === 'Aluguel') {
           const { data, error } = await supabase
             .from('demandas_locacao')
             .insert({
               nome_cliente: values.clientName,
-              telefone: values.clientPhone || null,
+              telefone: formattedPhone,
               email: values.clientEmail || null,
               bairros: values.location,
               valor_minimo: values.minBudget,
@@ -185,7 +195,9 @@ export function NewDemandModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
             .select('*')
             .single()
 
-          if (!error && data) {
+          if (error) throw error
+
+          if (data) {
             window.dispatchEvent(
               new CustomEvent('demanda-created', { detail: { tipo: 'Aluguel', data } }),
             )
@@ -195,7 +207,7 @@ export function NewDemandModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
             .from('demandas_vendas')
             .insert({
               nome_cliente: values.clientName,
-              telefone: values.clientPhone || null,
+              telefone: formattedPhone,
               email: values.clientEmail || null,
               bairros: values.location,
               valor_minimo: values.minBudget,
@@ -211,7 +223,9 @@ export function NewDemandModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
             .select('*')
             .single()
 
-          if (!error && data) {
+          if (error) throw error
+
+          if (data) {
             window.dispatchEvent(
               new CustomEvent('demanda-created', { detail: { tipo: 'Venda', data } }),
             )
@@ -222,7 +236,7 @@ export function NewDemandModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
       // Fallback para visualização legado
       addDemand({
         clientName: values.clientName,
-        phone: values.clientPhone,
+        phone: formattedPhone || undefined,
         clientEmail: values.clientEmail || undefined,
         type: values.type,
         location: values.location,
