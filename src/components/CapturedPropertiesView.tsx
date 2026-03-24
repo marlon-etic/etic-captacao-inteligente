@@ -9,6 +9,7 @@ import { FilterSidebar } from '@/components/FilterSidebar'
 import { useViewFilters } from '@/hooks/useViewFilters'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useSupabaseProperties } from '@/hooks/use-supabase-properties'
+import { SyncIndicator } from './SyncIndicator'
 
 interface Props {
   filterType?: 'Venda' | 'Aluguel'
@@ -29,7 +30,7 @@ export function CapturedPropertiesView({
     markPropertyLost,
   } = useAppStore()
 
-  const { properties: supabaseProps, loading } = useSupabaseProperties(filterType)
+  const { properties: supabaseProps, loading, syncing } = useSupabaseProperties(filterType)
 
   const [filters, setFilters] = useViewFilters('captados_view_' + (filterType || 'all'), {
     status: 'Todos',
@@ -251,6 +252,8 @@ export function CapturedPropertiesView({
           closeModals()
         }}
       />
+
+      <SyncIndicator isSyncing={syncing} />
     </div>
   )
 }

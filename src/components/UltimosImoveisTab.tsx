@@ -31,6 +31,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { useToast } from '@/hooks/use-toast'
 import { VinculacaoModal, VinculacaoImovelData } from './VinculacaoModal'
 import { ImovelDetailsSheet } from './ImovelDetailsSheet'
+import { SyncIndicator } from './SyncIndicator'
 
 export function UltimosImoveisTab() {
   const [periodo, setPeriodo] = useState<'24h' | '7d' | '30d' | 'todos'>('30d')
@@ -38,7 +39,7 @@ export function UltimosImoveisTab() {
   const [imovelParaVincular, setImovelParaVincular] = useState<VinculacaoImovelData | null>(null)
   const [selectedImovel, setSelectedImovel] = useState<UltimoImovel | null>(null)
 
-  const { imoveis, loading, refresh } = useUltimosImoveis(periodo, tipoFiltro)
+  const { imoveis, loading, syncing, refresh } = useUltimosImoveis(periodo, tipoFiltro)
   const { toast } = useToast()
 
   const handleCopyLink = async (e: React.MouseEvent, url: string) => {
@@ -278,6 +279,8 @@ export function UltimosImoveisTab() {
           setSelectedImovel(null)
         }}
       />
+
+      <SyncIndicator isSyncing={syncing} />
     </div>
   )
 }

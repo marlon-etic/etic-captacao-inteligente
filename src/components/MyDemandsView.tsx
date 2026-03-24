@@ -14,6 +14,7 @@ import { EditDemandModal } from '@/components/EditDemandModal'
 import { LostModal } from '@/components/LostModal'
 import { supabase } from '@/lib/supabase/client'
 import { useToast } from '@/hooks/use-toast'
+import { SyncIndicator } from './SyncIndicator'
 
 interface Props {
   filterType?: 'Venda' | 'Aluguel'
@@ -69,7 +70,7 @@ export function MyDemandsView({ filterType }: Props) {
   const { toast } = useToast()
 
   const activeType = filterType || (currentUser?.role === 'corretor' ? 'Venda' : 'Aluguel')
-  const { demands, loading, refresh } = useSupabaseDemands(activeType)
+  const { demands, loading, syncing, refresh } = useSupabaseDemands(activeType)
 
   const [filters, setFilters] = useViewFilters('my_demands_view_supabase_' + activeType, {
     prioridade: 'Todos',
@@ -120,7 +121,6 @@ export function MyDemandsView({ filterType }: Props) {
     if (!actionDemand) return
     const table = actionDemand.tipo === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
 
-    // Fallback if DB doesn't have specific lost reason columns: append to observations
     const currentObs =
       actionDemand.tipo === 'Aluguel'
         ? actionDemand.observacoes
@@ -156,7 +156,6 @@ export function MyDemandsView({ filterType }: Props) {
 
   const filteredDemands = useMemo(() => {
     return demands.filter((d) => {
-      // Isolamento por usuário criador: SDR/Corretor veem apenas as SUAS demandas (exceto Admin/Gestor)
       if (currentUser?.role !== 'admin' && currentUser?.role !== 'gestor') {
         if (d.sdr_id !== currentUser?.id && d.corretor_id !== currentUser?.id) {
           return false
@@ -186,7 +185,6 @@ export function MyDemandsView({ filterType }: Props) {
         if (dDate < dateLimit) return false
       }
 
-      // Ocultar demandas perdidas por padrão se não estiver filtrando explicitamente por elas
       if (
         filters.status !== 'impossivel' &&
         filters.status !== 'Todos' &&
@@ -362,6 +360,8 @@ export function MyDemandsView({ filterType }: Props) {
         onOpenChange={(o) => !o && setModalType(null)}
         onConfirm={handleLostConfirm}
       />
+
+      <SyncIndicator isSyncing={syncing} />
     </div>
   )
 }

@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import useAppStore from '@/stores/useAppStore'
+import { toast } from '@/hooks/use-toast'
 
 export interface SupabaseCapturedPropertyWithDemand {
   id: string
@@ -25,6 +26,7 @@ export interface SupabaseCapturedPropertyWithDemand {
 export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
   const [properties, setProperties] = useState<SupabaseCapturedPropertyWithDemand[]>([])
   const [loading, setLoading] = useState(true)
+  const [syncing, setSyncing] = useState(false)
   const { users } = useAppStore()
   const usersRef = useRef(users)
 
@@ -111,7 +113,16 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
         if (data) {
           const formatted = formatProperty(data)
           if (!filterType || formatted.tipo === filterType) {
-            setProperties((prev) => [formatted, ...prev.filter((p) => p.id !== formatted.id)])
+            setProperties((prev) => {
+              const exists = prev.some((p) => p.id === formatted.id)
+              if (exists) {
+                return prev.map((p) => (p.id === formatted.id ? formatted : p))
+              } else {
+                return [formatted, ...prev].sort(
+                  (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+                )
+              }
+            })
           }
         }
       } catch (err) {
@@ -125,38 +136,36 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
     let mounted = true
     if (mounted) fetchProperties()
 
-    console.log(`[DEBUG] Subscription criada: imoveis_captados (${filterType || 'all'})`)
-
-    // Sincronização Bidirecional Direta (Otimizada sem polling)
     const channel = supabase
       .channel(`properties_realtime_${filterType || 'all'}`)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'imoveis_captados' },
         (payload) => {
-          console.log('[DEBUG] Evento recebido (INSERT imoveis_captados - props):', payload)
-          fetchSingleProperty(payload.new.id)
+          setSyncing(true)
+          fetchSingleProperty(payload.new.id).finally(() => {
+            if (mounted) setTimeout(() => setSyncing(false), 500)
+          })
         },
       )
       .on(
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'imoveis_captados' },
         (payload) => {
-          console.log('[DEBUG] Evento recebido (UPDATE imoveis_captados - props):', payload)
-          setProperties((prev) => {
-            const newState = prev.map((p) =>
-              p.id === payload.new.id ? { ...p, ...payload.new } : p,
-            )
-            console.log('[DEBUG] Estado atualizado (UPDATE imoveis_captados - props):', newState)
-            return newState
-          })
-          // Refresh relations if demand link changed, though rare
+          setSyncing(true)
           if (
             payload.old &&
             (payload.new.demanda_locacao_id !== payload.old.demanda_locacao_id ||
               payload.new.demanda_venda_id !== payload.old.demanda_venda_id)
           ) {
-            fetchSingleProperty(payload.new.id)
+            fetchSingleProperty(payload.new.id).finally(() => {
+              if (mounted) setTimeout(() => setSyncing(false), 500)
+            })
+          } else {
+            setProperties((prev) => {
+              return prev.map((p) => (p.id === payload.new.id ? { ...p, ...payload.new } : p))
+            })
+            setTimeout(() => setSyncing(false), 500)
           }
         },
       )
@@ -164,15 +173,24 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
         'postgres_changes',
         { event: 'DELETE', schema: 'public', table: 'imoveis_captados' },
         (payload) => {
-          console.log('[DEBUG] Evento recebido (DELETE imoveis_captados - props):', payload)
-          setProperties((prev) => {
-            const newState = prev.filter((p) => p.id !== payload.old.id)
-            console.log('[DEBUG] Estado atualizado (DELETE imoveis_captados - props):', newState)
-            return newState
-          })
+          setSyncing(true)
+          setProperties((prev) => prev.filter((p) => p.id !== payload.old.id))
+          setTimeout(() => setSyncing(false), 500)
         },
       )
-      .subscribe()
+      .subscribe((status) => {
+        if (status === 'CLOSED') {
+          toast({ title: 'Aviso', description: 'Conexão perdida. Reconectando...', duration: 3000 })
+        }
+        if (status === 'CHANNEL_ERROR') {
+          toast({
+            title: 'Erro',
+            description: 'Erro ao sincronizar dados. Recarregando...',
+            variant: 'destructive',
+          })
+          fetchProperties(false)
+        }
+      })
 
     return () => {
       mounted = false
@@ -180,5 +198,5 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
     }
   }, [fetchProperties, fetchSingleProperty, filterType])
 
-  return { properties, loading, refresh: () => fetchProperties(false) }
+  return { properties, loading, syncing, refresh: () => fetchProperties(false) }
 }

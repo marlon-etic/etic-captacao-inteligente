@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import useAppStore from '@/stores/useAppStore'
+import { toast } from '@/hooks/use-toast'
 
 export interface SupabaseCapturedProperty {
   id: string
@@ -54,6 +55,7 @@ export interface SupabaseDemand {
 export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
   const [demands, setDemands] = useState<SupabaseDemand[]>([])
   const [loading, setLoading] = useState(true)
+  const [syncing, setSyncing] = useState(false)
   const { users } = useAppStore()
 
   const usersRef = useRef(users)
@@ -158,10 +160,10 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
 
     const table = type === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
 
-    // Sincronização Bidirecional em Tempo Real
     const channel = supabase
       .channel(`realtime_sync_${type}`)
       .on('postgres_changes', { event: '*', schema: 'public', table }, (payload) => {
+        setSyncing(true)
         if (payload.eventType === 'INSERT') {
           const d = payload.new
           setDemands((prev) => {
@@ -188,9 +190,6 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
                       status_demanda: d.status_demanda || x.status_demanda,
                       is_prioritaria:
                         d.is_prioritaria !== undefined ? d.is_prioritaria : x.is_prioritaria,
-                      respostas_captador: x.respostas_captador,
-                      imoveis_captados: x.imoveis_captados,
-                      prazos_captacao: x.prazos_captacao,
                     }
                   : x,
               ),
@@ -199,12 +198,14 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
         } else if (payload.eventType === 'DELETE') {
           setDemands((prev) => prev.filter((x) => x.id !== payload.old.id))
         }
+        setTimeout(() => setSyncing(false), 500)
       })
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'imoveis_captados' },
         (payload) => {
           const imv = payload.new
+          setSyncing(true)
           setDemands((prev) => {
             return prev.map((d) => {
               if (d.id === imv.demanda_locacao_id || d.id === imv.demanda_venda_id) {
@@ -229,6 +230,7 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
               return d
             })
           })
+          setTimeout(() => setSyncing(false), 500)
         },
       )
       .on(
@@ -236,23 +238,28 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
         { event: 'UPDATE', schema: 'public', table: 'imoveis_captados' },
         (payload) => {
           const imv = payload.new
+          setSyncing(true)
           setDemands((prev) => {
             return prev.map((d) => {
-              if (d.id === imv.demanda_locacao_id || d.id === imv.demanda_venda_id) {
-                let newStatus = d.status_demanda
-                if (imv.etapa_funil === 'fechado') {
-                  newStatus = 'ganho'
-                } else if (d.status_demanda === 'ganho' && imv.etapa_funil !== 'fechado') {
-                  const otherClosed = (d.imoveis_captados || []).some(
-                    (i: any) => i.id !== imv.id && i.etapa_funil === 'fechado',
-                  )
-                  if (!otherClosed) newStatus = 'atendida'
-                }
+              const belongsToThisDemand =
+                d.id === imv.demanda_locacao_id || d.id === imv.demanda_venda_id
+              const currentlyHasIt = d.imoveis_captados?.some((i: any) => i.id === imv.id)
 
-                return {
-                  ...d,
-                  status_demanda: newStatus,
-                  imoveis_captados: (d.imoveis_captados || []).map((i: any) =>
+              if (belongsToThisDemand) {
+                let newImoveis = d.imoveis_captados || []
+                if (!currentlyHasIt) {
+                  const captador = usersRef.current.find(
+                    (u) => u.id === (imv.user_captador_id || imv.captador_id),
+                  )
+                  const enrichedImv = {
+                    ...imv,
+                    captador_nome: captador?.name || 'Captador',
+                    etapa_funil: imv.etapa_funil || 'capturado',
+                    observacoes: imv.observacoes || imv.localizacao_texto,
+                  }
+                  newImoveis = [enrichedImv, ...newImoveis]
+                } else {
+                  newImoveis = newImoveis.map((i: any) =>
                     i.id === imv.id
                       ? {
                           ...i,
@@ -261,12 +268,35 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
                           observacoes: imv.observacoes || imv.localizacao_texto || i.observacoes,
                         }
                       : i,
-                  ),
+                  )
                 }
+
+                let newStatus = d.status_demanda
+                if (imv.etapa_funil === 'fechado') newStatus = 'ganho'
+                else if (d.status_demanda === 'ganho' && imv.etapa_funil !== 'fechado') {
+                  const otherClosed = newImoveis.some(
+                    (i: any) => i.id !== imv.id && i.etapa_funil === 'fechado',
+                  )
+                  if (!otherClosed) newStatus = 'atendida'
+                } else if (!currentlyHasIt && newImoveis.length > 0) {
+                  newStatus = 'atendida'
+                }
+
+                return { ...d, status_demanda: newStatus, imoveis_captados: newImoveis }
+              } else if (currentlyHasIt) {
+                const newImoveis = (d.imoveis_captados || []).filter((i: any) => i.id !== imv.id)
+                let newStatus = d.status_demanda
+                const hasClosed = newImoveis.some((i: any) => i.etapa_funil === 'fechado')
+                if (!hasClosed && newStatus === 'ganho')
+                  newStatus = newImoveis.length > 0 ? 'atendida' : 'aberta'
+                if (newImoveis.length === 0 && newStatus === 'atendida') newStatus = 'aberta'
+
+                return { ...d, status_demanda: newStatus, imoveis_captados: newImoveis }
               }
               return d
             })
           })
+          setTimeout(() => setSyncing(false), 500)
         },
       )
       .on(
@@ -274,6 +304,7 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
         { event: 'INSERT', schema: 'public', table: 'respostas_captador' },
         (payload) => {
           const resp = payload.new
+          setSyncing(true)
           setDemands((prev) => {
             return prev.map((d) => {
               if (d.id === resp.demanda_locacao_id || d.id === resp.demanda_venda_id) {
@@ -292,6 +323,7 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
               return d
             })
           })
+          setTimeout(() => setSyncing(false), 500)
         },
       )
       .on(
@@ -300,6 +332,7 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
         (payload) => {
           if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
             const newP = payload.new
+            setSyncing(true)
             setDemands((prev) => {
               return prev.map((d) => {
                 if (d.id === newP.demanda_locacao_id || d.id === newP.demanda_venda_id) {
@@ -315,12 +348,24 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
                 return d
               })
             })
+            setTimeout(() => setSyncing(false), 500)
           }
         },
       )
-      .subscribe()
+      .subscribe((status) => {
+        if (status === 'CLOSED') {
+          toast({ title: 'Aviso', description: 'Conexão perdida. Reconectando...', duration: 3000 })
+        }
+        if (status === 'CHANNEL_ERROR') {
+          toast({
+            title: 'Erro',
+            description: 'Erro ao sincronizar dados. Recarregando...',
+            variant: 'destructive',
+          })
+          fetchDemands(false)
+        }
+      })
 
-    // Listen to custom event for manual local update when editing
     const handleDemandaUpdated = (e: CustomEvent) => {
       if (e.detail?.tipo === type && e.detail?.data) {
         const d = e.detail.data
@@ -356,5 +401,5 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
     }
   }, [fetchDemands, type, formatData, sortDemands])
 
-  return { demands, loading, refresh: () => fetchDemands(false) }
+  return { demands, loading, syncing, refresh: () => fetchDemands(false) }
 }
