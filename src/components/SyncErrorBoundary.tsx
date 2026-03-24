@@ -5,12 +5,14 @@ interface SyncErrorBoundaryProps {
   children: ReactNode
   onRetry?: () => void
   error?: Error | null
+  retryCount?: number
 }
 
 export const SyncErrorBoundary: React.FC<SyncErrorBoundaryProps> = ({
   children,
   onRetry,
   error: externalError,
+  retryCount = 0,
 }) => {
   const [internalError, setInternalError] = useState<Error | null>(null)
   const [isRetrying, setIsRetrying] = useState(false)
@@ -22,17 +24,20 @@ export const SyncErrorBoundary: React.FC<SyncErrorBoundaryProps> = ({
   }, [externalError])
 
   const handleRetry = useCallback(async () => {
+    console.log(`[UI-ERROR] Tentativa de retry manual #${retryCount + 1}`)
     setIsRetrying(true)
     try {
       onRetry?.()
       setInternalError(null)
-      await new Promise((resolve) => setTimeout(resolve, 500))
+      await new Promise((resolve) => setTimeout(resolve, 1000))
     } catch (err) {
-      setInternalError(err instanceof Error ? err : new Error('Erro desconhecido'))
+      const newErr = err instanceof Error ? err : new Error('Erro desconhecido no retry')
+      console.error('[UI-ERROR] Retry falhou:', newErr)
+      setInternalError(newErr)
     } finally {
       setIsRetrying(false)
     }
-  }, [onRetry])
+  }, [onRetry, retryCount])
 
   if (activeError) {
     return (
@@ -41,9 +46,14 @@ export const SyncErrorBoundary: React.FC<SyncErrorBoundaryProps> = ({
           <AlertCircle className="w-5 h-5 text-red-600 shrink-0" />
           <div className="flex-1">
             <p className="text-sm font-bold text-red-900">
-              Erro ao sincronizar dados em tempo real
+              Erro ao sincronizar dados (Tentativa {retryCount})
             </p>
-            <p className="text-xs font-medium text-red-700 mt-1">{activeError.message}</p>
+            <p className="text-xs font-medium text-red-700 mt-1 break-words">
+              {activeError.message}
+            </p>
+            <p className="text-xs font-bold text-red-600 mt-1">
+              Verifique o console (F12) para logs detalhados.
+            </p>
           </div>
           <button
             onClick={handleRetry}

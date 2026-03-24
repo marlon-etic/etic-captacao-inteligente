@@ -9,6 +9,7 @@ export const useProposals = (landlordId: string | undefined) => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [syncError, setSyncError] = useState<Error | null>(null)
+  const [retryCount, setRetryCount] = useState(0)
   const [isConnected, setIsConnected] = useState(true)
 
   const fetchProposals = useCallback(async (id: string) => {
@@ -19,7 +20,7 @@ export const useProposals = (landlordId: string | undefined) => {
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 15000)
 
-      const { data, error } = await supabase
+      const { data, error: err } = await supabase
         .from('tenant_proposals')
         .select(`*,imoveis_captados!inner(landlord_id)`)
         .eq('imoveis_captados.landlord_id', id)
@@ -27,7 +28,7 @@ export const useProposals = (landlordId: string | undefined) => {
 
       clearTimeout(timeoutId)
 
-      if (error) throw error
+      if (err) throw err
 
       const mapped = (data || []).map((p) => ({
         ...p,
@@ -54,9 +55,15 @@ export const useProposals = (landlordId: string | undefined) => {
     }
   }, [landlordId, fetchProposals])
 
-  const { reconnect } = useRealtimeSync({
+  const { reconnect, stopPolling } = useRealtimeSync({
     table: 'tenant_proposals',
+    enablePollingFallback: true,
+    pollingFn: async () => {
+      if (landlordId) await fetchProposals(landlordId)
+      return null // Retorna null para evitar loop genérico de updates via hook e reusar o estado de fetchProposals
+    },
     onDataChange: (payload) => {
+      console.log('[useProposals] onDataChange chamado:', payload)
       setProposals((prev) => {
         let updated = [...prev]
 
@@ -78,12 +85,25 @@ export const useProposals = (landlordId: string | undefined) => {
 
       setIsConnected(true)
       setSyncError(null)
+      setRetryCount(0)
     },
     onError: (err) => {
+      console.error('[useProposals] Erro capturado:', err)
       setSyncError(err)
+      setRetryCount((prev) => prev + 1)
       setIsConnected(false)
     },
+    maxRetries: 3,
+    initialBackoff: 2000,
   })
+
+  const handleManualRetry = useCallback(() => {
+    console.log('[useProposals] Retry manual acionado')
+    setRetryCount(0)
+    setSyncError(null)
+    stopPolling()
+    reconnect()
+  }, [reconnect, stopPolling])
 
   const respondToProposal = async (
     proposalId: string,
@@ -125,9 +145,10 @@ export const useProposals = (landlordId: string | undefined) => {
     loading,
     error,
     syncError,
+    retryCount,
     isConnected,
     refreshProposals: () => landlordId && fetchProposals(landlordId),
     respondToProposal,
-    reconnect,
+    reconnect: handleManualRetry,
   }
 }

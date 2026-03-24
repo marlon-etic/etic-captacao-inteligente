@@ -1,34 +1,33 @@
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import { supabase } from '@/lib/supabase/client'
 
 export const useConnectionHeartbeat = () => {
-  const heartbeatRef = useRef<NodeJS.Timeout | null>(null)
-
   useEffect(() => {
-    // Heartbeat a cada 10 segundos
-    heartbeatRef.current = setInterval(async () => {
+    let mounted = true
+    let intervalId: NodeJS.Timeout
+
+    const checkConnection = async () => {
       try {
-        // FIX: Usando GET (.select('id').limit(1)) ao invés de HEAD ({ head: true })
-        // para evitar erro de runtime "Unexpected end of JSON input" ao fazer parse de resposta vazia.
-        const { error } = await Promise.race([
-          supabase.from('users').select('id').limit(1),
-          new Promise<any>((_, reject) =>
-            setTimeout(() => reject(new Error('Heartbeat timeout')), 5000),
-          ),
-        ])
+        // Safe SELECT limit(1) to avoid HEAD empty JSON parse error
+        const { error } = await supabase.from('users').select('id').limit(1)
 
         if (error) {
-          console.warn('❌ Heartbeat falhou:', error.message)
+          console.warn('[Heartbeat] Erro na conexão:', error.message)
         }
       } catch (err) {
-        console.warn('Heartbeat error:', err)
+        console.warn('[Heartbeat] Falha na requisição de conexão:', err)
       }
-    }, 10000)
+    }
+
+    if (mounted) {
+      checkConnection()
+    }
+
+    intervalId = setInterval(checkConnection, 60000)
 
     return () => {
-      if (heartbeatRef.current) {
-        clearInterval(heartbeatRef.current)
-      }
+      mounted = false
+      clearInterval(intervalId)
     }
   }, [])
 }

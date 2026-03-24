@@ -33,6 +33,7 @@ export default function LandlordDashboard() {
     isConnected: proposalsConnected,
     error: proposalError,
     syncError,
+    retryCount,
     reconnect,
     respondToProposal,
   } = useProposals(landlordProfile?.id)
@@ -74,7 +75,7 @@ export default function LandlordDashboard() {
 
   return (
     <div className="px-4 sm:px-6 lg:px-8 py-8 max-w-7xl mx-auto animate-fade-in-up relative">
-      <SyncErrorBoundary error={syncError} onRetry={reconnect}>
+      <SyncErrorBoundary error={syncError} onRetry={reconnect} retryCount={retryCount}>
         {!isConnected && !syncError && (
           <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6 rounded-r-lg shadow-sm">
             <div className="flex">
