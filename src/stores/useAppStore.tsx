@@ -64,7 +64,7 @@ interface AppState {
   createUserAdmin: (user: Partial<User>, password?: string) => Promise<void>
   updateUserAdmin: (id: string, user: Partial<User>, password?: string) => Promise<void>
   login: (email: string, password?: string) => Promise<void>
-  logout: () => void
+  logout: () => Promise<void>
   requestPasswordReset: (email: string) => Promise<void>
   resetPassword: (password: string, token: string) => Promise<void>
   addDemand: (demand: Partial<Demand>) => void
@@ -258,7 +258,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  // Real-time Users Fetching
+  // Real-time Users Fetching via Polling
   useEffect(() => {
     if (!currentUser) return
     let mounted = true
@@ -297,16 +297,12 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
     fetchUsers()
 
-    const sub = supabase
-      .channel('public_users_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, () => {
-        fetchUsers()
-      })
-      .subscribe()
+    // Replacing problematic realtime channel with robust polling for users list (updates every 10s)
+    const interval = setInterval(fetchUsers, 10000)
 
     return () => {
       mounted = false
-      supabase.removeChannel(sub)
+      clearInterval(interval)
     }
   }, [currentUser?.id])
 
@@ -462,9 +458,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(intervalId)
   }, [processWebhookCron])
 
-  const addPoints = useCallback((amount: number, userId?: string) => {
-    // Handled by supabase triggers directly. Left for mock compatibility if needed elsewhere.
-  }, [])
+  const addPoints = useCallback((amount: number, userId?: string) => {}, [])
 
   const updateUser = useCallback(
     (id: string, updates: Partial<User>) => {
@@ -497,7 +491,6 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       .getUser()
       .then(async ({ data: authData }) => {
         if (authData?.user) {
-          // Find if it's locacao or venda
           const { data: loc } = await supabase
             .from('demandas_locacao')
             .select('id')
@@ -545,11 +538,16 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const getSimilarDemands = useCallback((id: string) => [], [])
   const addGroupComment = useCallback((groupId: string, content: string) => {}, [])
 
-  const logout = useCallback(() => {
-    setCurrentUser(null)
-    setSessionExpiresAt(null)
-    localStorage.removeItem('etic_session')
-    supabase.auth.signOut().catch(console.error)
+  // Safe async logout explicitly addressing edge cases
+  const logout = useCallback(async () => {
+    try {
+      setCurrentUser(null)
+      setSessionExpiresAt(null)
+      localStorage.removeItem('etic_session')
+      await supabase.auth.signOut()
+    } catch (err) {
+      console.warn('Silent logout error caught:', err)
+    }
   }, [])
 
   const loginFn = useCallback(
@@ -712,7 +710,6 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         },
         addDemand: (d) => {},
         updateDemandStatus: async (id: string, status: DemandStatus) => {
-          // Sync with database directly - triggers realtime updates to all clients instantly
           let dbStatus = 'aberta'
           if (status === 'Negócio' || status === 'ganho' || status === 'Fechado') {
             dbStatus = 'ganho'

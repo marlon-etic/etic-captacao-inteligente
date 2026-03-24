@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Mail, Lock, LogIn, Building2, Loader2 } from 'lucide-react'
+import { Mail, Lock, LogIn, Building2, Loader2, AlertTriangle } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useToast } from '@/hooks/use-toast'
 import useAppStore from '@/stores/useAppStore'
 import { useAuth } from '@/hooks/use-auth'
@@ -14,18 +15,44 @@ export default function Index() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const { currentUser, login, isRestoringUser } = useAppStore()
+  const [initError, setInitError] = useState<string | null>(null)
+  const isNavigating = useRef(false)
+
+  const { currentUser, login, logout, isRestoringUser } = useAppStore()
   const { signIn, loading: authLoading, session } = useAuth()
   const navigate = useNavigate()
   const { toast } = useToast()
 
+  // Loop Prevention & Init Shielding (PROMPT-015)
   useEffect(() => {
-    // Only navigate to /app if we genuinely have a loaded currentUser
-    // Prevent redirect loop if session exists but currentUser hasn't synced yet
-    if (!authLoading && !isRestoringUser && currentUser) {
-      navigate('/app', { replace: true })
+    const mountCount = parseInt(sessionStorage.getItem('etic_idx_mounts') || '0', 10)
+    if (mountCount > 3) {
+      setInitError('Detectamos instabilidade na inicialização. O estado foi limpo por segurança.')
+      sessionStorage.setItem('etic_idx_mounts', '0')
+      logout()
+      return
     }
-  }, [currentUser, session, authLoading, isRestoringUser, navigate])
+    sessionStorage.setItem('etic_idx_mounts', (mountCount + 1).toString())
+
+    const t = setTimeout(() => sessionStorage.setItem('etic_idx_mounts', '0'), 3000)
+    return () => clearTimeout(t)
+  }, [logout])
+
+  useEffect(() => {
+    if (authLoading || isRestoringUser || isNavigating.current) return
+
+    // Delay Estratégico para evitar colisão com extensões no carregamento rápido
+    if (currentUser && session) {
+      isNavigating.current = true
+      const timer = setTimeout(() => {
+        navigate('/app', { replace: true })
+      }, 600) // Buffer seguro de 600ms
+      return () => clearTimeout(timer)
+    } else if (currentUser && !session) {
+      // Fallback: se houver usuário salvo localmente mas sem sessão remota válida
+      logout()
+    }
+  }, [currentUser, session, authLoading, isRestoringUser, navigate, logout])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -39,6 +66,7 @@ export default function Index() {
     }
 
     setIsLoading(true)
+    setInitError(null)
     try {
       await new Promise((r) => setTimeout(r, 600))
 
@@ -64,7 +92,12 @@ export default function Index() {
       }
 
       await login(email, password)
-      navigate('/app', { replace: true })
+
+      // Delay explicitly added after manual login to guarantee state propagation
+      isNavigating.current = true
+      setTimeout(() => {
+        navigate('/app', { replace: true })
+      }, 300)
     } catch (err: any) {
       toast({
         title: 'Erro de Autenticação',
@@ -81,6 +114,7 @@ export default function Index() {
     setEmail(mockEmail)
     setPassword(pass)
     setIsLoading(true)
+    setInitError(null)
     try {
       await new Promise((r) => setTimeout(r, 600))
 
@@ -130,7 +164,11 @@ export default function Index() {
       }
 
       await login(mockEmail, pass)
-      navigate('/app', { replace: true })
+
+      isNavigating.current = true
+      setTimeout(() => {
+        navigate('/app', { replace: true })
+      }, 300)
     } catch (err: any) {
       toast({
         title: 'Erro de Autenticação',
@@ -142,7 +180,7 @@ export default function Index() {
     }
   }
 
-  if (authLoading || isRestoringUser) {
+  if (authLoading || isRestoringUser || isNavigating.current) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#F5F5F5]">
         <Loader2 className="w-10 h-10 animate-spin text-[#1A3A52]" />
@@ -167,6 +205,17 @@ export default function Index() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {initError && (
+            <div className="mb-6 animate-fade-in-down">
+              <Alert variant="destructive" className="bg-red-50 border-red-200">
+                <AlertTriangle className="h-4 w-4 text-red-600" />
+                <AlertDescription className="text-red-800 ml-2 font-medium">
+                  {initError}
+                </AlertDescription>
+              </Alert>
+            </div>
+          )}
+
           <form onSubmit={handleLogin} className="space-y-[16px]">
             <div className="space-y-[8px]">
               <Label

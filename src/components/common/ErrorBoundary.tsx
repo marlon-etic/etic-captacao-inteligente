@@ -30,14 +30,20 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error('ErrorBoundary caught:', error, errorInfo)
-    this.setState((prev) => ({
-      errorCount: prev.errorCount + 1,
-    }))
 
-    if (this.resetTimer) clearTimeout(this.resetTimer)
-    this.resetTimer = setTimeout(() => {
-      this.resetError()
-    }, 5000)
+    this.setState((prev) => {
+      const newCount = prev.errorCount + 1
+
+      // Limit auto-recovery to avoid infinite reload loops
+      if (newCount <= 3) {
+        if (this.resetTimer) clearTimeout(this.resetTimer)
+        this.resetTimer = setTimeout(() => {
+          this.resetError()
+        }, 5000)
+      }
+
+      return { errorCount: newCount }
+    })
   }
 
   componentWillUnmount() {
@@ -64,7 +70,8 @@ export class ErrorBoundary extends Component<Props, State> {
 
             <h2 className="text-xl font-bold text-gray-900 mb-2">Erro ao Carregar</h2>
             <p className="text-gray-600 text-sm mb-4">
-              Ocorreu um erro ao processar a página. O sistema tentará recuperar automaticamente.
+              Ocorreu um erro ao processar a página. A sincronização falhou e precisa ser
+              recarregada manualmente.
             </p>
 
             <div className="bg-gray-50 text-left p-3 rounded text-xs text-gray-500 font-mono mb-6 overflow-auto max-h-32">
@@ -81,7 +88,8 @@ export class ErrorBoundary extends Component<Props, State> {
 
             {this.state.errorCount > 3 && (
               <p className="text-xs text-red-500 mt-4 font-medium">
-                Múltiplos erros detectados. Entre em contato com o suporte.
+                Múltiplos erros detectados. Entre em contato com o suporte ou tente acessar em aba
+                anônima.
               </p>
             )}
           </div>
