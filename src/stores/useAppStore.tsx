@@ -53,6 +53,7 @@ interface AppState {
     path?: string,
     email?: string,
   ) => void
+  addNotification: (notification: Partial<AppNotification>) => void
   markNotificationAsRead: (id: string) => void
   markAllNotificationsAsRead: () => void
   archiveNotification: (id: string) => void
@@ -351,6 +352,42 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     [currentUser],
   )
 
+  const addNotification = useCallback(
+    (n: Partial<AppNotification>) => {
+      setNotifications((prev) => [
+        {
+          id: Math.random().toString(36).substring(2, 9),
+          usuario_id: currentUser?.id || 'system',
+          titulo: n.titulo || '',
+          corpo: n.corpo || '',
+          tipo_notificacao: n.tipo_notificacao || 'info',
+          urgencia: n.urgencia || 'baixa',
+          lida: false,
+          arquivada: false,
+          data_criacao: new Date().toISOString(),
+          acao_url: n.acao_url,
+          acao_botao: n.acao_botao,
+          detalhes: n.detalhes,
+          ...n,
+        } as AppNotification,
+        ...prev,
+      ])
+    },
+    [currentUser],
+  )
+
+  const markNotificationAsRead = useCallback((id: string) => {
+    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, lida: true } : n)))
+  }, [])
+
+  const markAllNotificationsAsRead = useCallback(() => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, lida: true })))
+  }, [])
+
+  const archiveNotification = useCallback((id: string) => {
+    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, arquivada: true } : n)))
+  }, [])
+
   const enqueueWebhook = useCallback(
     (event_type: string, entity_id: string | undefined, data: any) => {
       const target_url =
@@ -600,9 +637,10 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         inactiveGroups,
         addGroupComment,
         triggerCron,
-        markNotificationAsRead: (id: string) => {},
-        markAllNotificationsAsRead: () => {},
-        archiveNotification: (id: string) => {},
+        addNotification,
+        markNotificationAsRead,
+        markAllNotificationsAsRead,
+        archiveNotification,
         updateUserPreferences: (prefs) => {},
         updateDashboardPrefs,
         updateUser,

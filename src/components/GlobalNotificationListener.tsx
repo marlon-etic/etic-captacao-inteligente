@@ -4,13 +4,18 @@ import useAppStore from '@/stores/useAppStore'
 import { useNotification } from '@/hooks/useNotification'
 
 export function GlobalNotificationListener() {
-  const { currentUser } = useAppStore()
+  const { currentUser, addNotification } = useAppStore()
   const { showNotification } = useNotification()
   const currentUserRef = useRef(currentUser)
+  const addNotificationRef = useRef(addNotification)
 
   useEffect(() => {
     currentUserRef.current = currentUser
   }, [currentUser])
+
+  useEffect(() => {
+    addNotificationRef.current = addNotification
+  }, [addNotification])
 
   const playSound = useCallback(() => {
     if (currentUserRef.current?.preferences?.notifications?.channels?.in_app !== false) {
@@ -79,9 +84,12 @@ export function GlobalNotificationListener() {
           if (!demanda) return
 
           if (demanda.sdr_id === user.id || demanda.corretor_id === user.id) {
+            const clientName = demanda.nome_cliente || 'Cliente'
+
+            // Mostrar toast
             showNotification({
               type: 'success',
-              title: `Novo imóvel capturado para ${demanda.nome_cliente}!`,
+              title: `Novo imóvel capturado para ${clientName}!`,
               message: `Código: ${imv.codigo_imovel}, Localização: ${imv.endereco || 'Não informado'}, Preço: R$ ${(imv.preco || imv.valor || 0).toLocaleString('pt-BR')}`,
               icon: '🎉',
               onClickAction: () => {
@@ -91,6 +99,17 @@ export function GlobalNotificationListener() {
               },
             })
             playSound()
+
+            // Adicionar notificação no Sino
+            addNotificationRef.current({
+              titulo: `Imóvel Captado: ${clientName}`,
+              corpo: `O imóvel código ${imv.codigo_imovel} foi vinculado a esta demanda.\nPreço: R$ ${(imv.preco || imv.valor || 0).toLocaleString('pt-BR')}`,
+              tipo_notificacao: 'novo_imovel',
+              urgencia: 'alta',
+              acao_url: `/app/demandas?id=${demanda.id}`,
+              acao_botao: 'Ver no Card',
+              usuario_id: user.id,
+            })
           }
         },
       )
@@ -123,6 +142,15 @@ export function GlobalNotificationListener() {
                 },
               })
               playSound()
+
+              addNotificationRef.current({
+                titulo: 'Imóvel Visitado',
+                corpo: `Imóvel ${imv.codigo_imovel} marcado como visitado.`,
+                tipo_notificacao: 'visita',
+                urgencia: 'media',
+                acao_url: demandId ? `/app/demandas?id=${demandId}` : undefined,
+                usuario_id: user.id,
+              })
             } else if (imv.etapa_funil === 'fechado') {
               showNotification({
                 type: 'success',
@@ -137,6 +165,15 @@ export function GlobalNotificationListener() {
                 },
               })
               playSound()
+
+              addNotificationRef.current({
+                titulo: 'Negócio Fechado! 🎉',
+                corpo: `Imóvel ${imv.codigo_imovel} marcado como fechado!`,
+                tipo_notificacao: 'negocio',
+                urgencia: 'alta',
+                acao_url: demandId ? `/app/demandas?id=${demandId}` : undefined,
+                usuario_id: user.id,
+              })
             }
           }
         },
@@ -169,9 +206,19 @@ export function GlobalNotificationListener() {
                   new CustomEvent('navigate-to', { detail: `/app/demandas?id=${demanda.id}` }),
                 )
               },
-              customColor: 'bg-[#F97316] text-white', // Laranja #F97316
+              customColor: 'bg-[#F97316] text-white',
             })
             playSound()
+
+            addNotificationRef.current({
+              titulo: `Busca sem sucesso: ${demanda.nome_cliente}`,
+              corpo: `Captador ${captadorNome} não encontrou imóvel. Motivo: ${resp.motivo}`,
+              tipo_notificacao: 'demanda_respondida',
+              urgencia: 'media',
+              acao_url: `/app/demandas?id=${demanda.id}`,
+              acao_botao: 'Ver Detalhes',
+              usuario_id: user.id,
+            })
           }
         },
       )
@@ -207,6 +254,15 @@ export function GlobalNotificationListener() {
                 },
               })
               playSound()
+
+              addNotificationRef.current({
+                titulo: `Prazo Prorrogado: ${demanda.nome_cliente}`,
+                corpo: `Captador ${captadorNome} prorrogou até ${new Date(newP.prazo_resposta).toLocaleString('pt-BR')}.`,
+                tipo_notificacao: 'perdido',
+                urgencia: 'baixa',
+                acao_url: `/app/demandas?id=${demanda.id}`,
+                usuario_id: user.id,
+              })
             }
 
             if (
@@ -227,6 +283,16 @@ export function GlobalNotificationListener() {
                 },
               })
               playSound()
+
+              addNotificationRef.current({
+                titulo: `Prazo Vencido: ${demanda.nome_cliente}`,
+                corpo: `Nenhuma resposta de Captadores no prazo definido.`,
+                tipo_notificacao: 'perdido',
+                urgencia: 'alta',
+                acao_url: `/app/demandas?id=${demanda.id}`,
+                acao_botao: 'Ver Demanda',
+                usuario_id: user.id,
+              })
             }
           }
         },
