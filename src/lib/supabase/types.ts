@@ -706,6 +706,27 @@ export type Database = {
         }
         Relationships: []
       }
+      vistasoft_cache: {
+        Row: {
+          created_at: string | null
+          data: Json
+          expires_at: string
+          key: string
+        }
+        Insert: {
+          created_at?: string | null
+          data: Json
+          expires_at: string
+          key: string
+        }
+        Update: {
+          created_at?: string | null
+          data?: Json
+          expires_at?: string
+          key?: string
+        }
+        Relationships: []
+      }
       webhook_queue: {
         Row: {
           created_at: string | null
@@ -750,7 +771,17 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      admin_dashboard_summary: {
+        Row: {
+          captadores_ativos: number | null
+          demandas_abertas: number | null
+          id: number | null
+          imoveis_ativos: number | null
+          last_updated: string | null
+          total_pontos: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       atualizar_prazos_vencidos: { Args: never; Returns: undefined }
@@ -758,6 +789,7 @@ export type Database = {
         Args: { p_renda_mensal: number; p_valor_aluguel: number }
         Returns: number
       }
+      fn_clean_expired_cache: { Args: never; Returns: undefined }
       fn_logar_falhas_api: {
         Args: {
           p_api: string
@@ -776,6 +808,7 @@ export type Database = {
           status: string
         }[]
       }
+      refresh_admin_dashboard_summary: { Args: never; Returns: undefined }
     }
     Enums: {
       notificacao_prioridade: "alta" | "normal" | "baixa"
@@ -1092,6 +1125,11 @@ export const Constants = {
 //   status: character varying (nullable, default: 'ativo'::character varying)
 //   created_at: timestamp with time zone (nullable, default: now())
 //   updated_at: timestamp with time zone (nullable, default: now())
+// Table: vistasoft_cache
+//   key: text (not null)
+//   data: jsonb (not null)
+//   expires_at: timestamp with time zone (not null)
+//   created_at: timestamp with time zone (nullable, default: now())
 // Table: webhook_queue
 //   id: uuid (not null, default: gen_random_uuid())
 //   event_type: text (not null)
@@ -1181,6 +1219,8 @@ export const Constants = {
 //   FOREIGN KEY users_id_fkey: FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE
 //   PRIMARY KEY users_pkey: PRIMARY KEY (id)
 //   CHECK users_status_check: CHECK (((status)::text = ANY ((ARRAY['ativo'::character varying, 'inativo'::character varying])::text[])))
+// Table: vistasoft_cache
+//   PRIMARY KEY vistasoft_cache_pkey: PRIMARY KEY (key)
 // Table: webhook_queue
 //   PRIMARY KEY webhook_queue_pkey: PRIMARY KEY (id)
 //   CHECK webhook_queue_status_check: CHECK ((status = ANY (ARRAY['pending'::text, 'processing'::text, 'completed'::text, 'failed'::text])))
@@ -1261,6 +1301,10 @@ export const Constants = {
 //     USING: (id = auth.uid())
 //   Policy "Users update own profile" (UPDATE, PERMISSIVE) roles={public}
 //     USING: (id = auth.uid())
+// Table: vistasoft_cache
+//   Policy "vistasoft_cache_all" (ALL, PERMISSIVE) roles={authenticated}
+//     USING: true
+//     WITH CHECK: true
 
 // --- WARNING: TABLES WITH RLS ENABLED BUT NO POLICIES ---
 // These tables have Row Level Security enabled but NO policies defined.
@@ -1443,6 +1487,17 @@ export const Constants = {
 //       END IF;
 //       
 //       RETURN NEW;
+//   END;
+//   $function$
+//   
+// FUNCTION fn_clean_expired_cache()
+//   CREATE OR REPLACE FUNCTION public.fn_clean_expired_cache()
+//    RETURNS void
+//    LANGUAGE plpgsql
+//    SECURITY DEFINER
+//   AS $function$
+//   BEGIN
+//       DELETE FROM public.vistasoft_cache WHERE expires_at <= NOW();
 //   END;
 //   $function$
 //   
@@ -1690,6 +1745,19 @@ export const Constants = {
 //   END;
 //   $function$
 //   
+// FUNCTION refresh_admin_dashboard_summary()
+//   CREATE OR REPLACE FUNCTION public.refresh_admin_dashboard_summary()
+//    RETURNS void
+//    LANGUAGE plpgsql
+//    SECURITY DEFINER
+//   AS $function$
+//   BEGIN
+//       REFRESH MATERIALIZED VIEW CONCURRENTLY public.admin_dashboard_summary;
+//   EXCEPTION WHEN OTHERS THEN
+//       REFRESH MATERIALIZED VIEW public.admin_dashboard_summary;
+//   END;
+//   $function$
+//   
 // FUNCTION rls_auto_enable()
 //   CREATE OR REPLACE FUNCTION public.rls_auto_enable()
 //    RETURNS event_trigger
@@ -1835,22 +1903,30 @@ export const Constants = {
 //   update_users_updated_at: CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON public.users FOR EACH ROW EXECUTE FUNCTION set_updated_at()
 
 // --- INDEXES ---
+// Table: admin_dashboard_summary
+//   CREATE UNIQUE INDEX idx_admin_dashboard_id ON public.admin_dashboard_summary USING btree (id)
 // Table: demandas_locacao
+//   CREATE INDEX idx_demandas_grouping_criteria ON public.demandas_locacao USING btree (tipo_demanda, valor_maximo, dormitorios, vagas_estacionamento)
 //   CREATE INDEX idx_demandas_locacao_bairros ON public.demandas_locacao USING gin (bairros)
+//   CREATE INDEX idx_demandas_locacao_created_at_desc ON public.demandas_locacao USING btree (created_at DESC)
 //   CREATE INDEX idx_demandas_locacao_sdr_id ON public.demandas_locacao USING btree (sdr_id)
 //   CREATE INDEX idx_demandas_locacao_status_demanda ON public.demandas_locacao USING btree (status_demanda)
 // Table: demandas_vendas
 //   CREATE INDEX idx_demandas_vendas_bairros ON public.demandas_vendas USING gin (bairros)
 //   CREATE INDEX idx_demandas_vendas_corretor_id ON public.demandas_vendas USING btree (corretor_id)
+//   CREATE INDEX idx_demandas_vendas_created_at_desc ON public.demandas_vendas USING btree (created_at DESC)
 //   CREATE INDEX idx_demandas_vendas_status_demanda ON public.demandas_vendas USING btree (status_demanda)
 // Table: imoveis_captados
+//   CREATE INDEX idx_imoveis_captados_captador_id ON public.imoveis_captados USING btree (captador_id)
 //   CREATE INDEX idx_imoveis_captados_status_captacao ON public.imoveis_captados USING btree (status_captacao)
 //   CREATE INDEX idx_imoveis_captados_user_captador_id ON public.imoveis_captados USING btree (user_captador_id)
+//   CREATE INDEX idx_imoveis_captados_user_captador_id_perf ON public.imoveis_captados USING btree (user_captador_id)
 //   CREATE UNIQUE INDEX imoveis_captados_codigo_imovel_key ON public.imoveis_captados USING btree (codigo_imovel)
 // Table: notificacoes
 //   CREATE INDEX idx_notificacoes_created ON public.notificacoes USING btree (created_at DESC)
 //   CREATE INDEX idx_notificacoes_lido ON public.notificacoes USING btree (usuario_id, lido)
 //   CREATE INDEX idx_notificacoes_usuario ON public.notificacoes USING btree (usuario_id)
+//   CREATE INDEX idx_notificacoes_usuario_lido ON public.notificacoes USING btree (usuario_id, lido)
 // Table: respostas_captador
 //   CREATE INDEX idx_respostas_captador_cap_id ON public.respostas_captador USING btree (captador_id)
 //   CREATE INDEX idx_respostas_captador_dem_loc ON public.respostas_captador USING btree (demanda_locacao_id)
@@ -1860,4 +1936,24 @@ export const Constants = {
 //   CREATE INDEX idx_users_role ON public.users USING btree (role)
 //   CREATE INDEX idx_users_status ON public.users USING btree (status)
 //   CREATE UNIQUE INDEX users_email_key ON public.users USING btree (email)
+// Table: vistasoft_cache
+//   CREATE INDEX idx_vistasoft_cache_expires_at ON public.vistasoft_cache USING btree (expires_at)
+// Table: webhook_queue
+//   CREATE INDEX idx_webhook_queue_status_created ON public.webhook_queue USING btree (status, created_at)
+
+// --- MATERIALIZED VIEWS ---
+// VIEW admin_dashboard_summary:
+//   SELECT 1 AS id,
+//       ( SELECT count(*) AS count
+//              FROM demandas_locacao
+//             WHERE ((demandas_locacao.status_demanda)::text = 'aberta'::text)) AS demandas_abertas,
+//       ( SELECT count(*) AS count
+//              FROM imoveis_captados
+//             WHERE ((imoveis_captados.status_captacao)::text = 'capturado'::text)) AS imoveis_ativos,
+//       ( SELECT COALESCE(sum(pontuacao_captador.pontos), (0)::bigint) AS "coalesce"
+//              FROM pontuacao_captador) AS total_pontos,
+//       ( SELECT count(DISTINCT COALESCE(imoveis_captados.user_captador_id, imoveis_captados.captador_id)) AS count
+//              FROM imoveis_captados
+//             WHERE (COALESCE(imoveis_captados.user_captador_id, imoveis_captados.captador_id) IS NOT NULL)) AS captadores_ativos,
+//       now() AS last_updated;
 
