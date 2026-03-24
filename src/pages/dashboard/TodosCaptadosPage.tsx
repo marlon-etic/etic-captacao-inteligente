@@ -1,4 +1,4 @@
-import { PropertyList } from '@/components/PropertyList'
+import { CapturedPropertiesView } from '@/components/CapturedPropertiesView'
 import useAppStore from '@/stores/useAppStore'
 
 export default function TodosCaptadosPage() {
@@ -17,7 +17,7 @@ export default function TodosCaptadosPage() {
           filtros de busca avançada.
         </p>
       </div>
-      <PropertyList initialType={filterType} />
+      <CapturedPropertiesView filterType={filterType} />
     </div>
   )
 }

@@ -4,7 +4,16 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import useAppStore from '@/stores/useAppStore'
 import { cn } from '@/lib/utils'
-import { Eye, Handshake, BookOpen, Edit2, MessageCircle, ExternalLink, Share2 } from 'lucide-react'
+import {
+  Eye,
+  Handshake,
+  BookOpen,
+  Edit2,
+  MessageCircle,
+  ExternalLink,
+  Share2,
+  Link2,
+} from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { getPropertyPublicUrl } from '@/lib/propertyUrl'
@@ -17,8 +26,8 @@ export function CapturedPropertyCard({
   demand?: Demand
   property: CapturedProperty
   onAction?: (
-    t: 'visita' | 'proposta' | 'negocio' | 'lost' | 'history' | 'details' | 'edit',
-    d: Demand,
+    t: 'visita' | 'proposta' | 'negocio' | 'lost' | 'history' | 'details' | 'edit' | 'vincular',
+    d: Demand | undefined,
     p: CapturedProperty,
   ) => void
 }) {
@@ -35,8 +44,8 @@ export function CapturedPropertyCard({
     return new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 }).format(val)
   }
 
-  const handleAction = (type: 'visita' | 'negocio' | 'details' | 'edit') => {
-    if (onAction && demand) {
+  const handleAction = (type: 'visita' | 'negocio' | 'details' | 'edit' | 'vincular') => {
+    if (onAction) {
       onAction(type, demand, property)
     }
   }
@@ -269,6 +278,14 @@ export function CapturedPropertyCard({
 
             {isSDRCorretorAdmin && (
               <>
+                <Button
+                  className="flex-1 min-h-[44px] bg-[#10B981] hover:bg-[#059669] text-white font-bold text-[12px] px-2 shadow-sm"
+                  onClick={() => handleAction('vincular')}
+                >
+                  <Link2 className="w-[14px] h-[14px] sm:mr-[4px]" />
+                  <span className="hidden sm:inline">VINCULAR</span>
+                  <span className="sm:hidden">Vincular</span>
+                </Button>
                 {!isClosed && !isVisita && (
                   <Button
                     className="flex-1 min-h-[44px] bg-[#FF9800] hover:bg-[#F57C00] text-white font-bold text-[12px] px-2 shadow-sm"

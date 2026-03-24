@@ -10,6 +10,7 @@ import { useViewFilters } from '@/hooks/useViewFilters'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useSupabaseProperties } from '@/hooks/use-supabase-properties'
 import { SyncIndicator } from './SyncIndicator'
+import { VinculacaoModal } from './VinculacaoModal'
 
 interface Props {
   filterType?: 'Venda' | 'Aluguel'
@@ -42,6 +43,7 @@ export function CapturedPropertiesView({
 
   const [actionDemand, setActionDemand] = useState<Demand | null>(null)
   const [actionProperty, setActionProperty] = useState<CapturedProperty | null>(null)
+  const [vincularProperty, setVincularProperty] = useState<CapturedProperty | null>(null)
   const [actionType, setActionType] = useState<
     'visita' | 'proposta' | 'negocio' | 'lost' | 'history' | 'details' | 'edit' | null
   >(null)
@@ -91,6 +93,7 @@ export function CapturedPropertiesView({
     return supabaseProps.map((p) => ({
       demand: p.demanda as Demand,
       property: {
+        id: p.id,
         code: p.codigo_imovel,
         neighborhood: p.endereco,
         value: p.preco,
@@ -156,10 +159,14 @@ export function CapturedPropertiesView({
   }, [allCaptured, filters, filterType, currentUser, source])
 
   const handleAction = (
-    type: 'visita' | 'proposta' | 'negocio' | 'lost' | 'history' | 'details' | 'edit',
-    demand: Demand,
+    type: 'visita' | 'proposta' | 'negocio' | 'lost' | 'history' | 'details' | 'edit' | 'vincular',
+    demand: Demand | undefined,
     property: CapturedProperty,
   ) => {
+    if (type === 'vincular') {
+      setVincularProperty(property)
+      return
+    }
     if (
       type === 'edit' &&
       currentUser?.role !== 'captador' &&
@@ -168,8 +175,8 @@ export function CapturedPropertiesView({
     ) {
       return
     }
-    setActionType(type)
-    setActionDemand(demand)
+    setActionType(type as any)
+    setActionDemand(demand || null)
     setActionProperty(property)
   }
 
@@ -251,6 +258,27 @@ export function CapturedPropertiesView({
           }
           closeModals()
         }}
+      />
+
+      <VinculacaoModal
+        isOpen={!!vincularProperty}
+        onClose={() => setVincularProperty(null)}
+        imovel={
+          vincularProperty
+            ? {
+                id: vincularProperty.id || '',
+                codigo_imovel: vincularProperty.code,
+                endereco: Array.isArray(vincularProperty.neighborhood)
+                  ? vincularProperty.neighborhood.join(', ')
+                  : vincularProperty.neighborhood || '',
+                preco: vincularProperty.value,
+                dormitorios: vincularProperty.bedrooms,
+                vagas: vincularProperty.parkingSpots,
+                tipo: vincularProperty.propertyType,
+              }
+            : null
+        }
+        onSuccess={() => setVincularProperty(null)}
       />
 
       <SyncIndicator isSyncing={syncing} />
