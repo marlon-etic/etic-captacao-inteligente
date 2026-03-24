@@ -1,15 +1,15 @@
 -- Enum types for notifications
-DO $ BEGIN
+DO $$ BEGIN
     CREATE TYPE notificacao_tipo AS ENUM ('nova_demanda', 'novo_imovel', 'imovel_capturado', 'status_atualizado');
 EXCEPTION
     WHEN duplicate_object THEN null;
-END $;
+END $$;
 
-DO $ BEGIN
+DO $$ BEGIN
     CREATE TYPE notificacao_prioridade AS ENUM ('alta', 'normal', 'baixa');
 EXCEPTION
     WHEN duplicate_object THEN null;
-END $;
+END $$;
 
 -- Create notificacoes table
 CREATE TABLE IF NOT EXISTS public.notificacoes (
@@ -203,4 +203,3 @@ DROP TRIGGER IF EXISTS trg_notify_resposta_captador ON public.respostas_captador
 CREATE TRIGGER trg_notify_resposta_captador
 AFTER INSERT ON public.respostas_captador
 FOR EACH ROW EXECUTE FUNCTION public.notify_resposta_captador();
-
