@@ -711,6 +711,30 @@ export type Database = {
           },
         ]
       }
+      realtime_logs: {
+        Row: {
+          channel_name: string | null
+          error_message: string | null
+          id: string
+          timestamp: string | null
+          user_id: string | null
+        }
+        Insert: {
+          channel_name?: string | null
+          error_message?: string | null
+          id?: string
+          timestamp?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          channel_name?: string | null
+          error_message?: string | null
+          id?: string
+          timestamp?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       respostas_captador: {
         Row: {
           captador_id: string
@@ -968,6 +992,14 @@ export type Database = {
           payload: Json
           status: string
         }[]
+      }
+      log_realtime_error: {
+        Args: {
+          p_channel_name: string
+          p_error_message: string
+          p_user_id?: string
+        }
+        Returns: undefined
       }
       refresh_admin_dashboard_summary: { Args: never; Returns: undefined }
     }
@@ -1290,6 +1322,12 @@ export const Constants = {
 //   net_revenue: numeric (nullable, default: 0)
 //   created_at: timestamp with time zone (nullable, default: now())
 //   updated_at: timestamp with time zone (nullable, default: now())
+// Table: realtime_logs
+//   id: uuid (not null, default: gen_random_uuid())
+//   channel_name: text (nullable)
+//   error_message: text (nullable)
+//   user_id: uuid (nullable)
+//   timestamp: timestamp with time zone (nullable, default: now())
 // Table: respostas_captador
 //   id: uuid (not null, default: gen_random_uuid())
 //   demanda_locacao_id: uuid (nullable)
@@ -1412,6 +1450,9 @@ export const Constants = {
 // Table: property_performance
 //   PRIMARY KEY property_performance_pkey: PRIMARY KEY (property_id)
 //   FOREIGN KEY property_performance_property_id_fkey: FOREIGN KEY (property_id) REFERENCES imoveis_captados(id) ON DELETE CASCADE
+// Table: realtime_logs
+//   PRIMARY KEY realtime_logs_pkey: PRIMARY KEY (id)
+//   FOREIGN KEY realtime_logs_user_id_fkey: FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE SET NULL
 // Table: respostas_captador
 //   CHECK check_demanda_link_respostas: CHECK ((((demanda_locacao_id IS NOT NULL) AND (demanda_venda_id IS NULL)) OR ((demanda_locacao_id IS NULL) AND (demanda_venda_id IS NOT NULL))))
 //   CHECK check_motivo_nao_encontrei: CHECK ((((resposta)::text = 'encontrei'::text) OR (((resposta)::text = 'nao_encontrei'::text) AND (motivo IS NOT NULL) AND (TRIM(BOTH FROM motivo) <> ''::text))))
@@ -1504,6 +1545,11 @@ export const Constants = {
 // Table: property_performance
 //   Policy "Landlords can view own property performance" (SELECT, PERMISSIVE) roles={authenticated}
 //     USING: (EXISTS ( SELECT 1    FROM (imoveis_captados ic      JOIN landlord_profiles lp ON ((ic.landlord_id = lp.id)))   WHERE ((ic.id = property_performance.property_id) AND (lp.user_id = auth.uid()))))
+// Table: realtime_logs
+//   Policy "Insert realtime logs" (INSERT, PERMISSIVE) roles={public}
+//     WITH CHECK: true
+//   Policy "Users can view own realtime logs" (SELECT, PERMISSIVE) roles={authenticated}
+//     USING: (auth.uid() = user_id)
 // Table: respostas_captador
 //   Policy "Admin sees all respostas" (ALL, PERMISSIVE) roles={public}
 //     USING: (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND (users.role = 'admin'::user_role))))
@@ -1783,6 +1829,18 @@ export const Constants = {
 //           FOR UPDATE SKIP LOCKED
 //       )
 //       RETURNING wq.id, wq.event_type, wq.payload, wq.status;
+//   END;
+//   $function$
+//   
+// FUNCTION log_realtime_error(text, text, uuid)
+//   CREATE OR REPLACE FUNCTION public.log_realtime_error(p_channel_name text, p_error_message text, p_user_id uuid DEFAULT NULL::uuid)
+//    RETURNS void
+//    LANGUAGE plpgsql
+//    SECURITY DEFINER
+//   AS $function$
+//   BEGIN
+//     INSERT INTO public.realtime_logs (channel_name, error_message, user_id, timestamp)
+//     VALUES (p_channel_name, p_error_message, p_user_id, now());
 //   END;
 //   $function$
 //   
@@ -2142,10 +2200,13 @@ export const Constants = {
 //   CREATE INDEX idx_demandas_vendas_status_demanda ON public.demandas_vendas USING btree (status_demanda)
 // Table: imoveis_captados
 //   CREATE INDEX idx_imoveis_captados_captador_id ON public.imoveis_captados USING btree (captador_id)
+//   CREATE INDEX idx_imoveis_captados_landlord_id ON public.imoveis_captados USING btree (landlord_id)
 //   CREATE INDEX idx_imoveis_captados_status_captacao ON public.imoveis_captados USING btree (status_captacao)
 //   CREATE INDEX idx_imoveis_captados_user_captador_id ON public.imoveis_captados USING btree (user_captador_id)
 //   CREATE INDEX idx_imoveis_captados_user_captador_id_perf ON public.imoveis_captados USING btree (user_captador_id)
 //   CREATE UNIQUE INDEX imoveis_captados_codigo_imovel_key ON public.imoveis_captados USING btree (codigo_imovel)
+// Table: landlord_profiles
+//   CREATE INDEX idx_landlord_profiles_user_id ON public.landlord_profiles USING btree (user_id)
 // Table: notificacoes
 //   CREATE INDEX idx_notificacoes_created ON public.notificacoes USING btree (created_at DESC)
 //   CREATE INDEX idx_notificacoes_lido ON public.notificacoes USING btree (usuario_id, lido)
@@ -2155,6 +2216,8 @@ export const Constants = {
 //   CREATE INDEX idx_respostas_captador_cap_id ON public.respostas_captador USING btree (captador_id)
 //   CREATE INDEX idx_respostas_captador_dem_loc ON public.respostas_captador USING btree (demanda_locacao_id)
 //   CREATE INDEX idx_respostas_captador_dem_ven ON public.respostas_captador USING btree (demanda_venda_id)
+// Table: tenant_proposals
+//   CREATE INDEX idx_tenant_proposals_property_id ON public.tenant_proposals USING btree (property_id)
 // Table: users
 //   CREATE INDEX idx_users_email ON public.users USING btree (email)
 //   CREATE INDEX idx_users_role ON public.users USING btree (role)
