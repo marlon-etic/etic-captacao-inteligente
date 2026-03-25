@@ -752,78 +752,85 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           return { success: true, message: '' }
         },
         submitDemandResponse: async (id, action, payload) => {
-          const { data: authData } = await supabase.auth.getUser()
-          if (!authData?.user) return { success: false, message: 'Usuário não autenticado' }
+          try {
+            const { data: authData, error: authError } = await supabase.auth.getUser()
+            if (authError || !authData?.user)
+              return { success: false, message: 'Usuário não autenticado' }
 
-          let isLocacao = true
-          let dbDemand: any = null
+            let isLocacao = true
+            let dbDemand: any = null
 
-          const { data: locData } = await supabase
-            .from('demandas_locacao')
-            .select('*')
-            .eq('id', id)
-            .single()
-          if (locData) {
-            dbDemand = locData
-          } else {
-            const { data: venData } = await supabase
-              .from('demandas_vendas')
+            const { data: locData } = await supabase
+              .from('demandas_locacao')
               .select('*')
               .eq('id', id)
               .single()
-            if (venData) {
-              dbDemand = venData
-              isLocacao = false
+
+            if (locData) {
+              dbDemand = locData
+            } else {
+              const { data: venData } = await supabase
+                .from('demandas_vendas')
+                .select('*')
+                .eq('id', id)
+                .single()
+              if (venData) {
+                dbDemand = venData
+                isLocacao = false
+              }
             }
+
+            if (!dbDemand) return { success: false, message: 'Demanda não encontrada' }
+
+            if (action === 'encontrei') {
+              const code = payload?.code || `IMV-${Math.floor(Math.random() * 1000)}`
+              const { error } = await supabase.from('imoveis_captados').insert({
+                codigo_imovel: code,
+                endereco:
+                  payload?.neighborhood ||
+                  dbDemand.localizacoes?.[0] ||
+                  dbDemand.bairros?.[0] ||
+                  'Não informado',
+                preco: payload?.value || dbDemand.orcamento_max || dbDemand.valor_maximo || 0,
+                status_captacao: 'pendente',
+                user_captador_id: authData.user.id,
+                captador_id: authData.user.id,
+                demanda_locacao_id: isLocacao ? id : null,
+                demanda_venda_id: !isLocacao ? id : null,
+              })
+
+              if (!error) {
+                const table = isLocacao ? 'demandas_locacao' : 'demandas_vendas'
+                await supabase.from(table).update({ status_demanda: 'atendida' }).eq('id', id)
+              }
+
+              return {
+                success: !error,
+                message: error ? error.message : 'Imóvel vinculado com sucesso',
+              }
+            }
+
+            if (action === 'nao_encontrei') {
+              const { error } = await supabase.from('respostas_captador').insert({
+                demanda_locacao_id: isLocacao ? id : null,
+                demanda_venda_id: !isLocacao ? id : null,
+                captador_id: authData.user.id,
+                resposta: 'nao_encontrei',
+                motivo: payload?.motivo || 'Outro motivo',
+                observacao: payload?.observacao || '',
+              })
+
+              return {
+                success: !error,
+                message: error ? error.message : 'Feedback registrado com sucesso',
+              }
+            }
+
+            return { success: false, message: 'Ação desconhecida' }
+          } catch (err: any) {
+            console.warn('Erro em submitDemandResponse:', err)
+            return { success: false, message: err.message || 'Erro de conexão com o servidor' }
           }
-
-          if (!dbDemand) return { success: false, message: 'Demanda não encontrada' }
-
-          if (action === 'encontrei') {
-            const code = payload?.code || `IMV-${Math.floor(Math.random() * 1000)}`
-            const { error } = await supabase.from('imoveis_captados').insert({
-              codigo_imovel: code,
-              endereco:
-                payload?.neighborhood ||
-                dbDemand.localizacoes?.[0] ||
-                dbDemand.bairros?.[0] ||
-                'Não informado',
-              preco: payload?.value || dbDemand.orcamento_max || dbDemand.valor_maximo || 0,
-              status_captacao: 'pendente',
-              user_captador_id: authData.user.id,
-              captador_id: authData.user.id,
-              demanda_locacao_id: isLocacao ? id : null,
-              demanda_venda_id: !isLocacao ? id : null,
-            })
-
-            if (!error) {
-              const table = isLocacao ? 'demandas_locacao' : 'demandas_vendas'
-              await supabase.from(table).update({ status_demanda: 'atendida' }).eq('id', id)
-            }
-
-            return {
-              success: !error,
-              message: error ? error.message : 'Imóvel vinculado com sucesso',
-            }
-          }
-
-          if (action === 'nao_encontrei') {
-            const { error } = await supabase.from('respostas_captador').insert({
-              demanda_locacao_id: isLocacao ? id : null,
-              demanda_venda_id: !isLocacao ? id : null,
-              captador_id: authData.user.id,
-              resposta: 'nao_encontrei',
-              motivo: payload?.motivo || 'Outro motivo',
-              observacao: payload?.observacao || '',
-            })
-
-            return {
-              success: !error,
-              message: error ? error.message : 'Feedback registrado com sucesso',
-            }
-          }
-
-          return { success: false, message: 'Ação desconhecida' }
         },
         submitIndependentCapture: (payload) => {
           return { success: true, message: '' }

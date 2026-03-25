@@ -72,6 +72,25 @@ const LandlordProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ child
 const AppContent = () => {
   useConnectionHeartbeat()
 
+  React.useEffect(() => {
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      // Intercepta e previne erros globais de "Failed to fetch" causados por rotinas
+      // automáticas do Supabase GoTrue Client (ex: autoRefreshToken no background)
+      if (
+        event.reason &&
+        (event.reason.message === 'Failed to fetch' ||
+          event.reason.name === 'TypeError' ||
+          String(event.reason).includes('Failed to fetch'))
+      ) {
+        console.warn('[System] Suppressed network fetch error from background task:', event.reason)
+        event.preventDefault()
+      }
+    }
+
+    window.addEventListener('unhandledrejection', handleUnhandledRejection)
+    return () => window.removeEventListener('unhandledrejection', handleUnhandledRejection)
+  }, [])
+
   return (
     <BrowserRouter>
       <TooltipProvider>

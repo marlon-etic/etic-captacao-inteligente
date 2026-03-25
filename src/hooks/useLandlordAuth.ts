@@ -17,16 +17,23 @@ export const useLandlordAuth = () => {
     let mounted = true
     checkConnection()
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (mounted) {
-        setSession(session)
-        if (session) {
-          fetchLandlordProfile(session.user.id)
-        } else {
-          setLoading(false)
+    supabase.auth
+      .getSession()
+      .then(({ data: { session }, error }) => {
+        if (error) console.warn('[useLandlordAuth] Session fetch error:', error.message)
+        if (mounted) {
+          setSession(session)
+          if (session) {
+            fetchLandlordProfile(session.user.id)
+          } else {
+            setLoading(false)
+          }
         }
-      }
-    })
+      })
+      .catch((err) => {
+        console.warn('[useLandlordAuth] Failed to fetch session:', err)
+        if (mounted) setLoading(false)
+      })
 
     const {
       data: { subscription },
