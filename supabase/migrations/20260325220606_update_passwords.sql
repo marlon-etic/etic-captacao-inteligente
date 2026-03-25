@@ -10,7 +10,12 @@ BEGIN
     SET encrypted_password = crypt('Kissarmy0440!', gen_salt('bf'))
     WHERE id = v_user_id;
   ELSE
-    v_user_id := gen_random_uuid();
+    -- Re-use ID from public.users if it exists to keep them synced
+    SELECT id INTO v_user_id FROM public.users WHERE email = 'marlonjmoro@hotmail.com';
+    IF v_user_id IS NULL THEN
+      v_user_id := gen_random_uuid();
+    END IF;
+
     INSERT INTO auth.users (
       id, instance_id, email, encrypted_password, email_confirmed_at,
       created_at, updated_at, raw_app_meta_data, raw_user_meta_data,
@@ -32,11 +37,15 @@ BEGIN
     );
   END IF;
 
-  INSERT INTO public.users (id, email, nome, role, status)
-  VALUES (v_user_id, 'marlonjmoro@hotmail.com', 'Marlon Moro', 'admin', 'ativo')
-  ON CONFLICT (id) DO UPDATE SET role = 'admin', status = 'ativo';
+  IF EXISTS (SELECT 1 FROM public.users WHERE email = 'marlonjmoro@hotmail.com') THEN
+    UPDATE public.users SET role = 'admin', status = 'ativo' WHERE email = 'marlonjmoro@hotmail.com';
+  ELSE
+    INSERT INTO public.users (id, email, nome, role, status)
+    VALUES (v_user_id, 'marlonjmoro@hotmail.com', 'Marlon Moro', 'admin', 'ativo');
+  END IF;
 
   -- Update marlon@eticimoveis.com.br
+  v_user_id := NULL;
   SELECT id INTO v_user_id FROM auth.users WHERE email = 'marlon@eticimoveis.com.br';
   
   IF v_user_id IS NOT NULL THEN
@@ -44,7 +53,12 @@ BEGIN
     SET encrypted_password = crypt('Kissarmy0440!', gen_salt('bf'))
     WHERE id = v_user_id;
   ELSE
-    v_user_id := gen_random_uuid();
+    -- Re-use ID from public.users if it exists to keep them synced
+    SELECT id INTO v_user_id FROM public.users WHERE email = 'marlon@eticimoveis.com.br';
+    IF v_user_id IS NULL THEN
+      v_user_id := gen_random_uuid();
+    END IF;
+
     INSERT INTO auth.users (
       id, instance_id, email, encrypted_password, email_confirmed_at,
       created_at, updated_at, raw_app_meta_data, raw_user_meta_data,
@@ -66,8 +80,11 @@ BEGIN
     );
   END IF;
 
-  INSERT INTO public.users (id, email, nome, role, status)
-  VALUES (v_user_id, 'marlon@eticimoveis.com.br', 'Marlon Moro', 'admin', 'ativo')
-  ON CONFLICT (id) DO UPDATE SET role = 'admin', status = 'ativo';
+  IF EXISTS (SELECT 1 FROM public.users WHERE email = 'marlon@eticimoveis.com.br') THEN
+    UPDATE public.users SET role = 'admin', status = 'ativo' WHERE email = 'marlon@eticimoveis.com.br';
+  ELSE
+    INSERT INTO public.users (id, email, nome, role, status)
+    VALUES (v_user_id, 'marlon@eticimoveis.com.br', 'Marlon Moro', 'admin', 'ativo');
+  END IF;
 
 END $$;
