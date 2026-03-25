@@ -22,6 +22,7 @@ import {
   CheckCircle,
   XCircle,
   Search,
+  RefreshCw,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { SupabaseDemand } from '@/hooks/use-supabase-demands'
@@ -99,6 +100,33 @@ export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDeman
     setNaoEncontreiModalOpen(true)
   }
 
+  const handleReabrir = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (isSubmitting) return
+    setIsSubmitting(true)
+    try {
+      const table = demand.tipo === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
+      const { error } = await supabase
+        .from(table)
+        .update({ status_demanda: 'aberta' })
+        .eq('id', demand.id)
+      if (error) throw error
+      toast({
+        title: 'Demanda reaberta!',
+        description: `O status voltou para ABERTA.`,
+        className: 'bg-[#10B981] text-white border-none',
+      })
+    } catch (err: any) {
+      toast({
+        title: 'Erro ao reabrir',
+        description: err.message,
+        variant: 'destructive',
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   const handleNaoEncontreiConfirm = async (
     reason: string,
     obs: string,
@@ -128,7 +156,6 @@ export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDeman
         const table = demand.tipo === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
         await supabase.from(table).update({ status_demanda: 'aberta' }).eq('id', demand.id)
 
-        // Se escolheu tentar em 24h, tentamos prorrogar o prazo se possível
         const prazo = demand.prazos_captacao?.[0]
         if (prazo && prazo.prorrogacoes_usadas < 3) {
           const newPrazo = new Date()
@@ -401,6 +428,22 @@ export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDeman
                   Máximo de 3 prorrogações atingido.
                 </div>
               )}
+            </div>
+          )}
+
+          {demand.status_demanda === 'impossivel' && (
+            <div className="flex flex-col gap-2 mt-3 pt-3 border-t border-[#E5E5E5] pointer-events-auto">
+              <Button
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  handleReabrir(e)
+                }}
+                disabled={isSubmitting}
+                className="w-full min-h-[48px] bg-[#1A3A52] hover:bg-[#2E5F8A] text-white font-bold text-[14px] px-2 shadow-sm transition-transform hover:scale-[1.02] relative z-10"
+              >
+                <RefreshCw className="w-4 h-4 mr-1.5 shrink-0" /> Reabrir Demanda
+              </Button>
             </div>
           )}
         </div>
