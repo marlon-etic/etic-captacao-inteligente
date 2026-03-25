@@ -1514,6 +1514,9 @@ export const Constants = {
 //     USING: true
 //   Policy "Captadores insert captures" (INSERT, PERMISSIVE) roles={authenticated}
 //     WITH CHECK: true
+//   Policy "Captadores update own captures" (UPDATE, PERMISSIVE) roles={authenticated}
+//     USING: ((user_captador_id = auth.uid()) OR (captador_id = auth.uid()))
+//     WITH CHECK: ((user_captador_id = auth.uid()) OR (captador_id = auth.uid()))
 //   Policy "Corretores update captures linked to own vendas demands" (UPDATE, PERMISSIVE) roles={authenticated}
 //     USING: true
 //     WITH CHECK: true
