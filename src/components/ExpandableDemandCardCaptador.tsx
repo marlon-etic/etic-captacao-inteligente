@@ -57,8 +57,13 @@ export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDeman
     icon: Lock,
   }
 
-  if (demand.status_demanda === 'impossivel') {
-    statusConfig = { label: 'PERDIDA / CANCELADA', bg: 'bg-gray-500', text: 'text-white', icon: X }
+  if (demand.status_demanda === 'impossivel' || demand.status_demanda === 'PERDIDA_BAIXA') {
+    statusConfig = {
+      label: demand.status_demanda === 'PERDIDA_BAIXA' ? 'BAIXA AUTOMÁTICA' : 'PERDIDA / CANCELADA',
+      bg: 'bg-gray-500',
+      text: 'text-white',
+      icon: X,
+    }
   } else if (demand.status_demanda === 'atendida') {
     statusConfig = {
       label: 'ATENDIDA / EM NEGOCIAÇÃO',
@@ -187,12 +192,6 @@ export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDeman
           })
           .eq('id', prazo.id)
       }
-
-      window.dispatchEvent(
-        new CustomEvent('demanda-updated', {
-          detail: { tipo: demand.tipo, data: { id: demand.id, status_demanda: finalStatus } },
-        }),
-      )
 
       toast({
         title: 'Feedback Enviado',
@@ -462,7 +461,8 @@ export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDeman
             </div>
           )}
 
-          {demand.status_demanda === 'impossivel' && (
+          {(demand.status_demanda === 'impossivel' ||
+            demand.status_demanda === 'PERDIDA_BAIXA') && (
             <div className="flex flex-col gap-2 mt-3 pt-3 border-t border-[#E5E5E5] pointer-events-auto">
               <Button
                 onClick={(e) => {

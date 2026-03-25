@@ -171,9 +171,9 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
             !prev.some((x) => x.id === d.id) &&
             (d.status_demanda === 'aberta' ||
               d.status_demanda === 'prioritaria' ||
-              d.status_demanda === 'atendida')
+              d.status_demanda === 'atendida' ||
+              d.status_demanda === 'PERDIDA_BAIXA')
           ) {
-            // Add to list if it was reopened from a state not loaded
             const newDemand = formatData([
               { ...d, imoveis_captados: [], respostas_captador: [], prazos_captacao: [] },
             ])[0]
@@ -241,13 +241,13 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
             const d = payload.new
             setDemands((prev) => {
               if (!prev.some((x) => x.id === d.id)) {
-                // If the demand was not in the list (e.g., was 'impossivel' and we only loaded 'aberta'),
-                // and now it's opened or prioritized, we add it.
                 if (
                   d.status_demanda === 'aberta' ||
                   d.status_demanda === 'prioritaria' ||
                   d.status_demanda === 'atendida' ||
-                  d.status_demanda === 'sem_resposta_24h'
+                  d.status_demanda === 'sem_resposta_24h' ||
+                  d.status_demanda === 'impossivel' ||
+                  d.status_demanda === 'PERDIDA_BAIXA'
                 ) {
                   const newDemand = formatData([
                     { ...d, imoveis_captados: [], respostas_captador: [], prazos_captacao: [] },
@@ -389,15 +389,8 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
             setDemands((prev) => {
               return prev.map((d) => {
                 if (d.id === resp.demanda_locacao_id || d.id === resp.demanda_venda_id) {
-                  let newStatus = d.status_demanda
-                  if (resp.resposta === 'nao_encontrei') {
-                    if (resp.motivo === 'Fora do mercado') newStatus = 'impossivel'
-                    else if (resp.motivo === 'Buscando outras opções') newStatus = 'aberta'
-                  }
-
                   return {
                     ...d,
-                    status_demanda: newStatus,
                     respostas_captador: [resp, ...(d.respostas_captador || [])],
                   }
                 }

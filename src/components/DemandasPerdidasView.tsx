@@ -13,7 +13,7 @@ export function DemandasPerdidasView() {
   const filteredDemands = useMemo(() => {
     return demands
       .filter((d) => {
-        if (d.status_demanda !== 'impossivel') return false
+        if (d.status_demanda !== 'impossivel' && d.status_demanda !== 'PERDIDA_BAIXA') return false
 
         if (searchTerm) {
           const term = searchTerm.toLowerCase()
@@ -68,7 +68,8 @@ export function DemandasPerdidasView() {
           <span className="text-[48px] mb-4 opacity-50">📂</span>
           <p className="text-lg font-bold text-[#1A3A52]">Nenhuma demanda perdida.</p>
           <p className="text-sm text-[#666666] mt-1 max-w-[400px]">
-            As demandas marcadas como "Fora do mercado" ou canceladas aparecerão aqui.
+            As demandas marcadas como "Fora do mercado", canceladas ou fechadas por timeout
+            aparecerão aqui.
           </p>
           <Button
             variant="outline"

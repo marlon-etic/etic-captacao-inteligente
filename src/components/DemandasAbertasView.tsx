@@ -22,7 +22,7 @@ export function DemandasAbertasView() {
     return demands
       .filter((d) => {
         const isAberta = d.status_demanda === 'aberta' || d.status_demanda === 'sem_resposta_24h'
-        const isPerdida = d.status_demanda === 'impossivel'
+        const isPerdida = d.status_demanda === 'impossivel' || d.status_demanda === 'PERDIDA_BAIXA'
         const isPrioritizada = !!d.is_prioritaria
 
         // Ensure we only show relevant statuses in this view

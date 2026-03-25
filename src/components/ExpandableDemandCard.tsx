@@ -94,8 +94,13 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
     icon: Lock,
   }
 
-  if (demand.status_demanda === 'impossivel') {
-    statusConfig = { label: 'PERDIDA / CANCELADA', bg: 'bg-gray-500', text: 'text-white', icon: X }
+  if (demand.status_demanda === 'impossivel' || demand.status_demanda === 'PERDIDA_BAIXA') {
+    statusConfig = {
+      label: demand.status_demanda === 'PERDIDA_BAIXA' ? 'BAIXA AUTOMÁTICA' : 'PERDIDA / CANCELADA',
+      bg: 'bg-gray-500',
+      text: 'text-white',
+      icon: X,
+    }
   } else if (demand.status_demanda === 'atendida') {
     statusConfig = {
       label: 'ATENDIDA / EM NEGOCIAÇÃO',
@@ -176,10 +181,6 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
       const { error } = await supabase.from('respostas_captador').insert(payload)
       if (error) throw error
 
-      const table = demand.tipo === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
-      // Always keep it open so it tracks history without closing
-      await supabase.from(table).update({ status_demanda: 'aberta' }).eq('id', demand.id)
-
       toast({
         title: 'Feedback Enviado',
         description: `Sua resposta foi registrada e o solicitante notificado.`,
@@ -231,7 +232,9 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
           ? 'Atendida'
           : demand.status_demanda === 'ganho'
             ? 'Ganho'
-            : 'Perdida',
+            : demand.status_demanda === 'PERDIDA_BAIXA'
+              ? 'Baixa Automática'
+              : 'Perdida',
     createdAt: demand.created_at,
     isPrioritized: demand.is_prioritaria,
     createdBy: demand.sdr_id || demand.corretor_id || '',
@@ -402,8 +405,6 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
         {/* Expanded Details - Histórico e Imóveis Captados */}
         <div className="bg-[#FAFAFA] p-4 border-t border-[#E5E5E5] rounded-b-[16px] animate-in fade-in slide-in-from-top-2 relative z-0">
           <RespostasHistory respostas={respostasNaoEncontrei} />
-
-          {/* We only render the properties list here to show something since it's an expanded card design */}
         </div>
       </Card>
 

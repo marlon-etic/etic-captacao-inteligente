@@ -19,7 +19,7 @@ export default function PerdidosPage() {
 
   const lostDemands = useMemo(() => {
     return [...locacoes, ...vendas]
-      .filter((d) => d.status_demanda === 'impossivel')
+      .filter((d) => d.status_demanda === 'impossivel' || d.status_demanda === 'PERDIDA_BAIXA')
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
   }, [locacoes, vendas])
 
@@ -34,7 +34,6 @@ export default function PerdidosPage() {
 
       if (error) throw error
 
-      // Dispara evento global para atualização local e instantânea em todas as abas
       window.dispatchEvent(
         new CustomEvent('demanda-updated', {
           detail: { tipo: type, data: { id, status_demanda: 'aberta' } },
@@ -87,8 +86,8 @@ export default function PerdidosPage() {
             Nenhuma demanda perdida.
           </h3>
           <p className="text-[14px] text-[#666666] mt-2 text-center max-w-[360px] font-medium leading-relaxed">
-            As demandas marcadas como "Fora do mercado" pelos captadores aparecerão aqui com
-            sincronização em tempo real.
+            As demandas marcadas como "Fora do mercado" pelos captadores ou fechadas por timeout
+            aparecerão aqui.
           </p>
         </div>
       ) : (
@@ -97,8 +96,12 @@ export default function PerdidosPage() {
             {visibleDemands.map((demand, index) => {
               const isAluguel = demand.tipo === 'Aluguel'
               const reason =
-                demand.respostas_captador?.find((r) => r.resposta === 'nao_encontrei')?.motivo ||
-                'Motivo não especificado'
+                demand.status_demanda === 'PERDIDA_BAIXA'
+                  ? demand.respostas_captador?.length
+                    ? 'Todos marcaram PERDIDO ou Timeout'
+                    : 'Timeout Expirado'
+                  : demand.respostas_captador?.find((r) => r.resposta === 'nao_encontrei')
+                      ?.motivo || 'Motivo não especificado'
               const obs =
                 demand.respostas_captador?.find((r) => r.resposta === 'nao_encontrei')
                   ?.observacao || ''
@@ -122,7 +125,7 @@ export default function PerdidosPage() {
                       </h3>
                     </div>
                     <div className="bg-[#F3F4F6] text-[#6B7280] text-[10px] font-black px-2.5 py-1 rounded-md shadow-sm uppercase tracking-widest shrink-0 border border-[#E5E5E5]">
-                      PERDIDA
+                      {demand.status_demanda === 'PERDIDA_BAIXA' ? 'BAIXA AUTOMÁTICA' : 'PERDIDA'}
                     </div>
                   </div>
 
