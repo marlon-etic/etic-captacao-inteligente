@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { CapturedProperty, Demand } from '@/types'
-import { MapPin, DollarSign, Home, Search } from 'lucide-react'
+import { MapPin, DollarSign, Home, Search, Link2, Eye, Handshake, ExternalLink, MessageCircle } from 'lucide-react'
 import { CapturedPropertyModals } from './CapturedPropertyModals'
 import { getPropertyPublicUrl } from '@/lib/propertyUrl'
 import { useToast } from '@/hooks/use-toast'
@@ -129,7 +129,7 @@ export function MyClientsCapturedView({ filterType }: { filterType?: 'Venda' | '
             </p>
           </div>
         ) : (
-          <div className="grid gap-[16px] grid-cols-1 md:grid-cols-2 2xl:grid-cols-3">
+          <div className="grid gap-[16px] grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 relative z-0">
             {propertyGroups.map((group) => {
               const publicUrl = getPropertyPublicUrl(group.property.code)
               const captadorName =
@@ -138,45 +138,55 @@ export function MyClientsCapturedView({ filterType }: { filterType?: 'Venda' | '
               const isVisita = !!group.property.visitaDate && !group.property.fechamentoDate
               const isFechado = !!group.property.fechamentoDate
 
+              const captureDateStr = group.property.capturedAt
+                ? new Date(group.property.capturedAt).toLocaleDateString('pt-BR')
+                : 'Data não disponível'
+
               return (
                 <Card
                   key={group.property.code}
-                  className="border-[2px] border-[#2E5F8A] shadow-sm flex flex-col h-full rounded-[12px]"
+                  className="border-[2px] border-[#2E5F8A] shadow-sm flex flex-col h-full rounded-[12px] overflow-visible relative mt-2 transition-all duration-150 hover:shadow-lg"
                 >
-                  <CardContent className="p-[16px] flex flex-col gap-4 flex-1">
-                    <div className="flex flex-col space-y-2">
-                      <div className="flex items-center gap-2 mb-1 justify-between flex-wrap">
-                        <div className="flex items-center gap-2">
-                          <Badge className="bg-[#1A3A52] font-bold text-[14px]">
-                            {group.property.code}
-                          </Badge>
-                          <Badge
-                            variant="outline"
-                            className="font-bold border-[#E5E5E5] text-[12px]"
-                          >
-                            {group.property.propertyType}
-                          </Badge>
-                        </div>
+                  <CardContent className="p-4 pt-4 flex flex-col gap-4 flex-1 z-0 relative">
+                    <div className="flex flex-col space-y-3 relative z-0">
+                      {/* Date and Status Header */}
+                      <div className="flex justify-between items-center mb-1 relative z-0">
+                        <span className="text-[12px] text-[#4B5563] font-sans font-medium">
+                          {captureDateStr}
+                        </span>
                         <Badge
                           className={cn(
-                            'font-bold border-none text-white text-[12px]',
-                            isFechado ? 'bg-[#4CAF50]' : isVisita ? 'bg-[#FF9800]' : 'bg-[#9C27B0]',
+                            'font-bold border-none text-white text-[12px] px-2 py-1',
+                            isFechado ? 'bg-[#4CAF50]' : isVisita ? 'bg-[#FF9800]' : 'bg-[#3B82F6]',
                           )}
                         >
-                          {isFechado ? '🟢 Negócio' : isVisita ? '🟠 Visita' : '🟣 Captado'}
+                          {isFechado ? '🟢 Negócio' : isVisita ? '🟠 Visita' : '🔵 Captado'}
                         </Badge>
                       </div>
 
-                      <p className="flex items-center gap-2 text-[14px] text-[#333333] font-medium leading-tight mt-2">
-                        <MapPin className="w-4 h-4 text-[#1A3A52] shrink-0" />{' '}
+                      {/* Code and Banner */}
+                      <div className="flex items-center gap-2 relative z-0">
+                        <Badge className="bg-[#1A3A52] font-bold text-[14px]">
+                          {group.property.code}
+                        </Badge>
+                        <Badge
+                          variant="outline"
+                          className="font-bold border-[#E5E5E5] text-[12px] uppercase bg-white text-[#1A3A52]"
+                        >
+                          {group.property.propertyType}
+                        </Badge>
+                      </div>
+
+                      <p className="flex items-center gap-2 text-[14px] text-[#333333] font-medium leading-tight mt-1">
+                        <MapPin className="w-4 h-4 text-[#F44336] shrink-0" />{' '}
                         <span className="truncate">{group.property.neighborhood}</span>
                       </p>
-                      <p className="flex items-center gap-2 text-[16px] font-bold text-[#1A3A52] leading-tight">
-                        <DollarSign className="w-4 h-4 text-[#1A3A52] shrink-0" /> R${' '}
+                      <p className="flex items-center gap-2 text-[16px] font-bold text-[#10B981] tracking-tight">
+                        <DollarSign className="w-4 h-4 text-[#10B981] shrink-0" /> R${' '}
                         {group.property.value?.toLocaleString('pt-BR')}
                       </p>
                       <div className="flex items-center justify-between">
-                        <p className="flex items-center gap-2 text-[14px] text-[#333333] font-medium leading-tight">
+                        <p className="flex items-center gap-2 text-[13px] text-[#666666] font-medium leading-tight">
                           <Home className="w-4 h-4 text-[#1A3A52] shrink-0" />{' '}
                           {group.property.bedrooms} dorm, {group.property.bathrooms} banh,{' '}
                           {group.property.parkingSpots} vagas
@@ -187,16 +197,11 @@ export function MyClientsCapturedView({ filterType }: { filterType?: 'Venda' | '
                           👤 Captador:{' '}
                           <span className="font-medium text-[#333333]">{captadorName}</span>
                         </p>
-                        <p className="text-[12px] text-[#999999] leading-tight">
-                          📅 Captação:{' '}
-                          <span className="font-medium text-[#333333]">
-                            {new Date(group.property.capturedAt || '').toLocaleDateString('pt-BR')}
-                          </span>
-                        </p>
                       </div>
                     </div>
 
-                    <div className="bg-[#F5F5F5] p-3 rounded-[8px] space-y-3 border border-[#E5E5E5] mt-auto">
+                    {/* Customers Block with Actions */}
+                    <div className="bg-[#F5F5F5] p-3 rounded-[8px] space-y-3 border border-[#E5E5E5] mt-auto relative z-10">
                       <h4 className="font-bold text-[13px] text-[#999999] uppercase tracking-wider">
                         Clientes Interessados
                       </h4>
@@ -204,59 +209,88 @@ export function MyClientsCapturedView({ filterType }: { filterType?: 'Venda' | '
                         {group.demands.map((d) => (
                           <div
                             key={d.id}
-                            className="flex flex-col gap-2 border-b border-[#E5E5E5]/50 pb-3 last:border-0 last:pb-0"
+                            className="flex flex-col gap-3 border-b border-[#E5E5E5] pb-4 last:border-0 last:pb-0"
                           >
-                            <div className="flex flex-col gap-1">
-                              <div className="flex items-center justify-between">
-                                <p className="font-bold text-[14px] text-[#1A3A52] leading-tight break-words">
-                                  👤 {d.clientName}
-                                </p>
-                                <span className="text-[12px] font-bold text-[#999999] shrink-0 ml-2">
-                                  {d.status}
-                                </span>
-                              </div>
+                            <div className="flex items-center justify-between">
+                              <p className="font-bold text-[14px] text-[#1A3A52] leading-tight break-words flex items-center gap-1.5">
+                                👤 {d.clientName}
+                              </p>
+                              <span className="text-[11px] font-bold text-[#999999] shrink-0 bg-white px-2 py-0.5 rounded-md border border-[#E5E5E5]">
+                                {d.status}
+                              </span>
                             </div>
 
-                            <div className="flex flex-col gap-2 w-full mt-1">
-                              <div className="flex flex-row gap-[8px] w-full">
+                            <div className="flex flex-col gap-2 w-full mt-1 relative z-20">
+                              <div className="flex flex-col sm:flex-row gap-2 w-full">
                                 <Button
-                                  className="flex-1 bg-[#FF9800] hover:bg-[#F57C00] text-white font-bold min-h-[44px] text-[14px] px-2 shadow-[0_2px_4px_rgba(255,152,0,0.2)]"
-                                  onClick={() => {
-                                    setActionDemand(d)
-                                    setActionProperty(group.property)
-                                    setActionType('visita')
-                                  }}
-                                >
-                                  👁️ Visita
-                                </Button>
-                                <Button
-                                  className="flex-1 bg-[#4CAF50] hover:bg-[#388E3C] text-white font-bold min-h-[44px] text-[14px] px-2 shadow-[0_2px_4px_rgba(76,175,80,0.2)]"
-                                  onClick={() => {
+                                  className="flex-1 bg-[#10B981] hover:bg-[#059669] text-white font-bold min-h-[44px] text-[13px] px-2 shadow-sm transition-all duration-150 active:shadow-inner border-none"
+                                  onClick={(e) => {
+                                    e.preventDefault()
+                                    e.stopPropagation()
+                                    if (import.meta.env.DEV) console.log('🔘 [Click] MyClientsCapturedView Action: negocio')
                                     setActionDemand(d)
                                     setActionProperty(group.property)
                                     setActionType('negocio')
                                   }}
+                                  aria-label="Negócio Fechado"
                                 >
-                                  💰 Negócio
+                                  <Handshake className="w-[14px] h-[14px] mr-1 shrink-0" />
+                                  <span className="truncate">Negócio</span>
+                                </Button>
+                                <Button
+                                  className="flex-1 bg-[#FF9800] hover:bg-[#F57C00] text-white font-bold min-h-[44px] text-[13px] px-2 shadow-sm transition-all duration-150 active:shadow-inner border-none"
+                                  onClick={(e) => {
+                                    e.preventDefault()
+                                    e.stopPropagation()
+                                    if (import.meta.env.DEV) console.log('🔘 [Click] MyClientsCapturedView Action: visita')
+                                    setActionDemand(d)
+                                    setActionProperty(group.property)
+                                    setActionType('visita')
+                                  }}
+                                  aria-label="Visita Agendada"
+                                >
+                                  <Eye className="w-[14px] h-[14px] mr-1 shrink-0" />
+                                  <span className="truncate">Visita</span>
                                 </Button>
                               </div>
-                              <div className="flex flex-row gap-[8px] w-full">
-                                <Button
-                                  variant="outline"
-                                  className={cn(
-                                    'flex-1 font-bold min-h-[44px] border-[#2E5F8A] text-[#1A3A52] text-[14px] bg-white hover:bg-[#F5F5F5] px-2',
-                                    !publicUrl && 'opacity-50 cursor-not-allowed',
+                              <div className="flex flex-col sm:flex-row gap-2 w-full">
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="outline"
+                                      className={cn(
+                                        'flex-1 font-bold min-h-[44px] border-[#2E5F8A] text-[#1A3A52] text-[13px] bg-white hover:bg-[#F5F5F5] px-2 transition-all duration-150 active:shadow-inner',
+                                        !publicUrl && 'opacity-50 cursor-not-allowed text-[#999999] border-[#E5E5E5]',
+                                      )}
+                                      disabled={!publicUrl}
+                                      onClick={(e) => {
+                                        e.preventDefault()
+                                        e.stopPropagation()
+                                        if (import.meta.env.DEV) console.log('🔘 [Click] MyClientsCapturedView Action: ver no site')
+                                        if (publicUrl) {
+                                          window.open(publicUrl, '_blank')
+                                        } else {
+                                          toast({ title: 'Erro', description: 'Ação indisponível', variant: 'destructive' })
+                                        }
+                                      }}
+                                      aria-label="Ver Imóvel"
+                                    >
+                                      <ExternalLink className="w-[14px] h-[14px] mr-1 shrink-0" />
+                                      <span className="truncate">Ver Imóvel</span>
+                                    </Button>
+                                  </TooltipTrigger>
+                                  {!publicUrl && (
+                                    <TooltipContent zIndex={1100}>
+                                      <p>Imóvel sem código cadastrado</p>
+                                    </TooltipContent>
                                   )}
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    if (publicUrl) window.open(publicUrl, '_blank')
-                                  }}
-                                >
-                                  🔗 Ver Imóvel
-                                </Button>
+                                </Tooltip>
                                 <Button
-                                  className="flex-1 bg-[#25D366] hover:bg-[#128C7E] text-white font-bold min-h-[44px] text-[14px] px-2"
-                                  onClick={() => {
+                                  className="flex-1 bg-[#25D366] hover:bg-[#128C7E] text-white font-bold min-h-[44px] text-[13px] px-2 transition-all duration-150 active:shadow-inner border-none"
+                                  onClick={(e) => {
+                                    e.preventDefault()
+                                    e.stopPropagation()
+                                    if (import.meta.env.DEV) console.log('🔘 [Click] MyClientsCapturedView Action: whatsapp')
                                     if (captadorPhone) {
                                       window.open(
                                         `https://wa.me/${captadorPhone.replace(/\D/g, '')}`,
@@ -270,18 +304,24 @@ export function MyClientsCapturedView({ filterType }: { filterType?: 'Venda' | '
                                       })
                                     }
                                   }}
+                                  aria-label="WhatsApp"
                                 >
-                                  💬 WhatsApp
+                                  <MessageCircle className="w-[14px] h-[14px] mr-1 shrink-0" />
+                                  <span className="truncate">WhatsApp</span>
                                 </Button>
                               </div>
                               <Button
                                 variant="destructive"
-                                className="w-full font-bold min-h-[44px] text-[14px] bg-[#F44336] hover:bg-[#d32f2f] text-white"
-                                onClick={() => {
+                                className="w-full font-bold min-h-[44px] text-[13px] bg-[#F44336] hover:bg-[#d32f2f] text-white transition-all duration-150 active:shadow-inner"
+                                onClick={(e) => {
+                                  e.preventDefault()
+                                  e.stopPropagation()
+                                  if (import.meta.env.DEV) console.log('🔘 [Click] MyClientsCapturedView Action: perdido')
                                   setActionDemand(d)
                                   setActionProperty(group.property)
                                   setActionType('lost')
                                 }}
+                                aria-label="Perdido"
                               >
                                 ❌ Perdido
                               </Button>

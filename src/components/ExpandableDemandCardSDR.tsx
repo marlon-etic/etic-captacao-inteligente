@@ -50,6 +50,10 @@ export function ExpandableDemandCardSDR({ demand, onAction }: Props) {
     demand.sdr_id === currentUser?.id ||
     demand.corretor_id === currentUser?.id
 
+  const creationDateStr = demand.created_at
+    ? new Date(demand.created_at).toLocaleDateString('pt-BR')
+    : 'Data não disponível'
+
   return (
     <Card
       onClick={(e) => {
@@ -59,7 +63,7 @@ export function ExpandableDemandCardSDR({ demand, onAction }: Props) {
         onAction?.('details', demand)
       }}
       className={cn(
-        'w-full flex flex-col rounded-[16px] overflow-hidden transition-all duration-500 ease-in-out h-full cursor-pointer group hover:shadow-lg relative z-0',
+        'w-full flex flex-col rounded-[16px] overflow-visible transition-all duration-150 ease-in-out h-full cursor-pointer group hover:shadow-lg relative z-0 mt-2',
         hasProperties
           ? 'border-[2px] border-[#4CAF50] bg-[#F2FBF5] shadow-[0_4px_16px_rgba(76,175,80,0.15)]'
           : demand.is_prioritaria
@@ -71,7 +75,7 @@ export function ExpandableDemandCardSDR({ demand, onAction }: Props) {
       {/* Header */}
       <div
         className={cn(
-          'p-4 border-b flex justify-between items-start shrink-0 transition-colors duration-500 relative',
+          'p-4 pt-4 border-b flex flex-col justify-between shrink-0 transition-colors duration-150 relative z-10',
           hasProperties
             ? 'border-[#4CAF50]/20'
             : demand.is_prioritaria
@@ -79,116 +83,11 @@ export function ExpandableDemandCardSDR({ demand, onAction }: Props) {
               : 'border-[#E5E5E5]',
         )}
       >
-        <div className="flex flex-col gap-1 pr-4">
-          <div className="flex items-center gap-2 flex-wrap">
-            <Badge
-              className={cn(
-                'text-[10px] font-bold px-2 py-0.5 border-none',
-                isSale ? 'bg-[#FF9800]' : 'bg-[#1A3A52]',
-              )}
-            >
-              {isSale ? 'VENDA' : 'ALUGUEL'}
-            </Badge>
-
-            {demand.is_prioritaria && (
-              <Badge className="bg-[#FCD34D] text-[#854D0E] hover:bg-[#FCD34D] text-[10px] font-black px-2 py-0.5 flex items-center gap-1 shadow-sm border border-[#F59E0B]">
-                <Star className="w-3 h-3 fill-current" /> PRIORITÁRIA
-              </Badge>
-            )}
-
-            <span className="text-[12px] font-bold text-[#666666]">
-              {new Date(demand.created_at).toLocaleDateString('pt-BR')}
-            </span>
-          </div>
-          <h3
-            className="text-[18px] font-black text-[#1A3A52] leading-tight mt-1 line-clamp-2"
-            title={demand.nome_cliente}
-          >
-            {demand.nome_cliente}
-          </h3>
-        </div>
-
-        <div className="flex flex-col items-end gap-2 shrink-0">
-          {/* Quick Actions (Visible on hover desktop, always on mobile) */}
-          {isOwnerOrAdmin && (
-            <div className="flex items-center gap-0.5 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity bg-white/80 backdrop-blur-sm rounded-[8px] p-1 border border-[#E5E5E5] shadow-sm z-10 absolute right-4 top-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-[#666666] hover:text-[#1A3A52] hover:bg-[#F5F5F5] rounded-[6px] relative z-10"
-                onClick={(e) => {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  if (import.meta.env.DEV)
-                    console.log(`🔘 [Click] ExpandableDemandCardSDR Quick Action: details`, {
-                      id: demand.id,
-                    })
-                  onAction?.('details', demand)
-                }}
-                title="Ver Detalhes"
-              >
-                <Maximize2 className="w-4 h-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-[#666666] hover:text-[#1A3A52] hover:bg-[#F5F5F5] rounded-[6px] relative z-10"
-                onClick={(e) => {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  if (import.meta.env.DEV)
-                    console.log(`🔘 [Click] ExpandableDemandCardSDR Quick Action: edit`, {
-                      id: demand.id,
-                    })
-                  onAction?.('edit', demand)
-                }}
-                title="Editar Demanda"
-              >
-                <Pencil className="w-4 h-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-[#666666] hover:text-amber-500 hover:bg-amber-50 rounded-[6px] relative z-10"
-                onClick={(e) => {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  if (import.meta.env.DEV)
-                    console.log(`🔘 [Click] ExpandableDemandCardSDR Quick Action: prioritize`, {
-                      id: demand.id,
-                    })
-                  onAction?.('prioritize', demand)
-                }}
-                title={demand.is_prioritaria ? 'Remover Prioridade' : 'Priorizar Demanda'}
-              >
-                <Star
-                  className={cn(
-                    'w-4 h-4',
-                    demand.is_prioritaria && 'fill-amber-500 text-amber-500',
-                  )}
-                />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-[#666666] hover:text-red-500 hover:bg-red-50 rounded-[6px] relative z-10"
-                onClick={(e) => {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  if (import.meta.env.DEV)
-                    console.log(`🔘 [Click] ExpandableDemandCardSDR Quick Action: lost`, {
-                      id: demand.id,
-                    })
-                  onAction?.('lost', demand)
-                }}
-                title="Marcar como Perdido"
-              >
-                <X className="w-4 h-4" />
-              </Button>
-            </div>
-          )}
-
-          <div className="mt-10 lg:mt-0 lg:group-hover:opacity-0 transition-opacity">
+        <div className="flex justify-between items-center mb-3">
+          <span className="text-[12px] text-[#4B5563] font-sans font-medium">
+            {creationDateStr}
+          </span>
+          <div className="flex items-center gap-2">
             {hasProperties ? (
               <Badge className="bg-[#4CAF50] hover:bg-[#388E3C] text-white border-none font-bold text-[12px] px-2 py-1 flex items-center gap-1 shadow-sm shrink-0 transition-transform hover:scale-105">
                 <CheckCircle className="w-3.5 h-3.5" />
@@ -234,10 +133,117 @@ export function ExpandableDemandCardSDR({ demand, onAction }: Props) {
             )}
           </div>
         </div>
+
+        <div className="flex items-center gap-2 flex-wrap mb-2">
+          <Badge
+            className={cn(
+              'text-[10px] font-bold px-2 py-1 border-none',
+              isSale ? 'bg-[#FF9800]' : 'bg-[#1A3A52]',
+            )}
+          >
+            {isSale ? 'VENDA' : 'ALUGUEL'}
+          </Badge>
+
+          {demand.is_prioritaria && (
+            <Badge className="bg-[#FCD34D] text-[#854D0E] hover:bg-[#FCD34D] text-[10px] font-black px-2 py-1 flex items-center gap-1 shadow-sm border border-[#F59E0B]">
+              <Star className="w-3 h-3 fill-current" /> PRIORITÁRIA
+            </Badge>
+          )}
+        </div>
+
+        <h3
+          className="text-[18px] font-black text-[#1A3A52] leading-tight mt-1 line-clamp-2"
+          title={demand.nome_cliente}
+        >
+          {demand.nome_cliente}
+        </h3>
+
+        {/* Quick Actions (Visible on hover desktop, always on mobile via overlay) */}
+        {isOwnerOrAdmin && (
+          <div className="flex items-center justify-end gap-1 mt-2 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity bg-white/90 backdrop-blur-sm rounded-[8px] p-1 border border-[#E5E5E5] shadow-sm relative z-20">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-10 w-10 text-[#666666] hover:text-[#1A3A52] hover:bg-[#F5F5F5] rounded-[6px] relative z-10 transition-all active:shadow-inner"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                if (import.meta.env.DEV)
+                  console.log(`🔘 [Click] ExpandableDemandCardSDR Quick Action: details`, {
+                    id: demand.id,
+                  })
+                onAction?.('details', demand)
+              }}
+              title="Ver Detalhes"
+              aria-label="Ver Detalhes"
+            >
+              <Maximize2 className="w-5 h-5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-10 w-10 text-[#666666] hover:text-[#1A3A52] hover:bg-[#F5F5F5] rounded-[6px] relative z-10 transition-all active:shadow-inner"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                if (import.meta.env.DEV)
+                  console.log(`🔘 [Click] ExpandableDemandCardSDR Quick Action: edit`, {
+                    id: demand.id,
+                  })
+                onAction?.('edit', demand)
+              }}
+              title="Editar Demanda"
+              aria-label="Editar Demanda"
+            >
+              <Pencil className="w-5 h-5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-10 w-10 text-[#666666] hover:text-amber-500 hover:bg-amber-50 rounded-[6px] relative z-10 transition-all active:shadow-inner"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                if (import.meta.env.DEV)
+                  console.log(`🔘 [Click] ExpandableDemandCardSDR Quick Action: prioritize`, {
+                    id: demand.id,
+                  })
+                onAction?.('prioritize', demand)
+              }}
+              title={demand.is_prioritaria ? 'Remover Prioridade' : 'Priorizar Demanda'}
+              aria-label={demand.is_prioritaria ? 'Remover Prioridade' : 'Priorizar Demanda'}
+            >
+              <Star
+                className={cn(
+                  'w-5 h-5',
+                  demand.is_prioritaria && 'fill-amber-500 text-amber-500',
+                )}
+              />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-10 w-10 text-[#666666] hover:text-red-500 hover:bg-red-50 rounded-[6px] relative z-10 transition-all active:shadow-inner"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                if (import.meta.env.DEV)
+                  console.log(`🔘 [Click] ExpandableDemandCardSDR Quick Action: lost`, {
+                    id: demand.id,
+                  })
+                onAction?.('lost', demand)
+              }}
+              title="Marcar como Perdido"
+              aria-label="Marcar como Perdido"
+            >
+              <X className="w-5 h-5" />
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Details */}
-      <div className="p-4 flex flex-col gap-3 flex-1 pointer-events-none">
+      <div className="p-4 flex flex-col gap-3 flex-1 relative z-0">
         <div className="flex items-center gap-2 text-[14px] text-[#333333]">
           <MapPin className="w-4 h-4 text-[#F44336] shrink-0" />
           <span
@@ -271,7 +277,7 @@ export function ExpandableDemandCardSDR({ demand, onAction }: Props) {
 
       {/* Captured Properties List */}
       {hasProperties && (
-        <div className="bg-[#4CAF50]/10 p-4 border-t border-[#4CAF50]/20 flex flex-col gap-2 shrink-0 pointer-events-none">
+        <div className="bg-[#4CAF50]/10 p-4 border-t border-[#4CAF50]/20 flex flex-col gap-2 shrink-0 relative z-0">
           <h4 className="text-[13px] font-black text-[#2E7D32] uppercase tracking-wider mb-1 flex items-center gap-1.5">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#4CAF50] opacity-75"></span>
@@ -309,6 +315,27 @@ export function ExpandableDemandCardSDR({ demand, onAction }: Props) {
           </div>
         </div>
       )}
+
+      {/* Bottom Button Row to ensure easy detail access */}
+      <div className="p-4 border-t border-[#E5E5E5] shrink-0 flex flex-col z-10 relative">
+        <Button
+          variant="outline"
+          className="w-full min-h-[44px] text-[#1A3A52] font-bold border-[#2E5F8A]/20 hover:bg-[#F5F5F5] z-10 transition-all duration-150 active:shadow-inner"
+          onClick={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            if (import.meta.env.DEV)
+              console.log(`🔘 [Click] ExpandableDemandCardSDR Action: details bottom`, {
+                id: demand.id,
+              })
+            onAction?.('details', demand)
+          }}
+          aria-label="Ver Detalhes da Demanda"
+        >
+          <Maximize2 className="w-4 h-4 mr-2" />
+          Ver Detalhes da Demanda
+        </Button>
+      </div>
     </Card>
   )
 }

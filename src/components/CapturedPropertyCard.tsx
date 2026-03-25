@@ -55,6 +55,12 @@ export function CapturedPropertyCard({
     }
     if (onAction) {
       onAction(type, demand, property)
+    } else {
+      toast({
+        title: 'Ação indisponível',
+        description: 'Tente novamente mais tarde.',
+        variant: 'destructive',
+      })
     }
   }
 
@@ -89,13 +95,21 @@ export function CapturedPropertyCard({
     if (import.meta.env.DEV) {
       console.log(`🔘 [Click] CapturedPropertyCard Action: compartilhar`, { url: publicUrl })
     }
-    if (!publicUrl) return
+    if (!publicUrl) {
+      toast({
+        title: 'Erro',
+        description: 'Ação indisponível. Imóvel sem código válido.',
+        variant: 'destructive',
+      })
+      return
+    }
     try {
       await navigator.clipboard.writeText(publicUrl)
       toast({
         title: 'Sucesso',
         description: 'Link copiado para clipboard!',
         duration: 3000,
+        className: 'bg-[#10B981] text-white border-none',
       })
     } catch (err) {
       if (import.meta.env.DEV) console.error('Erro ao copiar link', err)
@@ -111,12 +125,12 @@ export function CapturedPropertyCard({
   const isVisita = !!property.visitaDate && !isClosed
 
   const status = isClosed ? 'Fechado' : isVisita ? 'Visita' : 'Captado'
-  const badgeClass = isClosed
-    ? 'bg-[#4CAF50] text-white border-none'
+  const captadoBadgeClass = isClosed
+    ? 'bg-[#4CAF50] text-white'
     : isVisita
-      ? 'bg-[#FF9800] text-white border-none'
-      : 'bg-[#FF9800] text-white border-none'
-  const badgeIcon = isClosed ? '🟢' : isVisita ? '🟠' : '🟡'
+      ? 'bg-[#FF9800] text-white'
+      : 'bg-[#3B82F6] text-white'
+  const badgeIcon = isClosed ? '🟢' : isVisita ? '🟠' : '🔵'
 
   const propType = property.propertyType || demand?.type || 'Venda'
   const isAluguel = propType === 'Aluguel'
@@ -132,24 +146,37 @@ export function CapturedPropertyCard({
     ? 'text-[#1A3A52] cursor-pointer hover:underline transition-colors relative z-10'
     : 'text-[#333333]'
 
+  const captureDateStr = property.capturedAt
+    ? new Date(property.capturedAt).toLocaleDateString('pt-BR')
+    : 'Data não disponível'
+
   return (
-    <Card className="w-full h-full min-h-[160px] rounded-[12px] border-[2px] border-[#2E5F8A] hover:shadow-[0_8px_16px_rgba(26,58,82,0.15)] flex flex-col bg-[#FFFFFF] transition-all duration-200 p-[16px]">
-      <CardContent className="p-0 flex flex-col flex-1">
-        <div className="flex justify-between items-start mb-[12px] gap-[8px] z-0">
-          <Badge className="font-bold text-[10px] text-white px-2 py-1 bg-[#1A3A52]">
-            {isAluguel ? '🏠 ALUGUEL' : '🏢 VENDA'}
-          </Badge>
+    <Card className="w-full h-full min-h-[160px] rounded-[12px] border-[2px] border-[#2E5F8A] hover:shadow-[0_8px_16px_rgba(26,58,82,0.15)] flex flex-col bg-[#FFFFFF] transition-all duration-150 ease-in-out overflow-visible relative mt-2">
+      <CardContent className="p-4 pt-4 flex flex-col flex-1 z-0 relative">
+        {/* Header: Data and Status */}
+        <div className="flex justify-between items-center mb-3 relative z-0">
+          <span className="text-[12px] text-[#4B5563] font-sans font-medium">
+            {captureDateStr}
+          </span>
           <div
             className={cn(
-              'px-2 py-1 rounded-full font-bold text-[12px] flex items-center gap-1 shadow-sm',
-              badgeClass,
+              'px-2 py-1 rounded-full font-bold text-[12px] flex items-center gap-1 shadow-sm border-none',
+              captadoBadgeClass,
             )}
           >
             <span>{badgeIcon}</span> {status}
           </div>
         </div>
 
-        <div className="flex flex-col gap-[6px] flex-grow z-0 relative">
+        {/* Banner */}
+        <div className="flex items-center gap-2 mb-3 relative z-0">
+          <Badge className="font-bold text-[10px] text-white px-2 py-1 bg-[#1A3A52]">
+            {isAluguel ? '🏠 ALUGUEL' : '🏢 VENDA'}
+          </Badge>
+        </div>
+
+        {/* Content */}
+        <div className="flex flex-col gap-[6px] flex-grow relative z-0">
           <div className="text-[14px] leading-tight flex items-center gap-1">
             <span
               className={cn(interactiveClass, 'font-bold')}
@@ -198,13 +225,6 @@ export function CapturedPropertyCard({
           <p className="text-[12px] text-[#999999] mt-[2px]">
             👤 Solicitado por: <span className="text-[#333333] font-medium">{solicitanteName}</span>
           </p>
-          <p className="text-[12px] text-[#999999]">
-            📅 Data de Captação:{' '}
-            <span className="text-[#333333] font-medium">
-              {new Date(property.capturedAt || '').toLocaleDateString('pt-BR')}
-            </span>
-          </p>
-
           <div
             className={cn(
               'mt-[8px] pt-[8px] border-t border-[#E5E5E5] text-[12px]',
@@ -216,15 +236,16 @@ export function CapturedPropertyCard({
           </div>
         </div>
 
-        <div className="flex flex-col gap-[8px] mt-[16px] w-full z-10 relative">
-          <div className="flex flex-row gap-[8px] w-full">
+        {/* Buttons Footer */}
+        <div className="flex flex-col gap-2 mt-4 pt-4 border-t border-[#E5E5E5] w-full z-10 relative">
+          <div className="flex flex-row gap-2 w-full">
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   className={cn(
-                    'flex-1 font-bold min-h-[44px] relative z-10',
+                    'flex-1 font-bold min-h-[44px] relative z-10 transition-all duration-150 active:shadow-inner hover:bg-opacity-90',
                     publicUrl
-                      ? 'bg-[#1A3A52] enabled:hover:bg-[#153045] text-white'
+                      ? 'bg-[#1A3A52] text-white hover:bg-[#153045]'
                       : 'bg-[#E5E5E5] text-[#999999]',
                   )}
                   disabled={!publicUrl}
@@ -236,15 +257,24 @@ export function CapturedPropertyCard({
                         url: publicUrl,
                       })
                     }
-                    if (publicUrl) window.open(publicUrl, '_blank')
+                    if (publicUrl) {
+                      window.open(publicUrl, '_blank')
+                    } else {
+                      toast({
+                        title: 'Erro',
+                        description: 'Ação indisponível. URL não encontrada.',
+                        variant: 'destructive',
+                      })
+                    }
                   }}
+                  aria-label="Ver no site"
                 >
                   <ExternalLink className="w-[16px] h-[16px] mr-[6px]" />
-                  Ver no site
+                  <span className="truncate">Ver no site</span>
                 </Button>
               </TooltipTrigger>
               {!publicUrl && (
-                <TooltipContent>
+                <TooltipContent zIndex={1100}>
                   <p>Imóvel sem código cadastrado</p>
                 </TooltipContent>
               )}
@@ -255,93 +285,97 @@ export function CapturedPropertyCard({
                 <Button
                   variant="outline"
                   className={cn(
-                    'w-[44px] h-[44px] p-0 shrink-0 border-[2px] relative z-10',
+                    'w-[44px] h-[44px] p-0 shrink-0 border-[2px] relative z-10 transition-all duration-150 active:shadow-inner',
                     publicUrl
-                      ? 'border-[#2E5F8A] text-[#1A3A52] enabled:hover:bg-[#F5F5F5]'
+                      ? 'border-[#2E5F8A] text-[#1A3A52] hover:bg-[#F5F5F5]'
                       : 'border-[#E5E5E5] text-[#999999]',
                   )}
                   disabled={!publicUrl}
                   onClick={handleCopyLink}
-                  title="Compartilhar"
+                  aria-label="Compartilhar"
                 >
                   <Share2 className="w-[16px] h-[16px]" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>
+              <TooltipContent zIndex={1100}>
                 <p>{publicUrl ? 'Compartilhar' : 'Imóvel sem código cadastrado'}</p>
               </TooltipContent>
             </Tooltip>
           </div>
 
-          <div className="flex flex-row flex-wrap gap-[8px] w-full">
+          <div className="flex flex-col lg:flex-row flex-wrap gap-2 w-full">
             {isCaptador && (
-              <>
+              <div className="flex gap-2 w-full">
                 <Button
                   variant="outline"
-                  className="flex-1 min-h-[44px] border-[#2E5F8A] text-[#1A3A52] enabled:hover:bg-[#F5F5F5] font-bold text-[12px] px-2 relative z-10"
+                  className="flex-1 min-h-[44px] border-[#2E5F8A] text-[#1A3A52] hover:bg-[#F5F5F5] font-bold text-[12px] px-2 relative z-10 transition-all duration-150 active:shadow-inner"
                   onClick={(e) => handleActionClick(e, 'edit')}
+                  aria-label="Editar"
                 >
                   <Edit2 className="w-[14px] h-[14px] mr-1" />
                   Editar
                 </Button>
                 <Button
                   variant="outline"
-                  className="flex-1 min-h-[44px] border-[#2E5F8A] text-[#1A3A52] enabled:hover:bg-[#F5F5F5] font-bold text-[12px] px-2 relative z-10"
+                  className="flex-1 min-h-[44px] border-[#2E5F8A] text-[#1A3A52] hover:bg-[#F5F5F5] font-bold text-[12px] px-2 relative z-10 transition-all duration-150 active:shadow-inner"
                   onClick={(e) => handleActionClick(e, 'details')}
+                  aria-label="Ver Detalhes"
                 >
                   <BookOpen className="w-[14px] h-[14px] mr-1" />
                   Ver Detalhes
                 </Button>
                 <Button
-                  className="w-full min-h-[44px] bg-[#25D366] enabled:hover:bg-[#128C7E] text-white font-bold text-[12px] px-2 border border-transparent relative z-10"
+                  className="w-full lg:w-auto flex-1 min-h-[44px] bg-[#25D366] hover:bg-[#128C7E] text-white font-bold text-[12px] px-2 border border-transparent relative z-10 transition-all duration-150 active:shadow-inner"
                   onClick={handleWhatsApp}
+                  aria-label="Contatar Solicitante"
                 >
                   <MessageCircle className="w-[14px] h-[14px] mr-1" />
-                  Contatar Solicitante
+                  Contatar
                 </Button>
-              </>
+              </div>
             )}
 
             {isSDRCorretorAdmin && (
-              <>
+              <div className="flex flex-col sm:flex-row gap-2 w-full">
                 <Button
-                  className="flex-1 min-h-[44px] bg-[#10B981] enabled:hover:bg-[#059669] text-white font-bold text-[12px] px-2 border border-transparent shadow-sm relative z-10"
+                  className="flex-1 min-h-[44px] bg-[#10B981] hover:bg-[#059669] text-white font-bold text-[12px] px-2 shadow-sm relative z-10 transition-all duration-150 active:shadow-inner border-none"
                   onClick={(e) => handleActionClick(e, 'vincular')}
+                  aria-label="Vincular"
                 >
-                  <Link2 className="w-[14px] h-[14px] mr-1" />
-                  <span className="hidden sm:inline">VINCULAR</span>
-                  <span className="sm:hidden">Vincular</span>
+                  <Link2 className="w-[14px] h-[14px] mr-1 shrink-0" />
+                  <span className="truncate">VINCULAR</span>
                 </Button>
+
                 {!isClosed && !isVisita && (
                   <Button
-                    className="flex-1 min-h-[44px] bg-[#FF9800] enabled:hover:bg-[#F57C00] text-white font-bold text-[12px] px-2 border border-transparent shadow-sm relative z-10"
+                    className="flex-1 min-h-[44px] bg-[#FF9800] hover:bg-[#F57C00] text-white font-bold text-[12px] px-2 shadow-sm relative z-10 transition-all duration-150 active:shadow-inner border-none"
                     onClick={(e) => handleActionClick(e, 'visita')}
+                    aria-label="Visita Agendada"
                   >
-                    <Eye className="w-[14px] h-[14px] mr-1" />
-                    <span className="hidden sm:inline">VISITA AGENDADA</span>
-                    <span className="sm:hidden">Visita</span>
+                    <Eye className="w-[14px] h-[14px] mr-1 shrink-0" />
+                    <span className="truncate">VISITA AGENDADA</span>
                   </Button>
                 )}
                 {isVisita && (
                   <Button
-                    className="flex-1 min-h-[44px] bg-[#4CAF50] enabled:hover:bg-[#388E3C] text-white font-bold text-[12px] px-2 border border-transparent shadow-sm relative z-10"
+                    className="flex-1 min-h-[44px] bg-[#4CAF50] hover:bg-[#388E3C] text-white font-bold text-[12px] px-2 shadow-sm relative z-10 transition-all duration-150 active:shadow-inner border-none"
                     onClick={(e) => handleActionClick(e, 'negocio')}
+                    aria-label="Negócio Fechado"
                   >
-                    <Handshake className="w-[14px] h-[14px] mr-1" />
-                    <span className="hidden sm:inline">NEGÓCIO FECHADO</span>
-                    <span className="sm:hidden">Fechado</span>
+                    <Handshake className="w-[14px] h-[14px] mr-1 shrink-0" />
+                    <span className="truncate">NEGÓCIO FECHADO</span>
                   </Button>
                 )}
                 <Button
                   variant="outline"
-                  className="flex-1 min-h-[44px] border-[#2E5F8A] text-[#1A3A52] enabled:hover:bg-[#F5F5F5] font-bold text-[12px] px-2 relative z-10"
+                  className="flex-1 min-h-[44px] border-[#2E5F8A] text-[#1A3A52] hover:bg-[#F5F5F5] font-bold text-[12px] px-2 relative z-10 transition-all duration-150 active:shadow-inner"
                   onClick={(e) => handleActionClick(e, 'details')}
+                  aria-label="Ver Detalhes"
                 >
-                  <BookOpen className="w-[14px] h-[14px] mr-1" />
-                  <span className="hidden sm:inline">Ver Detalhes</span>
-                  <span className="sm:hidden">Detalhes</span>
+                  <BookOpen className="w-[14px] h-[14px] mr-1 shrink-0" />
+                  <span className="truncate">Ver Detalhes</span>
                 </Button>
-              </>
+              </div>
             )}
           </div>
         </div>
