@@ -291,7 +291,7 @@ export function MyDemandsView({ filterType }: Props) {
         </div>
 
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-[16px] w-full items-stretch">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-[16px] w-full items-stretch pt-4 pb-4">
             {[1, 2, 3].map((i) => (
               <Skeleton key={i} className="h-[250px] w-full rounded-[16px] animate-fast-pulse" />
             ))}
@@ -332,7 +332,7 @@ export function MyDemandsView({ filterType }: Props) {
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-[16px] w-full items-stretch relative z-0">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-[16px] w-full items-stretch relative z-0 pt-4 pb-4">
             {filteredDemands.map((demand) => (
               <ExpandableDemandCardSDR key={demand.id} demand={demand} onAction={handleAction} />
             ))}
@@ -374,3 +374,4 @@ export function MyDemandsView({ filterType }: Props) {
     </div>
   )
 }
+

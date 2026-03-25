@@ -50,14 +50,14 @@ export function ImovelCapturadoCard({ property, demand, isOwnerOrAdmin = true }:
     e.preventDefault()
     e.stopPropagation()
     if (import.meta.env.DEV) {
-      console.log(`🔘 [Click] ImovelCapturadoCard Action: compartilhar`, { url: publicUrl })
+      console.log(`Botão [compartilhar] clicado em [ImovelCapturadoCard]`, { url: publicUrl })
     }
     if (!publicUrl) return
     try {
       await navigator.clipboard.writeText(publicUrl)
       toast({
         title: 'Sucesso',
-        description: 'Link copiado para clipboard!',
+        description: 'Link copiado!',
         duration: 3000,
         className: 'bg-[#10B981] text-white border-none',
       })
@@ -119,7 +119,7 @@ export function ImovelCapturadoCard({ property, demand, isOwnerOrAdmin = true }:
   return (
     <div
       className={cn(
-        'bg-white rounded-[12px] shadow-[0_2px_4px_rgba(26,58,82,0.05)] border-[2px] flex flex-col transition-all duration-200 overflow-hidden',
+        'bg-white rounded-[12px] shadow-[0_2px_4px_rgba(26,58,82,0.05)] border-[2px] flex flex-col transition-all duration-200 overflow-visible relative z-0',
         isFechado
           ? 'border-[#10B981]/50 bg-[#ECFDF5]'
           : isVisitado
@@ -128,7 +128,7 @@ export function ImovelCapturadoCard({ property, demand, isOwnerOrAdmin = true }:
       )}
     >
       <div className={cn(
-        "p-3 border-b flex justify-between items-center pointer-events-none",
+        "p-3 border-b flex justify-between items-center pointer-events-none rounded-t-[10px]",
         isFechado ? "border-[#10B981]/20 bg-[#10B981]/5" : isVisitado ? "border-[#F59E0B]/20 bg-[#F59E0B]/5" : "border-[#E5E5E5] bg-[#F5F5F5]/50"
       )}>
         <div className="flex items-center gap-2 pointer-events-auto">
@@ -140,7 +140,7 @@ export function ImovelCapturadoCard({ property, demand, isOwnerOrAdmin = true }:
               onClick={(e) => {
                 e.stopPropagation()
                 if (import.meta.env.DEV) {
-                  console.log(`🔘 [Click] ImovelCapturadoCard URL clicked`, { url: publicUrl })
+                  console.log(`Botão [url] clicado em [ImovelCapturadoCard]`, { url: publicUrl })
                 }
                 if (!publicUrl) e.preventDefault()
               }}
@@ -174,13 +174,13 @@ export function ImovelCapturadoCard({ property, demand, isOwnerOrAdmin = true }:
         </span>
       </div>
 
-      <div className="p-4 pt-3 border-t border-[#E5E5E5] flex flex-col gap-[8px] bg-white mt-auto relative z-10 pointer-events-auto">
-        <div className="flex gap-[8px] w-full">
+      <div className="p-4 pt-4 pb-4 border-t border-[#E5E5E5] flex flex-col lg:flex-row gap-[8px] bg-white mt-auto relative z-10 pointer-events-auto rounded-b-[10px]">
+        <div className="flex gap-[8px] w-full lg:w-auto">
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
                 className={cn(
-                  'flex-1 font-bold text-[13px] min-h-[44px] transition-all duration-150 active:shadow-inner relative z-10',
+                  'flex-1 font-bold text-[13px] h-11 min-h-[44px] transition-all duration-150 ease-in-out active:shadow-inner relative z-10',
                   publicUrl
                     ? 'bg-[#1A3A52] text-white hover:bg-[#153045] shadow-sm'
                     : 'bg-[#E5E5E5] text-[#999999]',
@@ -190,13 +190,13 @@ export function ImovelCapturadoCard({ property, demand, isOwnerOrAdmin = true }:
                   e.preventDefault()
                   e.stopPropagation()
                   if (import.meta.env.DEV) {
-                    console.log(`🔘 [Click] ImovelCapturadoCard Action: ver no site`, {
+                    console.log(`Botão [ver_no_site] clicado em [ImovelCapturadoCard]`, {
                       url: publicUrl,
                     })
                   }
                   if (publicUrl) window.open(publicUrl, '_blank')
                 }}
-                aria-label="Ver no site"
+                aria-label={`Ver imóvel ${p.code} no site`}
               >
                 <ExternalLink className="w-4 h-4 mr-2" /> <span className="truncate">Ver no site</span>
               </Button>
@@ -209,14 +209,14 @@ export function ImovelCapturadoCard({ property, demand, isOwnerOrAdmin = true }:
               <Button
                 variant="outline"
                 className={cn(
-                  'w-[44px] h-[44px] p-0 shrink-0 border-[2px] transition-all duration-150 active:shadow-inner relative z-10',
+                  'w-[44px] lg:w-[44px] h-11 min-h-[44px] p-0 shrink-0 border-[2px] transition-all duration-150 ease-in-out active:shadow-inner relative z-10',
                   publicUrl
-                    ? 'border-[#2E5F8A] text-[#1A3A52] hover:bg-[#F5F5F5]'
+                    ? 'border-[#2E5F8A] text-[#1A3A52] hover:bg-gray-100 dark:hover:bg-gray-800'
                     : 'border-[#E5E5E5] text-[#999999]',
                 )}
                 disabled={!publicUrl}
                 onClick={handleCopyLink}
-                aria-label="Compartilhar"
+                aria-label={`Compartilhar imóvel ${p.code}`}
               >
                 <Share2 className="w-4 h-4" />
               </Button>
@@ -228,16 +228,16 @@ export function ImovelCapturadoCard({ property, demand, isOwnerOrAdmin = true }:
         </div>
 
         {isOwnerOrAdmin && (
-          <div className="flex flex-col sm:flex-row gap-[8px] w-full">
+          <div className="flex flex-col sm:flex-row gap-[8px] w-full flex-1">
             {!isFechado && !isVisitado && (
               <Button
                 variant="outline"
-                className="flex-1 font-bold text-[13px] border-[#F59E0B] text-[#B45309] hover:bg-[#FFFBEB] min-h-[44px] transition-all duration-150 active:shadow-inner relative z-10 shadow-sm"
+                className="flex-1 font-bold text-[13px] border-[#F59E0B] text-[#B45309] hover:bg-[#FFFBEB] h-11 min-h-[44px] transition-all duration-150 ease-in-out active:shadow-inner relative z-10 shadow-sm"
                 onClick={(e) => {
                   e.preventDefault()
                   e.stopPropagation()
                   if (import.meta.env.DEV) {
-                    console.log(`🔘 [Click] ImovelCapturadoCard Action: marcar visitado`, {
+                    console.log(`Botão [visitado] clicado em [ImovelCapturadoCard]`, {
                       id: p.id,
                     })
                   }
@@ -245,7 +245,7 @@ export function ImovelCapturadoCard({ property, demand, isOwnerOrAdmin = true }:
                 }}
                 isLoading={isUpdating}
                 loadingText="Salvando..."
-                aria-label="Marcar como Visitado"
+                aria-label={`Marcar imóvel ${p.code} como Visitado`}
               >
                 <Eye className="w-4 h-4 mr-1.5" /> <span className="truncate">Visitado</span>
               </Button>
@@ -253,18 +253,18 @@ export function ImovelCapturadoCard({ property, demand, isOwnerOrAdmin = true }:
 
             {!isFechado && (
               <Button
-                className="flex-1 font-bold text-[13px] bg-[#10B981] hover:bg-[#059669] text-white min-h-[44px] shadow-sm border border-transparent transition-all duration-150 active:shadow-inner relative z-10"
+                className="flex-1 font-bold text-[13px] bg-[#10B981] hover:bg-[#059669] text-white h-11 min-h-[44px] shadow-sm border border-transparent transition-all duration-150 ease-in-out active:shadow-inner relative z-10"
                 onClick={(e) => {
                   e.preventDefault()
                   e.stopPropagation()
                   if (import.meta.env.DEV) {
-                    console.log(`🔘 [Click] ImovelCapturadoCard Action: marcar fechado`, { id: p.id })
+                    console.log(`Botão [fechado] clicado em [ImovelCapturadoCard]`, { id: p.id })
                   }
                   updateEtapa('fechado')
                 }}
                 isLoading={isUpdating}
                 loadingText="Salvando..."
-                aria-label="Marcar como Fechado"
+                aria-label={`Marcar imóvel ${p.code} como Fechado`}
               >
                 <CheckCircle2 className="w-4 h-4 mr-1.5" /> <span className="truncate">Fechado</span>
               </Button>
@@ -273,18 +273,18 @@ export function ImovelCapturadoCard({ property, demand, isOwnerOrAdmin = true }:
             {(isFechado || isVisitado) && (
               <Button
                 variant="outline"
-                className="w-full sm:flex-1 font-bold text-[13px] border-[#E5E5E5] text-[#666666] hover:text-[#1A3A52] hover:bg-[#F5F5F5] min-h-[44px] transition-all duration-150 active:shadow-inner relative z-10"
+                className="w-full sm:flex-1 font-bold text-[13px] border-[#E5E5E5] text-[#666666] hover:text-[#1A3A52] hover:bg-gray-100 dark:hover:bg-gray-800 h-11 min-h-[44px] transition-all duration-150 ease-in-out active:shadow-inner relative z-10"
                 onClick={(e) => {
                   e.preventDefault()
                   e.stopPropagation()
                   if (import.meta.env.DEV) {
-                    console.log(`🔘 [Click] ImovelCapturadoCard Action: desfazer etapa`, { id: p.id })
+                    console.log(`Botão [desfazer] clicado em [ImovelCapturadoCard]`, { id: p.id })
                   }
                   updateEtapa(isFechado ? 'visitado' : 'capturado')
                 }}
                 isLoading={isUpdating}
                 loadingText="Desfazendo..."
-                aria-label="Desfazer etapa"
+                aria-label={`Desfazer etapa do imóvel ${p.code}`}
               >
                 <RotateCcw className="w-4 h-4 mr-1.5" /> <span className="truncate">Desfazer</span>
               </Button>

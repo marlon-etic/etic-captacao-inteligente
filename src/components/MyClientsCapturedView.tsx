@@ -116,7 +116,7 @@ export function MyClientsCapturedView({ filterType }: { filterType?: 'Venda' | '
         </div>
 
         {isFiltering ? (
-          <div className="grid gap-[16px] grid-cols-1 md:grid-cols-2 2xl:grid-cols-3">
+          <div className="grid gap-[16px] grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 pt-4 pb-4">
             {[1, 2].map((i) => (
               <Skeleton key={i} className="h-[250px] w-full rounded-[12px] animate-fast-pulse" />
             ))}
@@ -129,7 +129,7 @@ export function MyClientsCapturedView({ filterType }: { filterType?: 'Venda' | '
             </p>
           </div>
         ) : (
-          <div className="grid gap-[16px] grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 relative z-0">
+          <div className="grid gap-[16px] grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 relative z-0 pt-4 pb-4">
             {propertyGroups.map((group) => {
               const publicUrl = getPropertyPublicUrl(group.property.code)
               const captadorName =
@@ -140,19 +140,22 @@ export function MyClientsCapturedView({ filterType }: { filterType?: 'Venda' | '
 
               const captureDateStr = group.property.capturedAt
                 ? new Date(group.property.capturedAt).toLocaleDateString('pt-BR')
-                : 'Data não disponível'
+                : (() => {
+                    if (import.meta.env.DEV) console.error(`Data ausente em card [${group.property.code}]`)
+                    return 'Data pendente'
+                  })()
 
               return (
                 <Card
                   key={group.property.code}
-                  className="border-[2px] border-[#2E5F8A] shadow-sm flex flex-col h-full rounded-[12px] overflow-visible relative mt-2 transition-all duration-150 hover:shadow-lg"
+                  className="border-[2px] border-[#2E5F8A] shadow-sm flex flex-col h-full rounded-[16px] overflow-visible relative transition-all duration-150 ease-in-out hover:shadow-lg pt-4 pb-4"
                 >
-                  <CardContent className="p-4 pt-4 flex flex-col gap-4 flex-1 z-0 relative">
+                  <CardContent className="p-4 pt-0 flex flex-col gap-4 flex-1 z-0 relative pointer-events-none">
                     <div className="flex flex-col space-y-3 relative z-0">
                       {/* Date and Status Header */}
-                      <div className="flex justify-between items-center mb-1 relative z-0">
-                        <span className="text-[12px] text-[#4B5563] font-sans font-medium">
-                          {captureDateStr}
+                      <div className="flex justify-between items-center mb-1 relative z-0 pointer-events-auto">
+                        <span className="text-[12px] text-[#6B7280] font-sans font-bold bg-white px-2.5 py-1 rounded-[6px] border border-[#E5E5E5] shadow-sm flex items-center gap-1.5">
+                          📅 {captureDateStr}
                         </span>
                         <Badge
                           className={cn(
@@ -165,7 +168,7 @@ export function MyClientsCapturedView({ filterType }: { filterType?: 'Venda' | '
                       </div>
 
                       {/* Code and Banner */}
-                      <div className="flex items-center gap-2 relative z-0">
+                      <div className="flex items-center gap-2 relative z-0 pointer-events-auto">
                         <Badge className="bg-[#1A3A52] font-bold text-[14px]">
                           {group.property.code}
                         </Badge>
@@ -177,22 +180,22 @@ export function MyClientsCapturedView({ filterType }: { filterType?: 'Venda' | '
                         </Badge>
                       </div>
 
-                      <p className="flex items-center gap-2 text-[14px] text-[#333333] font-medium leading-tight mt-1">
+                      <p className="flex items-center gap-2 text-[14px] text-[#333333] font-medium leading-tight mt-1 pointer-events-auto">
                         <MapPin className="w-4 h-4 text-[#F44336] shrink-0" />{' '}
                         <span className="truncate">{group.property.neighborhood}</span>
                       </p>
-                      <p className="flex items-center gap-2 text-[16px] font-bold text-[#10B981] tracking-tight">
+                      <p className="flex items-center gap-2 text-[16px] font-bold text-[#10B981] tracking-tight pointer-events-auto">
                         <DollarSign className="w-4 h-4 text-[#10B981] shrink-0" /> R${' '}
                         {group.property.value?.toLocaleString('pt-BR')}
                       </p>
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between pointer-events-auto">
                         <p className="flex items-center gap-2 text-[13px] text-[#666666] font-medium leading-tight">
                           <Home className="w-4 h-4 text-[#1A3A52] shrink-0" />{' '}
                           {group.property.bedrooms} dorm, {group.property.bathrooms} banh,{' '}
                           {group.property.parkingSpots} vagas
                         </p>
                       </div>
-                      <div className="flex flex-col gap-1 border-t border-[#E5E5E5] pt-2 mt-2">
+                      <div className="flex flex-col gap-1 border-t border-[#E5E5E5] pt-2 mt-2 pointer-events-auto">
                         <p className="text-[12px] text-[#999999] leading-tight">
                           👤 Captador:{' '}
                           <span className="font-medium text-[#333333]">{captadorName}</span>
@@ -201,7 +204,7 @@ export function MyClientsCapturedView({ filterType }: { filterType?: 'Venda' | '
                     </div>
 
                     {/* Customers Block with Actions */}
-                    <div className="bg-[#F5F5F5] p-3 rounded-[8px] space-y-3 border border-[#E5E5E5] mt-auto relative z-10">
+                    <div className="bg-[#F5F5F5] p-3 rounded-[8px] space-y-3 border border-[#E5E5E5] mt-auto relative z-10 pointer-events-auto">
                       <h4 className="font-bold text-[13px] text-[#999999] uppercase tracking-wider">
                         Clientes Interessados
                       </h4>
@@ -220,34 +223,34 @@ export function MyClientsCapturedView({ filterType }: { filterType?: 'Venda' | '
                               </span>
                             </div>
 
-                            <div className="flex flex-col gap-2 w-full mt-1 relative z-20">
+                            <div className="flex flex-col lg:flex-row gap-2 w-full mt-1 relative z-20">
                               <div className="flex flex-col sm:flex-row gap-2 w-full">
                                 <Button
-                                  className="flex-1 bg-[#10B981] hover:bg-[#059669] text-white font-bold min-h-[44px] text-[13px] px-2 shadow-sm transition-all duration-150 active:shadow-inner border-none"
+                                  className="flex-1 bg-[#10B981] hover:bg-[#059669] text-white font-bold h-11 min-h-[44px] text-[13px] px-2 shadow-sm transition-all duration-150 ease-in-out active:shadow-inner border-none"
                                   onClick={(e) => {
                                     e.preventDefault()
                                     e.stopPropagation()
-                                    if (import.meta.env.DEV) console.log('🔘 [Click] MyClientsCapturedView Action: negocio')
+                                    if (import.meta.env.DEV) console.log('Botão [negocio] clicado em [MyClientsCapturedView]')
                                     setActionDemand(d)
                                     setActionProperty(group.property)
                                     setActionType('negocio')
                                   }}
-                                  aria-label="Negócio Fechado"
+                                  aria-label={`Fechar negócio para cliente ${d.clientName}`}
                                 >
                                   <Handshake className="w-[14px] h-[14px] mr-1 shrink-0" />
                                   <span className="truncate">Negócio</span>
                                 </Button>
                                 <Button
-                                  className="flex-1 bg-[#FF9800] hover:bg-[#F57C00] text-white font-bold min-h-[44px] text-[13px] px-2 shadow-sm transition-all duration-150 active:shadow-inner border-none"
+                                  className="flex-1 bg-[#FF9800] hover:bg-[#F57C00] text-white font-bold h-11 min-h-[44px] text-[13px] px-2 shadow-sm transition-all duration-150 ease-in-out active:shadow-inner border-none"
                                   onClick={(e) => {
                                     e.preventDefault()
                                     e.stopPropagation()
-                                    if (import.meta.env.DEV) console.log('🔘 [Click] MyClientsCapturedView Action: visita')
+                                    if (import.meta.env.DEV) console.log('Botão [visita] clicado em [MyClientsCapturedView]')
                                     setActionDemand(d)
                                     setActionProperty(group.property)
                                     setActionType('visita')
                                   }}
-                                  aria-label="Visita Agendada"
+                                  aria-label={`Agendar visita para cliente ${d.clientName}`}
                                 >
                                   <Eye className="w-[14px] h-[14px] mr-1 shrink-0" />
                                   <span className="truncate">Visita</span>
@@ -259,21 +262,21 @@ export function MyClientsCapturedView({ filterType }: { filterType?: 'Venda' | '
                                     <Button
                                       variant="outline"
                                       className={cn(
-                                        'flex-1 font-bold min-h-[44px] border-[#2E5F8A] text-[#1A3A52] text-[13px] bg-white hover:bg-[#F5F5F5] px-2 transition-all duration-150 active:shadow-inner',
+                                        'flex-1 font-bold h-11 min-h-[44px] border-[#2E5F8A] text-[#1A3A52] text-[13px] bg-white hover:bg-gray-100 dark:hover:bg-gray-800 px-2 transition-all duration-150 ease-in-out active:shadow-inner',
                                         !publicUrl && 'opacity-50 cursor-not-allowed text-[#999999] border-[#E5E5E5]',
                                       )}
                                       disabled={!publicUrl}
                                       onClick={(e) => {
                                         e.preventDefault()
                                         e.stopPropagation()
-                                        if (import.meta.env.DEV) console.log('🔘 [Click] MyClientsCapturedView Action: ver no site')
+                                        if (import.meta.env.DEV) console.log('Botão [ver_no_site] clicado em [MyClientsCapturedView]')
                                         if (publicUrl) {
                                           window.open(publicUrl, '_blank')
                                         } else {
                                           toast({ title: 'Erro', description: 'Ação indisponível', variant: 'destructive' })
                                         }
                                       }}
-                                      aria-label="Ver Imóvel"
+                                      aria-label={`Ver imóvel ${group.property.code} no site`}
                                     >
                                       <ExternalLink className="w-[14px] h-[14px] mr-1 shrink-0" />
                                       <span className="truncate">Ver Imóvel</span>
@@ -286,11 +289,11 @@ export function MyClientsCapturedView({ filterType }: { filterType?: 'Venda' | '
                                   )}
                                 </Tooltip>
                                 <Button
-                                  className="flex-1 bg-[#25D366] hover:bg-[#128C7E] text-white font-bold min-h-[44px] text-[13px] px-2 transition-all duration-150 active:shadow-inner border-none"
+                                  className="flex-1 bg-[#25D366] hover:bg-[#128C7E] text-white font-bold h-11 min-h-[44px] text-[13px] px-2 transition-all duration-150 ease-in-out active:shadow-inner border-none"
                                   onClick={(e) => {
                                     e.preventDefault()
                                     e.stopPropagation()
-                                    if (import.meta.env.DEV) console.log('🔘 [Click] MyClientsCapturedView Action: whatsapp')
+                                    if (import.meta.env.DEV) console.log('Botão [whatsapp] clicado em [MyClientsCapturedView]')
                                     if (captadorPhone) {
                                       window.open(
                                         `https://wa.me/${captadorPhone.replace(/\D/g, '')}`,
@@ -304,7 +307,7 @@ export function MyClientsCapturedView({ filterType }: { filterType?: 'Venda' | '
                                       })
                                     }
                                   }}
-                                  aria-label="WhatsApp"
+                                  aria-label={`Contatar captador via WhatsApp`}
                                 >
                                   <MessageCircle className="w-[14px] h-[14px] mr-1 shrink-0" />
                                   <span className="truncate">WhatsApp</span>
@@ -312,16 +315,16 @@ export function MyClientsCapturedView({ filterType }: { filterType?: 'Venda' | '
                               </div>
                               <Button
                                 variant="destructive"
-                                className="w-full font-bold min-h-[44px] text-[13px] bg-[#F44336] hover:bg-[#d32f2f] text-white transition-all duration-150 active:shadow-inner"
+                                className="w-full font-bold h-11 min-h-[44px] text-[13px] bg-[#F44336] hover:bg-[#d32f2f] text-white transition-all duration-150 ease-in-out active:shadow-inner"
                                 onClick={(e) => {
                                   e.preventDefault()
                                   e.stopPropagation()
-                                  if (import.meta.env.DEV) console.log('🔘 [Click] MyClientsCapturedView Action: perdido')
+                                  if (import.meta.env.DEV) console.log('Botão [perdido] clicado em [MyClientsCapturedView]')
                                   setActionDemand(d)
                                   setActionProperty(group.property)
                                   setActionType('lost')
                                 }}
-                                aria-label="Perdido"
+                                aria-label={`Marcar imóvel como perdido para ${d.clientName}`}
                               >
                                 ❌ Perdido
                               </Button>
@@ -359,3 +362,4 @@ export function MyClientsCapturedView({ filterType }: { filterType?: 'Venda' | '
     </div>
   )
 }
+

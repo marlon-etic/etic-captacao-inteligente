@@ -46,19 +46,20 @@ export function CapturedPropertyCard({
 
   const handleActionClick = (
     e: React.MouseEvent,
-    type: 'visita' | 'negocio' | 'details' | 'edit' | 'vincular',
+    type: 'visita' | 'proposta' | 'negocio' | 'lost' | 'history' | 'details' | 'edit' | 'vincular',
   ) => {
     e.preventDefault()
     e.stopPropagation()
     if (import.meta.env.DEV) {
-      console.log(`🔘 [Click] CapturedPropertyCard Action: ${type}`, { code: property.code })
+      console.log(`Botão [${type}] clicado em [CapturedPropertyCard]`, { code: property.code })
     }
     if (onAction) {
       onAction(type, demand, property)
     } else {
+      if (import.meta.env.DEV) console.warn(`Clique bloqueado em [${type}]`)
       toast({
         title: 'Ação indisponível',
-        description: 'Tente novamente mais tarde.',
+        description: 'Tente novamente.',
         variant: 'destructive',
       })
     }
@@ -68,7 +69,7 @@ export function CapturedPropertyCard({
     e.preventDefault()
     e.stopPropagation()
     if (import.meta.env.DEV) {
-      console.log(`🔘 [Click] CapturedPropertyCard Action: whatsapp`, {
+      console.log(`Botão [whatsapp] clicado em [CapturedPropertyCard]`, {
         phone: solicitanteUser?.phone,
       })
     }
@@ -93,7 +94,7 @@ export function CapturedPropertyCard({
     e.preventDefault()
     e.stopPropagation()
     if (import.meta.env.DEV) {
-      console.log(`🔘 [Click] CapturedPropertyCard Action: compartilhar`, { url: publicUrl })
+      console.log(`Botão [compartilhar] clicado em [CapturedPropertyCard]`, { url: publicUrl })
     }
     if (!publicUrl) {
       toast({
@@ -107,7 +108,7 @@ export function CapturedPropertyCard({
       await navigator.clipboard.writeText(publicUrl)
       toast({
         title: 'Sucesso',
-        description: 'Link copiado para clipboard!',
+        description: 'Link copiado!',
         duration: 3000,
         className: 'bg-[#10B981] text-white border-none',
       })
@@ -144,14 +145,17 @@ export function CapturedPropertyCard({
 
   const captureDateStr = property.capturedAt
     ? new Date(property.capturedAt).toLocaleDateString('pt-BR')
-    : 'Data pendente'
+    : (() => {
+        if (import.meta.env.DEV) console.error(`Data ausente em card [${property.code}]`)
+        return 'Data pendente'
+      })()
 
   return (
-    <Card className="w-full h-full min-h-[160px] rounded-[16px] border-[2px] border-[#2E5F8A] hover:shadow-[0_8px_24px_rgba(26,58,82,0.12)] flex flex-col bg-[#FFFFFF] transition-all duration-150 ease-in-out overflow-hidden relative group">
+    <Card className="w-full h-full min-h-[160px] rounded-[16px] border-[2px] border-[#2E5F8A] hover:shadow-[0_8px_24px_rgba(26,58,82,0.12)] flex flex-col bg-[#FFFFFF] transition-all duration-150 ease-in-out overflow-visible relative group">
       {/* Header: Data and Status */}
-      <div className="p-4 border-b border-[#E5E5E5] bg-[#F5F5F5]/50 shrink-0 relative z-10 pointer-events-none">
+      <div className="p-4 pt-4 border-b border-[#E5E5E5] bg-[#F5F5F5]/50 shrink-0 relative z-10 pointer-events-none rounded-t-[14px]">
         <div className="flex justify-between items-center mb-3">
-          <span className="text-[12px] text-[#4B5563] font-sans font-bold bg-white px-2.5 py-1 rounded-[6px] border border-[#E5E5E5] shadow-sm flex items-center gap-1.5 pointer-events-auto">
+          <span className="text-[12px] text-[#6B7280] font-sans font-bold bg-white px-2.5 py-1 rounded-[6px] border border-[#E5E5E5] shadow-sm flex items-center gap-1.5 pointer-events-auto">
             📅 {captureDateStr}
           </span>
           <div
@@ -173,7 +177,7 @@ export function CapturedPropertyCard({
       </div>
 
       {/* Content */}
-      <CardContent className="p-4 pt-4 flex flex-col flex-1 z-0 relative gap-[8px] pointer-events-none">
+      <CardContent className="p-4 pt-4 flex flex-col flex-1 z-0 relative gap-[12px] pointer-events-none">
         <div className="text-[15px] leading-tight flex items-center gap-1 pointer-events-auto">
           <span className="font-bold text-[#333333]">🏷️ Código:</span>
           <a
@@ -187,7 +191,7 @@ export function CapturedPropertyCard({
             onClick={(e) => {
               e.stopPropagation()
               if (import.meta.env.DEV) {
-                console.log(`🔘 [Click] CapturedPropertyCard URL clicked`, { url: publicUrl })
+                console.log(`Botão [url] clicado em [CapturedPropertyCard]`, { url: publicUrl })
               }
               if (!publicUrl) e.preventDefault()
             }}
@@ -216,13 +220,13 @@ export function CapturedPropertyCard({
       </CardContent>
 
       {/* Buttons Footer */}
-      <div className="p-4 pt-3 mt-auto border-t border-[#E5E5E5] bg-white flex flex-col gap-[8px] z-10 relative pointer-events-auto">
-        <div className="flex flex-row gap-[8px] w-full">
+      <div className="p-4 pt-4 pb-4 mt-auto border-t border-[#E5E5E5] bg-white flex flex-col gap-[8px] z-10 relative pointer-events-auto rounded-b-[14px]">
+        <div className="flex flex-col lg:flex-row gap-[8px] w-full">
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
                 className={cn(
-                  'flex-1 font-bold min-h-[44px] relative z-10 transition-all duration-150 active:shadow-inner hover:opacity-90 shadow-sm',
+                  'flex-1 font-bold h-11 min-h-[44px] relative z-10 transition-all duration-150 ease-in-out active:shadow-inner shadow-sm',
                   publicUrl
                     ? 'bg-[#1A3A52] text-white hover:bg-[#153045]'
                     : 'bg-[#E5E5E5] text-[#999999]',
@@ -232,7 +236,7 @@ export function CapturedPropertyCard({
                   e.preventDefault()
                   e.stopPropagation()
                   if (import.meta.env.DEV) {
-                    console.log(`🔘 [Click] CapturedPropertyCard Action: ver no site`, {
+                    console.log(`Botão [ver_no_site] clicado em [CapturedPropertyCard]`, {
                       url: publicUrl,
                     })
                   }
@@ -246,7 +250,7 @@ export function CapturedPropertyCard({
                     })
                   }
                 }}
-                aria-label="Ver no site"
+                aria-label={`Ver imóvel ${property.code} no site`}
               >
                 <ExternalLink className="w-[16px] h-[16px] mr-[6px]" />
                 <span className="truncate">Ver no site</span>
@@ -264,14 +268,14 @@ export function CapturedPropertyCard({
               <Button
                 variant="outline"
                 className={cn(
-                  'w-[44px] h-[44px] p-0 shrink-0 border-[2px] relative z-10 transition-all duration-150 active:shadow-inner bg-white',
+                  'w-full lg:w-[44px] h-11 min-h-[44px] p-0 shrink-0 border-[2px] relative z-10 transition-all duration-150 ease-in-out active:shadow-inner bg-white',
                   publicUrl
-                    ? 'border-[#2E5F8A] text-[#1A3A52] hover:bg-[#F5F5F5]'
+                    ? 'border-[#2E5F8A] text-[#1A3A52] hover:bg-gray-100 dark:hover:bg-gray-800'
                     : 'border-[#E5E5E5] text-[#999999]',
                 )}
                 disabled={!publicUrl}
                 onClick={handleCopyLink}
-                aria-label="Compartilhar"
+                aria-label={`Compartilhar imóvel ${property.code}`}
               >
                 <Share2 className="w-[16px] h-[16px]" />
               </Button>
@@ -282,29 +286,29 @@ export function CapturedPropertyCard({
           </Tooltip>
         </div>
 
-        <div className="flex flex-col sm:flex-row flex-wrap gap-[8px] w-full">
+        <div className="flex flex-col lg:flex-row flex-wrap gap-[8px] w-full">
           {isCaptador && (
             <>
               <Button
                 variant="outline"
-                className="flex-1 min-h-[44px] border-[#2E5F8A]/30 text-[#1A3A52] bg-white hover:bg-[#F5F5F5] font-bold text-[13px] px-2 relative z-10 transition-all duration-150 active:shadow-inner"
+                className="flex-1 h-11 min-h-[44px] border-[#2E5F8A]/30 text-[#1A3A52] bg-white hover:bg-gray-100 dark:hover:bg-gray-800 font-bold text-[13px] px-2 relative z-10 transition-all duration-150 ease-in-out active:shadow-inner"
                 onClick={(e) => handleActionClick(e, 'edit')}
-                aria-label="Editar"
+                aria-label={`Editar imóvel ${property.code}`}
               >
                 <Edit2 className="w-[14px] h-[14px] mr-1" />
                 Editar
               </Button>
               <Button
                 variant="outline"
-                className="flex-1 min-h-[44px] border-[#2E5F8A]/30 text-[#1A3A52] bg-white hover:bg-[#F5F5F5] font-bold text-[13px] px-2 relative z-10 transition-all duration-150 active:shadow-inner"
+                className="flex-1 h-11 min-h-[44px] border-[#2E5F8A]/30 text-[#1A3A52] bg-white hover:bg-gray-100 dark:hover:bg-gray-800 font-bold text-[13px] px-2 relative z-10 transition-all duration-150 ease-in-out active:shadow-inner"
                 onClick={(e) => handleActionClick(e, 'details')}
-                aria-label="Ver Detalhes"
+                aria-label={`Ver detalhes do imóvel ${property.code}`}
               >
                 <BookOpen className="w-[14px] h-[14px] mr-1" />
                 Detalhes
               </Button>
               <Button
-                className="w-full sm:w-auto flex-1 min-h-[44px] bg-[#25D366] hover:bg-[#128C7E] text-white font-bold text-[13px] px-2 border border-transparent relative z-10 transition-all duration-150 active:shadow-inner shadow-sm"
+                className="w-full lg:w-auto flex-1 h-11 min-h-[44px] bg-[#25D366] hover:bg-[#128C7E] text-white font-bold text-[13px] px-2 border border-transparent relative z-10 transition-all duration-150 ease-in-out active:shadow-inner shadow-sm"
                 onClick={handleWhatsApp}
                 aria-label="Contatar Solicitante"
               >
@@ -317,9 +321,9 @@ export function CapturedPropertyCard({
           {isSDRCorretorAdmin && (
             <>
               <Button
-                className="flex-1 min-h-[44px] bg-[#10B981] hover:bg-[#059669] text-white font-bold text-[13px] px-2 shadow-sm relative z-10 transition-all duration-150 active:shadow-inner border-none"
+                className="flex-1 h-11 min-h-[44px] bg-[#10B981] hover:bg-[#059669] text-white font-bold text-[13px] px-2 shadow-sm relative z-10 transition-all duration-150 ease-in-out active:shadow-inner border-none"
                 onClick={(e) => handleActionClick(e, 'vincular')}
-                aria-label="Vincular"
+                aria-label={`Vincular imóvel ${property.code}`}
               >
                 <Link2 className="w-[16px] h-[16px] mr-1.5 shrink-0" />
                 <span className="truncate">VINCULAR</span>
@@ -327,9 +331,9 @@ export function CapturedPropertyCard({
 
               {!isClosed && !isVisita && (
                 <Button
-                  className="flex-1 min-h-[44px] bg-[#FF9800] hover:bg-[#F57C00] text-white font-bold text-[13px] px-2 shadow-sm relative z-10 transition-all duration-150 active:shadow-inner border-none"
+                  className="flex-1 h-11 min-h-[44px] bg-[#FF9800] hover:bg-[#F57C00] text-white font-bold text-[13px] px-2 shadow-sm relative z-10 transition-all duration-150 ease-in-out active:shadow-inner border-none"
                   onClick={(e) => handleActionClick(e, 'visita')}
-                  aria-label="Visita Agendada"
+                  aria-label={`Agendar visita para imóvel ${property.code}`}
                 >
                   <Eye className="w-[16px] h-[16px] mr-1.5 shrink-0" />
                   <span className="truncate">VISITA</span>
@@ -337,9 +341,9 @@ export function CapturedPropertyCard({
               )}
               {isVisita && (
                 <Button
-                  className="flex-1 min-h-[44px] bg-[#4CAF50] hover:bg-[#388E3C] text-white font-bold text-[13px] px-2 shadow-sm relative z-10 transition-all duration-150 active:shadow-inner border-none"
+                  className="flex-1 h-11 min-h-[44px] bg-[#4CAF50] hover:bg-[#388E3C] text-white font-bold text-[13px] px-2 shadow-sm relative z-10 transition-all duration-150 ease-in-out active:shadow-inner border-none"
                   onClick={(e) => handleActionClick(e, 'negocio')}
-                  aria-label="Negócio Fechado"
+                  aria-label={`Fechar negócio para imóvel ${property.code}`}
                 >
                   <Handshake className="w-[16px] h-[16px] mr-1.5 shrink-0" />
                   <span className="truncate">NEGÓCIO</span>
@@ -347,9 +351,9 @@ export function CapturedPropertyCard({
               )}
               <Button
                 variant="outline"
-                className="flex-1 min-h-[44px] border-[#2E5F8A]/30 text-[#1A3A52] bg-white hover:bg-[#F5F5F5] font-bold text-[13px] px-2 relative z-10 transition-all duration-150 active:shadow-inner w-full sm:w-auto"
+                className="flex-1 h-11 min-h-[44px] border-[#2E5F8A]/30 text-[#1A3A52] bg-white hover:bg-gray-100 dark:hover:bg-gray-800 font-bold text-[13px] px-2 relative z-10 transition-all duration-150 ease-in-out active:shadow-inner w-full lg:w-auto"
                 onClick={(e) => handleActionClick(e, 'details')}
-                aria-label="Ver Detalhes"
+                aria-label={`Ver detalhes do imóvel ${property.code}`}
               >
                 <BookOpen className="w-[16px] h-[16px] mr-1.5 shrink-0" />
                 <span className="truncate">Detalhes</span>

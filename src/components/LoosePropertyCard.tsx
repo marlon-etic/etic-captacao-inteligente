@@ -29,14 +29,21 @@ export function LoosePropertyCard({
     e.preventDefault()
     e.stopPropagation()
     if (import.meta.env.DEV) {
-      console.log(`🔘 [Click] LoosePropertyCard Action: compartilhar`, { url: publicUrl })
+      console.log(`Botão [compartilhar] clicado em [LoosePropertyCard]`, { url: publicUrl })
     }
-    if (!publicUrl) return
+    if (!publicUrl) {
+      toast({
+        title: 'Erro',
+        description: 'Ação indisponível. Imóvel sem código válido.',
+        variant: 'destructive',
+      })
+      return
+    }
     try {
       await navigator.clipboard.writeText(publicUrl)
       toast({
         title: 'Sucesso',
-        description: 'Link copiado para clipboard!',
+        description: 'Link copiado!',
         duration: 3000,
         className: 'bg-[#10B981] text-white border-none',
       })
@@ -54,7 +61,7 @@ export function LoosePropertyCard({
     e.preventDefault()
     e.stopPropagation()
     if (import.meta.env.DEV) {
-      console.log(`🔘 [Click] LoosePropertyCard Action: vincular a um cliente`, {
+      console.log(`Botão [vincular] clicado em [LoosePropertyCard]`, {
         code: property.code,
       })
     }
@@ -66,12 +73,19 @@ export function LoosePropertyCard({
     else if (onClaim) onClaim(property)
   }
 
+  const captureDateStr = property.capturedAt
+    ? new Date(property.capturedAt).toLocaleDateString('pt-BR')
+    : (() => {
+        if (import.meta.env.DEV) console.error(`Data ausente em card [${property.code}]`)
+        return 'Data pendente'
+      })()
+
   return (
     <>
-      <Card className="overflow-hidden flex flex-col h-full border-[2px] border-[#2E5F8A] hover:shadow-[0_8px_24px_rgba(26,58,82,0.15)] relative transition-all bg-[#FFFFFF] rounded-[16px] z-0 group">
+      <Card className="overflow-visible flex flex-col h-full border-[2px] border-[#2E5F8A] hover:shadow-[0_8px_24px_rgba(26,58,82,0.15)] relative transition-all duration-150 ease-in-out bg-[#FFFFFF] rounded-[16px] z-0 group">
         
         {/* Imagem do Imóvel no Topo com Data */}
-        <div className="relative h-48 w-full bg-[#F5F5F5] pointer-events-none shrink-0 border-b border-[#E5E5E5]">
+        <div className="relative h-48 w-full bg-[#F5F5F5] pointer-events-none shrink-0 border-b border-[#E5E5E5] rounded-t-[14px] overflow-hidden">
           <img
             src={
               property.photoUrl ||
@@ -83,7 +97,7 @@ export function LoosePropertyCard({
           {/* Header absoluto sobre a imagem com pointer-events-auto */}
           <div className="absolute top-3 left-3 right-3 flex justify-between items-start pointer-events-auto z-10">
             <Badge className="font-sans font-bold bg-white/90 text-[#333333] border border-[#E5E5E5] shadow-sm backdrop-blur-md px-2.5 py-1">
-              📅 {new Date(property.capturedAt || '').toLocaleDateString('pt-BR')}
+              📅 {captureDateStr}
             </Badge>
             <Badge
               className="font-bold shadow-sm bg-[#10B981] text-white border-none px-2.5 py-1 uppercase tracking-wide"
@@ -99,7 +113,7 @@ export function LoosePropertyCard({
         </div>
 
         {/* Conteúdo Central */}
-        <CardContent className="p-4 flex-grow flex flex-col gap-3 pointer-events-none relative z-0">
+        <CardContent className="p-4 flex-grow flex flex-col gap-[12px] pointer-events-none relative z-0">
           <div className="flex justify-between items-start gap-2">
             <div className="text-[15px] leading-tight flex items-center gap-1 pointer-events-auto">
               <span className="font-bold text-[#333333]">🏷️ Código:</span>
@@ -114,7 +128,7 @@ export function LoosePropertyCard({
                 onClick={(e) => {
                   e.stopPropagation()
                   if (import.meta.env.DEV) {
-                    console.log(`🔘 [Click] LoosePropertyCard Action: url clicked`, {
+                    console.log(`Botão [url] clicado em [LoosePropertyCard]`, {
                       url: publicUrl,
                     })
                   }
@@ -177,13 +191,13 @@ export function LoosePropertyCard({
         </CardContent>
 
         {/* Rodapé com Botões de Ação */}
-        <div className="p-4 pt-3 mt-auto border-t border-[#E5E5E5] bg-white flex flex-col gap-[8px] z-10 relative pointer-events-auto">
-          <div className="flex flex-row gap-[8px] w-full">
+        <div className="p-4 pt-4 pb-4 mt-auto border-t border-[#E5E5E5] bg-white flex flex-col lg:flex-row gap-[8px] z-10 relative pointer-events-auto rounded-b-[14px]">
+          <div className="flex flex-row gap-[8px] w-full lg:w-auto">
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   className={cn(
-                    'flex-1 font-bold min-h-[44px] relative z-10 transition-all duration-150 active:shadow-inner hover:opacity-90 shadow-sm',
+                    'flex-1 font-bold h-11 min-h-[44px] relative z-10 transition-all duration-150 ease-in-out active:shadow-inner hover:opacity-90 shadow-sm',
                     publicUrl
                       ? 'bg-[#1A3A52] text-white hover:bg-[#153045]'
                       : 'bg-[#E5E5E5] text-[#999999] hover:bg-[#E5E5E5] cursor-not-allowed',
@@ -193,13 +207,13 @@ export function LoosePropertyCard({
                     e.preventDefault()
                     e.stopPropagation()
                     if (import.meta.env.DEV) {
-                      console.log(`🔘 [Click] LoosePropertyCard Action: ver no site`, {
+                      console.log(`Botão [ver_no_site] clicado em [LoosePropertyCard]`, {
                         url: publicUrl,
                       })
                     }
                     if (publicUrl) window.open(publicUrl, '_blank')
                   }}
-                  aria-label="Ver no site"
+                  aria-label={`Ver imóvel ${property.code} no site`}
                 >
                   <ExternalLink className="w-[16px] h-[16px] mr-[6px]" />
                   <span className="truncate">Ver no site</span>
@@ -217,14 +231,14 @@ export function LoosePropertyCard({
                 <Button
                   variant="outline"
                   className={cn(
-                    'w-[44px] h-[44px] p-0 shrink-0 border-[2px] relative z-10 transition-all duration-150 active:shadow-inner bg-white',
+                    'w-[44px] h-11 min-h-[44px] p-0 shrink-0 border-[2px] relative z-10 transition-all duration-150 ease-in-out active:shadow-inner bg-white',
                     publicUrl
-                      ? 'border-[#2E5F8A] text-[#1A3A52] hover:bg-[#F5F5F5]'
+                      ? 'border-[#2E5F8A] text-[#1A3A52] hover:bg-gray-100 dark:hover:bg-gray-800'
                       : 'border-[#E5E5E5] text-[#999999] hover:bg-transparent cursor-not-allowed',
                   )}
                   disabled={!publicUrl}
                   onClick={handleCopyLink}
-                  aria-label="Compartilhar"
+                  aria-label={`Compartilhar imóvel ${property.code}`}
                 >
                   <Share2 className="w-[16px] h-[16px]" />
                 </Button>
@@ -235,11 +249,11 @@ export function LoosePropertyCard({
             </Tooltip>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-[8px] w-full">
+          <div className="flex flex-col sm:flex-row flex-1 gap-[8px] w-full">
             <Button
-              className="flex-1 bg-[#10B981] hover:bg-[#059669] text-white font-bold min-h-[44px] text-[13px] px-2 shadow-sm transition-all duration-150 active:shadow-inner border-none relative z-10 w-full sm:w-auto"
+              className="flex-1 bg-[#10B981] hover:bg-[#059669] text-white font-bold h-11 min-h-[44px] text-[13px] px-2 shadow-sm transition-all duration-150 ease-in-out active:shadow-inner border-none relative z-10 w-full"
               onClick={handleOpenVinculacao}
-              aria-label="Vincular a um cliente"
+              aria-label={`Vincular imóvel ${property.code} a um cliente`}
             >
               <Link2 className="w-[16px] h-[16px] mr-1.5 shrink-0" />
               <span className="truncate">VINCULAR CLIENTE</span>
@@ -248,18 +262,18 @@ export function LoosePropertyCard({
             {onIgnore && (
               <Button
                 variant="outline"
-                className="w-full sm:flex-1 min-h-[44px] font-bold border-[#E5E5E5] text-[#333333] hover:bg-[#F5F5F5] transition-all duration-150 active:shadow-inner relative z-10"
+                className="w-full sm:flex-1 h-11 min-h-[44px] font-bold border-[#E5E5E5] text-[#333333] hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-150 ease-in-out active:shadow-inner relative z-10"
                 onClick={(e) => {
                   e.preventDefault()
                   e.stopPropagation()
                   if (import.meta.env.DEV) {
-                    console.log(`🔘 [Click] LoosePropertyCard Action: ignorar`, {
+                    console.log(`Botão [ignorar] clicado em [LoosePropertyCard]`, {
                       code: property.code,
                     })
                   }
                   onIgnore(property.code)
                 }}
-                aria-label="Não me interessa"
+                aria-label={`Ignorar imóvel ${property.code}`}
               >
                 <X className="w-[16px] h-[16px] mr-1.5" />
                 <span className="truncate">Não interessa</span>

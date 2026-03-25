@@ -239,7 +239,7 @@ export function CapturedPropertiesView({
         </div>
 
         {isFiltering || loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-[16px] w-full">
+          <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-[16px] w-full pt-4 pb-4">
             {[1, 2, 3].map((i) => (
               <Skeleton key={i} className="h-[250px] w-full rounded-[12px] animate-fast-pulse" />
             ))}
@@ -253,7 +253,7 @@ export function CapturedPropertiesView({
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-[16px] w-full relative z-0">
+          <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-[16px] w-full relative z-0 pt-4 pb-4">
             {filteredAndSorted.map(({ demand, property }, index) => (
               <div
                 key={`${demand?.id || 'loose'}-${property.code}`}
@@ -327,3 +327,4 @@ export function CapturedPropertiesView({
     </div>
   )
 }
+

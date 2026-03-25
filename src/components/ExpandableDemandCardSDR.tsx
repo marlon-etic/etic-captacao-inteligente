@@ -16,6 +16,7 @@ import {
 import { cn } from '@/lib/utils'
 import { PrazoCounter } from './PrazoCounter'
 import useAppStore from '@/stores/useAppStore'
+import { useToast } from '@/hooks/use-toast'
 
 interface Props {
   demand: SupabaseDemand
@@ -24,6 +25,7 @@ interface Props {
 
 export function ExpandableDemandCardSDR({ demand, onAction }: Props) {
   const { currentUser } = useAppStore()
+  const { toast } = useToast()
 
   const isSale = demand.tipo === 'Venda'
   const hasProperties = demand.imoveis_captados && demand.imoveis_captados.length > 0
@@ -49,19 +51,43 @@ export function ExpandableDemandCardSDR({ demand, onAction }: Props) {
 
   const creationDateStr = demand.created_at
     ? new Date(demand.created_at).toLocaleDateString('pt-BR')
-    : 'Data não disponível'
+    : (() => {
+        if (import.meta.env.DEV) console.error(`Data ausente em card demanda [${demand.id}]`)
+        return 'Data pendente'
+      })()
+
+  const handleActionClick = (
+    e: React.MouseEvent,
+    action: 'details' | 'edit' | 'lost' | 'prioritize',
+  ) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (import.meta.env.DEV) {
+      console.log(`Botão [${action}] clicado em [ExpandableDemandCardSDR]`, { id: demand.id })
+    }
+    if (onAction) {
+      onAction(action, demand)
+    } else {
+      if (import.meta.env.DEV) console.warn(`Clique bloqueado em [${action}]`)
+      toast({
+        title: 'Ação indisponível',
+        description: 'Tente novamente.',
+        variant: 'destructive',
+      })
+    }
+  }
 
   return (
     <Card
       onClick={(e) => {
-        if ((e.target as HTMLElement).closest('button')) return
+        if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('a')) return
         if (import.meta.env.DEV) {
           console.log(`🔘 [Click] ExpandableDemandCardSDR Card Action: details`, { id: demand.id })
         }
         onAction?.('details', demand)
       }}
       className={cn(
-        'w-full flex flex-col rounded-[16px] overflow-hidden transition-all duration-150 ease-in-out h-full cursor-pointer group hover:shadow-[0_8px_24px_rgba(26,58,82,0.12)] relative z-0',
+        'w-full flex flex-col rounded-[16px] overflow-visible transition-all duration-150 ease-in-out h-full cursor-pointer group hover:shadow-[0_8px_24px_rgba(26,58,82,0.12)] relative z-0',
         hasProperties
           ? 'border-[2px] border-[#4CAF50] bg-[#F2FBF5]'
           : demand.is_prioritaria
@@ -73,7 +99,7 @@ export function ExpandableDemandCardSDR({ demand, onAction }: Props) {
       {/* Header */}
       <div
         className={cn(
-          'p-4 border-b flex flex-col justify-between shrink-0 transition-colors duration-150 relative z-10 pointer-events-none',
+          'p-4 pt-4 border-b flex flex-col justify-between shrink-0 transition-colors duration-150 relative z-10 pointer-events-none rounded-t-[14px]',
           hasProperties
             ? 'border-[#4CAF50]/20 bg-[#4CAF50]/5'
             : demand.is_prioritaria
@@ -82,7 +108,7 @@ export function ExpandableDemandCardSDR({ demand, onAction }: Props) {
         )}
       >
         <div className="flex justify-between items-center mb-3">
-          <span className="text-[12px] text-[#4B5563] font-sans font-bold bg-white px-2.5 py-1 rounded-[6px] border border-[#E5E5E5] shadow-sm flex items-center gap-1.5 pointer-events-auto">
+          <span className="text-[12px] text-[#6B7280] font-sans font-bold bg-white px-2.5 py-1 rounded-[6px] border border-[#E5E5E5] shadow-sm flex items-center gap-1.5 pointer-events-auto">
             📅 {creationDateStr}
           </span>
           <div className="flex items-center gap-2 pointer-events-auto">
@@ -153,7 +179,7 @@ export function ExpandableDemandCardSDR({ demand, onAction }: Props) {
       </div>
 
       {/* Details */}
-      <div className="p-4 flex flex-col gap-3 flex-1 relative z-0 pointer-events-none">
+      <div className="p-4 flex flex-col gap-[12px] flex-1 relative z-0 pointer-events-none">
         <div className="flex items-center gap-2 text-[14px] text-[#333333]">
           <MapPin className="w-4 h-4 text-[#F44336] shrink-0" />
           <span
@@ -227,20 +253,12 @@ export function ExpandableDemandCardSDR({ demand, onAction }: Props) {
       )}
 
       {/* Bottom Button Row */}
-      <div className="p-4 pt-3 border-t border-[#E5E5E5] shrink-0 flex flex-col sm:flex-row flex-wrap gap-[8px] z-10 relative bg-white mt-auto pointer-events-auto">
+      <div className="p-4 pt-4 pb-4 border-t border-[#E5E5E5] shrink-0 flex flex-col lg:flex-row flex-wrap gap-[8px] z-10 relative bg-white mt-auto pointer-events-auto rounded-b-[14px]">
         <Button
           variant="outline"
-          className="flex-1 min-h-[44px] text-[#1A3A52] font-bold border-[#2E5F8A]/20 hover:bg-[#F5F5F5] transition-all duration-150 active:shadow-inner relative z-10"
-          onClick={(e) => {
-            e.preventDefault()
-            e.stopPropagation()
-            if (import.meta.env.DEV)
-              console.log(`🔘 [Click] ExpandableDemandCardSDR Action: details bottom`, {
-                id: demand.id,
-              })
-            onAction?.('details', demand)
-          }}
-          aria-label="Ver Detalhes da Demanda"
+          className="flex-1 h-11 min-h-[44px] text-[#1A3A52] font-bold border-[#2E5F8A]/20 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-150 ease-in-out active:shadow-inner relative z-10"
+          onClick={(e) => handleActionClick(e, 'details')}
+          aria-label={`Ver detalhes da demanda ${demand.nome_cliente}`}
         >
           <Maximize2 className="w-4 h-4 mr-2" />
           Ver Detalhes
@@ -250,34 +268,18 @@ export function ExpandableDemandCardSDR({ demand, onAction }: Props) {
           <>
             <Button
               variant="outline"
-              className="flex-1 min-h-[44px] text-[#333333] font-bold border-[#E5E5E5] hover:bg-[#F5F5F5] transition-all duration-150 active:shadow-inner relative z-10"
-              onClick={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                if (import.meta.env.DEV)
-                  console.log(`🔘 [Click] ExpandableDemandCardSDR Action: edit bottom`, {
-                    id: demand.id,
-                  })
-                onAction?.('edit', demand)
-              }}
-              aria-label="Editar Demanda"
+              className="flex-1 h-11 min-h-[44px] text-[#333333] font-bold border-[#E5E5E5] hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-150 ease-in-out active:shadow-inner relative z-10"
+              onClick={(e) => handleActionClick(e, 'edit')}
+              aria-label={`Editar demanda ${demand.nome_cliente}`}
             >
               <Pencil className="w-4 h-4 mr-2" />
               Editar
             </Button>
             <Button
               variant="outline"
-              className="flex-1 min-h-[44px] text-[#854D0E] font-bold border-[#FCD34D] hover:bg-[#FEF3C7] transition-all duration-150 active:shadow-inner relative z-10"
-              onClick={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                if (import.meta.env.DEV)
-                  console.log(`🔘 [Click] ExpandableDemandCardSDR Action: prioritize bottom`, {
-                    id: demand.id,
-                  })
-                onAction?.('prioritize', demand)
-              }}
-              aria-label={demand.is_prioritaria ? 'Remover Prioridade' : 'Priorizar Demanda'}
+              className="flex-1 h-11 min-h-[44px] text-[#854D0E] font-bold border-[#FCD34D] hover:bg-[#FEF3C7] dark:hover:bg-[#FEF3C7] transition-all duration-150 ease-in-out active:shadow-inner relative z-10"
+              onClick={(e) => handleActionClick(e, 'prioritize')}
+              aria-label={demand.is_prioritaria ? `Remover prioridade da demanda ${demand.nome_cliente}` : `Priorizar demanda ${demand.nome_cliente}`}
             >
               <Star
                 className={cn(
