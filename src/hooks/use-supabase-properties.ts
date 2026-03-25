@@ -53,9 +53,9 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
       created_at: p.created_at,
       status_captacao: p.status_captacao,
       bairros: demanda?.bairros || [],
-      dormitorios: demanda?.dormitorios || 0,
-      vagas: demanda?.vagas_estacionamento || 0,
-      observacoes: p.localizacao_texto || p.observacoes || '',
+      dormitorios: p.dormitorios || demanda?.dormitorios || 0,
+      vagas: p.vagas || demanda?.vagas_estacionamento || 0,
+      observacoes: p.observacoes || p.localizacao_texto || '',
       demanda: demanda
         ? {
             id: demanda.id,
@@ -177,7 +177,22 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
               })
             } else {
               setProperties((prev) => {
-                return prev.map((p) => (p.id === payload.new.id ? { ...p, ...payload.new } : p))
+                // Ensure we merge the new payload data over existing local formatted data correctly
+                return prev.map((p) =>
+                  p.id === payload.new.id
+                    ? {
+                        ...p,
+                        codigo_imovel: payload.new.codigo_imovel || p.codigo_imovel,
+                        endereco: payload.new.endereco || p.endereco,
+                        preco: payload.new.preco || payload.new.valor || p.preco,
+                        dormitorios: payload.new.dormitorios ?? p.dormitorios,
+                        vagas: payload.new.vagas ?? p.vagas,
+                        observacoes:
+                          payload.new.observacoes || payload.new.localizacao_texto || p.observacoes,
+                        etapa_funil: payload.new.etapa_funil || p.etapa_funil,
+                      }
+                    : p,
+                )
               })
               setTimeout(() => setSyncing(false), 500)
             }

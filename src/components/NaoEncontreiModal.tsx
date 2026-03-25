@@ -9,13 +9,15 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
+import { Switch } from '@/components/ui/switch'
+import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 import { CheckCircle2, Circle } from 'lucide-react'
 
 interface Props {
   isOpen: boolean
   onClose: () => void
-  onConfirm: (reason: string, obs: string) => void
+  onConfirm: (reason: string, obs: string, continueSearch: boolean) => void
 }
 
 const OPTIONS = ['Fora do perfil', 'Buscando outras opções', 'Fora do mercado', 'Outro']
@@ -23,6 +25,7 @@ const OPTIONS = ['Fora do perfil', 'Buscando outras opções', 'Fora do mercado'
 export function NaoEncontreiModal({ isOpen, onClose, onConfirm }: Props) {
   const [option, setOption] = useState<string>('')
   const [obs, setObs] = useState<string>('')
+  const [continueSearch, setContinueSearch] = useState<boolean>(true)
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -39,12 +42,13 @@ export function NaoEncontreiModal({ isOpen, onClose, onConfirm }: Props) {
     setIsSubmitting(true)
 
     try {
-      await Promise.resolve(onConfirm(option, obs))
+      await Promise.resolve(onConfirm(option, obs, continueSearch))
     } finally {
       setIsSubmitting(false)
       setTimeout(() => {
         setOption('')
         setObs('')
+        setContinueSearch(true)
       }, 300)
     }
   }
@@ -59,11 +63,12 @@ export function NaoEncontreiModal({ isOpen, onClose, onConfirm }: Props) {
             setOption('')
             setObs('')
             setError('')
+            setContinueSearch(true)
           }, 300)
         }
       }}
     >
-      <DialogContent className="w-[90%] sm:w-full h-auto max-h-[90vh] sm:max-h-[85vh] max-w-full sm:max-w-[400px] p-0 rounded-[16px] border-0 sm:border-[2px] sm:border-[#E5E5E5] flex flex-col overflow-hidden bg-white shadow-2xl animate-in fade-in duration-300">
+      <DialogContent className="w-[90%] sm:w-full h-auto max-h-[90vh] sm:max-h-[85vh] max-w-full sm:max-w-[420px] p-0 rounded-[16px] border-0 sm:border-[2px] sm:border-[#E5E5E5] flex flex-col overflow-hidden bg-white shadow-2xl animate-in fade-in duration-300 z-[1050]">
         <div className="flex flex-col h-full">
           <DialogHeader className="p-4 sm:p-6 border-b border-[#E5E5E5] shrink-0 text-left bg-[#F8FAFC]">
             <DialogTitle className="text-[#1A3A52] font-black text-[18px] md:text-[20px] leading-tight flex items-center gap-2">
@@ -108,6 +113,27 @@ export function NaoEncontreiModal({ isOpen, onClose, onConfirm }: Props) {
                   </span>
                 </div>
               ))}
+            </div>
+
+            <div className="mt-4 p-4 bg-[#F8FAFC] border border-[#E5E5E5] rounded-[12px] flex items-start sm:items-center justify-between gap-4">
+              <div className="flex flex-col gap-1">
+                <Label
+                  htmlFor="continue"
+                  className="text-[14px] font-bold text-[#1A3A52] cursor-pointer"
+                >
+                  Tentar novamente em 24h
+                </Label>
+                <p className="text-[12px] text-[#666666] leading-tight">
+                  Manter a demanda na sua lista de abertas para continuar a busca amanhã.
+                </p>
+              </div>
+              <Switch
+                id="continue"
+                checked={continueSearch}
+                onCheckedChange={setContinueSearch}
+                disabled={isSubmitting}
+                className="data-[state=checked]:bg-[#10B981]"
+              />
             </div>
 
             {option === 'Outro' && (
@@ -162,6 +188,7 @@ export function NaoEncontreiModal({ isOpen, onClose, onConfirm }: Props) {
                   setOption('')
                   setObs('')
                   setError('')
+                  setContinueSearch(true)
                 }, 300)
               }}
               disabled={isSubmitting}

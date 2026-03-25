@@ -99,7 +99,11 @@ export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDeman
     setNaoEncontreiModalOpen(true)
   }
 
-  const handleNaoEncontreiConfirm = async (reason: string, obs: string) => {
+  const handleNaoEncontreiConfirm = async (
+    reason: string,
+    obs: string,
+    continueSearch: boolean,
+  ) => {
     if (isSubmitting) return
     setIsSubmitting(true)
 
@@ -117,17 +121,32 @@ export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDeman
 
       if (error) throw error
 
-      if (reason === 'Fora do mercado') {
+      if (reason === 'Fora do mercado' || !continueSearch) {
         const table = demand.tipo === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
         await supabase.from(table).update({ status_demanda: 'impossivel' }).eq('id', demand.id)
-      } else if (reason === 'Buscando outras opções') {
+      } else {
         const table = demand.tipo === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
         await supabase.from(table).update({ status_demanda: 'aberta' }).eq('id', demand.id)
+
+        // Se escolheu tentar em 24h, tentamos prorrogar o prazo se possível
+        const prazo = demand.prazos_captacao?.[0]
+        if (prazo && prazo.prorrogacoes_usadas < 3) {
+          const newPrazo = new Date()
+          newPrazo.setTime(Date.now() + 24 * 3600000)
+          await supabase
+            .from('prazos_captacao')
+            .update({
+              prazo_resposta: newPrazo.toISOString(),
+              prorrogacoes_usadas: prazo.prorrogacoes_usadas + 1,
+              status: 'ativo',
+            })
+            .eq('id', prazo.id)
+        }
       }
 
       toast({
         title: 'Feedback Enviado',
-        description: `Sua resposta foi registrada e o solicitante notificado.`,
+        description: `Sua resposta foi registrada com sucesso.`,
         className: 'bg-[#10B981] text-white border-none',
       })
 
@@ -199,7 +218,7 @@ export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDeman
     <>
       <Card
         className={cn(
-          'w-full relative overflow-hidden rounded-[16px] border shadow-sm hover:shadow-md transition-all duration-200 bg-gradient-to-b flex flex-col h-full',
+          'w-full relative overflow-hidden rounded-[16px] border shadow-sm hover:shadow-md transition-all duration-200 bg-gradient-to-b flex flex-col h-full z-0',
           demand.is_prioritaria
             ? 'from-[#FFFBEB] to-white border-[#FCD34D]'
             : 'from-[#F2FBF5] to-white border-[#E5E5E5]',
@@ -207,11 +226,11 @@ export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDeman
       >
         <div
           className={cn(
-            'px-4 py-2.5 flex items-center shadow-sm border-b bg-white flex-wrap gap-2 justify-between',
+            'px-4 py-2.5 flex items-center shadow-sm border-b bg-white flex-wrap gap-2 justify-between relative z-10',
             demand.is_prioritaria ? 'border-[#FCD34D]/50' : 'border-[#E5E5E5]/50',
           )}
         >
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap pointer-events-none">
             <div
               className={cn(
                 'flex items-center gap-2 font-black text-[11px] uppercase tracking-widest px-2 py-1 rounded shadow-sm',
@@ -237,7 +256,7 @@ export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDeman
           {prazo &&
             (demand.status_demanda === 'aberta' || demand.status_demanda === 'sem_resposta_24h') &&
             prazo.status !== 'respondido' && (
-              <div className="flex flex-col items-end">
+              <div className="flex flex-col items-end pointer-events-none">
                 <PrazoCounter prazoResposta={prazo.prazo_resposta} isExpired={isPrazoExpired} />
                 {prazo.prorrogacoes_usadas > 0 && (
                   <span className="text-[9px] font-bold text-[#666666] mt-0.5">
@@ -249,17 +268,17 @@ export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDeman
         </div>
 
         <div
-          className="p-4 flex flex-col gap-3 flex-1 cursor-pointer"
+          className="p-4 flex flex-col gap-3 flex-1 cursor-pointer relative z-0"
           onClick={() => setDetailsModalOpen(true)}
         >
           <h3
-            className="text-[18px] font-black text-[#1A3A52] leading-tight pr-24 line-clamp-1"
+            className="text-[18px] font-black text-[#1A3A52] leading-tight pr-24 line-clamp-1 group-hover:text-[#2E5F8A] transition-colors"
             title={demand.nome_cliente}
           >
             {demand.nome_cliente}
           </h3>
 
-          <div className="flex flex-col gap-1.5 mt-1">
+          <div className="flex flex-col gap-1.5 mt-1 pointer-events-none">
             <div className="flex items-center gap-2 text-[14px] text-[#333333]">
               <MapPin className="w-4 h-4 text-pink-500 shrink-0" />
               <span className="font-medium line-clamp-1" title={demand.bairros?.join(', ')}>
@@ -274,14 +293,14 @@ export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDeman
             </div>
           </div>
 
-          <div className="flex items-center gap-2 mt-1">
+          <div className="flex items-center gap-2 mt-1 pointer-events-none">
             <DollarSign className="w-5 h-5 text-[#10B981] shrink-0" />
             <span className="text-[20px] font-black text-[#10B981] tracking-tight">
               {formatPrice(demand.valor_minimo)} - {formatPrice(demand.valor_maximo)}
             </span>
           </div>
 
-          <div className="flex items-center gap-4 text-[13px] text-[#666666] font-medium bg-white p-2.5 rounded-lg mt-1 border border-[#E5E5E5] flex-wrap shadow-sm">
+          <div className="flex items-center gap-4 text-[13px] text-[#666666] font-medium bg-white p-2.5 rounded-lg mt-1 border border-[#E5E5E5] flex-wrap shadow-sm pointer-events-none">
             <div className="flex items-center gap-1.5">
               <BedDouble className="w-4 h-4 text-[#999999]" /> {demand.dormitorios || 'Indif.'} dorm
             </div>
@@ -294,7 +313,7 @@ export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDeman
             </div>
           </div>
 
-          <div className="flex items-start gap-2.5 bg-[#E8F5E9] text-[#065F46] p-3 rounded-lg text-[13px] mt-1 border border-[#A7F3D0] shadow-sm">
+          <div className="flex items-start gap-2.5 bg-[#E8F5E9] text-[#065F46] p-3 rounded-lg text-[13px] mt-1 border border-[#A7F3D0] shadow-sm pointer-events-none">
             <Info className="w-4 h-4 shrink-0 mt-0.5 text-[#10B981]" />
             <p className="leading-snug font-medium line-clamp-3">
               {demand.observacoes ||
@@ -302,7 +321,7 @@ export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDeman
             </p>
           </div>
 
-          <div className="flex items-center justify-between mt-auto pt-3 border-t border-[#E5E5E5] flex-wrap gap-2">
+          <div className="flex items-center justify-between mt-auto pt-3 border-t border-[#E5E5E5] flex-wrap gap-2 pointer-events-auto">
             <Badge
               className={cn(
                 'border-none px-3 h-6 flex items-center justify-center font-bold text-[11px] shadow-sm',
@@ -316,8 +335,9 @@ export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDeman
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 px-2 text-[#1A3A52] font-bold hover:bg-[#F5F5F5] rounded-[8px]"
+              className="h-8 px-2 text-[#1A3A52] font-bold hover:bg-[#F5F5F5] rounded-[8px] relative z-10"
               onClick={(e) => {
+                e.preventDefault()
                 e.stopPropagation()
                 setExpanded(!expanded)
               }}
@@ -335,20 +355,28 @@ export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDeman
           </div>
 
           {(demand.status_demanda === 'aberta' || demand.status_demanda === 'sem_resposta_24h') && (
-            <div className="flex flex-col gap-2 mt-3 pt-3 border-t border-[#E5E5E5]">
+            <div className="flex flex-col gap-2 mt-3 pt-3 border-t border-[#E5E5E5] pointer-events-auto">
               <div className="grid grid-cols-2 gap-2">
                 <Button
-                  onClick={handleEncontrei}
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    handleEncontrei(e)
+                  }}
                   disabled={isSubmitting}
-                  className="w-full min-h-[48px] bg-[#10B981] hover:bg-[#059669] text-white font-bold text-[14px] lg:text-[16px] px-1 lg:px-2 shadow-[0_4px_12px_rgba(16,185,129,0.3)] transition-transform hover:scale-[1.02]"
+                  className="w-full min-h-[48px] bg-[#10B981] hover:bg-[#059669] text-white font-bold text-[14px] lg:text-[16px] px-1 lg:px-2 shadow-[0_4px_12px_rgba(16,185,129,0.3)] transition-transform hover:scale-[1.02] relative z-10"
                 >
                   <CheckCircle className="w-4 h-4 lg:w-5 lg:h-5 mr-1.5 shrink-0" />{' '}
                   <span className="truncate">ENCONTREI</span>
                 </Button>
                 <Button
-                  onClick={handleNaoEncontrei}
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    handleNaoEncontrei(e)
+                  }}
                   disabled={isSubmitting}
-                  className="w-full min-h-[48px] bg-[#EF4444] hover:bg-[#DC2626] text-white font-bold text-[14px] lg:text-[16px] px-1 lg:px-2 shadow-[0_4px_12px_rgba(239,68,68,0.3)] transition-transform hover:scale-[1.02]"
+                  className="w-full min-h-[48px] bg-[#EF4444] hover:bg-[#DC2626] text-white font-bold text-[14px] lg:text-[16px] px-1 lg:px-2 shadow-[0_4px_12px_rgba(239,68,68,0.3)] transition-transform hover:scale-[1.02] relative z-10"
                 >
                   <XCircle className="w-4 h-4 lg:w-5 lg:h-5 mr-1.5 shrink-0" />{' '}
                   <span className="truncate">NÃO ENCONTREI</span>
@@ -357,9 +385,13 @@ export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDeman
               {prazo && prazo.prorrogacoes_usadas < 3 && prazo.status !== 'respondido' && (
                 <Button
                   variant="outline"
-                  onClick={handleProrrogar}
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    handleProrrogar(e)
+                  }}
                   disabled={isSubmitting}
-                  className="w-full h-[40px] text-[12px] font-bold border-[#1A3A52]/20 text-[#1A3A52] hover:bg-[#F8FAFC]"
+                  className="w-full h-[40px] text-[12px] font-bold border-[#1A3A52]/20 text-[#1A3A52] hover:bg-[#F8FAFC] relative z-10"
                 >
                   <Clock className="w-4 h-4 mr-1.5" /> Prorrogar Prazo (+48h)
                 </Button>
@@ -374,9 +406,9 @@ export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDeman
         </div>
 
         {expanded && (
-          <div className="bg-[#FAFAFA] p-4 border-t border-[#E5E5E5] rounded-b-[16px] animate-in fade-in slide-in-from-top-2">
+          <div className="bg-[#FAFAFA] p-4 border-t border-[#E5E5E5] rounded-b-[16px] animate-in fade-in slide-in-from-top-2 relative z-0">
             {capturedCount === 0 ? (
-              <div className="py-6 text-center text-[#999999] text-[13px] border border-dashed border-[#E5E5E5] rounded-lg bg-white">
+              <div className="py-6 text-center text-[#999999] text-[13px] border border-dashed border-[#E5E5E5] rounded-lg bg-white pointer-events-none">
                 Nenhum imóvel captado ainda.
               </div>
             ) : (
@@ -385,7 +417,7 @@ export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDeman
                   return (
                     <div
                       key={imovel.id}
-                      className="bg-white p-3.5 rounded-lg border border-[#E5E5E5] shadow-sm flex flex-col lg:flex-row gap-4 items-start lg:items-center hover:border-[#1A3A52]/30 transition-colors"
+                      className="bg-white p-3.5 rounded-lg border border-[#E5E5E5] shadow-sm flex flex-col lg:flex-row gap-4 items-start lg:items-center hover:border-[#1A3A52]/30 transition-colors pointer-events-none"
                     >
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-2">

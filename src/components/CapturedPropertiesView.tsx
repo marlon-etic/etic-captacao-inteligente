@@ -1,8 +1,8 @@
 import { useState, useMemo } from 'react'
-import { Search } from 'lucide-react'
 import useAppStore from '@/stores/useAppStore'
 import { CapturedPropertyCard } from './CapturedPropertyCard'
 import { CapturedPropertyModals } from './CapturedPropertyModals'
+import { EditPropertyModal } from './EditPropertyModal'
 import { Demand, CapturedProperty } from '@/types'
 import { StickyFilterBar, FilterDef } from '@/components/StickyFilterBar'
 import { FilterSidebar } from '@/components/FilterSidebar'
@@ -165,12 +165,6 @@ export function CapturedPropertiesView({
     demand: Demand | undefined,
     property: CapturedProperty,
   ) => {
-    if (import.meta.env.DEV) {
-      console.log(`🔘 [Action] CapturedPropertiesView handleAction: ${type}`, {
-        propertyCode: property.code,
-      })
-    }
-
     if (type === 'vincular') {
       setVincularProperty(property)
       return
@@ -270,7 +264,7 @@ export function CapturedPropertiesView({
       <CapturedPropertyModals
         demand={actionDemand}
         property={actionProperty}
-        actionType={actionType === 'history' ? null : actionType}
+        actionType={actionType === 'history' || actionType === 'edit' ? null : actionType}
         onClose={closeModals}
         onSubmitVisita={(data) => {
           if (actionProperty?.code) scheduleVisitByCode(actionProperty.code, data)
@@ -290,6 +284,12 @@ export function CapturedPropertiesView({
           }
           closeModals()
         }}
+      />
+
+      <EditPropertyModal
+        isOpen={actionType === 'edit' && actionProperty !== null}
+        onClose={closeModals}
+        property={actionProperty}
       />
 
       <VinculacaoModal
