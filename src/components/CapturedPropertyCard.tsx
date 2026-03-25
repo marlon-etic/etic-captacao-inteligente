@@ -331,7 +331,7 @@ export function CapturedPropertyCard({
               </Button>
             </TooltipTrigger>
             {!publicUrl && (
-              <TooltipContent zIndex={1100}>
+              <TooltipContent>
                 <p>Imóvel sem código cadastrado</p>
               </TooltipContent>
             )}
@@ -354,7 +354,7 @@ export function CapturedPropertyCard({
                 <Share2 className="w-[16px] h-[16px]" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent zIndex={1100}>
+            <TooltipContent>
               <p>{publicUrl ? 'Compartilhar' : 'Imóvel sem código cadastrado'}</p>
             </TooltipContent>
           </Tooltip>

@@ -228,9 +228,7 @@ export function ImovelCapturadoCard({ property, demand, isOwnerOrAdmin = true }:
                 <span className="truncate">Ver no site</span>
               </Button>
             </TooltipTrigger>
-            {!publicUrl && (
-              <TooltipContent zIndex={1100}>Imóvel sem código cadastrado</TooltipContent>
-            )}
+            {!publicUrl && <TooltipContent>Imóvel sem código cadastrado</TooltipContent>}
           </Tooltip>
 
           <Tooltip>
@@ -250,7 +248,7 @@ export function ImovelCapturadoCard({ property, demand, isOwnerOrAdmin = true }:
                 <Share2 className="w-4 h-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent zIndex={1100}>
+            <TooltipContent>
               {publicUrl ? 'Compartilhar' : 'Imóvel sem código cadastrado'}
             </TooltipContent>
           </Tooltip>
