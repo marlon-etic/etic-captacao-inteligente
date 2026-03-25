@@ -4,7 +4,7 @@ import { ExpandableDemandCardCaptador } from '@/components/ExpandableDemandCardC
 import { useAllDemands } from '@/hooks/use-all-demands'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { RefreshCw, Search, Frown } from 'lucide-react'
+import { RefreshCw, Search } from 'lucide-react'
 
 export function DemandasPerdidasView() {
   const { demands, loading, refresh } = useAllDemands()
@@ -64,15 +64,22 @@ export function DemandasPerdidasView() {
       </div>
 
       {filteredDemands.length === 0 ? (
-        <div className="text-center py-16 bg-white border-2 border-dashed border-[#E5E5E5] rounded-xl flex flex-col items-center justify-center">
-          <Frown className="w-12 h-12 text-[#999999]/50 mb-3" />
-          <p className="text-lg font-bold text-[#333333]">Nenhuma demanda perdida.</p>
-          <Button variant="outline" onClick={refresh} className="mt-4 font-bold">
-            <RefreshCw className="w-4 h-4 mr-2" /> Atualizar
+        <div className="text-center py-16 bg-[#F8FAFC] border-2 border-dashed border-[#E5E5E5] rounded-xl flex flex-col items-center justify-center shadow-sm">
+          <span className="text-[48px] mb-4 opacity-50">📂</span>
+          <p className="text-lg font-bold text-[#1A3A52]">Nenhuma demanda perdida.</p>
+          <p className="text-sm text-[#666666] mt-1 max-w-[400px]">
+            As demandas marcadas como "Fora do mercado" ou canceladas aparecerão aqui.
+          </p>
+          <Button
+            variant="outline"
+            onClick={refresh}
+            className="mt-6 font-bold border-[#E5E5E5] hover:bg-[#F5F5F5] text-[#333333]"
+          >
+            <RefreshCw className="w-4 h-4 mr-2" /> Atualizar Lista
           </Button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-[16px]">
           {filteredDemands.map((demand, index) => (
             <div
               key={demand.id}

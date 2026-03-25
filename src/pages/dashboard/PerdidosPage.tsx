@@ -34,6 +34,13 @@ export default function PerdidosPage() {
 
       if (error) throw error
 
+      // Dispara evento global para atualização local e instantânea em todas as abas
+      window.dispatchEvent(
+        new CustomEvent('demanda-updated', {
+          detail: { tipo: type, data: { id, status_demanda: 'aberta' } },
+        }),
+      )
+
       toast({
         title: '✅ Demanda Reaberta!',
         description: 'A demanda retornou para a lista de "Demandas Abertas".',

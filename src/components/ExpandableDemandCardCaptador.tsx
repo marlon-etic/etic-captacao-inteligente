@@ -111,6 +111,14 @@ export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDeman
         .update({ status_demanda: 'aberta' })
         .eq('id', demand.id)
       if (error) throw error
+
+      // Dispara evento global para atualização imediata local em todas as views
+      window.dispatchEvent(
+        new CustomEvent('demanda-updated', {
+          detail: { tipo: demand.tipo, data: { id: demand.id, status_demanda: 'aberta' } },
+        }),
+      )
+
       toast({
         title: 'Demanda reaberta!',
         description: `O status voltou para ABERTA.`,
@@ -149,10 +157,14 @@ export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDeman
 
       if (error) throw error
 
+      let finalStatus = demand.status_demanda
+
       if (reason === 'Fora do mercado' || !continueSearch) {
+        finalStatus = 'impossivel'
         const table = demand.tipo === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
         await supabase.from(table).update({ status_demanda: 'impossivel' }).eq('id', demand.id)
       } else {
+        finalStatus = 'aberta'
         const table = demand.tipo === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
         await supabase.from(table).update({ status_demanda: 'aberta' }).eq('id', demand.id)
 
@@ -170,6 +182,13 @@ export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDeman
             .eq('id', prazo.id)
         }
       }
+
+      // Dispara evento global para atualização local em todas as views
+      window.dispatchEvent(
+        new CustomEvent('demanda-updated', {
+          detail: { tipo: demand.tipo, data: { id: demand.id, status_demanda: finalStatus } },
+        }),
+      )
 
       toast({
         title: 'Feedback Enviado',
@@ -224,6 +243,12 @@ export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDeman
       if (demand.status_demanda === 'sem_resposta_24h') {
         const table = demand.tipo === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
         await supabase.from(table).update({ status_demanda: 'aberta' }).eq('id', demand.id)
+
+        window.dispatchEvent(
+          new CustomEvent('demanda-updated', {
+            detail: { tipo: demand.tipo, data: { id: demand.id, status_demanda: 'aberta' } },
+          }),
+        )
       }
 
       toast({

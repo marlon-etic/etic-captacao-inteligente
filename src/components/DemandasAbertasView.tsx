@@ -11,7 +11,7 @@ import { ExpandableDemandCardCaptador } from '@/components/ExpandableDemandCardC
 import { useAllDemands } from '@/hooks/use-all-demands'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { RefreshCw, Search, Frown } from 'lucide-react'
+import { RefreshCw, Search } from 'lucide-react'
 
 export function DemandasAbertasView() {
   const { demands, loading, refresh } = useAllDemands()
@@ -25,13 +25,14 @@ export function DemandasAbertasView() {
         const isPerdida = d.status_demanda === 'impossivel'
         const isPrioritizada = !!d.is_prioritaria
 
+        // Ensure we only show relevant statuses in this view
+        if (!isAberta && !isPerdida && !isPrioritizada) {
+          return false
+        }
+
         if (statusFilter === 'Aberta' && !isAberta) return false
         if (statusFilter === 'Priorizada' && !isPrioritizada) return false
         if (statusFilter === 'Perdidas' && !isPerdida) return false
-
-        if (statusFilter === 'Todas' && !isAberta && !isPrioritizada && !isPerdida) {
-          return false
-        }
 
         if (searchTerm) {
           const term = searchTerm.toLowerCase()
@@ -60,14 +61,14 @@ export function DemandasAbertasView() {
       <div className="flex flex-col sm:flex-row gap-3 items-center justify-between bg-white p-3 rounded-xl border border-[#E5E5E5] shadow-sm">
         <div className="flex items-center gap-3 w-full sm:w-auto">
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-full sm:w-[180px] font-bold h-11">
+            <SelectTrigger className="w-full sm:w-[180px] font-bold h-11 border-[#E5E5E5] focus:ring-[#1A3A52]">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="Todas">Todas</SelectItem>
-              <SelectItem value="Priorizada">Priorizadas</SelectItem>
-              <SelectItem value="Aberta">Abertas</SelectItem>
-              <SelectItem value="Perdidas">Perdidas</SelectItem>
+              <SelectItem value="Todas">📋 Todas</SelectItem>
+              <SelectItem value="Priorizada">🔴 Priorizadas</SelectItem>
+              <SelectItem value="Aberta">🟢 Abertas</SelectItem>
+              <SelectItem value="Perdidas">⚫ Perdidas</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -93,21 +94,25 @@ export function DemandasAbertasView() {
       </div>
 
       {filteredDemands.length === 0 ? (
-        <div className="text-center py-16 bg-white border-2 border-dashed border-[#E5E5E5] rounded-xl flex flex-col items-center justify-center">
-          <Frown className="w-12 h-12 text-[#999999]/50 mb-3" />
-          <p className="text-lg font-bold text-[#333333]">
+        <div className="text-center py-16 bg-[#F8FAFC] border-2 border-dashed border-[#E5E5E5] rounded-xl flex flex-col items-center justify-center shadow-sm">
+          <span className="text-[48px] mb-4 opacity-50">📂</span>
+          <p className="text-lg font-bold text-[#1A3A52]">
             Nenhuma demanda {statusFilter !== 'Todas' ? statusFilter.toLowerCase() : 'disponível'}{' '}
             no momento.
           </p>
-          <p className="text-sm text-[#666666] mt-1">
-            Verifique outras abas ou aguarde novas demandas.
+          <p className="text-sm text-[#666666] mt-1 max-w-[400px]">
+            Verifique seus filtros, acesse outras abas ou aguarde novas solicitações.
           </p>
-          <Button variant="outline" onClick={refresh} className="mt-4 font-bold">
-            <RefreshCw className="w-4 h-4 mr-2" /> Atualizar
+          <Button
+            variant="outline"
+            onClick={refresh}
+            className="mt-6 font-bold border-[#E5E5E5] hover:bg-[#F5F5F5] text-[#333333]"
+          >
+            <RefreshCw className="w-4 h-4 mr-2" /> Atualizar Lista
           </Button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-[16px]">
           {filteredDemands.map((demand, index) => (
             <div
               key={demand.id}

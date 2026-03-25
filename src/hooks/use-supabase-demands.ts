@@ -135,6 +135,7 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
             .from(table)
             .select('*, imoveis_captados(*), respostas_captador(*), prazos_captacao(*)')
             .order('created_at', { ascending: false })
+            .limit(100)
           if (error) throw error
           return resData
         })
@@ -211,6 +212,16 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
               const newDemand = formatData([
                 { ...d, imoveis_captados: [], respostas_captador: [], prazos_captacao: [] },
               ])[0]
+
+              if (newDemand.status_demanda === 'aberta' || newDemand.is_prioritaria) {
+                toast({
+                  title: '📣 Nova demanda disponível',
+                  description: `Cliente: ${newDemand.nome_cliente} - ${newDemand.bairros?.join(', ')}`,
+                  className: 'bg-[#1A3A52] text-white border-none',
+                  duration: 4000,
+                })
+              }
+
               return sortDemands([newDemand, ...prev])
             })
           } else if (payload.eventType === 'UPDATE') {
