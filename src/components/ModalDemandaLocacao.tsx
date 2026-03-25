@@ -160,7 +160,14 @@ export function ModalDemandaLocacao({ isOpen, onClose }: Props) {
         .select('*')
         .single()
 
-      if (error) throw error
+      if (error) {
+        console.error('[Supabase RLS Error] Falha ao inserir demanda de locação:', error)
+        throw error
+      }
+
+      if (import.meta.env.DEV) {
+        console.log('✅ Policy INSERT SDR ativa: Demanda registrada com sucesso!', data?.id)
+      }
 
       window.dispatchEvent(
         new CustomEvent('demanda-created', { detail: { tipo: 'Aluguel', data } }),
