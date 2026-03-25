@@ -13,6 +13,7 @@ import { SupabaseDemand } from '@/hooks/use-supabase-demands'
 import useAppStore from '@/stores/useAppStore'
 import { cn } from '@/lib/utils'
 import { ImovelCapturadoCard } from './ImovelCapturadoCard'
+import { RespostasHistory } from './RespostasHistory'
 
 interface Props {
   demand: SupabaseDemand | null
@@ -58,6 +59,10 @@ export function DemandDetailModal({
 
   let statusLabel = demand.status_demanda
   if (statusLabel === 'aberta' && demand.is_prioritaria) statusLabel = 'priorizada'
+
+  const respostasNaoEncontrei = (demand.respostas_captador || []).filter(
+    (r: any) => r.resposta === 'nao_encontrei',
+  )
 
   return (
     <Dialog open={isOpen} onOpenChange={(v) => !v && onClose()}>
@@ -149,8 +154,10 @@ export function DemandDetailModal({
               </p>
             </div>
 
+            <RespostasHistory respostas={respostasNaoEncontrei} />
+
             {/* Histórico/Imóveis */}
-            <div className="bg-white p-5 rounded-[12px] border border-[#E5E5E5] shadow-sm relative z-0">
+            <div className="bg-white p-5 rounded-[12px] border border-[#E5E5E5] shadow-sm relative z-0 mt-4">
               <span className="text-[12px] text-[#999999] font-black uppercase tracking-wider flex items-center gap-1.5 mb-4 border-b border-[#F5F5F5] pb-2 pointer-events-none">
                 📦 Imóveis Captados ({demand.imoveis_captados?.length || 0})
               </span>
@@ -181,7 +188,7 @@ export function DemandDetailModal({
             </div>
 
             {/* Informações Adicionais */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-[12px] opacity-70 pointer-events-none">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-[12px] opacity-70 pointer-events-none mt-4">
               <div className="bg-white p-4 rounded-[12px] border border-[#E5E5E5]">
                 <span className="text-[11px] text-[#999999] font-bold uppercase block mb-1">
                   Status

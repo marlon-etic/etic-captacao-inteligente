@@ -22,6 +22,7 @@ import {
 import { useSlaCountdown, useTimeElapsed } from '@/hooks/useTimeElapsed'
 import useAppStore from '@/stores/useAppStore'
 import { useToast } from '@/hooks/use-toast'
+import { RespostasBadge, RespostasHistory } from './RespostasHistory'
 
 export function ExpandableDemandCardSDR({
   demand,
@@ -57,6 +58,10 @@ export function ExpandableDemandCardSDR({
       currentUser?.role === 'gestor' ||
       currentUser?.id === demand.sdr_id ||
       currentUser?.id === demand.corretor_id)
+
+  const respostasNaoEncontrei = (demand.respostas_captador || []).filter(
+    (r: any) => r.resposta === 'nao_encontrei',
+  )
 
   let statusConfig = {
     label: 'DISPONÍVEL',
@@ -135,6 +140,8 @@ export function ExpandableDemandCardSDR({
               <Zap className="w-3 h-3 fill-current" /> NOVA DEMANDA
             </Badge>
           )}
+
+          <RespostasBadge respostas={respostasNaoEncontrei} />
         </div>
 
         {isPending && !isLost && (
@@ -226,6 +233,8 @@ export function ExpandableDemandCardSDR({
             </Button>
           )}
         </div>
+
+        <RespostasHistory respostas={respostasNaoEncontrei} />
       </div>
 
       <div className="px-4 pb-4 pt-2 mt-auto bg-white pointer-events-auto rounded-b-[14px]">

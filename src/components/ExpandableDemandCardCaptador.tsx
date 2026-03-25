@@ -33,6 +33,7 @@ import { DemandDetailModal } from './DemandDetailModal'
 import { CapturePropertyModal } from './CapturePropertyModal'
 import { NaoEncontreiModal } from './NaoEncontreiModal'
 import { PrazoCounter } from './PrazoCounter'
+import { RespostasBadge, RespostasHistory } from './RespostasHistory'
 
 export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDemand }) {
   const [expanded, setExpanded] = useState(false)
@@ -43,8 +44,11 @@ export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDeman
   const { currentUser } = useAppStore()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const latestResp = demand.respostas_captador?.[0]
-  const isNaoEncontrei = latestResp?.resposta === 'nao_encontrei'
+  const respostasNaoEncontrei = (demand.respostas_captador || []).filter(
+    (r: any) => r.resposta === 'nao_encontrei',
+  )
+  const isNaoEncontrei = respostasNaoEncontrei.length > 0
+  const latestResp = respostasNaoEncontrei[0]
 
   let statusConfig = {
     label: 'DISPONÍVEL PARA TODOS',
@@ -70,7 +74,7 @@ export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDeman
       icon: AlertTriangle,
     }
   } else if (demand.status_demanda === 'aberta' && isNaoEncontrei) {
-    if (latestResp.motivo === 'Buscando outras opções') {
+    if (latestResp?.motivo === 'Buscando outras opções') {
       statusConfig = { label: 'BUSCANDO', bg: 'bg-[#F97316]', text: 'text-white', icon: Search }
     } else {
       statusConfig = {
@@ -97,6 +101,15 @@ export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDeman
 
   const handleNaoEncontrei = (e: React.MouseEvent) => {
     e.stopPropagation()
+    const hasAnswered = respostasNaoEncontrei.some((r: any) => r.captador_id === currentUser?.id)
+    if (hasAnswered) {
+      toast({
+        title: 'Aviso',
+        description: 'Você já marcou esta demanda como não encontrada.',
+        variant: 'destructive',
+      })
+      return
+    }
     setNaoEncontreiModalOpen(true)
   }
 
@@ -112,7 +125,6 @@ export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDeman
         .eq('id', demand.id)
       if (error) throw error
 
-      // Dispara evento global para atualização imediata local em todas as views
       window.dispatchEvent(
         new CustomEvent('demanda-updated', {
           detail: { tipo: demand.tipo, data: { id: demand.id, status_demanda: 'aberta' } },
@@ -157,33 +169,25 @@ export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDeman
 
       if (error) throw error
 
-      let finalStatus = demand.status_demanda
+      // Do NOT set it to impossivel automatically. Keep it 'aberta' tracking history.
+      const finalStatus = 'aberta'
+      const table = demand.tipo === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
+      await supabase.from(table).update({ status_demanda: 'aberta' }).eq('id', demand.id)
 
-      if (reason === 'Fora do mercado' || !continueSearch) {
-        finalStatus = 'impossivel'
-        const table = demand.tipo === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
-        await supabase.from(table).update({ status_demanda: 'impossivel' }).eq('id', demand.id)
-      } else {
-        finalStatus = 'aberta'
-        const table = demand.tipo === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
-        await supabase.from(table).update({ status_demanda: 'aberta' }).eq('id', demand.id)
-
-        const prazo = demand.prazos_captacao?.[0]
-        if (prazo && prazo.prorrogacoes_usadas < 3) {
-          const newPrazo = new Date()
-          newPrazo.setTime(Date.now() + 24 * 3600000)
-          await supabase
-            .from('prazos_captacao')
-            .update({
-              prazo_resposta: newPrazo.toISOString(),
-              prorrogacoes_usadas: prazo.prorrogacoes_usadas + 1,
-              status: 'ativo',
-            })
-            .eq('id', prazo.id)
-        }
+      const prazo = demand.prazos_captacao?.[0]
+      if (prazo && prazo.prorrogacoes_usadas < 3 && continueSearch) {
+        const newPrazo = new Date()
+        newPrazo.setTime(Date.now() + 24 * 3600000)
+        await supabase
+          .from('prazos_captacao')
+          .update({
+            prazo_resposta: newPrazo.toISOString(),
+            prorrogacoes_usadas: prazo.prorrogacoes_usadas + 1,
+            status: 'ativo',
+          })
+          .eq('id', prazo.id)
       }
 
-      // Dispara evento global para atualização local em todas as views
       window.dispatchEvent(
         new CustomEvent('demanda-updated', {
           detail: { tipo: demand.tipo, data: { id: demand.id, status_demanda: finalStatus } },
@@ -192,7 +196,7 @@ export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDeman
 
       toast({
         title: 'Feedback Enviado',
-        description: `Sua resposta foi registrada com sucesso.`,
+        description: `Sua resposta foi registrada no histórico da demanda.`,
         className: 'bg-[#10B981] text-white border-none',
       })
 
@@ -304,6 +308,8 @@ export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDeman
                 <Star className="w-3 h-3 fill-current" /> PRIORITÁRIA
               </Badge>
             )}
+
+            <RespostasBadge respostas={respostasNaoEncontrei} />
           </div>
           {prazo &&
             (demand.status_demanda === 'aberta' || demand.status_demanda === 'sem_resposta_24h') &&
@@ -400,7 +406,7 @@ export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDeman
                 </>
               ) : (
                 <>
-                  <ChevronDown className="w-4 h-4 mr-1" /> Ver Propriedades
+                  <ChevronDown className="w-4 h-4 mr-1" /> Ver Histórico e Imóveis
                 </>
               )}
             </Button>
@@ -475,12 +481,14 @@ export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDeman
 
         {expanded && (
           <div className="bg-[#FAFAFA] p-4 border-t border-[#E5E5E5] rounded-b-[16px] animate-in fade-in slide-in-from-top-2 relative z-0">
+            <RespostasHistory respostas={respostasNaoEncontrei} />
+
             {capturedCount === 0 ? (
-              <div className="py-6 text-center text-[#999999] text-[13px] border border-dashed border-[#E5E5E5] rounded-lg bg-white pointer-events-none">
+              <div className="py-6 mt-3 text-center text-[#999999] text-[13px] border border-dashed border-[#E5E5E5] rounded-lg bg-white pointer-events-none">
                 Nenhum imóvel captado ainda.
               </div>
             ) : (
-              <div className="flex flex-col gap-3 mt-2">
+              <div className="flex flex-col gap-3 mt-3">
                 {demand.imoveis_captados.map((imovel) => {
                   return (
                     <div

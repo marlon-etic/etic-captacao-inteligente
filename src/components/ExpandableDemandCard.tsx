@@ -28,6 +28,7 @@ import { CapturePropertyModal } from './CapturePropertyModal'
 import { DemandDetailsModal } from './DemandDetailsModal'
 import { NaoEncontreiModal } from './NaoEncontreiModal'
 import { PrazoCounter } from './PrazoCounter'
+import { RespostasBadge, RespostasHistory } from './RespostasHistory'
 
 export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
   const { currentUser } = useAppStore()
@@ -48,8 +49,6 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
   const togglePriority = async (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    if (import.meta.env.DEV)
-      console.log(`🔘 [Click] ExpandableDemandCard Action: prioritize`, { id: demand.id })
     if (isPrioritizing || !isOwnerOrAdmin) return
     setIsPrioritizing(true)
 
@@ -82,8 +81,11 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
     }
   }
 
-  const latestResp = demand.respostas_captador?.[0]
-  const isNaoEncontrei = latestResp?.resposta === 'nao_encontrei'
+  const respostasNaoEncontrei = (demand.respostas_captador || []).filter(
+    (r: any) => r.resposta === 'nao_encontrei',
+  )
+  const isNaoEncontrei = respostasNaoEncontrei.length > 0
+  const latestResp = respostasNaoEncontrei[0]
 
   let statusConfig = {
     label: 'DISPONÍVEL PARA TODOS',
@@ -116,7 +118,7 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
       icon: AlertTriangle,
     }
   } else if (demand.status_demanda === 'aberta' && isNaoEncontrei) {
-    if (latestResp.motivo === 'Buscando outras opções') {
+    if (latestResp?.motivo === 'Buscando outras opções') {
       statusConfig = { label: 'BUSCANDO', bg: 'bg-[#F97316]', text: 'text-white', icon: Search }
     } else {
       statusConfig = {
@@ -139,16 +141,21 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
   const handleEncontrei = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    if (import.meta.env.DEV)
-      console.log(`🔘 [Click] ExpandableDemandCard Action: encontrei`, { id: demand.id })
     setIsCaptureModalOpen(true)
   }
 
   const handleNaoEncontrei = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    if (import.meta.env.DEV)
-      console.log(`🔘 [Click] ExpandableDemandCard Action: nao_encontrei`, { id: demand.id })
+    const hasAnswered = respostasNaoEncontrei.some((r: any) => r.captador_id === currentUser?.id)
+    if (hasAnswered) {
+      toast({
+        title: 'Aviso',
+        description: 'Você já marcou esta demanda como não encontrada.',
+        variant: 'destructive',
+      })
+      return
+    }
     setIsNaoEncontreiModalOpen(true)
   }
 
@@ -169,13 +176,9 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
       const { error } = await supabase.from('respostas_captador').insert(payload)
       if (error) throw error
 
-      if (reason === 'Fora do mercado') {
-        const table = demand.tipo === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
-        await supabase.from(table).update({ status_demanda: 'impossivel' }).eq('id', demand.id)
-      } else if (reason === 'Buscando outras opções') {
-        const table = demand.tipo === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
-        await supabase.from(table).update({ status_demanda: 'aberta' }).eq('id', demand.id)
-      }
+      const table = demand.tipo === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
+      // Always keep it open so it tracks history without closing
+      await supabase.from(table).update({ status_demanda: 'aberta' }).eq('id', demand.id)
 
       toast({
         title: 'Feedback Enviado',
@@ -198,8 +201,6 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
   const openDetails = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('button')) return
     e.preventDefault()
-    if (import.meta.env.DEV)
-      console.log(`🔘 [Click] ExpandableDemandCard Card Action: details`, { id: demand.id })
     setIsDetailsModalOpen(true)
   }
 
@@ -294,6 +295,8 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
                 <Star className="w-3 h-3 fill-current" /> PRIORITÁRIA
               </Badge>
             )}
+
+            <RespostasBadge respostas={respostasNaoEncontrei} />
           </div>
 
           <div className="flex items-center gap-2 shrink-0 pointer-events-auto">
@@ -395,6 +398,13 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
               </Button>
             </div>
           )}
+
+        {/* Expanded Details - Histórico e Imóveis Captados */}
+        <div className="bg-[#FAFAFA] p-4 border-t border-[#E5E5E5] rounded-b-[16px] animate-in fade-in slide-in-from-top-2 relative z-0">
+          <RespostasHistory respostas={respostasNaoEncontrei} />
+
+          {/* We only render the properties list here to show something since it's an expanded card design */}
+        </div>
       </Card>
 
       <DemandDetailsModal

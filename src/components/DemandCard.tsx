@@ -11,6 +11,7 @@ import { toast } from '@/hooks/use-toast'
 import { DemandDetailsModal } from '@/components/DemandDetailsModal'
 import { LostModal } from '@/components/LostModal'
 import { useSlaCountdown, useTimeElapsed } from '@/hooks/useTimeElapsed'
+import { RespostasBadge, RespostasHistory } from './RespostasHistory'
 import {
   Building2,
   Home,
@@ -126,11 +127,9 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
     cardBg = 'bg-[#FFFFFF] border-[#E5E5E5] hover:border-[#1A3A52]/30'
   }
 
-  const latestNaoEncontrei = (demand as any).respostas_captador
-    ?.filter((r: any) => r.resposta === 'nao_encontrei')
-    .sort(
-      (a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-    )[0]
+  const respostasNaoEncontrei = ((demand as any).respostas_captador || []).filter(
+    (r: any) => r.resposta === 'nao_encontrei',
+  )
 
   let statusBadge = null
   if (isLost) {
@@ -171,28 +170,12 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
     } else if (demand.status === 'Negócio' || demand.status === 'ganho') {
       bgCol = 'bg-[#388E3C]'
     } else if (isPending) {
-      if (latestNaoEncontrei) {
-        if (latestNaoEncontrei.motivo === 'Buscando outras opções') {
-          bgCol = 'bg-[#FF9800]'
-        } else {
-          bgCol = 'bg-[#EF4444]'
-        }
-      } else {
-        if (slaLevel === 'red') bgCol = 'bg-[#F44336]'
-        else if (slaLevel === 'yellow') bgCol = 'bg-[#FF9800]'
-        else bgCol = 'bg-[#4CAF50]'
-      }
+      if (slaLevel === 'red') bgCol = 'bg-[#F44336]'
+      else if (slaLevel === 'yellow') bgCol = 'bg-[#FF9800]'
+      else bgCol = 'bg-[#4CAF50]'
     }
 
     let badgeContent = isPending ? slaBadgeText || '⏳ PENDENTE' : demand.status
-
-    if (isPending && latestNaoEncontrei) {
-      if (latestNaoEncontrei.motivo === 'Buscando outras opções') {
-        badgeContent = '🟠 BUSCANDO'
-      } else {
-        badgeContent = `🔴 NÃO ENCONTRADO`
-      }
-    }
 
     statusBadge = (
       <Badge
@@ -201,11 +184,6 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
           bgCol,
           textCol,
         )}
-        title={
-          latestNaoEncontrei?.observacao
-            ? `Observação: ${latestNaoEncontrei.observacao}`
-            : undefined
-        }
       >
         {badgeContent}
       </Badge>
@@ -224,9 +202,6 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
   const handleProrrogar = async (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    if (import.meta.env.DEV) {
-      console.log(`Botão [prorrogar] clicado em [DemandCard]`, { id: demand.id })
-    }
     if (!prazoDb || isExtending) return
     setIsExtending(true)
     try {
@@ -282,7 +257,6 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
   const creationDateStr = demand.createdAt
     ? new Date(demand.createdAt).toLocaleDateString('pt-BR')
     : (() => {
-        if (import.meta.env.DEV) console.error(`Data ausente em card demanda [${demand.id}]`)
         return 'Data pendente'
       })()
 
@@ -315,6 +289,7 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
           </span>
 
           <div className="flex items-center gap-2 pointer-events-auto flex-wrap justify-end">
+            <RespostasBadge respostas={respostasNaoEncontrei} />
             <div
               className={cn(
                 'flex items-center justify-center px-2 py-1 gap-[4px] rounded-[6px] shadow-sm shrink-0',
@@ -389,6 +364,12 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
               imóveis
             </span>
           </div>
+
+          {respostasNaoEncontrei.length > 0 && (
+            <div className="mt-2 pointer-events-auto relative z-10">
+              <RespostasHistory respostas={respostasNaoEncontrei} />
+            </div>
+          )}
         </div>
 
         {/* Rodapé com Botões */}
@@ -406,9 +387,6 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
             onClick={(e) => {
               e.preventDefault()
               e.stopPropagation()
-              if (import.meta.env.DEV) {
-                console.log(`Botão [detalhes] clicado em [DemandCard]`, { id: demand.id })
-              }
               setShowDetails(true)
             }}
             aria-label={`Ver Detalhes da demanda ${demand.clientName}`}
@@ -428,9 +406,6 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
                     onClick={(e) => {
                       e.preventDefault()
                       e.stopPropagation()
-                      if (import.meta.env.DEV) {
-                        console.log(`Botão [encontrei] clicado em [DemandCard]`, { id: demand.id })
-                      }
                       onAction?.(demand.id, 'encontrei')
                     }}
                     disabled={isLost}
@@ -443,10 +418,16 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
                     onClick={(e) => {
                       e.preventDefault()
                       e.stopPropagation()
-                      if (import.meta.env.DEV) {
-                        console.log(`Botão [nao_encontrei] clicado em [DemandCard]`, {
-                          id: demand.id,
+                      const hasAnswered = respostasNaoEncontrei.some(
+                        (r: any) => r.captador_id === currentUser?.id,
+                      )
+                      if (hasAnswered) {
+                        toast({
+                          title: 'Aviso',
+                          description: 'Você já marcou esta demanda como não encontrada.',
+                          variant: 'destructive',
                         })
+                        return
                       }
                       onAction?.(demand.id, 'nao_encontrei')
                     }}
@@ -476,9 +457,6 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
               onClick={(e) => {
                 e.preventDefault()
                 e.stopPropagation()
-                if (import.meta.env.DEV) {
-                  console.log(`Botão [contato] clicado em [DemandCard]`, { id: demand.id })
-                }
                 logSolicitorContactAttempt(
                   demand.id,
                   'interno',
@@ -498,9 +476,6 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
               onClick={(e) => {
                 e.preventDefault()
                 e.stopPropagation()
-                if (import.meta.env.DEV) {
-                  console.log(`Botão [lost_modal] clicado em [DemandCard]`, { id: demand.id })
-                }
                 setShowLostModal(true)
               }}
               aria-label={`Marcar demanda ${demand.clientName} como Perdida`}
