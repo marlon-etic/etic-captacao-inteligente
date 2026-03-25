@@ -1,301 +1,276 @@
-import { SupabaseDemand } from '@/hooks/use-supabase-demands'
+import { useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { SupabaseDemand } from '@/hooks/use-supabase-demands'
+import { cn } from '@/lib/utils'
 import {
   MapPin,
-  DollarSign,
-  BedDouble,
-  Car,
   Clock,
-  CheckCircle,
+  DollarSign,
+  Info,
+  CheckCircle2,
+  X,
+  AlertTriangle,
+  Search,
+  MessageCircle,
+  Eye,
+  Handshake,
   Star,
-  Pencil,
-  Maximize2,
+  Zap,
 } from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { PrazoCounter } from './PrazoCounter'
+import { useSlaCountdown, useTimeElapsed } from '@/hooks/useTimeElapsed'
 import useAppStore from '@/stores/useAppStore'
 import { useToast } from '@/hooks/use-toast'
 
-interface Props {
+export function ExpandableDemandCardSDR({
+  demand,
+  onAction,
+}: {
   demand: SupabaseDemand
-  onAction?: (action: 'details' | 'edit' | 'lost' | 'prioritize', demand: SupabaseDemand) => void
-}
-
-export function ExpandableDemandCardSDR({ demand, onAction }: Props) {
-  const { currentUser } = useAppStore()
+  onAction: (action: 'details' | 'edit' | 'lost' | 'prioritize', d: SupabaseDemand) => void
+}) {
+  const { currentUser, logSolicitorContactAttempt } = useAppStore()
   const { toast } = useToast()
 
-  const isSale = demand.tipo === 'Venda'
-  const hasProperties = demand.imoveis_captados && demand.imoveis_captados.length > 0
+  const { text: timeElapsedText, hoursElapsed } = useTimeElapsed(demand.created_at)
 
-  const formatPrice = (val?: number) => {
-    if (!val) return '0'
-    return new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 }).format(val)
+  const prazoDb = demand.prazos_captacao?.[0]
+  const isPending =
+    demand.status_demanda === 'aberta' || demand.status_demanda === 'sem_resposta_24h'
+
+  const { text: slaText, level: slaLevel } = useSlaCountdown(
+    demand.created_at,
+    prazoDb?.prazo_resposta,
+    isPending ? 'aberta' : demand.status_demanda,
+    prazoDb?.prorrogacoes_usadas,
+  )
+
+  const isHighUrgency = demand.nivel_urgencia === 'Alta' || demand.nivel_urgencia === 'Urgente'
+  const isPrioritized = demand.is_prioritaria
+  const isLost = demand.status_demanda === 'impossivel'
+  const isNew = hoursElapsed <= 24 && isPending && !isLost && !isPrioritized
+
+  const canMarkLost =
+    !isLost &&
+    (currentUser?.role === 'admin' ||
+      currentUser?.role === 'gestor' ||
+      currentUser?.id === demand.sdr_id ||
+      currentUser?.id === demand.corretor_id)
+
+  let statusConfig = {
+    label: 'DISPONÍVEL',
+    bg: 'bg-[#10B981]',
+    text: 'text-white',
+    icon: Search,
   }
 
-  const cardAnimation = hasProperties ? 'animate-pulse-green' : ''
-
-  const prazo = demand.prazos_captacao?.[0]
-  const isPrazoExpired =
-    prazo?.status === 'vencido' ||
-    prazo?.status === 'sem_resposta_24h' ||
-    prazo?.status === 'sem_resposta_final'
-
-  const isOwnerOrAdmin =
-    currentUser?.role === 'admin' ||
-    currentUser?.role === 'gestor' ||
-    demand.sdr_id === currentUser?.id ||
-    demand.corretor_id === currentUser?.id
-
-  const creationDateStr = demand.created_at
-    ? new Date(demand.created_at).toLocaleDateString('pt-BR')
-    : (() => {
-        if (import.meta.env.DEV) console.error(`Data ausente em card demanda [${demand.id}]`)
-        return 'Data pendente'
-      })()
-
-  const handleActionClick = (
-    e: React.MouseEvent,
-    action: 'details' | 'edit' | 'lost' | 'prioritize',
-  ) => {
-    e.preventDefault()
-    e.stopPropagation()
-    if (import.meta.env.DEV) {
-      console.log(`Botão [${action}] clicado em [ExpandableDemandCardSDR]`, { id: demand.id })
+  if (demand.status_demanda === 'impossivel') {
+    statusConfig = { label: 'PERDIDA / CANCELADA', bg: 'bg-gray-500', text: 'text-white', icon: X }
+  } else if (demand.status_demanda === 'atendida' || demand.status_demanda === 'ganho') {
+    statusConfig = {
+      label: demand.status_demanda === 'ganho' ? 'NEGÓCIO FECHADO' : 'ATENDIDA',
+      bg: demand.status_demanda === 'ganho' ? 'bg-[#388E3C]' : 'bg-blue-500',
+      text: 'text-white',
+      icon: CheckCircle2,
     }
-    if (onAction) {
-      onAction(action, demand)
-    } else {
-      if (import.meta.env.DEV) console.warn(`Clique bloqueado em [${action}]`)
-      toast({
-        title: 'Ação indisponível',
-        description: 'Tente novamente.',
-        variant: 'destructive',
-      })
+  } else if (demand.status_demanda === 'sem_resposta_24h') {
+    statusConfig = {
+      label: 'SEM RESPOSTA',
+      bg: 'bg-yellow-500',
+      text: 'text-white',
+      icon: AlertTriangle,
     }
   }
+
+  const formatPrice = (val: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+      maximumFractionDigits: 0,
+    }).format(val)
+  }
+
+  const capturedCount = demand.imoveis_captados?.length || 0
 
   return (
     <Card
-      onClick={(e) => {
-        if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('a'))
-          return
-        if (import.meta.env.DEV) {
-          console.log(`🔘 [Click] ExpandableDemandCardSDR Card Action: details`, { id: demand.id })
-        }
-        onAction?.('details', demand)
-      }}
       className={cn(
-        'w-full flex flex-col rounded-[16px] overflow-visible transition-all duration-150 ease-in-out h-full cursor-pointer group hover:shadow-[0_8px_24px_rgba(26,58,82,0.12)] relative z-0',
-        hasProperties
-          ? 'border-[2px] border-[#4CAF50] bg-[#F2FBF5]'
-          : demand.is_prioritaria
-            ? 'border-[2px] border-[#FCD34D] bg-[#FFFBEB]'
-            : 'border-[1px] border-[#E5E5E5] bg-white hover:border-[#1A3A52]/30',
-        cardAnimation,
+        'w-full h-full relative overflow-hidden rounded-[16px] border shadow-sm hover:shadow-md transition-all duration-200 bg-gradient-to-b flex flex-col z-0',
+        isPrioritized
+          ? 'from-[#FFFBEB] to-white border-[#FCD34D]'
+          : isNew
+            ? 'from-[#F2FBF5] to-white border-[#4CAF50]'
+            : isLost
+              ? 'bg-[#F5F5F5] opacity-90 border-[#E5E5E5]'
+              : 'from-[#FFFFFF] to-white border-[#E5E5E5]',
       )}
     >
-      {/* Header */}
       <div
         className={cn(
-          'px-4 pt-4 pb-3 border-b flex flex-col justify-between shrink-0 transition-colors duration-150 relative z-10 pointer-events-none rounded-t-[14px]',
-          hasProperties
-            ? 'border-[#4CAF50]/20 bg-[#4CAF50]/5'
-            : demand.is_prioritaria
-              ? 'border-[#FCD34D]/50 bg-[#FCD34D]/10'
-              : 'border-[#E5E5E5] bg-[#F5F5F5]/50',
+          'px-4 py-2.5 flex items-center shadow-sm border-b bg-white flex-wrap gap-2 justify-between relative z-10 pointer-events-none',
+          isPrioritized ? 'border-[#FCD34D]/50' : 'border-[#E5E5E5]/50',
         )}
       >
-        <div className="flex justify-between items-start mb-3">
-          <span className="text-[12px] text-[#6B7280] font-sans font-bold bg-white px-2.5 py-1.5 rounded-[6px] border border-[#E5E5E5] shadow-sm flex items-center gap-1.5 pointer-events-auto">
-            📅 {creationDateStr}
-          </span>
-          <div className="flex items-center gap-2 pointer-events-auto">
-            {hasProperties ? (
-              <Badge className="bg-[#4CAF50] hover:bg-[#388E3C] text-white border-none font-bold text-[12px] px-2 py-1 flex items-center gap-1 shadow-sm shrink-0 transition-transform hover:scale-105">
-                <CheckCircle className="w-3.5 h-3.5" />
-                {demand.imoveis_captados.length} IMÓVEL
-                {demand.imoveis_captados.length > 1 ? 'S' : ''}
-              </Badge>
-            ) : demand.status_demanda === 'aberta' ? (
-              <div className="flex flex-col items-end">
-                {prazo && prazo.status !== 'respondido' && (
-                  <PrazoCounter prazoResposta={prazo.prazo_resposta} isExpired={isPrazoExpired} />
-                )}
-                {!prazo && (
-                  <Badge
-                    variant="outline"
-                    className="bg-white text-[#999999] border-[#E5E5E5] font-bold text-[12px] shrink-0 shadow-sm"
-                  >
-                    Aguardando
-                  </Badge>
-                )}
-              </div>
-            ) : (
-              <Badge
-                variant="outline"
-                className={cn(
-                  'font-bold text-[12px] shrink-0 border-none px-2 py-1 shadow-sm',
-                  demand.status_demanda === 'sem_resposta_24h' ||
-                    demand.status_demanda === 'impossivel'
-                    ? 'bg-[#FEF2F2] text-[#EF4444]'
-                    : 'bg-white text-[#999999]',
-                )}
-              >
-                {demand.status_demanda === 'sem_resposta_24h'
-                  ? 'SEM RESPOSTA'
-                  : demand.status_demanda === 'impossivel'
-                    ? 'PERDIDA'
-                    : 'AGUARDANDO'}
-              </Badge>
-            )}
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 flex-wrap mb-2 pointer-events-auto">
-          <Badge
+        <div className="flex items-center gap-2 flex-wrap">
+          <div
             className={cn(
-              'text-[10px] font-bold px-2 py-1 border-none shadow-sm',
-              isSale ? 'bg-[#FF9800]' : 'bg-[#1A3A52]',
+              'flex items-center gap-2 font-black text-[11px] uppercase tracking-widest px-2 py-1 rounded shadow-sm',
+              statusConfig.bg,
+              statusConfig.text,
             )}
           >
-            {isSale ? 'VENDA' : 'ALUGUEL'}
-          </Badge>
+            <statusConfig.icon className="w-3.5 h-3.5" />
+            {statusConfig.label}
+          </div>
 
-          {demand.is_prioritaria && (
-            <Badge className="bg-[#FCD34D] text-[#854D0E] hover:bg-[#FCD34D] text-[10px] font-black px-2 py-1 flex items-center gap-1 shadow-sm border border-[#F59E0B]">
+          {isPrioritized && (
+            <Badge className="bg-[#F44336] text-[#FFFFFF] hover:bg-[#d32f2f] text-[10px] font-black px-2 py-1 flex items-center gap-1 shadow-sm border-none">
               <Star className="w-3 h-3 fill-current" /> PRIORITÁRIA
+            </Badge>
+          )}
+
+          {isNew && !isPrioritized && (
+            <Badge className="bg-[#4CAF50] text-[#FFFFFF] border-none font-bold text-[10px] px-2 py-1 shadow-sm uppercase tracking-wider animate-pulse flex items-center gap-1">
+              <Zap className="w-3 h-3 fill-current" /> NOVA DEMANDA
             </Badge>
           )}
         </div>
 
+        {isPending && !isLost && (
+          <span
+            className={cn(
+              'text-[11px] font-black whitespace-nowrap shrink-0 transition-colors duration-200 bg-white px-2 py-0.5 rounded border shadow-sm',
+              slaLevel === 'red'
+                ? 'text-[#F44336] border-[#F44336]/30'
+                : slaLevel === 'yellow'
+                  ? 'text-[#FF9800] border-[#FF9800]/30'
+                  : 'text-[#4CAF50] border-[#4CAF50]/30',
+            )}
+          >
+            {slaText}
+          </span>
+        )}
+      </div>
+
+      <div className="p-4 flex flex-col gap-3 flex-1 relative z-0 pointer-events-none">
         <h3
-          className="text-[18px] font-black text-[#1A3A52] leading-tight mt-1 line-clamp-2 group-hover:text-[#2E5F8A] transition-colors pointer-events-auto"
+          className="text-[18px] font-black text-[#1A3A52] leading-tight pr-2 line-clamp-2"
           title={demand.nome_cliente}
         >
           {demand.nome_cliente}
         </h3>
-      </div>
 
-      {/* Details */}
-      <div className="p-4 flex flex-col gap-[12px] flex-1 relative z-0 pointer-events-none">
-        <div className="flex items-center gap-2 text-[14px] text-[#333333] pointer-events-auto">
-          <MapPin className="w-4 h-4 text-[#F44336] shrink-0" />
-          <span
-            className="font-medium line-clamp-1"
-            title={demand.bairros?.join(', ') || 'Não especificado'}
-          >
-            {demand.bairros?.join(', ') || 'Não especificado'}
-          </span>
-        </div>
-
-        <div className="flex items-center gap-2 pointer-events-auto">
-          <DollarSign className="w-5 h-5 text-[#10B981] shrink-0" />
-          <span className="text-[18px] font-black text-[#10B981] tracking-tight">
-            R$ {formatPrice(demand.valor_minimo)} - R$ {formatPrice(demand.valor_maximo)}
-          </span>
-        </div>
-
-        <div className="flex items-center gap-4 text-[13px] text-[#666666] font-medium bg-[#F5F5F5] p-2.5 rounded-[8px] border border-[#E5E5E5] flex-wrap mt-auto pointer-events-auto">
-          <div className="flex items-center gap-1.5">
-            <BedDouble className="w-4 h-4 text-[#999999]" /> {demand.dormitorios || 'Indif.'} dorm
-          </div>
-          <div className="flex items-center gap-1.5">
-            <Car className="w-4 h-4 text-[#999999]" /> {demand.vagas_estacionamento || 'Indif.'}{' '}
-            vagas
-          </div>
-          <div className="flex items-center gap-1.5 text-[#FF9800]">
-            <Clock className="w-4 h-4" /> {demand.nivel_urgencia}
-          </div>
-        </div>
-      </div>
-
-      {/* Captured Properties List */}
-      {hasProperties && (
-        <div className="bg-[#4CAF50]/10 p-4 border-t border-[#4CAF50]/20 flex flex-col gap-2 shrink-0 relative z-0 pointer-events-none">
-          <h4 className="text-[13px] font-black text-[#2E7D32] uppercase tracking-wider mb-1 flex items-center gap-1.5">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#4CAF50] opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-[#4CAF50]"></span>
+        <div className="flex flex-col gap-1.5 mt-1">
+          <div className="flex items-center gap-2 text-[14px] text-[#333333]">
+            <MapPin className="w-4 h-4 text-pink-500 shrink-0" />
+            <span className="font-medium line-clamp-1" title={demand.bairros?.join(', ')}>
+              {demand.bairros?.join(', ') || 'Sem localização'}
             </span>
-            Capturas em Tempo Real
-          </h4>
-          <div className="flex flex-col gap-2 max-h-[140px] overflow-y-auto pr-1 custom-scrollbar pointer-events-auto">
-            {demand.imoveis_captados.map((imovel: any, i) => (
-              <div
-                key={imovel.id || i}
-                className="bg-white rounded-[8px] p-3 shadow-[0_2px_4px_rgba(76,175,80,0.1)] border border-[#4CAF50]/30 flex flex-col gap-1.5 animate-fade-in-up"
-              >
-                <div className="flex justify-between items-center gap-2">
-                  <span className="font-black text-[#1A3A52] text-[14px] truncate">
-                    {imovel.codigo_imovel}
-                  </span>
-                  <span className="text-[12px] font-bold text-[#4CAF50] shrink-0">
-                    R$ {formatPrice(imovel.preco || imovel.valor)}
-                  </span>
-                </div>
-                <span className="text-[12px] text-[#666666] line-clamp-1 flex items-center gap-1">
-                  <MapPin className="w-3 h-3 shrink-0" /> {imovel.endereco}
-                </span>
-                <div className="text-[11px] text-[#999999] flex justify-between items-center mt-1 pt-1 border-t border-[#F5F5F5]">
-                  <span className="truncate pr-2">
-                    Captador: <strong className="text-[#333333]">{imovel.captador_nome}</strong>
-                  </span>
-                  <span className="shrink-0">
-                    {new Date(imovel.created_at).toLocaleDateString('pt-BR')}
-                  </span>
-                </div>
-              </div>
-            ))}
           </div>
         </div>
-      )}
 
-      {/* Bottom Button Row */}
-      <div className="px-4 pt-4 pb-4 border-t border-[#E5E5E5] shrink-0 flex flex-col lg:flex-row flex-wrap gap-2 z-10 relative bg-white mt-auto pointer-events-auto rounded-b-[14px]">
-        <Button
-          variant="outline"
-          className="flex-1 h-11 min-h-[44px] text-[#1A3A52] font-bold border-[#2E5F8A]/20 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-150 ease-in-out active:shadow-inner relative z-10 w-full lg:w-auto"
-          onClick={(e) => handleActionClick(e, 'details')}
-          aria-label={`Ver detalhes da demanda ${demand.nome_cliente}`}
-        >
-          <Maximize2 className="w-4 h-4 mr-1.5" />
-          Ver Detalhes
-        </Button>
+        <div className="flex items-center gap-2 mt-1">
+          <DollarSign className="w-5 h-5 text-[#10B981] shrink-0" />
+          <span className="text-[20px] font-black text-[#10B981] tracking-tight">
+            Até {formatPrice(demand.valor_maximo)}
+          </span>
+        </div>
 
-        {isOwnerOrAdmin && (
-          <>
+        <div className="flex items-center gap-3 text-[12px] font-bold text-[#666666] bg-[#F8FAFC] p-2.5 rounded-lg mt-1 border border-[#E5E5E5] flex-wrap shadow-sm">
+          <span className={isHighUrgency ? 'text-[#F44336]' : 'text-[#FF9800]'}>
+            Urgência: {demand.nivel_urgencia}
+          </span>
+          <span className="opacity-50">|</span>
+          <span className="flex items-center gap-1">
+            <Clock className="w-3.5 h-3.5" /> {timeElapsedText}
+          </span>
+        </div>
+
+        <div className="flex items-start gap-2.5 bg-[#E8F5E9] text-[#065F46] p-3 rounded-lg text-[13px] mt-1 border border-[#A7F3D0] shadow-sm">
+          <Info className="w-4 h-4 shrink-0 mt-0.5 text-[#10B981]" />
+          <p className="leading-snug font-medium line-clamp-3">
+            {demand.observacoes || 'Nenhuma observação específica fornecida.'}
+          </p>
+        </div>
+
+        <div className="flex items-center justify-between mt-auto pt-3 border-t border-[#E5E5E5] flex-wrap gap-2 pointer-events-auto">
+          <Badge
+            className={cn(
+              'border-none px-3 h-6 flex items-center justify-center font-bold text-[11px] shadow-sm',
+              capturedCount > 0
+                ? 'bg-[#10B981] text-white'
+                : 'bg-white text-[#999999] border border-[#E5E5E5]',
+            )}
+          >
+            {capturedCount} imóveis captados
+          </Badge>
+
+          {isPending && !isLost && (
             <Button
               variant="outline"
-              className="flex-1 h-11 min-h-[44px] text-[#333333] font-bold border-[#E5E5E5] hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-150 ease-in-out active:shadow-inner relative z-10 w-full lg:w-auto"
-              onClick={(e) => handleActionClick(e, 'edit')}
-              aria-label={`Editar demanda ${demand.nome_cliente}`}
+              size="sm"
+              className={cn(
+                'h-7 px-2 font-bold text-[11px] border-none shadow-sm relative z-10 transition-all',
+                isPrioritized
+                  ? 'bg-[#F44336]/10 text-[#F44336] hover:bg-[#F44336]/20'
+                  : 'bg-[#FCD34D]/20 text-[#B45309] hover:bg-[#FCD34D]/40',
+              )}
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                onAction('prioritize', demand)
+              }}
             >
-              <Pencil className="w-4 h-4 mr-1.5" />
-              Editar
+              <Star className="w-3 h-3 mr-1" /> {isPrioritized ? 'Remover Prioridade' : 'Priorizar'}
             </Button>
+          )}
+        </div>
+      </div>
+
+      <div className="px-4 pb-4 pt-2 mt-auto bg-white pointer-events-auto rounded-b-[14px]">
+        <div className="grid grid-cols-2 gap-2 relative z-10">
+          <Button
+            variant="outline"
+            className="w-full font-bold border-[#2E5F8A]/30 text-[#1A3A52] hover:bg-gray-100 min-h-[44px]"
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              onAction('details', demand)
+            }}
+          >
+            Ver Detalhes
+          </Button>
+
+          {canMarkLost && (
+            <Button
+              variant="destructive"
+              className="w-full font-bold min-h-[44px]"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                onAction('lost', demand)
+              }}
+            >
+              <X className="w-4 h-4 mr-1.5" /> Perdida
+            </Button>
+          )}
+
+          {!canMarkLost && (
             <Button
               variant="outline"
-              className="flex-1 h-11 min-h-[44px] text-[#854D0E] font-bold border-[#FCD34D] hover:bg-[#FEF3C7] dark:hover:bg-[#FEF3C7] transition-all duration-150 ease-in-out active:shadow-inner relative z-10 w-full lg:w-auto"
-              onClick={(e) => handleActionClick(e, 'prioritize')}
-              aria-label={
-                demand.is_prioritaria
-                  ? `Remover prioridade da demanda ${demand.nome_cliente}`
-                  : `Priorizar demanda ${demand.nome_cliente}`
-              }
+              className="w-full font-bold border-[#E5E5E5] text-[#333333] hover:bg-gray-100 min-h-[44px]"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                logSolicitorContactAttempt(demand.id, 'whatsapp', 'Olá')
+                toast({ title: 'Aviso', description: 'Função de contato iniciada.' })
+              }}
             >
-              <Star
-                className={cn(
-                  'w-4 h-4 mr-1.5 transition-all',
-                  demand.is_prioritaria && 'fill-current text-[#F59E0B]',
-                )}
-              />
-              {demand.is_prioritaria ? 'Normal' : 'Priorizar'}
+              <MessageCircle className="w-4 h-4 mr-1.5" /> Contato
             </Button>
-          </>
-        )}
+          )}
+        </div>
       </div>
     </Card>
   )

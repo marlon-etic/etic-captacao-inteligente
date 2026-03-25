@@ -167,6 +167,19 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
       if (e.detail?.tipo === type && e.detail?.data) {
         const d = e.detail.data
         setDemands((prev) => {
+          if (
+            !prev.some((x) => x.id === d.id) &&
+            (d.status_demanda === 'aberta' ||
+              d.status_demanda === 'prioritaria' ||
+              d.status_demanda === 'atendida')
+          ) {
+            // Add to list if it was reopened from a state not loaded
+            const newDemand = formatData([
+              { ...d, imoveis_captados: [], respostas_captador: [], prazos_captacao: [] },
+            ])[0]
+            return sortDemands([newDemand, ...prev])
+          }
+
           return sortDemands(
             prev.map((x) =>
               x.id === d.id
@@ -227,6 +240,23 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
           } else if (payload.eventType === 'UPDATE') {
             const d = payload.new
             setDemands((prev) => {
+              if (!prev.some((x) => x.id === d.id)) {
+                // If the demand was not in the list (e.g., was 'impossivel' and we only loaded 'aberta'),
+                // and now it's opened or prioritized, we add it.
+                if (
+                  d.status_demanda === 'aberta' ||
+                  d.status_demanda === 'prioritaria' ||
+                  d.status_demanda === 'atendida' ||
+                  d.status_demanda === 'sem_resposta_24h'
+                ) {
+                  const newDemand = formatData([
+                    { ...d, imoveis_captados: [], respostas_captador: [], prazos_captacao: [] },
+                  ])[0]
+                  return sortDemands([newDemand, ...prev])
+                }
+                return prev
+              }
+
               return sortDemands(
                 prev.map((x) =>
                   x.id === d.id

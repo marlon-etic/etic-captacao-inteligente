@@ -24,7 +24,7 @@ export function CapturedPropertyCard({
   onAction,
 }: {
   demand?: Demand
-  property: CapturedProperty
+  property: CapturedProperty | any
   onAction?: (
     t: 'visita' | 'proposta' | 'negocio' | 'lost' | 'history' | 'details' | 'edit' | 'vincular',
     d: Demand | undefined,
@@ -122,8 +122,8 @@ export function CapturedPropertyCard({
     }
   }
 
-  const isClosed = !!property.fechamentoDate
-  const isVisita = !!property.visitaDate && !isClosed
+  const isClosed = property.etapa_funil === 'fechado' || !!property.data_fechamento
+  const isVisita = (property.etapa_funil === 'visitado' || !!property.data_visita) && !isClosed
 
   const status = isClosed ? 'Fechado' : isVisita ? 'Visita' : 'Captado'
   const captadoBadgeClass = isClosed
@@ -214,8 +214,9 @@ export function CapturedPropertyCard({
             👤 Solicitado por: <span className="text-[#333333] font-bold">{solicitanteName}</span>
           </p>
         )}
-        <div className="mt-[8px] pt-[8px] border-t border-[#E5E5E5] text-[13px] text-[#666666]">
-          📝 Observações: <span className="italic">{property.obs || 'Nenhuma observação'}</span>
+        <div className="mt-[8px] pt-[8px] border-t border-[#E5E5E5] text-[13px] text-[#666666] max-h-[80px] overflow-y-auto custom-scrollbar">
+          📝 Observações:{' '}
+          <span className="italic whitespace-pre-wrap">{property.obs || 'Nenhuma observação'}</span>
         </div>
       </CardContent>
 
@@ -241,29 +242,33 @@ export function CapturedPropertyCard({
               <BookOpen className="w-[14px] h-[14px] mr-1.5" />
               Detalhes
             </Button>
-            <Button
-              className="flex-1 h-11 min-h-[44px] bg-[#25D366] hover:bg-[#128C7E] text-white font-bold text-[13px] px-2 border border-transparent relative z-10 transition-all duration-150 ease-in-out active:shadow-inner shadow-sm w-full lg:w-auto"
-              onClick={handleWhatsApp}
-              aria-label="Contatar Solicitante via WhatsApp"
-            >
-              <MessageCircle className="w-[14px] h-[14px] mr-1.5" />
-              Contatar
-            </Button>
+            {demand && (
+              <Button
+                className="flex-1 h-11 min-h-[44px] bg-[#25D366] hover:bg-[#128C7E] text-white font-bold text-[13px] px-2 border border-transparent relative z-10 transition-all duration-150 ease-in-out active:shadow-inner shadow-sm w-full lg:w-auto"
+                onClick={handleWhatsApp}
+                aria-label="Contatar Solicitante via WhatsApp"
+              >
+                <MessageCircle className="w-[14px] h-[14px] mr-1.5" />
+                Contatar
+              </Button>
+            )}
           </>
         )}
 
         {isSDRCorretorAdmin && (
           <>
-            <Button
-              className="flex-1 h-11 min-h-[44px] bg-[#10B981] hover:bg-[#059669] text-white font-bold text-[13px] px-2 shadow-sm relative z-10 transition-all duration-150 ease-in-out active:shadow-inner border-none w-full lg:w-auto"
-              onClick={(e) => handleActionClick(e, 'vincular')}
-              aria-label={`Vincular imóvel ${property.code}`}
-            >
-              <Link2 className="w-[16px] h-[16px] mr-1.5 shrink-0" />
-              <span className="truncate">VINCULAR</span>
-            </Button>
+            {!demand && (
+              <Button
+                className="flex-1 h-11 min-h-[44px] bg-[#10B981] hover:bg-[#059669] text-white font-bold text-[13px] px-2 shadow-sm relative z-10 transition-all duration-150 ease-in-out active:shadow-inner border-none w-full lg:w-auto"
+                onClick={(e) => handleActionClick(e, 'vincular')}
+                aria-label={`Vincular imóvel ${property.code}`}
+              >
+                <Link2 className="w-[16px] h-[16px] mr-1.5 shrink-0" />
+                <span className="truncate">VINCULAR</span>
+              </Button>
+            )}
 
-            {!isClosed && !isVisita && (
+            {demand && !isClosed && !isVisita && (
               <Button
                 className="flex-1 h-11 min-h-[44px] bg-[#FF9800] hover:bg-[#F57C00] text-white font-bold text-[13px] px-2 shadow-sm relative z-10 transition-all duration-150 ease-in-out active:shadow-inner border-none w-full lg:w-auto"
                 onClick={(e) => handleActionClick(e, 'visita')}
@@ -273,7 +278,7 @@ export function CapturedPropertyCard({
                 <span className="truncate">VISITA</span>
               </Button>
             )}
-            {isVisita && (
+            {demand && isVisita && (
               <Button
                 className="flex-1 h-11 min-h-[44px] bg-[#4CAF50] hover:bg-[#388E3C] text-white font-bold text-[13px] px-2 shadow-sm relative z-10 transition-all duration-150 ease-in-out active:shadow-inner border-none w-full lg:w-auto"
                 onClick={(e) => handleActionClick(e, 'negocio')}

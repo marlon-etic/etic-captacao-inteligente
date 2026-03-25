@@ -11,7 +11,17 @@ import { toast } from '@/hooks/use-toast'
 import { DemandDetailsModal } from '@/components/DemandDetailsModal'
 import { LostModal } from '@/components/LostModal'
 import { useSlaCountdown, useTimeElapsed } from '@/hooks/useTimeElapsed'
-import { Building2, Home, Eye, Zap, Clock, Maximize2, MessageCircle, X } from 'lucide-react'
+import {
+  Building2,
+  Home,
+  Eye,
+  Zap,
+  Clock,
+  Maximize2,
+  MessageCircle,
+  X,
+  RefreshCw,
+} from 'lucide-react'
 
 interface DemandCardProps {
   demand: Demand
@@ -89,6 +99,13 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
 
   const canMarkLost =
     !isLost &&
+    (currentUser?.role === 'admin' ||
+      currentUser?.role === 'gestor' ||
+      (demand.createdBy === currentUser?.id &&
+        (currentUser?.role === 'sdr' || currentUser?.role === 'corretor')))
+
+  const canReopen =
+    isLost &&
     (currentUser?.role === 'admin' ||
       currentUser?.role === 'gestor' ||
       (demand.createdBy === currentUser?.id &&
@@ -227,6 +244,36 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
       if (error) throw error
     } catch (e: any) {
       toast({ title: 'Erro ao prorrogar', description: e.message, variant: 'destructive' })
+    } finally {
+      setIsExtending(false)
+    }
+  }
+
+  const handleReabrir = async (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (isExtending) return
+    setIsExtending(true)
+    try {
+      const table = demand.type === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
+      const { error } = await supabase
+        .from(table)
+        .update({ status_demanda: 'aberta' })
+        .eq('id', demand.id)
+      if (error) throw error
+
+      window.dispatchEvent(
+        new CustomEvent('demanda-updated', {
+          detail: { tipo: demand.type, data: { id: demand.id, status_demanda: 'aberta' } },
+        }),
+      )
+      toast({
+        title: 'Demanda reaberta!',
+        description: 'Sincronizado com os captadores.',
+        className: 'bg-[#10B981] text-white border-none',
+      })
+    } catch (e: any) {
+      toast({ title: 'Erro ao reabrir', description: e.message, variant: 'destructive' })
     } finally {
       setIsExtending(false)
     }
@@ -423,24 +470,26 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
             </>
           )}
 
-          <Button
-            className="h-11 min-h-[44px] flex-1 font-bold text-[13px] relative z-10 bg-white text-[#1A3A52] hover:bg-gray-100 dark:hover:bg-gray-800 border border-[#1A3A52]/30 transition-all duration-150 ease-in-out active:shadow-inner w-full lg:w-auto"
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              if (import.meta.env.DEV) {
-                console.log(`Botão [contato] clicado em [DemandCard]`, { id: demand.id })
-              }
-              logSolicitorContactAttempt(
-                demand.id,
-                'interno',
-                'Olá, gostaria de falar sobre esta demanda.',
-              )
-            }}
-            aria-label={`Contatar solicitante da demanda ${demand.clientName}`}
-          >
-            <MessageCircle className="w-[16px] h-[16px] mr-1.5" /> Contato
-          </Button>
+          {!isLost && (
+            <Button
+              className="h-11 min-h-[44px] flex-1 font-bold text-[13px] relative z-10 bg-white text-[#1A3A52] hover:bg-gray-100 dark:hover:bg-gray-800 border border-[#1A3A52]/30 transition-all duration-150 ease-in-out active:shadow-inner w-full lg:w-auto"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                if (import.meta.env.DEV) {
+                  console.log(`Botão [contato] clicado em [DemandCard]`, { id: demand.id })
+                }
+                logSolicitorContactAttempt(
+                  demand.id,
+                  'interno',
+                  'Olá, gostaria de falar sobre esta demanda.',
+                )
+              }}
+              aria-label={`Contatar solicitante da demanda ${demand.clientName}`}
+            >
+              <MessageCircle className="w-[16px] h-[16px] mr-1.5" /> Contato
+            </Button>
+          )}
 
           {canMarkLost && (
             <Button
@@ -457,6 +506,16 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
               aria-label={`Marcar demanda ${demand.clientName} como Perdida`}
             >
               <X className="w-[16px] h-[16px] mr-1.5" /> Perdida
+            </Button>
+          )}
+
+          {canReopen && (
+            <Button
+              className="h-11 min-h-[44px] flex-1 font-bold text-[13px] relative z-10 transition-all duration-150 bg-[#1A3A52] hover:bg-[#2E5F8A] text-white w-full lg:w-auto shadow-sm"
+              onClick={handleReabrir}
+              disabled={isExtending}
+            >
+              <RefreshCw className="w-[16px] h-[16px] mr-1.5" /> Reabrir Demanda
             </Button>
           )}
         </div>

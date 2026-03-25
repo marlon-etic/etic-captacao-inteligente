@@ -88,9 +88,9 @@ interface AppState {
   processWebhookCron: () => Promise<void>
   scheduleVisit: (id: string, payload: any) => void
   closeDeal: (id: string, payload: any) => void
-  scheduleVisitByCode: (code: string, payload: any) => void
-  submitProposalByCode: (code: string, payload: any) => void
-  closeDealByCode: (code: string, payload: any) => void
+  scheduleVisitByCode: (code: string, payload: any) => Promise<void>
+  submitProposalByCode: (code: string, payload: any) => Promise<void>
+  closeDealByCode: (code: string, payload: any) => Promise<void>
   prioritizeDemand: (id: string, reason: string, count: number) => void
   markDemandLost: (id: string, reason: string, obs?: string) => void
   markPropertyLost: (code: string, demandId: string, reason: string, obs?: string) => void
@@ -297,7 +297,6 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
     fetchUsers()
 
-    // Replacing problematic realtime channel with robust polling for users list (updates every 10s)
     const interval = setInterval(fetchUsers, 10000)
 
     return () => {
@@ -481,9 +480,153 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   )
 
   const triggerCron = useCallback(() => {}, [])
-  const scheduleVisitByCode = useCallback((code: string, payload: any) => {}, [])
-  const submitProposalByCode = useCallback((code: string, payload: any) => {}, [])
-  const closeDealByCode = useCallback((code: string, payload: any) => {}, [])
+
+  const scheduleVisitByCode = useCallback(async (code: string, payload: any) => {
+    try {
+      const dateStr = payload.date + (payload.time ? 'T' + payload.time + ':00' : 'T00:00:00')
+      const isoDate = new Date(dateStr).toISOString()
+
+      const { data: prop } = await supabase
+        .from('imoveis_captados')
+        .select('id, demanda_locacao_id, demanda_venda_id, observacoes')
+        .eq('codigo_imovel', code)
+        .single()
+
+      if (!prop) throw new Error('Imóvel não encontrado')
+
+      const newObs = prop.observacoes
+        ? `${prop.observacoes}\n\n[VISITA AGENDADA - ${new Date(dateStr).toLocaleString()}]: ${payload.obs || ''}`
+        : `[VISITA AGENDADA - ${new Date(dateStr).toLocaleString()}]: ${payload.obs || ''}`
+
+      const { error } = await supabase
+        .from('imoveis_captados')
+        .update({
+          data_visita: isoDate,
+          etapa_funil: 'visitado',
+          observacoes: newObs,
+        })
+        .eq('codigo_imovel', code)
+
+      if (error) throw error
+
+      toast({
+        title: 'Visita Agendada',
+        description: `Imóvel ${code} sincronizado com todos os envolvidos.`,
+        className: 'bg-[#10B981] text-white border-none',
+      })
+
+      // Update demand status to atendida if it was aberta
+      if (prop.demanda_locacao_id) {
+        await supabase
+          .from('demandas_locacao')
+          .update({ status_demanda: 'atendida' })
+          .eq('id', prop.demanda_locacao_id)
+          .eq('status_demanda', 'aberta')
+      } else if (prop.demanda_venda_id) {
+        await supabase
+          .from('demandas_vendas')
+          .update({ status_demanda: 'atendida' })
+          .eq('id', prop.demanda_venda_id)
+          .eq('status_demanda', 'aberta')
+      }
+    } catch (err: any) {
+      toast({
+        title: 'Erro ao agendar visita',
+        description: err.message,
+        variant: 'destructive',
+      })
+    }
+  }, [])
+
+  const submitProposalByCode = useCallback(async (code: string, payload: any) => {
+    try {
+      const { data: prop } = await supabase
+        .from('imoveis_captados')
+        .select('id, observacoes')
+        .eq('codigo_imovel', code)
+        .single()
+      if (!prop) throw new Error('Imóvel não encontrado')
+
+      const newObs = prop.observacoes
+        ? `${prop.observacoes}\n\n[PROPOSTA - R$ ${payload.value} - ${payload.date}]: ${payload.obs || ''}`
+        : `[PROPOSTA - R$ ${payload.value} - ${payload.date}]: ${payload.obs || ''}`
+
+      const { error } = await supabase
+        .from('imoveis_captados')
+        .update({
+          etapa_funil: 'proposta',
+          observacoes: newObs,
+        })
+        .eq('codigo_imovel', code)
+
+      if (error) throw error
+      toast({
+        title: 'Proposta Registrada',
+        description: `Imóvel ${code} sincronizado em real-time.`,
+        className: 'bg-[#10B981] text-white border-none',
+      })
+    } catch (err: any) {
+      toast({
+        title: 'Erro ao registrar proposta',
+        description: err.message,
+        variant: 'destructive',
+      })
+    }
+  }, [])
+
+  const closeDealByCode = useCallback(async (code: string, payload: any) => {
+    try {
+      const isoDate = new Date(payload.date + 'T00:00:00').toISOString()
+      const { data: prop } = await supabase
+        .from('imoveis_captados')
+        .select('id, demanda_locacao_id, demanda_venda_id, observacoes')
+        .eq('codigo_imovel', code)
+        .single()
+
+      if (!prop) throw new Error('Imóvel não encontrado')
+
+      const newObs = prop.observacoes
+        ? `${prop.observacoes}\n\n[NEGÓCIO FECHADO - R$ ${payload.value}]: ${payload.obs || ''}`
+        : `[NEGÓCIO FECHADO - R$ ${payload.value}]: ${payload.obs || ''}`
+
+      const { error } = await supabase
+        .from('imoveis_captados')
+        .update({
+          data_fechamento: isoDate,
+          etapa_funil: 'fechado',
+          preco: payload.value,
+          observacoes: newObs,
+        })
+        .eq('codigo_imovel', code)
+
+      if (error) throw error
+
+      if (prop.demanda_locacao_id) {
+        await supabase
+          .from('demandas_locacao')
+          .update({ status_demanda: 'ganho' })
+          .eq('id', prop.demanda_locacao_id)
+      } else if (prop.demanda_venda_id) {
+        await supabase
+          .from('demandas_vendas')
+          .update({ status_demanda: 'ganho' })
+          .eq('id', prop.demanda_venda_id)
+      }
+
+      toast({
+        title: 'Negócio Fechado! 🎉',
+        description: `Métricas e dashboards atualizados para todos os envolvidos.`,
+        className: 'bg-[#10B981] text-white border-none',
+      })
+    } catch (err: any) {
+      toast({
+        title: 'Erro ao fechar negócio',
+        description: err.message,
+        variant: 'destructive',
+      })
+    }
+  }, [])
+
   const prioritizeDemand = useCallback((id: string, reason: string, count: number) => {}, [])
 
   const markDemandLost = useCallback((id: string, reason: string, obs?: string) => {
@@ -499,6 +642,12 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           const table = loc ? 'demandas_locacao' : 'demandas_vendas'
 
           await supabase.from(table).update({ status_demanda: 'impossivel' }).eq('id', id)
+
+          toast({
+            title: 'Demanda arquivada',
+            description: 'A demanda foi marcada como perdida e sincronizada.',
+            className: 'bg-[#EF4444] text-white border-none',
+          })
         }
       })
       .catch(console.error)
@@ -512,13 +661,26 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           if (authData?.user) {
             const { error } = await supabase
               .from('imoveis_captados')
-              .update({ status_captacao: 'perdido' })
+              .update({ status_captacao: 'perdido', etapa_funil: 'perdido' })
               .eq('codigo_imovel', code)
 
-            if (error) console.error(error)
+            if (error) throw error
+
+            toast({
+              title: 'Imóvel Dispensado',
+              description: `O imóvel ${code} foi marcado como perdido.`,
+              className: 'bg-[#EF4444] text-white border-none',
+            })
           }
         })
-        .catch(console.error)
+        .catch((err) => {
+          console.error(err)
+          toast({
+            title: 'Erro',
+            description: 'Não foi possível dispensar o imóvel.',
+            variant: 'destructive',
+          })
+        })
     },
     [],
   )
@@ -854,6 +1016,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         getSimilarDemands,
         enqueueWebhook,
         processWebhookCron,
+        scheduleVisit: (id, payload) => {},
+        closeDeal: (id, payload) => {},
       }}
     >
       {children}

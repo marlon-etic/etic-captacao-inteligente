@@ -191,19 +191,23 @@ export function DemandDetailsModal({
             {/* Histórico/Imóveis */}
             <div className="bg-white p-5 rounded-[12px] border border-[#E5E5E5] shadow-sm relative z-0">
               <span className="text-[12px] text-[#999999] font-black uppercase tracking-wider flex items-center gap-1.5 mb-4 border-b border-[#F5F5F5] pb-2 pointer-events-none">
-                📦 Imóveis Capturados ({demand.capturedProperties?.length || 0})
+                📦 Imóveis Capturados (
+                {(demand as any).imoveis_captados?.length || demand.capturedProperties?.length || 0}
+                )
               </span>
 
-              {demand.capturedProperties && demand.capturedProperties.length > 0 ? (
+              {((demand as any).imoveis_captados || demand.capturedProperties)?.length > 0 ? (
                 <div className="flex flex-col gap-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar relative z-10">
-                  {demand.capturedProperties.map((p, i) => (
-                    <ImovelCapturadoCard
-                      key={p.id || i}
-                      property={p}
-                      demand={demand}
-                      isOwnerOrAdmin={isOwnerOrAdmin}
-                    />
-                  ))}
+                  {((demand as any).imoveis_captados || demand.capturedProperties).map(
+                    (p: any, i: number) => (
+                      <ImovelCapturadoCard
+                        key={p.id || i}
+                        property={p}
+                        demand={demand}
+                        isOwnerOrAdmin={isOwnerOrAdmin}
+                      />
+                    ),
+                  )}
                 </div>
               ) : (
                 <div className="bg-[#F8FAFC] p-6 rounded-[8px] border border-[#E5E5E5] text-center flex flex-col items-center gap-2 pointer-events-none">

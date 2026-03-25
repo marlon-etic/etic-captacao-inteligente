@@ -107,7 +107,10 @@ export function CapturedPropertiesView({
         bedrooms: p.dormitorios,
         parkingSpots: p.vagas,
         obs: p.observacoes,
-      } as CapturedProperty,
+        etapa_funil: p.etapa_funil,
+        data_visita: p.data_visita,
+        data_fechamento: p.data_fechamento,
+      } as any,
     }))
   }, [supabaseProps])
 
@@ -128,8 +131,8 @@ export function CapturedPropertiesView({
 
       if (currentUser?.role === 'captador' && p.captador_id !== currentUser.id) return false
 
-      const isClosed = !!p.fechamentoDate
-      const isVisita = !!p.visitaDate && !isClosed
+      const isClosed = p.etapa_funil === 'fechado' || !!p.data_fechamento
+      const isVisita = (p.etapa_funil === 'visitado' || !!p.data_visita) && !isClosed
 
       let propStatus = 'Captado'
       if (isClosed) propStatus = 'Fechado'

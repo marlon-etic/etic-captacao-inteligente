@@ -177,7 +177,11 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
               })
             } else {
               setProperties((prev) => {
-                // Ensure we merge the new payload data over existing local formatted data correctly
+                if (!prev.some((p) => p.id === payload.new.id)) {
+                  fetchSingleProperty(payload.new.id)
+                  return prev
+                }
+
                 return prev.map((p) =>
                   p.id === payload.new.id
                     ? {
@@ -190,6 +194,8 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
                         observacoes:
                           payload.new.observacoes || payload.new.localizacao_texto || p.observacoes,
                         etapa_funil: payload.new.etapa_funil || p.etapa_funil,
+                        data_visita: payload.new.data_visita ?? p.data_visita,
+                        data_fechamento: payload.new.data_fechamento ?? p.data_fechamento,
                       }
                     : p,
                 )
