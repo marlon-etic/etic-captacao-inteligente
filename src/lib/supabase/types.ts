@@ -1493,7 +1493,7 @@ export const Constants = {
 //   Policy "SDR sees own Locacao demands" (SELECT, PERMISSIVE) roles={authenticated}
 //     USING: ((sdr_id = auth.uid()) OR (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND ((users.role)::text = ANY (ARRAY['admin'::text, 'gestor'::text, 'captador'::text]))))))
 //   Policy "SDRs insert locacao" (INSERT, PERMISSIVE) roles={authenticated}
-//     WITH CHECK: ((sdr_id = auth.uid()) AND (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND (users.role = 'sdr'::user_role)))))
+//     WITH CHECK: ((sdr_id = auth.uid()) AND (((auth.jwt() ->> 'role'::text) = 'sdr'::text) OR (((auth.jwt() -> 'user_metadata'::text) ->> 'role'::text) = 'sdr'::text) OR (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND ((users.role)::text = 'sdr'::text))))))
 //   Policy "SDRs manage own locacao" (ALL, PERMISSIVE) roles={public}
 //     USING: ((sdr_id = auth.uid()) AND (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND (users.role = 'sdr'::user_role)))))
 // Table: demandas_vendas
