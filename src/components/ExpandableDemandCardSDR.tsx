@@ -80,7 +80,8 @@ export function ExpandableDemandCardSDR({ demand, onAction }: Props) {
   return (
     <Card
       onClick={(e) => {
-        if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('a')) return
+        if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('a'))
+          return
         if (import.meta.env.DEV) {
           console.log(`🔘 [Click] ExpandableDemandCardSDR Card Action: details`, { id: demand.id })
         }
@@ -99,7 +100,7 @@ export function ExpandableDemandCardSDR({ demand, onAction }: Props) {
       {/* Header */}
       <div
         className={cn(
-          'p-4 pt-4 border-b flex flex-col justify-between shrink-0 transition-colors duration-150 relative z-10 pointer-events-none rounded-t-[14px]',
+          'px-4 pt-4 pb-3 border-b flex flex-col justify-between shrink-0 transition-colors duration-150 relative z-10 pointer-events-none rounded-t-[14px]',
           hasProperties
             ? 'border-[#4CAF50]/20 bg-[#4CAF50]/5'
             : demand.is_prioritaria
@@ -107,8 +108,8 @@ export function ExpandableDemandCardSDR({ demand, onAction }: Props) {
               : 'border-[#E5E5E5] bg-[#F5F5F5]/50',
         )}
       >
-        <div className="flex justify-between items-center mb-3">
-          <span className="text-[12px] text-[#6B7280] font-sans font-bold bg-white px-2.5 py-1 rounded-[6px] border border-[#E5E5E5] shadow-sm flex items-center gap-1.5 pointer-events-auto">
+        <div className="flex justify-between items-start mb-3">
+          <span className="text-[12px] text-[#6B7280] font-sans font-bold bg-white px-2.5 py-1.5 rounded-[6px] border border-[#E5E5E5] shadow-sm flex items-center gap-1.5 pointer-events-auto">
             📅 {creationDateStr}
           </span>
           <div className="flex items-center gap-2 pointer-events-auto">
@@ -153,7 +154,7 @@ export function ExpandableDemandCardSDR({ demand, onAction }: Props) {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap mb-2">
+        <div className="flex items-center gap-2 flex-wrap mb-2 pointer-events-auto">
           <Badge
             className={cn(
               'text-[10px] font-bold px-2 py-1 border-none shadow-sm',
@@ -171,7 +172,7 @@ export function ExpandableDemandCardSDR({ demand, onAction }: Props) {
         </div>
 
         <h3
-          className="text-[18px] font-black text-[#1A3A52] leading-tight mt-1 line-clamp-2 group-hover:text-[#2E5F8A] transition-colors"
+          className="text-[18px] font-black text-[#1A3A52] leading-tight mt-1 line-clamp-2 group-hover:text-[#2E5F8A] transition-colors pointer-events-auto"
           title={demand.nome_cliente}
         >
           {demand.nome_cliente}
@@ -180,7 +181,7 @@ export function ExpandableDemandCardSDR({ demand, onAction }: Props) {
 
       {/* Details */}
       <div className="p-4 flex flex-col gap-[12px] flex-1 relative z-0 pointer-events-none">
-        <div className="flex items-center gap-2 text-[14px] text-[#333333]">
+        <div className="flex items-center gap-2 text-[14px] text-[#333333] pointer-events-auto">
           <MapPin className="w-4 h-4 text-[#F44336] shrink-0" />
           <span
             className="font-medium line-clamp-1"
@@ -190,14 +191,14 @@ export function ExpandableDemandCardSDR({ demand, onAction }: Props) {
           </span>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 pointer-events-auto">
           <DollarSign className="w-5 h-5 text-[#10B981] shrink-0" />
           <span className="text-[18px] font-black text-[#10B981] tracking-tight">
             R$ {formatPrice(demand.valor_minimo)} - R$ {formatPrice(demand.valor_maximo)}
           </span>
         </div>
 
-        <div className="flex items-center gap-4 text-[13px] text-[#666666] font-medium bg-[#F5F5F5] p-2.5 rounded-[8px] border border-[#E5E5E5] flex-wrap mt-auto">
+        <div className="flex items-center gap-4 text-[13px] text-[#666666] font-medium bg-[#F5F5F5] p-2.5 rounded-[8px] border border-[#E5E5E5] flex-wrap mt-auto pointer-events-auto">
           <div className="flex items-center gap-1.5">
             <BedDouble className="w-4 h-4 text-[#999999]" /> {demand.dormitorios || 'Indif.'} dorm
           </div>
@@ -253,14 +254,14 @@ export function ExpandableDemandCardSDR({ demand, onAction }: Props) {
       )}
 
       {/* Bottom Button Row */}
-      <div className="p-4 pt-4 pb-4 border-t border-[#E5E5E5] shrink-0 flex flex-col lg:flex-row flex-wrap gap-[8px] z-10 relative bg-white mt-auto pointer-events-auto rounded-b-[14px]">
+      <div className="px-4 pt-4 pb-4 border-t border-[#E5E5E5] shrink-0 flex flex-col lg:flex-row flex-wrap gap-2 z-10 relative bg-white mt-auto pointer-events-auto rounded-b-[14px]">
         <Button
           variant="outline"
-          className="flex-1 h-11 min-h-[44px] text-[#1A3A52] font-bold border-[#2E5F8A]/20 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-150 ease-in-out active:shadow-inner relative z-10"
+          className="flex-1 h-11 min-h-[44px] text-[#1A3A52] font-bold border-[#2E5F8A]/20 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-150 ease-in-out active:shadow-inner relative z-10 w-full lg:w-auto"
           onClick={(e) => handleActionClick(e, 'details')}
           aria-label={`Ver detalhes da demanda ${demand.nome_cliente}`}
         >
-          <Maximize2 className="w-4 h-4 mr-2" />
+          <Maximize2 className="w-4 h-4 mr-1.5" />
           Ver Detalhes
         </Button>
 
@@ -268,22 +269,26 @@ export function ExpandableDemandCardSDR({ demand, onAction }: Props) {
           <>
             <Button
               variant="outline"
-              className="flex-1 h-11 min-h-[44px] text-[#333333] font-bold border-[#E5E5E5] hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-150 ease-in-out active:shadow-inner relative z-10"
+              className="flex-1 h-11 min-h-[44px] text-[#333333] font-bold border-[#E5E5E5] hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-150 ease-in-out active:shadow-inner relative z-10 w-full lg:w-auto"
               onClick={(e) => handleActionClick(e, 'edit')}
               aria-label={`Editar demanda ${demand.nome_cliente}`}
             >
-              <Pencil className="w-4 h-4 mr-2" />
+              <Pencil className="w-4 h-4 mr-1.5" />
               Editar
             </Button>
             <Button
               variant="outline"
-              className="flex-1 h-11 min-h-[44px] text-[#854D0E] font-bold border-[#FCD34D] hover:bg-[#FEF3C7] dark:hover:bg-[#FEF3C7] transition-all duration-150 ease-in-out active:shadow-inner relative z-10"
+              className="flex-1 h-11 min-h-[44px] text-[#854D0E] font-bold border-[#FCD34D] hover:bg-[#FEF3C7] dark:hover:bg-[#FEF3C7] transition-all duration-150 ease-in-out active:shadow-inner relative z-10 w-full lg:w-auto"
               onClick={(e) => handleActionClick(e, 'prioritize')}
-              aria-label={demand.is_prioritaria ? `Remover prioridade da demanda ${demand.nome_cliente}` : `Priorizar demanda ${demand.nome_cliente}`}
+              aria-label={
+                demand.is_prioritaria
+                  ? `Remover prioridade da demanda ${demand.nome_cliente}`
+                  : `Priorizar demanda ${demand.nome_cliente}`
+              }
             >
               <Star
                 className={cn(
-                  'w-4 h-4 mr-2 transition-all',
+                  'w-4 h-4 mr-1.5 transition-all',
                   demand.is_prioritaria && 'fill-current text-[#F59E0B]',
                 )}
               />
@@ -295,4 +300,3 @@ export function ExpandableDemandCardSDR({ demand, onAction }: Props) {
     </Card>
   )
 }
-

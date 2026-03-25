@@ -374,4 +374,3 @@ export function MyDemandsView({ filterType }: Props) {
     </div>
   )
 }
-

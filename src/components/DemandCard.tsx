@@ -23,7 +23,9 @@ interface DemandCardProps {
 
 const InfoItem = ({ label, value }: { label: string; value: React.ReactNode }) => (
   <div className="flex flex-col gap-[4px] pointer-events-none">
-    <span className="text-[12px] text-[#999999] font-bold uppercase tracking-wider leading-tight">{label}</span>
+    <span className="text-[12px] text-[#999999] font-bold uppercase tracking-wider leading-tight">
+      {label}
+    </span>
     <span className="text-[14px] font-bold text-[#333333] break-words whitespace-normal leading-tight">
       {value}
     </span>
@@ -194,7 +196,8 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
   }
 
   const btnSolid = 'bg-[#10B981] hover:bg-[#059669] text-white border-none'
-  const btnSoft = 'bg-[#F5F5F5] text-[#333333] hover:bg-gray-100 dark:hover:bg-gray-800 border border-[#E5E5E5]'
+  const btnSoft =
+    'bg-[#F5F5F5] text-[#333333] hover:bg-gray-100 dark:hover:bg-gray-800 border border-[#E5E5E5]'
 
   let indicatorColor = 'bg-[#4CAF50]'
   if (slaLevel === 'yellow') indicatorColor = 'bg-[#FF9800]'
@@ -254,11 +257,16 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
         )}
       >
         {/* Header fixo no topo com data e status */}
-        <div className={cn('px-4 pt-4 pb-3 flex items-center justify-between border-b shrink-0 pointer-events-none relative z-10 rounded-t-[14px]', headerBg)}>
-          <span className="text-[12px] text-[#6B7280] font-sans font-bold bg-white px-2.5 py-1 rounded-[6px] border border-[#E5E5E5] shadow-sm flex items-center gap-1.5 pointer-events-auto">
+        <div
+          className={cn(
+            'px-4 pt-4 pb-3 flex items-start justify-between border-b shrink-0 pointer-events-none relative z-10 rounded-t-[14px]',
+            headerBg,
+          )}
+        >
+          <span className="text-[12px] text-[#6B7280] font-sans font-bold bg-white px-2.5 py-1.5 rounded-[6px] border border-[#E5E5E5] shadow-sm flex items-center gap-1.5 pointer-events-auto">
             📅 {creationDateStr}
           </span>
-          
+
           <div className="flex items-center gap-2 pointer-events-auto flex-wrap justify-end">
             <div
               className={cn(
@@ -323,13 +331,15 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
             />
             <InfoItem label="Solicitado por" value={creatorName} />
           </div>
-          
+
           <div className="flex items-center justify-between text-[12px] font-bold text-[#666666] mt-auto pt-2">
             <span className="flex items-center gap-1">
               <Clock className="w-4 h-4" /> Criado {timeElapsedText}
             </span>
             <span className="bg-[#E8F0F8] text-[#1A3A52] px-2 py-1 rounded-md border border-[#2E5F8A]/20">
-              📦 {demand.capturedProperties?.length || (demand as any).imoveis_captados?.length || 0} imóveis
+              📦{' '}
+              {demand.capturedProperties?.length || (demand as any).imoveis_captados?.length || 0}{' '}
+              imóveis
             </span>
           </div>
         </div>
@@ -337,7 +347,7 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
         {/* Rodapé com Botões */}
         <div
           className={cn(
-            'flex flex-col lg:flex-row flex-wrap gap-[8px] p-4 pt-4 pb-4 border-t shrink-0 z-10 relative mt-auto bg-white pointer-events-auto rounded-b-[14px]',
+            'flex flex-col lg:flex-row flex-wrap gap-2 px-4 pt-4 pb-4 border-t shrink-0 z-10 relative mt-auto bg-white pointer-events-auto rounded-b-[14px]',
             isLost ? 'border-[#E5E5E5] opacity-80 grayscale' : 'border-[#E5E5E5]',
           )}
         >

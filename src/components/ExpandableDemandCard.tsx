@@ -264,7 +264,9 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
         <div
           className={cn(
             'px-4 py-3 flex items-center border-b flex-wrap gap-3 justify-between relative z-10 pointer-events-none',
-            demand.is_prioritaria ? 'border-[#FCD34D]/50 bg-[#FCD34D]/10' : 'border-[#E5E5E5]/50 bg-[#F5F5F5]/50',
+            demand.is_prioritaria
+              ? 'border-[#FCD34D]/50 bg-[#FCD34D]/10'
+              : 'border-[#E5E5E5]/50 bg-[#F5F5F5]/50',
           )}
         >
           <span className="text-[12px] text-[#4B5563] font-sans font-bold bg-white px-2.5 py-1 rounded-[6px] border border-[#E5E5E5] shadow-sm flex items-center gap-1.5 pointer-events-auto">
@@ -427,4 +429,3 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
     </>
   )
 }
-

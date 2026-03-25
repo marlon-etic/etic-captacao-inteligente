@@ -1,5 +1,16 @@
 import { useState } from 'react'
-import { MapPin, Calendar, Bed, Car, Bath, UserCircle, Share2, ExternalLink, Link2, X } from 'lucide-react'
+import {
+  MapPin,
+  Calendar,
+  Bed,
+  Car,
+  Bath,
+  UserCircle,
+  Share2,
+  ExternalLink,
+  Link2,
+  X,
+} from 'lucide-react'
 import { CapturedProperty } from '@/types'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -83,7 +94,6 @@ export function LoosePropertyCard({
   return (
     <>
       <Card className="overflow-visible flex flex-col h-full border-[2px] border-[#2E5F8A] hover:shadow-[0_8px_24px_rgba(26,58,82,0.15)] relative transition-all duration-150 ease-in-out bg-[#FFFFFF] rounded-[16px] z-0 group">
-        
         {/* Imagem do Imóvel no Topo com Data */}
         <div className="relative h-48 w-full bg-[#F5F5F5] pointer-events-none shrink-0 border-b border-[#E5E5E5] rounded-t-[14px] overflow-hidden">
           <img
@@ -99,14 +109,12 @@ export function LoosePropertyCard({
             <Badge className="font-sans font-bold bg-white/90 text-[#333333] border border-[#E5E5E5] shadow-sm backdrop-blur-md px-2.5 py-1">
               📅 {captureDateStr}
             </Badge>
-            <Badge
-              className="font-bold shadow-sm bg-[#10B981] text-white border-none px-2.5 py-1 uppercase tracking-wide"
-            >
+            <Badge className="font-bold shadow-sm bg-[#10B981] text-white border-none px-2.5 py-1 uppercase tracking-wide">
               🔓 DISPONÍVEL
             </Badge>
           </div>
           <div className="absolute bottom-3 left-3 pointer-events-auto z-10">
-             <Badge className="font-bold text-[10px] text-white px-2 py-1 bg-[#1A3A52] shadow-sm uppercase tracking-widest">
+            <Badge className="font-bold text-[10px] text-white px-2 py-1 bg-[#1A3A52] shadow-sm uppercase tracking-widest">
               {property.propertyType === 'Aluguel' ? '🏠 ALUGUEL' : '🏢 VENDA'}
             </Badge>
           </div>
@@ -179,7 +187,9 @@ export function LoosePropertyCard({
             <p className="flex items-center gap-1.5 font-medium">
               <UserCircle className="w-4 h-4 shrink-0 text-[#3B82F6]" />
               Captador:{' '}
-              <span className="font-bold text-[#1A3A52] truncate">{property.captador_name || 'N/A'}</span>
+              <span className="font-bold text-[#1A3A52] truncate">
+                {property.captador_name || 'N/A'}
+              </span>
             </p>
           </div>
 

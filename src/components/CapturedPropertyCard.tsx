@@ -153,9 +153,9 @@ export function CapturedPropertyCard({
   return (
     <Card className="w-full h-full min-h-[160px] rounded-[16px] border-[2px] border-[#2E5F8A] hover:shadow-[0_8px_24px_rgba(26,58,82,0.12)] flex flex-col bg-[#FFFFFF] transition-all duration-150 ease-in-out overflow-visible relative group">
       {/* Header: Data and Status */}
-      <div className="p-4 pt-4 border-b border-[#E5E5E5] bg-[#F5F5F5]/50 shrink-0 relative z-10 pointer-events-none rounded-t-[14px]">
-        <div className="flex justify-between items-center mb-3">
-          <span className="text-[12px] text-[#6B7280] font-sans font-bold bg-white px-2.5 py-1 rounded-[6px] border border-[#E5E5E5] shadow-sm flex items-center gap-1.5 pointer-events-auto">
+      <div className="px-4 pt-4 pb-3 border-b border-[#E5E5E5] bg-[#F5F5F5]/50 shrink-0 relative z-10 pointer-events-none rounded-t-[14px]">
+        <div className="flex justify-between items-start mb-3">
+          <span className="text-[12px] text-[#6B7280] font-sans font-bold bg-white px-2.5 py-1.5 rounded-[6px] border border-[#E5E5E5] shadow-sm flex items-center gap-1.5 pointer-events-auto">
             📅 {captureDateStr}
           </span>
           <div
@@ -177,7 +177,7 @@ export function CapturedPropertyCard({
       </div>
 
       {/* Content */}
-      <CardContent className="p-4 pt-4 flex flex-col flex-1 z-0 relative gap-[12px] pointer-events-none">
+      <CardContent className="p-4 flex flex-col flex-1 z-0 relative gap-[12px] pointer-events-none">
         <div className="text-[15px] leading-tight flex items-center gap-1 pointer-events-auto">
           <span className="font-bold text-[#333333]">🏷️ Código:</span>
           <a
@@ -220,8 +220,82 @@ export function CapturedPropertyCard({
       </CardContent>
 
       {/* Buttons Footer */}
-      <div className="p-4 pt-4 pb-4 mt-auto border-t border-[#E5E5E5] bg-white flex flex-col gap-[8px] z-10 relative pointer-events-auto rounded-b-[14px]">
-        <div className="flex flex-col lg:flex-row gap-[8px] w-full">
+      <div className="px-4 pt-4 pb-4 mt-auto border-t border-[#E5E5E5] bg-white flex flex-col lg:flex-row flex-wrap gap-2 z-10 relative pointer-events-auto rounded-b-[14px]">
+        {isCaptador && (
+          <>
+            <Button
+              variant="outline"
+              className="flex-1 h-11 min-h-[44px] border-[#2E5F8A]/30 text-[#1A3A52] bg-white hover:bg-gray-100 dark:hover:bg-gray-800 font-bold text-[13px] px-2 relative z-10 transition-all duration-150 ease-in-out active:shadow-inner w-full lg:w-auto"
+              onClick={(e) => handleActionClick(e, 'edit')}
+              aria-label={`Editar imóvel ${property.code}`}
+            >
+              <Edit2 className="w-[14px] h-[14px] mr-1.5" />
+              Editar
+            </Button>
+            <Button
+              variant="outline"
+              className="flex-1 h-11 min-h-[44px] border-[#2E5F8A]/30 text-[#1A3A52] bg-white hover:bg-gray-100 dark:hover:bg-gray-800 font-bold text-[13px] px-2 relative z-10 transition-all duration-150 ease-in-out active:shadow-inner w-full lg:w-auto"
+              onClick={(e) => handleActionClick(e, 'details')}
+              aria-label={`Ver detalhes do imóvel ${property.code}`}
+            >
+              <BookOpen className="w-[14px] h-[14px] mr-1.5" />
+              Detalhes
+            </Button>
+            <Button
+              className="flex-1 h-11 min-h-[44px] bg-[#25D366] hover:bg-[#128C7E] text-white font-bold text-[13px] px-2 border border-transparent relative z-10 transition-all duration-150 ease-in-out active:shadow-inner shadow-sm w-full lg:w-auto"
+              onClick={handleWhatsApp}
+              aria-label="Contatar Solicitante via WhatsApp"
+            >
+              <MessageCircle className="w-[14px] h-[14px] mr-1.5" />
+              Contatar
+            </Button>
+          </>
+        )}
+
+        {isSDRCorretorAdmin && (
+          <>
+            <Button
+              className="flex-1 h-11 min-h-[44px] bg-[#10B981] hover:bg-[#059669] text-white font-bold text-[13px] px-2 shadow-sm relative z-10 transition-all duration-150 ease-in-out active:shadow-inner border-none w-full lg:w-auto"
+              onClick={(e) => handleActionClick(e, 'vincular')}
+              aria-label={`Vincular imóvel ${property.code}`}
+            >
+              <Link2 className="w-[16px] h-[16px] mr-1.5 shrink-0" />
+              <span className="truncate">VINCULAR</span>
+            </Button>
+
+            {!isClosed && !isVisita && (
+              <Button
+                className="flex-1 h-11 min-h-[44px] bg-[#FF9800] hover:bg-[#F57C00] text-white font-bold text-[13px] px-2 shadow-sm relative z-10 transition-all duration-150 ease-in-out active:shadow-inner border-none w-full lg:w-auto"
+                onClick={(e) => handleActionClick(e, 'visita')}
+                aria-label={`Agendar visita para imóvel ${property.code}`}
+              >
+                <Eye className="w-[16px] h-[16px] mr-1.5 shrink-0" />
+                <span className="truncate">VISITA</span>
+              </Button>
+            )}
+            {isVisita && (
+              <Button
+                className="flex-1 h-11 min-h-[44px] bg-[#4CAF50] hover:bg-[#388E3C] text-white font-bold text-[13px] px-2 shadow-sm relative z-10 transition-all duration-150 ease-in-out active:shadow-inner border-none w-full lg:w-auto"
+                onClick={(e) => handleActionClick(e, 'negocio')}
+                aria-label={`Fechar negócio para imóvel ${property.code}`}
+              >
+                <Handshake className="w-[16px] h-[16px] mr-1.5 shrink-0" />
+                <span className="truncate">NEGÓCIO</span>
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              className="flex-1 h-11 min-h-[44px] border-[#2E5F8A]/30 text-[#1A3A52] bg-white hover:bg-gray-100 dark:hover:bg-gray-800 font-bold text-[13px] px-2 relative z-10 transition-all duration-150 ease-in-out active:shadow-inner w-full lg:w-auto"
+              onClick={(e) => handleActionClick(e, 'details')}
+              aria-label={`Ver detalhes do imóvel ${property.code}`}
+            >
+              <BookOpen className="w-[16px] h-[16px] mr-1.5 shrink-0" />
+              <span className="truncate">Detalhes</span>
+            </Button>
+          </>
+        )}
+
+        <div className="flex gap-2 w-full lg:w-auto lg:flex-1 order-last lg:order-none">
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
@@ -252,7 +326,7 @@ export function CapturedPropertyCard({
                 }}
                 aria-label={`Ver imóvel ${property.code} no site`}
               >
-                <ExternalLink className="w-[16px] h-[16px] mr-[6px]" />
+                <ExternalLink className="w-[16px] h-[16px] mr-1.5" />
                 <span className="truncate">Ver no site</span>
               </Button>
             </TooltipTrigger>
@@ -268,7 +342,7 @@ export function CapturedPropertyCard({
               <Button
                 variant="outline"
                 className={cn(
-                  'w-full lg:w-[44px] h-11 min-h-[44px] p-0 shrink-0 border-[2px] relative z-10 transition-all duration-150 ease-in-out active:shadow-inner bg-white',
+                  'w-[44px] h-11 min-h-[44px] p-0 shrink-0 border-[2px] relative z-10 transition-all duration-150 ease-in-out active:shadow-inner bg-white',
                   publicUrl
                     ? 'border-[#2E5F8A] text-[#1A3A52] hover:bg-gray-100 dark:hover:bg-gray-800'
                     : 'border-[#E5E5E5] text-[#999999]',
@@ -285,84 +359,7 @@ export function CapturedPropertyCard({
             </TooltipContent>
           </Tooltip>
         </div>
-
-        <div className="flex flex-col lg:flex-row flex-wrap gap-[8px] w-full">
-          {isCaptador && (
-            <>
-              <Button
-                variant="outline"
-                className="flex-1 h-11 min-h-[44px] border-[#2E5F8A]/30 text-[#1A3A52] bg-white hover:bg-gray-100 dark:hover:bg-gray-800 font-bold text-[13px] px-2 relative z-10 transition-all duration-150 ease-in-out active:shadow-inner"
-                onClick={(e) => handleActionClick(e, 'edit')}
-                aria-label={`Editar imóvel ${property.code}`}
-              >
-                <Edit2 className="w-[14px] h-[14px] mr-1" />
-                Editar
-              </Button>
-              <Button
-                variant="outline"
-                className="flex-1 h-11 min-h-[44px] border-[#2E5F8A]/30 text-[#1A3A52] bg-white hover:bg-gray-100 dark:hover:bg-gray-800 font-bold text-[13px] px-2 relative z-10 transition-all duration-150 ease-in-out active:shadow-inner"
-                onClick={(e) => handleActionClick(e, 'details')}
-                aria-label={`Ver detalhes do imóvel ${property.code}`}
-              >
-                <BookOpen className="w-[14px] h-[14px] mr-1" />
-                Detalhes
-              </Button>
-              <Button
-                className="w-full lg:w-auto flex-1 h-11 min-h-[44px] bg-[#25D366] hover:bg-[#128C7E] text-white font-bold text-[13px] px-2 border border-transparent relative z-10 transition-all duration-150 ease-in-out active:shadow-inner shadow-sm"
-                onClick={handleWhatsApp}
-                aria-label="Contatar Solicitante"
-              >
-                <MessageCircle className="w-[14px] h-[14px] mr-1" />
-                Contatar
-              </Button>
-            </>
-          )}
-
-          {isSDRCorretorAdmin && (
-            <>
-              <Button
-                className="flex-1 h-11 min-h-[44px] bg-[#10B981] hover:bg-[#059669] text-white font-bold text-[13px] px-2 shadow-sm relative z-10 transition-all duration-150 ease-in-out active:shadow-inner border-none"
-                onClick={(e) => handleActionClick(e, 'vincular')}
-                aria-label={`Vincular imóvel ${property.code}`}
-              >
-                <Link2 className="w-[16px] h-[16px] mr-1.5 shrink-0" />
-                <span className="truncate">VINCULAR</span>
-              </Button>
-
-              {!isClosed && !isVisita && (
-                <Button
-                  className="flex-1 h-11 min-h-[44px] bg-[#FF9800] hover:bg-[#F57C00] text-white font-bold text-[13px] px-2 shadow-sm relative z-10 transition-all duration-150 ease-in-out active:shadow-inner border-none"
-                  onClick={(e) => handleActionClick(e, 'visita')}
-                  aria-label={`Agendar visita para imóvel ${property.code}`}
-                >
-                  <Eye className="w-[16px] h-[16px] mr-1.5 shrink-0" />
-                  <span className="truncate">VISITA</span>
-                </Button>
-              )}
-              {isVisita && (
-                <Button
-                  className="flex-1 h-11 min-h-[44px] bg-[#4CAF50] hover:bg-[#388E3C] text-white font-bold text-[13px] px-2 shadow-sm relative z-10 transition-all duration-150 ease-in-out active:shadow-inner border-none"
-                  onClick={(e) => handleActionClick(e, 'negocio')}
-                  aria-label={`Fechar negócio para imóvel ${property.code}`}
-                >
-                  <Handshake className="w-[16px] h-[16px] mr-1.5 shrink-0" />
-                  <span className="truncate">NEGÓCIO</span>
-                </Button>
-              )}
-              <Button
-                variant="outline"
-                className="flex-1 h-11 min-h-[44px] border-[#2E5F8A]/30 text-[#1A3A52] bg-white hover:bg-gray-100 dark:hover:bg-gray-800 font-bold text-[13px] px-2 relative z-10 transition-all duration-150 ease-in-out active:shadow-inner w-full lg:w-auto"
-                onClick={(e) => handleActionClick(e, 'details')}
-                aria-label={`Ver detalhes do imóvel ${property.code}`}
-              >
-                <BookOpen className="w-[16px] h-[16px] mr-1.5 shrink-0" />
-                <span className="truncate">Detalhes</span>
-              </Button>
-            </>
-          )}
-        </div>
       </div>
     </Card>
   )
 }
-
