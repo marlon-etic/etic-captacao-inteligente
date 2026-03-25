@@ -19,6 +19,12 @@ export function BottomNav() {
       { icon: Building, label: 'Imóveis', path: '/app/disponivel-geral' },
       { icon: User, label: 'Perfil', path: '/app/perfil' },
     ]
+  } else if (currentUser.role === 'captador') {
+    navItems = [
+      { icon: LayoutDashboard, label: 'Início', path: '/app' },
+      { icon: Building, label: 'Meus Captados', path: '/app/meus-captados' },
+      { icon: User, label: 'Perfil', path: '/app/perfil' },
+    ]
   } else {
     navItems = [
       { icon: LayoutDashboard, label: 'Início', path: '/app' },

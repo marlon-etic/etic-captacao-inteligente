@@ -75,6 +75,11 @@ export default function Demandas() {
     return <Navigate to={`/app?tab=${tab}`} replace />
   }
 
+  // If it's a Captador, redirect to Meus Captados since Demandas Abertas is deprecated in the sidebar
+  if (currentUser?.role === 'captador') {
+    return <Navigate to="/app/meus-captados" replace />
+  }
+
   const filterHash = JSON.stringify(activeFilters)
 
   const handleTabChange = (val: string) => {

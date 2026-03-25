@@ -94,7 +94,7 @@ export function AppSidebar() {
   } else if (isCaptador) {
     navItems = [
       { title: 'Dashboard', icon: LayoutDashboard, url: '/app' },
-      { title: 'Demandas Abertas', icon: Users, url: '/app/demandas' },
+      { title: 'Meus Captados', icon: Building, url: '/app/meus-captados' },
       { title: 'Pontuação', icon: Star, url: '/app/pontuacao' },
       { title: 'Ranking', icon: Trophy, url: '/app/ranking' },
       { title: 'Histórico', icon: History, url: '/app/historico' },

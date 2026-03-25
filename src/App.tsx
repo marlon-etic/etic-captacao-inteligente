@@ -37,6 +37,7 @@ import HistoricoPage from '@/pages/dashboard/HistoricoPage'
 import PerdidosPage from '@/pages/dashboard/PerdidosPage'
 import DisponivelGeralPage from '@/pages/dashboard/DisponivelGeralPage'
 import TodosCaptadosPage from '@/pages/dashboard/TodosCaptadosPage'
+import MeusCaptadosPage from '@/pages/MeusCaptadosPage'
 
 // Landlord Panel Imports
 import LandlordLogin from '@/pages/auth/LandlordLogin'
@@ -151,6 +152,7 @@ const AppContent = () => {
             <Route path="pontuacao" element={<PontuacaoPage />} />
             <Route path="historico" element={<HistoricoPage />} />
             <Route path="perdidos" element={<PerdidosPage />} />
+            <Route path="meus-captados" element={<MeusCaptadosPage />} />
             <Route path="disponivel-geral" element={<DisponivelGeralPage />} />
             <Route path="todos-captados" element={<TodosCaptadosPage />} />
           </Route>
