@@ -151,6 +151,7 @@ export default function Layout() {
             <AddPropertyModal
               isOpen={isAddPropertyModalOpen}
               onClose={() => setAddPropertyModalOpen(false)}
+              onSuccess={() => {}}
             />
           </>
         )}

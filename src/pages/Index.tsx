@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { Mail, Lock, LogIn, Building2, Loader2, AlertTriangle } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -16,40 +16,18 @@ export default function Index() {
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [initError, setInitError] = useState<string | null>(null)
-  const isNavigating = useRef(false)
 
   const { currentUser, login, logout, isRestoringUser } = useAppStore()
   const { signIn, loading: authLoading, session } = useAuth()
   const navigate = useNavigate()
   const { toast } = useToast()
 
-  // Loop Prevention & Init Shielding (PROMPT-015)
   useEffect(() => {
-    const mountCount = parseInt(sessionStorage.getItem('etic_idx_mounts') || '0', 10)
-    if (mountCount > 3) {
-      setInitError('Detectamos instabilidade na inicialização. O estado foi limpo por segurança.')
-      sessionStorage.setItem('etic_idx_mounts', '0')
-      logout()
-      return
-    }
-    sessionStorage.setItem('etic_idx_mounts', (mountCount + 1).toString())
+    if (authLoading || isRestoringUser) return
 
-    const t = setTimeout(() => sessionStorage.setItem('etic_idx_mounts', '0'), 3000)
-    return () => clearTimeout(t)
-  }, [logout])
-
-  useEffect(() => {
-    if (authLoading || isRestoringUser || isNavigating.current) return
-
-    // Delay Estratégico para evitar colisão com extensões no carregamento rápido
     if (currentUser && session) {
-      isNavigating.current = true
-      const timer = setTimeout(() => {
-        navigate('/app', { replace: true })
-      }, 600) // Buffer seguro de 600ms
-      return () => clearTimeout(timer)
+      navigate('/app', { replace: true })
     } else if (currentUser && !session) {
-      // Fallback: se houver usuário salvo localmente mas sem sessão remota válida
       logout()
     }
   }, [currentUser, session, authLoading, isRestoringUser, navigate, logout])
@@ -68,8 +46,6 @@ export default function Index() {
     setIsLoading(true)
     setInitError(null)
     try {
-      await new Promise((r) => setTimeout(r, 600))
-
       const { error: supaError } = await signIn(email, password)
 
       if (supaError) {
@@ -92,17 +68,12 @@ export default function Index() {
       }
 
       await login(email, password)
-
-      // Delay explicitly added after manual login to guarantee state propagation
-      isNavigating.current = true
-      setTimeout(() => {
-        navigate('/app', { replace: true })
-      }, 300)
+      navigate('/app', { replace: true })
     } catch (err: any) {
       toast({
         title: 'Erro de Autenticação',
         description: err.message,
-        className: 'bg-[#F44336] text-white border-none',
+        variant: 'destructive',
       })
     } finally {
       setIsLoading(false)
@@ -116,8 +87,6 @@ export default function Index() {
     setIsLoading(true)
     setInitError(null)
     try {
-      await new Promise((r) => setTimeout(r, 600))
-
       const { error: authError } = await signIn(mockEmail, pass)
 
       if (authError) {
@@ -164,23 +133,19 @@ export default function Index() {
       }
 
       await login(mockEmail, pass)
-
-      isNavigating.current = true
-      setTimeout(() => {
-        navigate('/app', { replace: true })
-      }, 300)
+      navigate('/app', { replace: true })
     } catch (err: any) {
       toast({
         title: 'Erro de Autenticação',
         description: err.message,
-        className: 'bg-[#F44336] text-white border-none',
+        variant: 'destructive',
       })
     } finally {
       setIsLoading(false)
     }
   }
 
-  if (authLoading || isRestoringUser || isNavigating.current) {
+  if (authLoading || isRestoringUser) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#F5F5F5]">
         <Loader2 className="w-10 h-10 animate-spin text-[#1A3A52]" />

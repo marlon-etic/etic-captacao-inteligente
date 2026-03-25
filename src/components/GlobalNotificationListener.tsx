@@ -1,11 +1,11 @@
 import { useEffect, useRef, useCallback } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import useAppStore from '@/stores/useAppStore'
-import { useNotification } from '@/hooks/useNotification'
+import { useToast } from '@/hooks/use-toast'
 
 export function GlobalNotificationListener() {
   const { currentUser } = useAppStore()
-  const { showNotification } = useNotification()
+  const { toast } = useToast()
   const currentUserRef = useRef(currentUser)
 
   useEffect(() => {
@@ -45,16 +45,15 @@ export function GlobalNotificationListener() {
           const notif = payload.new
 
           let customColor = ''
-          if (notif.prioridade === 'alta') customColor = 'bg-[#EF4444] text-white'
-          else if (notif.prioridade === 'baixa') customColor = 'bg-[#6B7280] text-white'
-          else customColor = 'bg-[#3B82F6] text-white'
+          if (notif.prioridade === 'alta') customColor = 'bg-[#EF4444] text-white border-none'
+          else if (notif.prioridade === 'baixa') customColor = 'bg-[#6B7280] text-white border-none'
+          else customColor = 'bg-[#3B82F6] text-white border-none'
 
-          showNotification({
-            type: notif.prioridade === 'alta' ? 'error' : 'info',
+          toast({
             title: notif.titulo,
-            message: notif.mensagem,
-            customColor,
-            onClickAction: () => {
+            description: notif.mensagem,
+            className: customColor,
+            onClick: () => {
               const data = notif.dados_relacionados
               if (data?.demanda_id) {
                 window.dispatchEvent(
@@ -76,7 +75,7 @@ export function GlobalNotificationListener() {
       mounted = false
       supabase.removeChannel(channel)
     }
-  }, [currentUser, showNotification, playSound])
+  }, [currentUser, toast, playSound])
 
   return null
 }
