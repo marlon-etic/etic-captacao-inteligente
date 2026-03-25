@@ -32,6 +32,7 @@ import RealtimeTester from '@/pages/admin/RealtimeTester'
 import IntegrationTester from '@/pages/admin/IntegrationTester'
 import ResilienceTester from '@/pages/admin/ResilienceTester'
 import FunctionalTester from '@/pages/admin/FunctionalTester'
+import GoLiveTester from '@/pages/admin/GoLiveTester'
 import PontuacaoPage from '@/pages/dashboard/PontuacaoPage'
 import HistoricoPage from '@/pages/dashboard/HistoricoPage'
 import PerdidosPage from '@/pages/dashboard/PerdidosPage'
@@ -149,6 +150,7 @@ const AppContent = () => {
             <Route path="integration-tester" element={<IntegrationTester />} />
             <Route path="resilience-tester" element={<ResilienceTester />} />
             <Route path="functional-tester" element={<FunctionalTester />} />
+            <Route path="go-live-tester" element={<GoLiveTester />} />
             <Route path="pontuacao" element={<PontuacaoPage />} />
             <Route path="historico" element={<HistoricoPage />} />
             <Route path="perdidos" element={<PerdidosPage />} />
