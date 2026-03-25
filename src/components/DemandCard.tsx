@@ -11,7 +11,7 @@ import { toast } from '@/hooks/use-toast'
 import { DemandDetailsModal } from '@/components/DemandDetailsModal'
 import { LostModal } from '@/components/LostModal'
 import { useSlaCountdown, useTimeElapsed } from '@/hooks/useTimeElapsed'
-import { Building2, Home, Eye, Zap, Clock } from 'lucide-react'
+import { Building2, Home, Eye, Zap, Clock, Maximize2, MessageCircle, X } from 'lucide-react'
 
 interface DemandCardProps {
   demand: Demand
@@ -23,8 +23,8 @@ interface DemandCardProps {
 
 const InfoItem = ({ label, value }: { label: string; value: React.ReactNode }) => (
   <div className="flex flex-col gap-[4px] pointer-events-none">
-    <span className="text-[12px] text-[#333333] leading-tight font-medium">{label}</span>
-    <span className="text-[16px] font-bold text-[#1A3A52] break-words whitespace-normal leading-tight">
+    <span className="text-[12px] text-[#999999] font-bold uppercase tracking-wider leading-tight">{label}</span>
+    <span className="text-[14px] font-bold text-[#333333] break-words whitespace-normal leading-tight">
       {value}
     </span>
   </div>
@@ -92,10 +92,20 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
       (demand.createdBy === currentUser?.id &&
         (currentUser?.role === 'sdr' || currentUser?.role === 'corretor')))
 
-  let cardBg = 'bg-[#FFFFFF]'
-  if (isLost) cardBg = 'bg-[#F5F5F5] opacity-80'
-  else if (isPrioritized) cardBg = 'bg-[#ffebee]'
-  else if (isNew) cardBg = 'bg-[#e8f5e9] border-[#4CAF50]'
+  let cardBg = 'bg-[#FFFFFF] border-[#E5E5E5]'
+  let headerBg = 'bg-[#F5F5F5]/50 border-[#E5E5E5]'
+  if (isLost) {
+    cardBg = 'bg-[#F5F5F5] opacity-80 border-[#E5E5E5]'
+    headerBg = 'bg-[#E5E5E5] border-[#D4D4D4]'
+  } else if (isPrioritized) {
+    cardBg = 'bg-[#FFFBEB] border-[#FCD34D]'
+    headerBg = 'bg-[#FCD34D]/10 border-[#FCD34D]/50'
+  } else if (isNew) {
+    cardBg = 'bg-[#F2FBF5] border-[#4CAF50]'
+    headerBg = 'bg-[#4CAF50]/10 border-[#4CAF50]/30'
+  } else {
+    cardBg = 'bg-[#FFFFFF] border-[#E5E5E5] hover:border-[#1A3A52]/30'
+  }
 
   const latestNaoEncontrei = (demand as any).respostas_captador
     ?.filter((r: any) => r.resposta === 'nao_encontrei')
@@ -106,7 +116,7 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
   let statusBadge = null
   if (isLost) {
     statusBadge = (
-      <Badge className="bg-[#999999] text-[#FFFFFF] border-none font-bold text-[12px] min-h-[28px] py-1 px-3 shadow-md">
+      <Badge className="bg-[#999999] text-[#FFFFFF] border-none font-bold text-[11px] px-2 py-1 shadow-sm uppercase tracking-wider">
         ⚫ PERDIDA
       </Badge>
     )
@@ -114,7 +124,7 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
     statusBadge = (
       <Badge
         className={cn(
-          'bg-[#F44336] text-[#FFFFFF] border-none font-bold text-[12px] min-h-[28px] py-1 px-3 shadow-md',
+          'bg-[#F44336] text-[#FFFFFF] border-none font-bold text-[11px] px-2 py-1 shadow-sm uppercase tracking-wider',
           isJustPrioritized && 'animate-bounce-scale',
         )}
       >
@@ -123,7 +133,7 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
     )
   } else if (isNew) {
     statusBadge = (
-      <Badge className="bg-[#4CAF50] text-[#FFFFFF] border-none font-bold text-[12px] min-h-[28px] py-1 px-3 shadow-lg animate-pulse flex items-center gap-1">
+      <Badge className="bg-[#4CAF50] text-[#FFFFFF] border-none font-bold text-[11px] px-2 py-1 shadow-sm uppercase tracking-wider animate-pulse flex items-center gap-1">
         <Zap className="w-3.5 h-3.5 fill-current" /> NOVA DEMANDA
       </Badge>
     )
@@ -155,20 +165,20 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
       }
     }
 
-    let badgeContent = isPending ? slaBadgeText || '⏳ Pendente' : demand.status
+    let badgeContent = isPending ? slaBadgeText || '⏳ PENDENTE' : demand.status
 
     if (isPending && latestNaoEncontrei) {
       if (latestNaoEncontrei.motivo === 'Buscando outras opções') {
-        badgeContent = '🟠 Buscando outras opções'
+        badgeContent = '🟠 BUSCANDO'
       } else {
-        badgeContent = `🔴 Não encontrado: ${latestNaoEncontrei.motivo}`
+        badgeContent = `🔴 NÃO ENCONTRADO`
       }
     }
 
     statusBadge = (
       <Badge
         className={cn(
-          'border-none text-[12px] font-bold min-h-[28px] py-1 px-3 shadow-md transition-colors duration-300',
+          'border-none text-[11px] uppercase tracking-wider font-bold px-2 py-1 shadow-sm transition-colors duration-300',
           bgCol,
           textCol,
         )}
@@ -183,8 +193,8 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
     )
   }
 
-  const btnSolid = 'bg-[#1A3A52] hover:bg-[#2E5F8A] text-white border-none'
-  const btnSoft = 'bg-[#F5F5F5] text-[#333333] hover:bg-[#FFFFFF] border-[2px] border-[#2E5F8A]'
+  const btnSolid = 'bg-[#10B981] hover:bg-[#059669] text-white border-none'
+  const btnSoft = 'bg-[#F5F5F5] text-[#333333] hover:bg-[#E5E5E5] border border-[#E5E5E5]'
 
   let indicatorColor = 'bg-[#4CAF50]'
   if (slaLevel === 'yellow') indicatorColor = 'bg-[#FF9800]'
@@ -212,7 +222,6 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
         .eq('id', prazoDb.id)
 
       if (error) throw error
-      // The Real-time subscription will trigger the toast and UI update instantly
     } catch (e: any) {
       toast({ title: 'Erro ao prorrogar', description: e.message, variant: 'destructive' })
     } finally {
@@ -220,248 +229,225 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
     }
   }
 
+  const creationDateStr = new Date(demand.createdAt).toLocaleDateString('pt-BR')
+
   return (
     <div
-      className="opacity-0 animate-cascade-fade w-full relative h-full flex"
+      className="opacity-0 animate-cascade-fade w-full relative h-full flex flex-col"
       style={{ animationDelay: `${(index || 0) * 50}ms` }}
     >
       <Card
+        onClick={(e) => {
+          if ((e.target as HTMLElement).closest('button')) return
+          setShowDetails(true)
+        }}
         className={cn(
-          'w-full h-full p-[16px] flex flex-col rounded-[12px] transition-all duration-300 ease-in-out shadow-[0_4px_12px_rgba(26,58,82,0.1)] hover:shadow-[0_8px_24px_rgba(26,58,82,0.15)] relative overflow-hidden z-0',
+          'w-full h-full flex flex-col rounded-[16px] transition-all duration-200 ease-in-out shadow-sm hover:shadow-[0_8px_24px_rgba(26,58,82,0.12)] relative overflow-hidden z-0 border-[2px] cursor-pointer group',
           cardBg,
           isJustPrioritized && 'animate-glow-pulse',
           isJustLost && 'animate-fade-out opacity-0',
-          'border-[2px]',
-          !isNew && !isPrioritized && !isLost && 'border-[#2E5F8A]',
-          'min-h-[auto] min-[480px]:min-h-[200px] md:min-h-[220px] min-[1440px]:min-h-[240px]',
         )}
       >
-        {isJustLost && (
-          <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-10">
-            {[...Array(8)].map((_, i) => (
-              <div
-                key={i}
-                className="w-2 h-2 bg-[#999999] absolute animate-confetti-burst"
-                style={
-                  {
-                    '--tx': `${(Math.random() - 0.5) * 150}px`,
-                    '--ty': `${(Math.random() - 0.5) * 150}px`,
-                    animationDelay: `${Math.random() * 50}ms`,
-                  } as React.CSSProperties
-                }
-              />
-            ))}
-          </div>
-        )}
-
-        <div className="flex justify-between items-start mb-4 gap-2 z-0 relative pointer-events-none">
-          <div
-            className={cn(
-              'flex items-center justify-start px-3 py-1.5 gap-[6px] rounded-[6px] shadow-[0_2px_4px_rgba(26,58,82,0.1)] shrink-0 overflow-hidden min-h-[28px]',
-              isSale ? 'bg-[#FF9800]' : 'bg-[#1A3A52]',
-            )}
-          >
-            {isSale ? (
-              <Building2 className="w-[16px] h-[16px] text-white shrink-0" />
-            ) : (
-              <Home className="w-[16px] h-[16px] text-white shrink-0" />
-            )}
-            <span className="text-[12px] font-bold text-white leading-none tracking-tight whitespace-normal break-words">
-              {isSale ? 'VENDA' : 'ALUGUEL'}
-            </span>
-          </div>
-
-          <div className="flex items-center justify-end flex-wrap gap-2">
-            {!isLost && !isPrioritized && !isNew && isPending && !isExpired && (
-              <Badge className="bg-[#4CAF50] text-[#FFFFFF] hover:bg-[#388E3C] border-none text-[12px] font-bold whitespace-normal break-words text-center min-h-[28px] py-1 px-3 shadow-sm">
-                🟢 Ativa
-              </Badge>
-            )}
+        {/* Header fixo no topo com data e status */}
+        <div className={cn('px-4 py-3 flex items-center justify-between border-b shrink-0 pointer-events-none relative z-10', headerBg)}>
+          <span className="text-[12px] text-[#4B5563] font-sans font-bold bg-white px-2.5 py-1 rounded-[6px] border border-[#E5E5E5] shadow-sm flex items-center gap-1.5 pointer-events-auto">
+            📅 {creationDateStr}
+          </span>
+          
+          <div className="flex items-center gap-2 pointer-events-auto flex-wrap justify-end">
+            <div
+              className={cn(
+                'flex items-center justify-center px-2 py-1 gap-[4px] rounded-[6px] shadow-sm shrink-0',
+                isSale ? 'bg-[#FF9800]' : 'bg-[#1A3A52]',
+              )}
+            >
+              {isSale ? (
+                <Building2 className="w-[12px] h-[12px] text-white shrink-0" />
+              ) : (
+                <Home className="w-[12px] h-[12px] text-white shrink-0" />
+              )}
+              <span className="text-[10px] font-bold text-white uppercase tracking-wider">
+                {isSale ? 'VENDA' : 'ALUGUEL'}
+              </span>
+            </div>
             {statusBadge}
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start pb-4 z-0 relative pointer-events-none">
-          <h3 className="text-[20px] font-bold text-[#1A3A52] break-words whitespace-normal leading-tight m-0 pr-2">
-            {demand.clientName}
-          </h3>
-          {isPending && !isLost && (
-            <span
-              className={cn(
-                'text-[16px] font-bold whitespace-normal mt-2 sm:mt-0 break-words transition-colors duration-200',
-                slaLevel === 'red'
-                  ? 'text-[#F44336]'
-                  : slaLevel === 'yellow'
-                    ? 'text-[#FF9800]'
-                    : 'text-[#4CAF50]',
-              )}
-            >
-              {slaText}
-            </span>
-          )}
-        </div>
-
-        {isPending && !isLost && (
-          <div className="pb-4 z-0 relative pointer-events-none">
-            <Progress
-              value={slaProgress}
-              className="h-[8px] bg-[#F5F5F5] shadow-[inset_0_1px_2px_rgba(26,58,82,0.1)]"
-              indicatorClassName={indicatorColor}
-            />
-          </div>
-        )}
-
-        <div
-          className={cn(
-            'grid grid-cols-1 min-[480px]:grid-cols-2 gap-[16px] py-4 border-t flex-1 z-0 relative transition-colors duration-300 pointer-events-none',
-            isLost ? 'border-[#999999]/30' : isNew ? 'border-[#4CAF50]/20' : 'border-[#2E5F8A]/20',
-          )}
-        >
-          <InfoItem label="👤 Cliente" value={demand.clientName} />
-          <InfoItem label="👤 Solicitado por" value={creatorName} />
-          <InfoItem label="📍 Localização" value={demand.location} />
-          <InfoItem
-            label="💰 Orçamento"
-            value={`R$ ${formatPrice(demand.minBudget)} - R$ ${formatPrice(demand.maxBudget)}`}
-          />
-          <InfoItem
-            label="🏠 Perfil"
-            value={`${demand.bedrooms || 0} dorm, ${demand.bathrooms || 0} banh, ${demand.parkingSpots || 0} vagas`}
-          />
-          <InfoItem label="⚡ Urgência" value={demand.timeframe} />
-          <InfoItem label="📅 Criado há" value={timeElapsedText} />
-          <InfoItem
-            label="📦 Imóveis"
-            value={`${demand.capturedProperties?.length || (demand as any).imoveis_captados?.length || 0} imóveis`}
-          />
-        </div>
-
-        <div
-          className={cn(
-            'flex flex-col gap-[8px] pt-4 mt-auto border-t shrink-0 z-10 relative transition-colors duration-300',
-            isLost
-              ? 'border-[#999999]/30 opacity-80 grayscale'
-              : isNew
-                ? 'border-[#4CAF50]/20'
-                : 'border-[#2E5F8A]/20',
-          )}
-        >
-          <div className="flex flex-col xl:flex-row gap-[8px] w-full">
-            <Button
-              className={cn(
-                'min-h-[44px] w-full xl:w-auto flex-1 font-bold whitespace-normal break-words text-[14px] relative z-10',
-                btnSoft,
-              )}
-              onClick={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                if (import.meta.env.DEV) {
-                  console.log(`🔘 [Click] DemandCard Action: details`, { id: demand.id })
-                }
-                setShowDetails(true)
-              }}
-            >
-              <Eye className="w-4 h-4 mr-2" /> Ver Detalhes
-            </Button>
-
-            {currentUser?.role === 'captador' && isPending && (
-              <div className="flex flex-col sm:flex-row gap-[8px] w-full xl:w-auto flex-1">
-                {(!isExpired || (prazoDb?.prorrogacoes_usadas || 0) >= 3) && (
-                  <>
-                    <Button
-                      className={cn(
-                        'min-h-[44px] flex-1 font-bold whitespace-normal break-words text-[14px] px-2 shadow-md transition-transform hover:scale-[1.02] relative z-10',
-                        btnSolid,
-                      )}
-                      onClick={(e) => {
-                        e.preventDefault()
-                        e.stopPropagation()
-                        if (import.meta.env.DEV) {
-                          console.log(`🔘 [Click] DemandCard Action: encontrei`, { id: demand.id })
-                        }
-                        onAction?.(demand.id, 'encontrei')
-                      }}
-                      disabled={isLost}
-                    >
-                      ✅ Encontrei
-                    </Button>
-                    <Button
-                      className={cn(
-                        'min-h-[44px] flex-1 font-bold whitespace-normal break-words text-[14px] px-2 shadow-md transition-transform hover:scale-[1.02] bg-[#EF4444] hover:bg-[#DC2626] text-white border-none relative z-10',
-                      )}
-                      onClick={(e) => {
-                        e.preventDefault()
-                        e.stopPropagation()
-                        if (import.meta.env.DEV) {
-                          console.log(`🔘 [Click] DemandCard Action: nao_encontrei`, {
-                            id: demand.id,
-                          })
-                        }
-                        onAction?.(demand.id, 'nao_encontrei')
-                      }}
-                      disabled={isLost}
-                    >
-                      ❌ Não Encontrei
-                    </Button>
-                  </>
+        {/* Conteúdo central */}
+        <div className="p-4 flex flex-col gap-3 flex-1 relative z-0 pointer-events-none">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
+            <h3 className="text-[20px] font-black text-[#1A3A52] break-words whitespace-normal leading-tight group-hover:text-[#2E5F8A] transition-colors pr-2">
+              {demand.clientName}
+            </h3>
+            {isPending && !isLost && (
+              <span
+                className={cn(
+                  'text-[14px] font-black whitespace-nowrap shrink-0 transition-colors duration-200 bg-white px-2 py-1 rounded-md border shadow-sm',
+                  slaLevel === 'red'
+                    ? 'text-[#F44336] border-[#F44336]/30'
+                    : slaLevel === 'yellow'
+                      ? 'text-[#FF9800] border-[#FF9800]/30'
+                      : 'text-[#4CAF50] border-[#4CAF50]/30',
                 )}
-                {isPending && !isLost && (prazoDb?.prorrogacoes_usadas || 0) < 3 && (
+              >
+                {slaText}
+              </span>
+            )}
+          </div>
+
+          {isPending && !isLost && (
+            <div className="w-full">
+              <Progress
+                value={slaProgress}
+                className="h-[6px] bg-[#E5E5E5] shadow-[inset_0_1px_2px_rgba(0,0,0,0.1)]"
+                indicatorClassName={indicatorColor}
+              />
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 min-[480px]:grid-cols-2 gap-3 mt-2 bg-[#F8FAFC] p-3 rounded-[12px] border border-[#E5E5E5]">
+            <InfoItem label="Localização" value={demand.location} />
+            <InfoItem
+              label="Orçamento"
+              value={`R$ ${formatPrice(demand.minBudget)} - R$ ${formatPrice(demand.maxBudget)}`}
+            />
+            <InfoItem
+              label="Perfil"
+              value={`${demand.bedrooms || 0} dorm, ${demand.bathrooms || 0} banh, ${demand.parkingSpots || 0} vagas`}
+            />
+            <InfoItem label="Solicitado por" value={creatorName} />
+          </div>
+          
+          <div className="flex items-center justify-between text-[12px] font-bold text-[#666666] mt-auto pt-2">
+            <span className="flex items-center gap-1">
+              <Clock className="w-4 h-4" /> Criado {timeElapsedText}
+            </span>
+            <span className="bg-[#E8F0F8] text-[#1A3A52] px-2 py-1 rounded-md border border-[#2E5F8A]/20">
+              📦 {demand.capturedProperties?.length || (demand as any).imoveis_captados?.length || 0} imóveis
+            </span>
+          </div>
+        </div>
+
+        {/* Rodapé com Botões */}
+        <div
+          className={cn(
+            'flex flex-col sm:flex-row flex-wrap gap-[8px] p-4 pt-3 border-t shrink-0 z-10 relative mt-auto bg-white pointer-events-auto',
+            isLost ? 'border-[#E5E5E5] opacity-80 grayscale' : 'border-[#E5E5E5]',
+          )}
+        >
+          <Button
+            className={cn(
+              'min-h-[44px] flex-1 font-bold text-[13px] relative z-10 transition-all duration-150 active:shadow-inner w-full sm:w-auto',
+              btnSoft,
+            )}
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              if (import.meta.env.DEV) {
+                console.log(`🔘 [Click] DemandCard Action: details`, { id: demand.id })
+              }
+              setShowDetails(true)
+            }}
+            aria-label="Ver Detalhes"
+          >
+            <Maximize2 className="w-[16px] h-[16px] mr-1.5" /> Detalhes
+          </Button>
+
+          {currentUser?.role === 'captador' && isPending && (
+            <>
+              {(!isExpired || (prazoDb?.prorrogacoes_usadas || 0) >= 3) && (
+                <>
                   <Button
                     className={cn(
-                      'min-h-[44px] flex-1 font-bold whitespace-normal break-words text-[14px] px-2 shadow-md transition-transform hover:scale-[1.02] bg-[#3B82F6] hover:bg-[#2563EB] text-white border-none relative z-10',
+                      'min-h-[44px] flex-1 font-bold text-[13px] px-2 shadow-sm transition-all duration-150 hover:scale-[1.02] active:shadow-inner relative z-10 w-full sm:w-auto',
+                      btnSolid,
                     )}
-                    onClick={handleProrrogar}
-                    disabled={isExtending}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      if (import.meta.env.DEV) {
+                        console.log(`🔘 [Click] DemandCard Action: encontrei`, { id: demand.id })
+                      }
+                      onAction?.(demand.id, 'encontrei')
+                    }}
+                    disabled={isLost}
+                    aria-label="Encontrei Imóvel"
                   >
-                    <Clock className="w-4 h-4 mr-1.5" /> Prorrogar (+48h)
+                    ✅ Encontrei
                   </Button>
-                )}
-              </div>
-            )}
-          </div>
-
-          <div className="flex flex-row w-full gap-[8px]">
-            <Button
-              className={cn(
-                'min-h-[44px] flex-1 font-bold whitespace-normal break-words text-[14px] relative z-10',
-                'bg-transparent text-[#1A3A52] hover:bg-[#F5F5F5] border-[2px] border-[#1A3A52]',
+                  <Button
+                    className="min-h-[44px] flex-1 font-bold text-[13px] px-2 shadow-sm transition-all duration-150 hover:scale-[1.02] active:shadow-inner bg-[#EF4444] hover:bg-[#DC2626] text-white border-none relative z-10 w-full sm:w-auto"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      if (import.meta.env.DEV) {
+                        console.log(`🔘 [Click] DemandCard Action: nao_encontrei`, {
+                          id: demand.id,
+                        })
+                      }
+                      onAction?.(demand.id, 'nao_encontrei')
+                    }}
+                    disabled={isLost}
+                    aria-label="Não Encontrei Imóvel"
+                  >
+                    ❌ Não Encontrei
+                  </Button>
+                </>
               )}
+              {isPending && !isLost && (prazoDb?.prorrogacoes_usadas || 0) < 3 && (
+                <Button
+                  className="min-h-[44px] flex-1 font-bold text-[13px] px-2 shadow-sm transition-all duration-150 hover:scale-[1.02] active:shadow-inner bg-[#3B82F6] hover:bg-[#2563EB] text-white border-none relative z-10 w-full sm:w-auto"
+                  onClick={handleProrrogar}
+                  disabled={isExtending}
+                  aria-label="Prorrogar Prazo"
+                >
+                  <Clock className="w-[16px] h-[16px] mr-1.5" /> Prorrogar (+48h)
+                </Button>
+              )}
+            </>
+          )}
+
+          <Button
+            className="min-h-[44px] flex-1 font-bold text-[13px] relative z-10 bg-white text-[#1A3A52] hover:bg-[#F5F5F5] border border-[#1A3A52]/30 transition-all duration-150 active:shadow-inner w-full sm:w-auto"
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              if (import.meta.env.DEV) {
+                console.log(`🔘 [Click] DemandCard Action: contato`, { id: demand.id })
+              }
+              logSolicitorContactAttempt(
+                demand.id,
+                'interno',
+                'Olá, gostaria de falar sobre esta demanda.',
+              )
+            }}
+            aria-label="Contatar"
+          >
+            <MessageCircle className="w-[16px] h-[16px] mr-1.5" /> Contato
+          </Button>
+
+          {canMarkLost && (
+            <Button
+              variant="destructive"
+              className="min-h-[44px] flex-1 font-bold text-[13px] relative z-10 transition-all duration-150 active:shadow-inner w-full sm:w-auto"
               onClick={(e) => {
                 e.preventDefault()
                 e.stopPropagation()
                 if (import.meta.env.DEV) {
-                  console.log(`🔘 [Click] DemandCard Action: contato`, { id: demand.id })
+                  console.log(`🔘 [Click] DemandCard Action: lost modal`, { id: demand.id })
                 }
-                logSolicitorContactAttempt(
-                  demand.id,
-                  'interno',
-                  'Olá, gostaria de falar sobre esta demanda.',
-                )
+                setShowLostModal(true)
               }}
+              aria-label="Marcar como Perdida"
             >
-              💬 Contato
+              <X className="w-[16px] h-[16px] mr-1.5" /> Perdida
             </Button>
-            {canMarkLost && (
-              <Button
-                variant="destructive"
-                className="min-h-[44px] flex-1 font-bold whitespace-normal break-words text-[14px] relative z-10"
-                onClick={(e) => {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  if (import.meta.env.DEV) {
-                    console.log(`🔘 [Click] DemandCard Action: lost modal`, { id: demand.id })
-                  }
-                  setShowLostModal(true)
-                }}
-              >
-                ❌ Perdida
-              </Button>
-            )}
-          </div>
+          )}
         </div>
       </Card>
 
-      <DemandDetailsModal open={showDetails} onOpenChange={setShowDetails} demand={demand} />
+      <DemandDetailsModal open={showDetails} onOpenChange={setShowDetails} demand={demand as any} />
 
       <LostModal
         open={showLostModal}

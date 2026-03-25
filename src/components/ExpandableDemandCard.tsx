@@ -196,7 +196,8 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
   }
 
   const openDetails = (e: React.MouseEvent) => {
-    e.preventDefault() // prevent default if it's within a link or something
+    if ((e.target as HTMLElement).closest('button')) return
+    e.preventDefault()
     if (import.meta.env.DEV)
       console.log(`🔘 [Click] ExpandableDemandCard Card Action: details`, { id: demand.id })
     setIsDetailsModalOpen(true)
@@ -256,19 +257,20 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
       <Card
         onClick={openDetails}
         className={cn(
-          'w-full relative overflow-hidden rounded-[16px] border shadow-sm hover:shadow-md transition-all duration-200 bg-gradient-to-b cursor-pointer group z-0',
-          demand.is_prioritaria
-            ? 'from-[#FFFBEB] to-white border-[#FCD34D]'
-            : 'from-[#F2FBF5] to-white border-[#E5E5E5]',
+          'w-full relative overflow-hidden rounded-[16px] border shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer group z-0 flex flex-col h-full',
+          demand.is_prioritaria ? 'bg-[#FFFBEB] border-[#FCD34D]' : 'bg-white border-[#E5E5E5]',
         )}
       >
         <div
           className={cn(
-            'px-4 py-2.5 flex items-center shadow-sm border-b bg-white flex-wrap gap-2 justify-between relative',
-            demand.is_prioritaria ? 'border-[#FCD34D]/50' : 'border-[#E5E5E5]/50',
+            'px-4 py-3 flex items-center border-b flex-wrap gap-3 justify-between relative z-10 pointer-events-none',
+            demand.is_prioritaria ? 'border-[#FCD34D]/50 bg-[#FCD34D]/10' : 'border-[#E5E5E5]/50 bg-[#F5F5F5]/50',
           )}
         >
-          <div className="flex items-center gap-2 flex-wrap pr-8">
+          <span className="text-[12px] text-[#4B5563] font-sans font-bold bg-white px-2.5 py-1 rounded-[6px] border border-[#E5E5E5] shadow-sm flex items-center gap-1.5 pointer-events-auto">
+            📅 {new Date(demand.created_at).toLocaleDateString('pt-BR')}
+          </span>
+          <div className="flex items-center gap-2 flex-wrap pr-8 pointer-events-auto">
             <div
               className={cn(
                 'flex items-center gap-2 font-black text-[11px] uppercase tracking-widest px-2 py-1 rounded shadow-sm',
@@ -292,7 +294,7 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
             )}
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2 shrink-0 pointer-events-auto">
             {prazo && demand.status_demanda === 'aberta' && prazo.status !== 'respondido' && (
               <PrazoCounter prazoResposta={prazo.prazo_resposta} isExpired={isPrazoExpired} />
             )}
@@ -322,17 +324,17 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
           </div>
         </div>
 
-        <div className="p-4 flex flex-col gap-3 pointer-events-none">
+        <div className="p-4 flex flex-col gap-3 flex-1 pointer-events-none">
           <h3
-            className="text-[18px] font-black text-[#1A3A52] leading-tight pr-24 line-clamp-1 group-hover:text-[#2E5F8A] transition-colors"
+            className="text-[18px] font-black text-[#1A3A52] leading-tight pr-24 line-clamp-1 group-hover:text-[#2E5F8A] transition-colors pointer-events-auto"
             title={demand.nome_cliente}
           >
             {demand.nome_cliente}
           </h3>
 
-          <div className="flex flex-col gap-1.5 mt-1">
+          <div className="flex flex-col gap-1.5 mt-1 pointer-events-auto">
             <div className="flex items-center gap-2 text-[14px] text-[#333333]">
-              <MapPin className="w-4 h-4 text-pink-500 shrink-0" />
+              <MapPin className="w-4 h-4 text-[#F44336] shrink-0" />
               <span className="font-medium line-clamp-1" title={demand.bairros?.join(', ')}>
                 {demand.bairros?.join(', ')}
               </span>
@@ -343,14 +345,14 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 mt-1">
+          <div className="flex items-center gap-2 mt-1 pointer-events-auto">
             <DollarSign className="w-5 h-5 text-[#10B981] shrink-0" />
             <span className="text-[20px] font-black text-[#10B981] tracking-tight">
               {formatPrice(demand.valor_minimo)} - {formatPrice(demand.valor_maximo)}
             </span>
           </div>
 
-          <div className="flex items-center gap-4 text-[13px] text-[#666666] font-medium bg-white p-2.5 rounded-lg mt-1 border border-[#E5E5E5] flex-wrap shadow-sm">
+          <div className="flex items-center gap-4 text-[13px] text-[#666666] font-medium bg-[#F5F5F5] p-2.5 rounded-[8px] mt-1 border border-[#E5E5E5] flex-wrap shadow-sm pointer-events-auto">
             <div className="flex items-center gap-1.5">
               <BedDouble className="w-4 h-4 text-[#999999]" /> {demand.dormitorios || 'Indif.'} dorm
             </div>
@@ -363,7 +365,7 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
             </div>
           </div>
 
-          <div className="flex items-start gap-2.5 bg-[#E8F5E9] text-[#065F46] p-3 rounded-lg text-[13px] mt-1 border border-[#A7F3D0] shadow-sm">
+          <div className="flex items-start gap-2.5 bg-[#E8F5E9] text-[#065F46] p-3 rounded-[8px] text-[13px] mt-1 border border-[#A7F3D0] shadow-sm pointer-events-auto mt-auto">
             <Info className="w-4 h-4 shrink-0 mt-0.5 text-[#10B981]" />
             <p className="leading-snug font-medium line-clamp-2">
               {demand.observacoes ||
@@ -374,22 +376,20 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
 
         {(demand.status_demanda === 'aberta' || demand.status_demanda === 'sem_resposta_24h') &&
           currentUser?.role === 'captador' && (
-            <div className="grid grid-cols-2 gap-2 mt-3 p-4 pt-3 border-t border-[#E5E5E5]">
+            <div className="flex flex-col sm:flex-row gap-[8px] mt-auto p-4 pt-3 border-t border-[#E5E5E5] bg-white z-10 relative pointer-events-auto">
               <Button
                 onClick={handleEncontrei}
                 disabled={isSubmitting}
-                className="w-full min-h-[48px] bg-[#10B981] hover:bg-[#059669] text-white font-bold text-[14px] lg:text-[16px] px-1 lg:px-2 shadow-[0_4px_12px_rgba(16,185,129,0.3)] transition-transform hover:scale-[1.02] relative z-10"
+                className="flex-1 min-h-[44px] bg-[#10B981] hover:bg-[#059669] text-white font-bold text-[14px] px-2 shadow-[0_4px_12px_rgba(16,185,129,0.3)] transition-transform hover:scale-[1.02] active:shadow-inner relative z-10"
               >
-                <CheckCircle className="w-4 h-4 lg:w-5 lg:h-5 mr-1.5 shrink-0" />{' '}
-                <span className="truncate">ENCONTREI</span>
+                <CheckCircle className="w-4 h-4 mr-1.5 shrink-0" /> ENCONTREI
               </Button>
               <Button
                 onClick={handleNaoEncontrei}
                 disabled={isSubmitting}
-                className="w-full min-h-[48px] bg-[#EF4444] hover:bg-[#DC2626] text-white font-bold text-[14px] lg:text-[16px] px-1 lg:px-2 shadow-[0_4px_12px_rgba(239,68,68,0.3)] transition-transform hover:scale-[1.02] relative z-10"
+                className="flex-1 min-h-[44px] bg-[#EF4444] hover:bg-[#DC2626] text-white font-bold text-[14px] px-2 shadow-[0_4px_12px_rgba(239,68,68,0.3)] transition-transform hover:scale-[1.02] active:shadow-inner relative z-10"
               >
-                <XCircle className="w-4 h-4 lg:w-5 lg:h-5 mr-1.5 shrink-0" />{' '}
-                <span className="truncate">NÃO ENCONTREI</span>
+                <XCircle className="w-4 h-4 mr-1.5 shrink-0" /> NÃO ENCONTREI
               </Button>
             </div>
           )}
@@ -427,3 +427,4 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
     </>
   )
 }
+

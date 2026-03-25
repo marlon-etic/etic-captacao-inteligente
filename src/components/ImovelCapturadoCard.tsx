@@ -59,6 +59,7 @@ export function ImovelCapturadoCard({ property, demand, isOwnerOrAdmin = true }:
         title: 'Sucesso',
         description: 'Link copiado para clipboard!',
         duration: 3000,
+        className: 'bg-[#10B981] text-white border-none',
       })
     } catch (err) {
       if (import.meta.env.DEV) console.error('Erro ao copiar link', err)
@@ -91,7 +92,7 @@ export function ImovelCapturadoCard({ property, demand, isOwnerOrAdmin = true }:
         toast({
           title: '👁️ Visita Marcada',
           description: 'O status do imóvel foi atualizado para Visitado.',
-          className: 'bg-[#F59E0B] text-white border-none',
+          className: 'bg-[#FF9800] text-white border-none',
         })
       } else {
         toast({
@@ -118,7 +119,7 @@ export function ImovelCapturadoCard({ property, demand, isOwnerOrAdmin = true }:
   return (
     <div
       className={cn(
-        'bg-white rounded-lg p-4 shadow-[0_2px_4px_rgba(26,58,82,0.1)] border flex flex-col gap-3 transition-colors',
+        'bg-white rounded-[12px] shadow-[0_2px_4px_rgba(26,58,82,0.05)] border-[2px] flex flex-col transition-all duration-200 overflow-hidden',
         isFechado
           ? 'border-[#10B981]/50 bg-[#ECFDF5]'
           : isVisitado
@@ -126,141 +127,171 @@ export function ImovelCapturadoCard({ property, demand, isOwnerOrAdmin = true }:
             : 'border-[#E5E5E5]',
       )}
     >
-      <div className="flex justify-between items-start gap-2">
-        <div className="flex items-center gap-2">
-          <span className="font-black text-[#1A3A52] text-[16px] truncate">{p.code}</span>
+      <div className={cn(
+        "p-3 border-b flex justify-between items-center pointer-events-none",
+        isFechado ? "border-[#10B981]/20 bg-[#10B981]/5" : isVisitado ? "border-[#F59E0B]/20 bg-[#F59E0B]/5" : "border-[#E5E5E5] bg-[#F5F5F5]/50"
+      )}>
+        <div className="flex items-center gap-2 pointer-events-auto">
+          <span className="font-black text-[#1A3A52] text-[15px] truncate hover:underline cursor-pointer transition-colors" title={p.code}>
+            <a
+              href={publicUrl || '#'}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => {
+                e.stopPropagation()
+                if (import.meta.env.DEV) {
+                  console.log(`🔘 [Click] ImovelCapturadoCard URL clicked`, { url: publicUrl })
+                }
+                if (!publicUrl) e.preventDefault()
+              }}
+              className={cn(!publicUrl && 'pointer-events-none text-[#999999]')}
+            >
+              {p.code}
+            </a>
+          </span>
           <Badge
             className={cn(
               'text-[10px] font-bold px-2 py-0.5 border-none shadow-sm uppercase tracking-wider',
-              isFechado ? 'bg-[#10B981]' : isVisitado ? 'bg-[#F59E0B]' : 'bg-[#3B82F6]',
+              isFechado ? 'bg-[#10B981] text-white' : isVisitado ? 'bg-[#FF9800] text-white' : 'bg-[#3B82F6] text-white',
             )}
           >
             {isFechado ? 'FECHADO' : isVisitado ? 'VISITADO' : 'CAPTURADO'}
           </Badge>
         </div>
-        <span className="text-[14px] font-bold text-[#10B981] shrink-0 whitespace-nowrap bg-white px-2 py-0.5 rounded border border-[#10B981]/20">
+        <span className="text-[15px] font-black text-[#10B981] shrink-0 whitespace-nowrap bg-white px-2 py-0.5 rounded-md border border-[#10B981]/20 shadow-sm pointer-events-auto">
           R$ {formatPrice(p.preco)}
         </span>
       </div>
 
-      <div className="flex flex-col gap-1.5 text-[13px]">
-        <span className="text-[#666666] line-clamp-2 flex items-start gap-1.5">
+      <div className="p-4 flex flex-col gap-2 pointer-events-none bg-white flex-1 relative z-0">
+        <span className="text-[#333333] text-[13px] font-medium flex items-start gap-1.5 pointer-events-auto">
           <MapPin className="w-4 h-4 text-[#F44336] shrink-0 mt-0.5" />
-          {p.endereco || 'Endereço não informado'}
+          <span className="line-clamp-2">{p.endereco || 'Endereço não informado'}</span>
         </span>
-        <span className="text-[#666666] flex items-center gap-1.5 mt-1">
+        <span className="text-[#666666] text-[12px] flex items-center gap-1.5 mt-1 bg-[#F8FAFC] p-2 rounded-md border border-[#E5E5E5] pointer-events-auto">
           <Building2 className="w-4 h-4 text-[#3B82F6] shrink-0" />
           Captador: <strong className="text-[#333333]">{p.captador_nome}</strong>
         </span>
       </div>
 
-      <div className="flex gap-2 mt-1 relative z-10">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              size="sm"
-              variant="outline"
-              className="flex-1 font-bold text-[12px] text-[#333333] border-[#E5E5E5] enabled:hover:bg-[#F5F5F5] h-[44px] relative z-10"
-              disabled={!publicUrl}
-              onClick={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                if (import.meta.env.DEV) {
-                  console.log(`🔘 [Click] ImovelCapturadoCard Action: ver no site`, {
-                    url: publicUrl,
-                  })
-                }
-                if (publicUrl) window.open(publicUrl, '_blank')
-              }}
-            >
-              <ExternalLink className="w-4 h-4 mr-2" /> Ver no site
-            </Button>
-          </TooltipTrigger>
-          {!publicUrl && <TooltipContent>Imóvel sem código cadastrado</TooltipContent>}
-        </Tooltip>
+      <div className="p-4 pt-3 border-t border-[#E5E5E5] flex flex-col gap-[8px] bg-white mt-auto relative z-10 pointer-events-auto">
+        <div className="flex gap-[8px] w-full">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                className={cn(
+                  'flex-1 font-bold text-[13px] min-h-[44px] transition-all duration-150 active:shadow-inner relative z-10',
+                  publicUrl
+                    ? 'bg-[#1A3A52] text-white hover:bg-[#153045] shadow-sm'
+                    : 'bg-[#E5E5E5] text-[#999999]',
+                )}
+                disabled={!publicUrl}
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  if (import.meta.env.DEV) {
+                    console.log(`🔘 [Click] ImovelCapturadoCard Action: ver no site`, {
+                      url: publicUrl,
+                    })
+                  }
+                  if (publicUrl) window.open(publicUrl, '_blank')
+                }}
+                aria-label="Ver no site"
+              >
+                <ExternalLink className="w-4 h-4 mr-2" /> <span className="truncate">Ver no site</span>
+              </Button>
+            </TooltipTrigger>
+            {!publicUrl && <TooltipContent zIndex={1100}>Imóvel sem código cadastrado</TooltipContent>}
+          </Tooltip>
 
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              size="icon"
-              variant="outline"
-              className="w-[44px] h-[44px] shrink-0 text-[#333333] border-[#E5E5E5] enabled:hover:bg-[#F5F5F5] relative z-10"
-              disabled={!publicUrl}
-              onClick={handleCopyLink}
-            >
-              <Share2 className="w-4 h-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            {publicUrl ? 'Compartilhar' : 'Imóvel sem código cadastrado'}
-          </TooltipContent>
-        </Tooltip>
-      </div>
-
-      {isOwnerOrAdmin && (
-        <div className="flex flex-col sm:flex-row gap-2 mt-2 pt-3 border-t border-[#E5E5E5] relative z-10">
-          {!isFechado && !isVisitado && (
-            <Button
-              size="sm"
-              variant="outline"
-              className="flex-1 font-bold border-[#F59E0B] text-[#B45309] enabled:hover:bg-[#FFFBEB] h-[44px] relative z-10"
-              onClick={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                if (import.meta.env.DEV) {
-                  console.log(`🔘 [Click] ImovelCapturadoCard Action: marcar visitado`, {
-                    id: p.id,
-                  })
-                }
-                updateEtapa('visitado')
-              }}
-              isLoading={isUpdating}
-              loadingText="Salvando..."
-            >
-              <Eye className="w-4 h-4 mr-1" /> Marcar como Visitado
-            </Button>
-          )}
-
-          {!isFechado && (
-            <Button
-              size="sm"
-              className="flex-1 font-bold bg-[#10B981] enabled:hover:bg-[#059669] text-white h-[44px] shadow-sm border border-transparent relative z-10"
-              onClick={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                if (import.meta.env.DEV) {
-                  console.log(`🔘 [Click] ImovelCapturadoCard Action: marcar fechado`, { id: p.id })
-                }
-                updateEtapa('fechado')
-              }}
-              isLoading={isUpdating}
-              loadingText="Salvando..."
-            >
-              <CheckCircle2 className="w-4 h-4 mr-1" /> Marcar como Fechado
-            </Button>
-          )}
-
-          {(isFechado || isVisitado) && (
-            <Button
-              size="sm"
-              variant="outline"
-              className="font-bold text-[#666666] enabled:hover:text-[#1A3A52] shrink-0 h-[44px] relative z-10"
-              onClick={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                if (import.meta.env.DEV) {
-                  console.log(`🔘 [Click] ImovelCapturadoCard Action: desfazer etapa`, { id: p.id })
-                }
-                updateEtapa(isFechado ? 'visitado' : 'capturado')
-              }}
-              isLoading={isUpdating}
-              loadingText="Desfazendo..."
-            >
-              <RotateCcw className="w-4 h-4 mr-1" /> Desfazer
-            </Button>
-          )}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  'w-[44px] h-[44px] p-0 shrink-0 border-[2px] transition-all duration-150 active:shadow-inner relative z-10',
+                  publicUrl
+                    ? 'border-[#2E5F8A] text-[#1A3A52] hover:bg-[#F5F5F5]'
+                    : 'border-[#E5E5E5] text-[#999999]',
+                )}
+                disabled={!publicUrl}
+                onClick={handleCopyLink}
+                aria-label="Compartilhar"
+              >
+                <Share2 className="w-4 h-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent zIndex={1100}>
+              {publicUrl ? 'Compartilhar' : 'Imóvel sem código cadastrado'}
+            </TooltipContent>
+          </Tooltip>
         </div>
-      )}
+
+        {isOwnerOrAdmin && (
+          <div className="flex flex-col sm:flex-row gap-[8px] w-full">
+            {!isFechado && !isVisitado && (
+              <Button
+                variant="outline"
+                className="flex-1 font-bold text-[13px] border-[#F59E0B] text-[#B45309] hover:bg-[#FFFBEB] min-h-[44px] transition-all duration-150 active:shadow-inner relative z-10 shadow-sm"
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  if (import.meta.env.DEV) {
+                    console.log(`🔘 [Click] ImovelCapturadoCard Action: marcar visitado`, {
+                      id: p.id,
+                    })
+                  }
+                  updateEtapa('visitado')
+                }}
+                isLoading={isUpdating}
+                loadingText="Salvando..."
+                aria-label="Marcar como Visitado"
+              >
+                <Eye className="w-4 h-4 mr-1.5" /> <span className="truncate">Visitado</span>
+              </Button>
+            )}
+
+            {!isFechado && (
+              <Button
+                className="flex-1 font-bold text-[13px] bg-[#10B981] hover:bg-[#059669] text-white min-h-[44px] shadow-sm border border-transparent transition-all duration-150 active:shadow-inner relative z-10"
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  if (import.meta.env.DEV) {
+                    console.log(`🔘 [Click] ImovelCapturadoCard Action: marcar fechado`, { id: p.id })
+                  }
+                  updateEtapa('fechado')
+                }}
+                isLoading={isUpdating}
+                loadingText="Salvando..."
+                aria-label="Marcar como Fechado"
+              >
+                <CheckCircle2 className="w-4 h-4 mr-1.5" /> <span className="truncate">Fechado</span>
+              </Button>
+            )}
+
+            {(isFechado || isVisitado) && (
+              <Button
+                variant="outline"
+                className="w-full sm:flex-1 font-bold text-[13px] border-[#E5E5E5] text-[#666666] hover:text-[#1A3A52] hover:bg-[#F5F5F5] min-h-[44px] transition-all duration-150 active:shadow-inner relative z-10"
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  if (import.meta.env.DEV) {
+                    console.log(`🔘 [Click] ImovelCapturadoCard Action: desfazer etapa`, { id: p.id })
+                  }
+                  updateEtapa(isFechado ? 'visitado' : 'capturado')
+                }}
+                isLoading={isUpdating}
+                loadingText="Desfazendo..."
+                aria-label="Desfazer etapa"
+              >
+                <RotateCcw className="w-4 h-4 mr-1.5" /> <span className="truncate">Desfazer</span>
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

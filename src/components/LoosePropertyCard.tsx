@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { MapPin, Calendar, Bed, Car, Bath, UserCircle, Share2, ExternalLink } from 'lucide-react'
+import { MapPin, Calendar, Bed, Car, Bath, UserCircle, Share2, ExternalLink, Link2, X } from 'lucide-react'
 import { CapturedProperty } from '@/types'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -38,6 +38,7 @@ export function LoosePropertyCard({
         title: 'Sucesso',
         description: 'Link copiado para clipboard!',
         duration: 3000,
+        className: 'bg-[#10B981] text-white border-none',
       })
     } catch (err) {
       if (import.meta.env.DEV) console.error('Erro ao copiar link', err)
@@ -67,8 +68,10 @@ export function LoosePropertyCard({
 
   return (
     <>
-      <Card className="overflow-hidden flex flex-col h-full border-[2px] border-[#2E5F8A] hover:shadow-[0_8px_24px_rgba(26,58,82,0.15)] relative transition-all bg-[#FFFFFF] rounded-[12px] z-0">
-        <div className="relative h-48 w-full bg-[#F5F5F5] pointer-events-none">
+      <Card className="overflow-hidden flex flex-col h-full border-[2px] border-[#2E5F8A] hover:shadow-[0_8px_24px_rgba(26,58,82,0.15)] relative transition-all bg-[#FFFFFF] rounded-[16px] z-0 group">
+        
+        {/* Imagem do Imóvel no Topo com Data */}
+        <div className="relative h-48 w-full bg-[#F5F5F5] pointer-events-none shrink-0 border-b border-[#E5E5E5]">
           <img
             src={
               property.photoUrl ||
@@ -77,21 +80,51 @@ export function LoosePropertyCard({
             alt="Imóvel Disponível"
             className="w-full h-full object-cover"
           />
-          <div className="absolute top-2 right-2">
+          {/* Header absoluto sobre a imagem com pointer-events-auto */}
+          <div className="absolute top-3 left-3 right-3 flex justify-between items-start pointer-events-auto z-10">
+            <Badge className="font-sans font-bold bg-white/90 text-[#333333] border border-[#E5E5E5] shadow-sm backdrop-blur-md px-2.5 py-1">
+              📅 {new Date(property.capturedAt || '').toLocaleDateString('pt-BR')}
+            </Badge>
             <Badge
-              variant="outline"
-              className="font-bold shadow-sm bg-[#FFFFFF] text-[#1A3A52] border-[#2E5F8A]"
+              className="font-bold shadow-sm bg-[#10B981] text-white border-none px-2.5 py-1 uppercase tracking-wide"
             >
-              🔓 Disponível
+              🔓 DISPONÍVEL
+            </Badge>
+          </div>
+          <div className="absolute bottom-3 left-3 pointer-events-auto z-10">
+             <Badge className="font-bold text-[10px] text-white px-2 py-1 bg-[#1A3A52] shadow-sm uppercase tracking-widest">
+              {property.propertyType === 'Aluguel' ? '🏠 ALUGUEL' : '🏢 VENDA'}
             </Badge>
           </div>
         </div>
-        <CardContent className="p-[16px] flex-grow flex flex-col gap-2 pointer-events-none">
+
+        {/* Conteúdo Central */}
+        <CardContent className="p-4 flex-grow flex flex-col gap-3 pointer-events-none relative z-0">
           <div className="flex justify-between items-start gap-2">
-            <h4 className="font-bold text-[18px] line-clamp-1 flex-1 text-[#1A3A52]">
-              {property.propertyType === 'Aluguel' ? '🏠 Locação' : '🏢 Venda'}
-            </h4>
-            <span className="font-bold text-[#4CAF50] whitespace-nowrap text-[16px]">
+            <div className="text-[15px] leading-tight flex items-center gap-1 pointer-events-auto">
+              <span className="font-bold text-[#333333]">🏷️ Código:</span>
+              <a
+                href={publicUrl || '#'}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={cn(
+                  'font-black text-[#1A3A52] hover:underline relative z-10 ml-1 text-[16px]',
+                  !publicUrl && 'pointer-events-none text-[#999999]',
+                )}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  if (import.meta.env.DEV) {
+                    console.log(`🔘 [Click] LoosePropertyCard Action: url clicked`, {
+                      url: publicUrl,
+                    })
+                  }
+                  if (!publicUrl) e.preventDefault()
+                }}
+              >
+                {property.code || 'N/A'}
+              </a>
+            </div>
+            <span className="font-black text-[#10B981] whitespace-nowrap text-[18px] tracking-tight">
               {new Intl.NumberFormat('pt-BR', {
                 style: 'currency',
                 currency: 'BRL',
@@ -100,33 +133,9 @@ export function LoosePropertyCard({
             </span>
           </div>
 
-          <p className="text-[14px] text-[#333333] font-medium flex items-center gap-1.5 mt-1 pointer-events-auto">
-            <span>🏷️ Código:</span>
-            <a
-              href={publicUrl || '#'}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={cn(
-                'font-bold text-[#1A3A52] hover:underline relative z-10',
-                !publicUrl && 'pointer-events-none text-gray-400',
-              )}
-              onClick={(e) => {
-                e.stopPropagation()
-                if (import.meta.env.DEV) {
-                  console.log(`🔘 [Click] LoosePropertyCard Action: url clicked`, {
-                    url: publicUrl,
-                  })
-                }
-                if (!publicUrl) e.preventDefault()
-              }}
-            >
-              {property.code || 'N/A'}
-            </a>
-          </p>
-
-          <p className="text-[14px] text-[#333333] font-medium flex items-center gap-1.5 mt-1">
-            <MapPin className="w-4 h-4 shrink-0 text-[#1A3A52]" />
-            <span className="truncate">
+          <p className="text-[13px] text-[#333333] font-medium flex items-center gap-1.5 mt-1 pointer-events-auto">
+            <MapPin className="w-4 h-4 shrink-0 text-[#F44336]" />
+            <span className="line-clamp-2">
               {property.bairro_tipo === 'outro' && <span className="mr-1">🔹</span>}
               {Array.isArray(property.neighborhood)
                 ? property.neighborhood.join(', ')
@@ -134,52 +143,49 @@ export function LoosePropertyCard({
             </span>
           </p>
 
-          <div className="flex gap-3 text-[12px] text-[#333333] mt-1 font-medium">
+          <div className="flex gap-3 text-[13px] text-[#666666] mt-auto font-bold bg-[#F5F5F5] p-2 rounded-[8px] border border-[#E5E5E5] flex-wrap pointer-events-auto">
             {property.bedrooms !== undefined && (
-              <span className="flex items-center gap-1">
-                <Bed className="w-4 h-4 text-[#1A3A52]" /> {property.bedrooms} dorms
+              <span className="flex items-center gap-1.5">
+                <Bed className="w-4 h-4 text-[#999999]" /> {property.bedrooms} dorms
               </span>
             )}
             {property.bathrooms !== undefined && (
-              <span className="flex items-center gap-1">
-                <Bath className="w-4 h-4 text-[#1A3A52]" /> {property.bathrooms} banhs
+              <span className="flex items-center gap-1.5">
+                <Bath className="w-4 h-4 text-[#999999]" /> {property.bathrooms} banhs
               </span>
             )}
             {property.parkingSpots !== undefined && (
-              <span className="flex items-center gap-1">
-                <Car className="w-4 h-4 text-[#1A3A52]" /> {property.parkingSpots} vagas
+              <span className="flex items-center gap-1.5">
+                <Car className="w-4 h-4 text-[#999999]" /> {property.parkingSpots} vagas
               </span>
             )}
           </div>
 
-          <div className="mt-3 flex flex-col gap-1.5 text-[12px] text-[#333333] bg-[#F5F5F5] p-3 rounded-[8px] border border-[#E5E5E5]">
+          <div className="mt-2 flex flex-col gap-1 text-[12px] text-[#333333] pointer-events-auto">
             <p className="flex items-center gap-1.5 font-medium">
-              <Calendar className="w-4 h-4 shrink-0 text-[#1A3A52]" />
-              Captação: {new Date(property.capturedAt || '').toLocaleDateString('pt-BR')}
-            </p>
-            <p className="flex items-center gap-1.5 font-medium">
-              <UserCircle className="w-4 h-4 shrink-0 text-[#1A3A52]" />
+              <UserCircle className="w-4 h-4 shrink-0 text-[#3B82F6]" />
               Captador:{' '}
-              <span className="font-bold text-[#1A3A52]">{property.captador_name || 'N/A'}</span>
+              <span className="font-bold text-[#1A3A52] truncate">{property.captador_name || 'N/A'}</span>
             </p>
           </div>
 
           {property.obs && (
-            <p className="text-[12px] text-[#999999] mt-2 line-clamp-2 italic leading-tight">
+            <p className="text-[12px] text-[#666666] mt-1 line-clamp-2 italic leading-tight pointer-events-auto bg-[#F8FAFC] p-2 rounded-md border border-[#E5E5E5]">
               "{property.obs}"
             </p>
           )}
         </CardContent>
 
-        <div className="p-[16px] pt-0 mt-auto flex flex-col gap-2 relative z-10">
-          <div className="flex flex-row gap-[8px] w-full mb-2">
+        {/* Rodapé com Botões de Ação */}
+        <div className="p-4 pt-3 mt-auto border-t border-[#E5E5E5] bg-white flex flex-col gap-[8px] z-10 relative pointer-events-auto">
+          <div className="flex flex-row gap-[8px] w-full">
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   className={cn(
-                    'flex-1 font-bold min-h-[44px] relative z-10',
+                    'flex-1 font-bold min-h-[44px] relative z-10 transition-all duration-150 active:shadow-inner hover:opacity-90 shadow-sm',
                     publicUrl
-                      ? 'bg-[#1A3A52] hover:bg-[#153045] text-white'
+                      ? 'bg-[#1A3A52] text-white hover:bg-[#153045]'
                       : 'bg-[#E5E5E5] text-[#999999] hover:bg-[#E5E5E5] cursor-not-allowed',
                   )}
                   disabled={!publicUrl}
@@ -193,13 +199,14 @@ export function LoosePropertyCard({
                     }
                     if (publicUrl) window.open(publicUrl, '_blank')
                   }}
+                  aria-label="Ver no site"
                 >
                   <ExternalLink className="w-[16px] h-[16px] mr-[6px]" />
-                  Ver no site
+                  <span className="truncate">Ver no site</span>
                 </Button>
               </TooltipTrigger>
               {!publicUrl && (
-                <TooltipContent>
+                <TooltipContent zIndex={1100}>
                   <p>Imóvel sem código cadastrado</p>
                 </TooltipContent>
               )}
@@ -210,51 +217,55 @@ export function LoosePropertyCard({
                 <Button
                   variant="outline"
                   className={cn(
-                    'w-[44px] h-[44px] p-0 shrink-0 border-[2px] relative z-10',
+                    'w-[44px] h-[44px] p-0 shrink-0 border-[2px] relative z-10 transition-all duration-150 active:shadow-inner bg-white',
                     publicUrl
                       ? 'border-[#2E5F8A] text-[#1A3A52] hover:bg-[#F5F5F5]'
                       : 'border-[#E5E5E5] text-[#999999] hover:bg-transparent cursor-not-allowed',
                   )}
                   disabled={!publicUrl}
                   onClick={handleCopyLink}
-                  title="Compartilhar"
+                  aria-label="Compartilhar"
                 >
                   <Share2 className="w-[16px] h-[16px]" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>
+              <TooltipContent zIndex={1100}>
                 <p>{publicUrl ? 'Compartilhar' : 'Imóvel sem código cadastrado'}</p>
               </TooltipContent>
             </Tooltip>
           </div>
 
-          <Button
-            size="sm"
-            className="w-full bg-[#1A3A52] hover:bg-[#2E5F8A] text-white shadow-sm font-semibold min-h-[44px] relative z-10"
-            onClick={handleOpenVinculacao}
-          >
-            🔗 VINCULAR A UM CLIENTE
-          </Button>
-
-          {onIgnore && (
+          <div className="flex flex-col sm:flex-row gap-[8px] w-full">
             <Button
-              size="sm"
-              variant="outline"
-              className="w-full min-h-[44px] font-bold border-[#E5E5E5] text-[#333333] hover:bg-[#F5F5F5] relative z-10"
-              onClick={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                if (import.meta.env.DEV) {
-                  console.log(`🔘 [Click] LoosePropertyCard Action: ignorar`, {
-                    code: property.code,
-                  })
-                }
-                onIgnore(property.code)
-              }}
+              className="flex-1 bg-[#10B981] hover:bg-[#059669] text-white font-bold min-h-[44px] text-[13px] px-2 shadow-sm transition-all duration-150 active:shadow-inner border-none relative z-10 w-full sm:w-auto"
+              onClick={handleOpenVinculacao}
+              aria-label="Vincular a um cliente"
             >
-              ❌ Não me interessa
+              <Link2 className="w-[16px] h-[16px] mr-1.5 shrink-0" />
+              <span className="truncate">VINCULAR CLIENTE</span>
             </Button>
-          )}
+
+            {onIgnore && (
+              <Button
+                variant="outline"
+                className="w-full sm:flex-1 min-h-[44px] font-bold border-[#E5E5E5] text-[#333333] hover:bg-[#F5F5F5] transition-all duration-150 active:shadow-inner relative z-10"
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  if (import.meta.env.DEV) {
+                    console.log(`🔘 [Click] LoosePropertyCard Action: ignorar`, {
+                      code: property.code,
+                    })
+                  }
+                  onIgnore(property.code)
+                }}
+                aria-label="Não me interessa"
+              >
+                <X className="w-[16px] h-[16px] mr-1.5" />
+                <span className="truncate">Não interessa</span>
+              </Button>
+            )}
+          </div>
         </div>
       </Card>
 
