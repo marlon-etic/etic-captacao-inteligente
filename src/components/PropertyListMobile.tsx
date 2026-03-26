@@ -10,6 +10,36 @@ export function PropertyListMobile({ properties, onSelect }: Props) {
   const formatCurrency = (v: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v)
 
+  const getStatusBadge = (p: any) => {
+    const isFechado = p.status_captacao === 'fechado' || p.etapa_funil === 'fechado'
+    const isPerdido = p.status_captacao === 'perdido' || p.etapa_funil === 'perdido'
+    const isNegociacao = p.etapa_funil === 'proposta' || p.etapa_funil === 'visitado'
+
+    if (isFechado)
+      return (
+        <Badge className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm border-none uppercase tracking-wider font-black text-[10px] px-1.5 py-0 h-4">
+          Fechado
+        </Badge>
+      )
+    if (isPerdido)
+      return (
+        <Badge className="bg-red-500 hover:bg-red-600 text-white shadow-sm border-none uppercase tracking-wider font-black text-[10px] px-1.5 py-0 h-4">
+          Perdido
+        </Badge>
+      )
+    if (isNegociacao)
+      return (
+        <Badge className="bg-amber-500 hover:bg-amber-600 text-white shadow-sm border-none uppercase tracking-wider font-black text-[10px] px-1.5 py-0 h-4">
+          Em Negoc.
+        </Badge>
+      )
+    return (
+      <Badge className="bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm border-none uppercase tracking-wider font-black text-[10px] px-1.5 py-0 h-4">
+        Disp.
+      </Badge>
+    )
+  }
+
   if (properties.length === 0) {
     return (
       <div className="text-center py-16 bg-white rounded-xl border-[2px] border-dashed border-gray-300 flex flex-col items-center justify-center gap-3">
@@ -31,7 +61,7 @@ export function PropertyListMobile({ properties, onSelect }: Props) {
           >
             <CardContent className="p-4 flex flex-col gap-3.5">
               <div className="flex justify-between items-start">
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <Badge
                     className={
                       p.tipo === 'Aluguel'
@@ -48,8 +78,9 @@ export function PropertyListMobile({ properties, onSelect }: Props) {
                       Novo
                     </Badge>
                   )}
+                  {getStatusBadge(p)}
                 </div>
-                <span className="font-black text-[#1A3A52] text-[13px] bg-slate-100 px-2 py-1 rounded border border-slate-200">
+                <span className="font-black text-[#1A3A52] text-[13px] bg-slate-100 px-2 py-1 rounded border border-slate-200 ml-2">
                   {p.codigo_imovel}
                 </span>
               </div>

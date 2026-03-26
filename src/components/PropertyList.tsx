@@ -21,6 +21,7 @@ export function PropertyList({ initialType }: Props) {
     dormitorios: '',
     vagas: '',
     tipo: initialType || 'Todos',
+    status: 'Todos',
   })
 
   const [selectedProperty, setSelectedProperty] = useState<any>(null)
@@ -34,6 +35,19 @@ export function PropertyList({ initialType }: Props) {
       if (filters.maxValor && p.preco > Number(filters.maxValor)) return false
       if (filters.dormitorios && (p.dormitorios || 0) < Number(filters.dormitorios)) return false
       if (filters.vagas && (p.vagas || 0) < Number(filters.vagas)) return false
+
+      if (filters.status && filters.status !== 'Todos') {
+        const isFechado = p.status_captacao === 'fechado' || p.etapa_funil === 'fechado'
+        const isPerdido = p.status_captacao === 'perdido' || p.etapa_funil === 'perdido'
+        const isEmNegociacao = p.etapa_funil === 'proposta' || p.etapa_funil === 'visitado'
+
+        if (filters.status === 'Fechado' && !isFechado) return false
+        if (filters.status === 'Perdido' && !isPerdido) return false
+        if (filters.status === 'Em Negociação' && !isEmNegociacao) return false
+        if (filters.status === 'Disponível' && (isFechado || isPerdido || isEmNegociacao))
+          return false
+      }
+
       return true
     })
   }, [properties, filters])

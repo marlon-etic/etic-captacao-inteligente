@@ -710,6 +710,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         .update({
           data_fechamento: isoDate,
           etapa_funil: 'fechado',
+          status_captacao: 'fechado',
           preco: payload.value,
           observacoes: newObs,
         })

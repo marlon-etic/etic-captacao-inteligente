@@ -12,15 +12,48 @@ export function PropertyDetailsModal({ property, onClose }: Props) {
   const formatCurrency = (v: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v)
 
+  const getStatusBadgeLarge = (p: any) => {
+    const isFechado = p.status_captacao === 'fechado' || p.etapa_funil === 'fechado'
+    const isPerdido = p.status_captacao === 'perdido' || p.etapa_funil === 'perdido'
+    const isNegociacao = p.etapa_funil === 'proposta' || p.etapa_funil === 'visitado'
+
+    if (isFechado)
+      return (
+        <Badge className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm border-none uppercase tracking-wider font-black text-xs px-2 py-1">
+          Fechado
+        </Badge>
+      )
+    if (isPerdido)
+      return (
+        <Badge className="bg-red-500 hover:bg-red-600 text-white shadow-sm border-none uppercase tracking-wider font-black text-xs px-2 py-1">
+          Perdido
+        </Badge>
+      )
+    if (isNegociacao)
+      return (
+        <Badge className="bg-amber-500 hover:bg-amber-600 text-white shadow-sm border-none uppercase tracking-wider font-black text-xs px-2 py-1">
+          Em Negociação
+        </Badge>
+      )
+    return (
+      <Badge className="bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm border-none uppercase tracking-wider font-black text-xs px-2 py-1">
+        Disponível
+      </Badge>
+    )
+  }
+
   return (
     <Dialog open={!!property} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="w-[95vw] max-w-lg rounded-2xl p-0 overflow-hidden bg-white z-[1100]">
         <DialogHeader className="p-5 bg-slate-50 border-b border-gray-100 relative z-10">
-          <DialogTitle className="flex items-center justify-between text-xl font-black text-[#1A3A52]">
+          <DialogTitle className="flex flex-col sm:flex-row sm:items-center justify-between text-xl font-black text-[#1A3A52] gap-3">
             <span>Detalhes do Imóvel</span>
-            <Badge className="bg-[#1A3A52] px-3 py-1 shadow-sm text-sm">
-              {property.codigo_imovel}
-            </Badge>
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge className="bg-[#1A3A52] px-3 py-1 shadow-sm text-sm">
+                {property.codigo_imovel}
+              </Badge>
+              {getStatusBadgeLarge(property)}
+            </div>
           </DialogTitle>
         </DialogHeader>
 
@@ -29,7 +62,9 @@ export function PropertyDetailsModal({ property, onClose }: Props) {
           <div className="grid grid-cols-2 gap-4 pointer-events-none">
             <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-100 shadow-sm">
               <p className="text-[11px] text-emerald-600 font-black uppercase tracking-wider mb-1">
-                Valor
+                Valor{' '}
+                {(property.status_captacao === 'fechado' || property.etapa_funil === 'fechado') &&
+                  '(Fechamento)'}
               </p>
               <p className="text-2xl font-black text-emerald-700 tracking-tight">
                 {formatCurrency(property.preco)}
@@ -47,7 +82,7 @@ export function PropertyDetailsModal({ property, onClose }: Props) {
           </div>
 
           {/* Main Info */}
-          <div className="space-y-5 bg-gray-50 p-4 rounded-xl border border-gray-100 pointer-events-none">
+          <div className="space-y-4 bg-gray-50 p-4 rounded-xl border border-gray-100 pointer-events-none flex flex-col gap-1">
             <div className="flex gap-3">
               <MapPin className="w-5 h-5 text-gray-400 shrink-0 mt-0.5" />
               <div>
@@ -60,7 +95,7 @@ export function PropertyDetailsModal({ property, onClose }: Props) {
               </div>
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex gap-3 pt-3 border-t border-gray-200">
               <Calendar className="w-5 h-5 text-gray-400 shrink-0 mt-0.5" />
               <div>
                 <p className="text-[11px] text-gray-500 font-bold uppercase tracking-wider">
@@ -75,6 +110,20 @@ export function PropertyDetailsModal({ property, onClose }: Props) {
                 </p>
               </div>
             </div>
+
+            {property.data_fechamento && (
+              <div className="flex gap-3 pt-3 border-t border-gray-200">
+                <Calendar className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-[11px] text-blue-600 font-black uppercase tracking-wider">
+                    Data de Fechamento
+                  </p>
+                  <p className="text-sm font-bold text-[#1A3A52] mt-0.5">
+                    {new Date(property.data_fechamento).toLocaleDateString('pt-BR')}
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Features Grid */}
@@ -140,7 +189,7 @@ export function PropertyDetailsModal({ property, onClose }: Props) {
               <div className="flex items-center gap-2 mb-3">
                 <FileText className="w-4 h-4 text-gray-400" />
                 <p className="text-[11px] text-gray-500 font-black uppercase tracking-wider">
-                  Observações
+                  Observações & Histórico
                 </p>
               </div>
               <p className="text-sm font-medium text-gray-700 bg-amber-50 border border-amber-100 p-4 rounded-xl leading-relaxed whitespace-pre-wrap shadow-sm">

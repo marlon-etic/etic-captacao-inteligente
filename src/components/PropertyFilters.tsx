@@ -19,6 +19,7 @@ export function PropertyFilters({ filters, onChange }: Props) {
 
   const activeCount = Object.entries(filters).filter(([k, v]) => {
     if (k === 'tipo' && v === 'Todos') return false
+    if (k === 'status' && v === 'Todos') return false
     return v !== ''
   }).length
 
@@ -43,7 +44,7 @@ export function PropertyFilters({ filters, onChange }: Props) {
         )}
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-7 gap-3">
         <div className="col-span-2 md:col-span-1 space-y-1.5">
           <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide ml-0.5">
             Tipo
@@ -59,6 +60,25 @@ export function PropertyFilters({ filters, onChange }: Props) {
             </SelectContent>
           </Select>
         </div>
+
+        <div className="col-span-2 md:col-span-1 space-y-1.5">
+          <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide ml-0.5">
+            Status
+          </Label>
+          <Select value={filters.status || 'Todos'} onValueChange={(v) => update('status', v)}>
+            <SelectTrigger className="h-[44px] text-sm font-medium border-[#E5E5E5] focus:ring-[#1A3A52]">
+              <SelectValue placeholder="Todos" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Todos">Todos</SelectItem>
+              <SelectItem value="Disponível">Disponível</SelectItem>
+              <SelectItem value="Em Negociação">Em Negociação</SelectItem>
+              <SelectItem value="Fechado">Fechado</SelectItem>
+              <SelectItem value="Perdido">Perdido</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
         <div className="col-span-2 md:col-span-2 space-y-1.5">
           <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide ml-0.5">
             Bairro

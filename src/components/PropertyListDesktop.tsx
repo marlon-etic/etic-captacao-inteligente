@@ -17,6 +17,36 @@ export function PropertyListDesktop({ properties, onSelect }: Props) {
   const formatCurrency = (v: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v)
 
+  const getStatusBadge = (p: any) => {
+    const isFechado = p.status_captacao === 'fechado' || p.etapa_funil === 'fechado'
+    const isPerdido = p.status_captacao === 'perdido' || p.etapa_funil === 'perdido'
+    const isNegociacao = p.etapa_funil === 'proposta' || p.etapa_funil === 'visitado'
+
+    if (isFechado)
+      return (
+        <Badge className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm border-none uppercase tracking-wider font-black text-[10px] px-1.5 py-0 h-4">
+          Fechado
+        </Badge>
+      )
+    if (isPerdido)
+      return (
+        <Badge className="bg-red-500 hover:bg-red-600 text-white shadow-sm border-none uppercase tracking-wider font-black text-[10px] px-1.5 py-0 h-4">
+          Perdido
+        </Badge>
+      )
+    if (isNegociacao)
+      return (
+        <Badge className="bg-amber-500 hover:bg-amber-600 text-white shadow-sm border-none uppercase tracking-wider font-black text-[10px] px-1.5 py-0 h-4">
+          Em Negoc.
+        </Badge>
+      )
+    return (
+      <Badge className="bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm border-none uppercase tracking-wider font-black text-[10px] px-1.5 py-0 h-4">
+        Disp.
+      </Badge>
+    )
+  }
+
   return (
     <div className="bg-white border border-[#E5E5E5] rounded-xl shadow-[0_4px_12px_rgba(26,58,82,0.05)] overflow-hidden">
       <Table>
@@ -32,7 +62,7 @@ export function PropertyListDesktop({ properties, onSelect }: Props) {
             </TableHead>
             <TableHead className="font-black text-[#1A3A52] h-[48px]">Captador</TableHead>
             <TableHead className="font-black text-[#1A3A52] h-[48px]">Demanda Vinculada</TableHead>
-            <TableHead className="font-black text-[#1A3A52] h-[48px]">Data</TableHead>
+            <TableHead className="font-black text-[#1A3A52] h-[48px]">Data / Status</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -113,11 +143,14 @@ export function PropertyListDesktop({ properties, onSelect }: Props) {
                     <span className="text-xs font-bold text-gray-500">
                       {new Date(p.created_at).toLocaleDateString('pt-BR')}
                     </span>
-                    {isRecent && (
-                      <Badge className="bg-amber-500 hover:bg-amber-600 text-white text-[10px] px-1.5 py-0 h-4 shadow-sm border-none uppercase tracking-wider font-black animate-pulse">
-                        Novo
-                      </Badge>
-                    )}
+                    <div className="flex gap-1">
+                      {isRecent && (
+                        <Badge className="bg-amber-500 hover:bg-amber-600 text-white text-[10px] px-1.5 py-0 h-4 shadow-sm border-none uppercase tracking-wider font-black animate-pulse">
+                          Novo
+                        </Badge>
+                      )}
+                      {getStatusBadge(p)}
+                    </div>
                   </div>
                 </TableCell>
               </TableRow>
