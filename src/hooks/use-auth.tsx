@@ -7,7 +7,6 @@ interface AuthContextType {
   session: Session | null
   signUp: (email: string, password: string) => Promise<{ error: any }>
   signIn: (email: string, password: string) => Promise<{ error: any }>
-  signInWithGoogle: () => Promise<{ error: any }>
   signOut: () => Promise<{ error: any }>
   loading: boolean
 }
@@ -92,27 +91,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }
 
-  const signInWithGoogle = async () => {
-    try {
-      // Limpeza forçada de cache pré-autenticação para evitar conflitos
-      await supabase.auth.signOut()
-
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/`,
-          // Escopos recomendados para evitar conflitos de validação de consentimento
-          scopes: 'email profile',
-        },
-      })
-
-      // Note: O redirect ocorre imediatamente antes dessa linha se der tudo certo
-      return { error }
-    } catch (error: any) {
-      return { error }
-    }
-  }
-
   const signOut = async () => {
     try {
       const { error } = await supabase.auth.signOut()
@@ -123,9 +101,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }
 
   return (
-    <AuthContext.Provider
-      value={{ user, session, signUp, signIn, signInWithGoogle, signOut, loading }}
-    >
+    <AuthContext.Provider value={{ user, session, signUp, signIn, signOut, loading }}>
       {children}
     </AuthContext.Provider>
   )

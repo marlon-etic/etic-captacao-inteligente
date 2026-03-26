@@ -33,7 +33,6 @@ import ResilienceTester from '@/pages/admin/ResilienceTester'
 import FunctionalTester from '@/pages/admin/FunctionalTester'
 import GoLiveTester from '@/pages/admin/GoLiveTester'
 import HealthCheckTester from '@/pages/admin/HealthCheckTester'
-import GoogleAuthTester from '@/pages/admin/GoogleAuthTester'
 import PontuacaoPage from '@/pages/dashboard/PontuacaoPage'
 import HistoricoPage from '@/pages/dashboard/HistoricoPage'
 import PerdidosPage from '@/pages/dashboard/PerdidosPage'
@@ -155,7 +154,6 @@ const AppContent = () => {
           <Route path="/esqueci-senha" element={<EsqueciSenha />} />
           <Route path="/redefinir-senha" element={<RedefinirSenha />} />
           <Route path="/diagnostico" element={<HealthCheckTester />} />
-          <Route path="/google-auth-tester" element={<GoogleAuthTester />} />
 
           {/* Landlord Auth Routes */}
           <Route path="/landlord/login" element={<LandlordLogin />} />
@@ -205,7 +203,6 @@ const AppContent = () => {
             <Route path="functional-tester" element={<FunctionalTester />} />
             <Route path="go-live-tester" element={<GoLiveTester />} />
             <Route path="health-check" element={<HealthCheckTester />} />
-            <Route path="google-auth-tester" element={<GoogleAuthTester />} />
             <Route path="pontuacao" element={<PontuacaoPage />} />
             <Route path="historico" element={<HistoricoPage />} />
             <Route path="perdidos" element={<PerdidosPage />} />
