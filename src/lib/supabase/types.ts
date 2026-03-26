@@ -1663,9 +1663,17 @@ export const Constants = {
 //   AS $function$
 //   DECLARE
 //       user_id_val UUID;
+//       user_exists BOOLEAN;
 //   BEGIN
 //       user_id_val := auth.uid();
 //       
+//       IF user_id_val IS NOT NULL THEN
+//           SELECT EXISTS (SELECT 1 FROM public.users WHERE id = user_id_val) INTO user_exists;
+//           IF NOT user_exists THEN
+//               user_id_val := NULL;
+//           END IF;
+//       END IF;
+//   
 //       IF TG_OP = 'INSERT' THEN
 //           INSERT INTO public.audit_log (usuario_id, acao, tabela, registro_id, dados_novos)
 //           VALUES (user_id_val, TG_OP, TG_TABLE_NAME, NEW.id, to_jsonb(NEW));
