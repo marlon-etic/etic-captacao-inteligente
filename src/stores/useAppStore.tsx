@@ -138,6 +138,9 @@ export const defaultPreferences: UserPreferences = {
 
 const AppContext = createContext<AppState | null>(null)
 
+// 7 days in milliseconds
+const SESSION_EXPIRATION_TIME = 7 * 24 * 60 * 60 * 1000
+
 export function AppStoreProvider({ children }: { children: ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
     try {
@@ -213,6 +216,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         const {
           data: { session },
         } = await supabase.auth.getSession()
+
         if (session?.user && !currentUser) {
           const { data: supaUser } = await supabase
             .from('users')
@@ -237,12 +241,19 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
               createdAt: supaUser.created_at || new Date().toISOString(),
             } as User
             setCurrentUser(u)
-            setSessionExpiresAt(Date.now() + 86400000)
+            setSessionExpiresAt(Date.now() + SESSION_EXPIRATION_TIME)
             localStorage.setItem(
               'etic_session',
-              JSON.stringify({ user: u, expiresAt: Date.now() + 86400000 }),
+              JSON.stringify({ user: u, expiresAt: Date.now() + SESSION_EXPIRATION_TIME }),
             )
           }
+        } else if (session && currentUser) {
+          // If already set but we just remounted, refresh expiration
+          setSessionExpiresAt(Date.now() + SESSION_EXPIRATION_TIME)
+          localStorage.setItem(
+            'etic_session',
+            JSON.stringify({ user: currentUser, expiresAt: Date.now() + SESSION_EXPIRATION_TIME }),
+          )
         }
       } catch (err) {
         console.error('[useAppStore] Failed to restore session', err)
@@ -253,10 +264,46 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
     restoreSession()
 
+    // Setup an auth change listener to keep the user in sync if login happens outside (OAuth redirect)
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session?.user && !currentUser && mounted) {
+        const { data: supaUser } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', session.user.id)
+          .single()
+
+        if (supaUser) {
+          const u = {
+            id: supaUser.id,
+            name: supaUser.nome,
+            email: supaUser.email,
+            role: supaUser.role as any,
+            status: (supaUser.status || 'ativo') as any,
+            points: 0,
+            dailyPoints: 0,
+            weeklyPoints: 0,
+            monthlyPoints: 0,
+            badges: [],
+            stats: defaultStats,
+            preferences: defaultPreferences,
+            createdAt: supaUser.created_at || new Date().toISOString(),
+          } as User
+          setCurrentUser(u)
+          setSessionExpiresAt(Date.now() + SESSION_EXPIRATION_TIME)
+          localStorage.setItem(
+            'etic_session',
+            JSON.stringify({ user: u, expiresAt: Date.now() + SESSION_EXPIRATION_TIME }),
+          )
+        }
+      }
+    })
+
     return () => {
       mounted = false
+      authListener.subscription.unsubscribe()
     }
-  }, [])
+  }, [currentUser])
 
   // Real-time Users Fetching via Polling
   useEffect(() => {
@@ -756,7 +803,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         throw new Error('Sua conta foi bloqueada pelo administrador.')
       }
 
-      const expiresAt = Date.now() + 86400000
+      const expiresAt = Date.now() + SESSION_EXPIRATION_TIME
       setUsers((prev) => {
         if (!prev.find((u) => u.id === user!.id)) return [...prev, user!]
         return prev
