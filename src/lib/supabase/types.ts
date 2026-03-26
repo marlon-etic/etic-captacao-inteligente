@@ -1489,6 +1489,11 @@ export const Constants = {
 //   CHECK webhook_queue_status_check: CHECK ((status = ANY (ARRAY['pending'::text, 'processing'::text, 'completed'::text, 'failed'::text])))
 
 // --- ROW LEVEL SECURITY POLICIES ---
+// Table: api_error_logs
+//   Policy "Admins can read api_error_logs" (SELECT, PERMISSIVE) roles={authenticated}
+//     USING: true
+//   Policy "Anyone can insert api_error_logs" (INSERT, PERMISSIVE) roles={public}
+//     WITH CHECK: true
 // Table: audit_log
 //   Policy "Admin sees audit log" (ALL, PERMISSIVE) roles={authenticated}
 //     USING: ((((current_setting('request.jwt.claims'::text, true))::jsonb -> 'user_metadata'::text) ->> 'role'::text) = ANY (ARRAY['admin'::text, 'gestor'::text]))
@@ -1520,6 +1525,16 @@ export const Constants = {
 //     USING: (((status_demanda)::text = 'aberta'::text) AND (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND (users.role = 'captador'::user_role)))))
 //   Policy "Corretores manage own vendas" (ALL, PERMISSIVE) roles={public}
 //     USING: ((corretor_id = auth.uid()) AND (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND (users.role = 'corretor'::user_role)))))
+// Table: grupos_demandas
+//   Policy "Authenticated users can delete grupos_demandas" (DELETE, PERMISSIVE) roles={authenticated}
+//     USING: true
+//   Policy "Authenticated users can insert grupos_demandas" (INSERT, PERMISSIVE) roles={authenticated}
+//     WITH CHECK: true
+//   Policy "Authenticated users can read grupos_demandas" (SELECT, PERMISSIVE) roles={authenticated}
+//     USING: true
+//   Policy "Authenticated users can update grupos_demandas" (UPDATE, PERMISSIVE) roles={authenticated}
+//     USING: true
+//     WITH CHECK: true
 // Table: imoveis_captados
 //   Policy "Authenticated users can read all captures" (SELECT, PERMISSIVE) roles={authenticated}
 //     USING: true
@@ -1589,15 +1604,10 @@ export const Constants = {
 //   Policy "vistasoft_cache_all" (ALL, PERMISSIVE) roles={authenticated}
 //     USING: true
 //     WITH CHECK: true
-
-// --- WARNING: TABLES WITH RLS ENABLED BUT NO POLICIES ---
-// These tables have Row Level Security enabled but NO policies defined.
-// This means ALL queries (SELECT, INSERT, UPDATE, DELETE) will return ZERO rows
-// for non-superuser roles (including the anon and authenticated roles used by the app).
-// You MUST create RLS policies for these tables to allow data access.
-//   - api_error_logs
-//   - grupos_demandas
-//   - webhook_queue
+// Table: webhook_queue
+//   Policy "Authenticated users can manage webhook_queue" (ALL, PERMISSIVE) roles={authenticated}
+//     USING: true
+//     WITH CHECK: true
 
 // --- DATABASE FUNCTIONS ---
 // FUNCTION atualizar_prazos_vencidos()
@@ -2181,21 +2191,21 @@ export const Constants = {
 //    LANGUAGE plpgsql
 //    SECURITY DEFINER
 //   AS $function$
-//   BEGIN
-//     INSERT INTO public.users (id, email, nome, role, status)
-//     VALUES (
-//       NEW.id,
-//       NEW.email,
-//       COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.raw_user_meta_data->>'name', split_part(NEW.email, '@', 1)),
-//       COALESCE((NEW.raw_user_meta_data->>'role')::public.user_role, 'captador'::public.user_role),
-//       'ativo'
-//     )
-//     ON CONFLICT (id) DO UPDATE SET
-//       email = EXCLUDED.email,
-//       nome = COALESCE(public.users.nome, EXCLUDED.nome);
-//     RETURN NEW;
-//   END;
-//   $function$
+//     BEGIN
+//       INSERT INTO public.users (id, email, nome, role, status)
+//       VALUES (
+//         NEW.id,
+//         NEW.email,
+//         COALESCE(NEW.raw_user_meta_data->>'name', NEW.raw_user_meta_data->>'full_name', split_part(NEW.email, '@', 1)),
+//         COALESCE((NEW.raw_user_meta_data->>'role')::public.user_role, 'captador'::public.user_role),
+//         'ativo'
+//       )
+//       ON CONFLICT (id) DO UPDATE SET
+//         email = EXCLUDED.email,
+//         nome = COALESCE(public.users.nome, EXCLUDED.nome);
+//       RETURN NEW;
+//     END;
+//     $function$
 //   
 // FUNCTION log_realtime_error(text, text, uuid)
 //   CREATE OR REPLACE FUNCTION public.log_realtime_error(p_channel_name text, p_error_message text, p_user_id uuid DEFAULT NULL::uuid)
