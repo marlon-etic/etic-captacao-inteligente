@@ -7,8 +7,10 @@ import { toast } from '@/hooks/use-toast'
 import { Skeleton } from '@/components/ui/skeleton'
 import { SyncIndicator } from '@/components/SyncIndicator'
 import { cn } from '@/lib/utils'
+import useAppStore from '@/stores/useAppStore'
 
 export default function PerdidosPage() {
+  const { currentUser } = useAppStore()
   const { demands: locacoes, loading: loadingL, syncing: syncL } = useSupabaseDemands('Aluguel')
   const { demands: vendas, loading: loadingV, syncing: syncV } = useSupabaseDemands('Venda')
   const [isReopening, setIsReopening] = useState<string | null>(null)
@@ -19,33 +21,94 @@ export default function PerdidosPage() {
 
   const lostDemands = useMemo(() => {
     return [...locacoes, ...vendas]
-      .filter((d) => d.status_demanda === 'impossivel' || d.status_demanda === 'PERDIDA_BAIXA')
+      .filter((d) => {
+        const isGloballyLost =
+          d.db_status_demanda === 'impossivel' || d.db_status_demanda === 'PERDIDA_BAIXA'
+        const isLocallyLost = d.status_demanda === 'localmente_perdida'
+        return isGloballyLost || isLocallyLost
+      })
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
   }, [locacoes, vendas])
 
   const visibleDemands = lostDemands.slice(0, visibleCount)
 
-  const handleReabrir = async (id: string, type: 'Aluguel' | 'Venda') => {
+  const handleReabrir = async (demand: any) => {
     if (isReopening) return
-    setIsReopening(id)
+    setIsReopening(demand.id)
+
+    const isGloballyLost =
+      demand.db_status_demanda === 'impossivel' || demand.db_status_demanda === 'PERDIDA_BAIXA'
+    const isLocallyLost = demand.status_demanda === 'localmente_perdida'
+    const isCaptador = currentUser?.role === 'captador'
+    const isOwnerOrAdmin =
+      currentUser?.role === 'admin' ||
+      currentUser?.role === 'gestor' ||
+      currentUser?.id === (demand.sdr_id || demand.corretor_id)
+
     try {
-      const table = type === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
-      const { error } = await supabase.from(table).update({ status_demanda: 'aberta' }).eq('id', id)
+      if (isCaptador && isLocallyLost && !isGloballyLost) {
+        const { error } = await supabase
+          .from('respostas_captador')
+          .delete()
+          .eq('captador_id', currentUser?.id)
+          .eq(demand.tipo === 'Aluguel' ? 'demanda_locacao_id' : 'demanda_venda_id', demand.id)
+          .eq('resposta', 'nao_encontrei')
 
-      if (error) throw error
+        if (error) throw error
 
-      window.dispatchEvent(
-        new CustomEvent('demanda-updated', {
-          detail: { tipo: type, data: { id, status_demanda: 'aberta' } },
-        }),
-      )
+        window.dispatchEvent(
+          new CustomEvent('demanda-updated', {
+            detail: {
+              tipo: demand.tipo,
+              data: {
+                id: demand.id,
+                db_status_demanda: demand.db_status_demanda || 'aberta',
+                respostas_captador: (demand.respostas_captador || []).filter(
+                  (r: any) => r.captador_id !== currentUser?.id,
+                ),
+              },
+            },
+          }),
+        )
 
-      toast({
-        title: '✅ Demanda Reaberta!',
-        description: 'A demanda retornou para a lista de "Demandas Abertas".',
-        className: 'bg-[#10B981] text-white border-none',
-        duration: 3000,
-      })
+        toast({
+          title: '✅ Demanda Reaberta!',
+          description: 'A demanda retornou para a sua lista de "Abertas".',
+          className: 'bg-[#10B981] text-white border-none',
+          duration: 3000,
+        })
+      } else if (isOwnerOrAdmin && isGloballyLost) {
+        const table = demand.tipo === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
+        const { error } = await supabase
+          .from(table)
+          .update({ status_demanda: 'aberta' })
+          .eq('id', demand.id)
+
+        if (error) throw error
+
+        window.dispatchEvent(
+          new CustomEvent('demanda-updated', {
+            detail: {
+              tipo: demand.tipo,
+              data: { id: demand.id, status_demanda: 'aberta', db_status_demanda: 'aberta' },
+            },
+          }),
+        )
+
+        toast({
+          title: '✅ Demanda Reaberta!',
+          description: 'A demanda retornou para a lista global de "Abertas".',
+          className: 'bg-[#10B981] text-white border-none',
+          duration: 3000,
+        })
+      } else {
+        toast({
+          title: 'Ação Bloqueada',
+          description:
+            'A demanda foi perdida globalmente pelo solicitante. Você não pode reabri-la localmente.',
+          variant: 'destructive',
+        })
+      }
     } catch (err: any) {
       toast({
         title: 'Erro ao reabrir demanda',
@@ -86,8 +149,8 @@ export default function PerdidosPage() {
             Nenhuma demanda perdida.
           </h3>
           <p className="text-[14px] text-[#666666] mt-2 text-center max-w-[360px] font-medium leading-relaxed">
-            As demandas marcadas como "Fora do mercado" pelos captadores ou fechadas por timeout
-            aparecerão aqui.
+            As demandas marcadas como "Não Encontrei" (movidas para perdidos), "Fora do mercado" ou
+            fechadas por timeout aparecerão aqui.
           </p>
         </div>
       ) : (
@@ -95,16 +158,40 @@ export default function PerdidosPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-[16px] md:gap-[24px]">
             {visibleDemands.map((demand, index) => {
               const isAluguel = demand.tipo === 'Aluguel'
-              const reason =
-                demand.status_demanda === 'PERDIDA_BAIXA'
-                  ? demand.respostas_captador?.length
-                    ? 'Todos marcaram PERDIDO ou Timeout'
-                    : 'Timeout Expirado'
-                  : demand.respostas_captador?.find((r) => r.resposta === 'nao_encontrei')
-                      ?.motivo || 'Motivo não especificado'
-              const obs =
-                demand.respostas_captador?.find((r) => r.resposta === 'nao_encontrei')
-                  ?.observacao || ''
+              const isGloballyLost =
+                demand.db_status_demanda === 'impossivel' ||
+                demand.db_status_demanda === 'PERDIDA_BAIXA'
+
+              let reason = 'Motivo não especificado'
+              let obs = ''
+
+              if (demand.db_status_demanda === 'PERDIDA_BAIXA') {
+                reason = demand.respostas_captador?.length
+                  ? 'Todos marcaram PERDIDO ou Timeout'
+                  : 'Timeout Expirado'
+              } else {
+                const meuDescarte = demand.respostas_captador?.find(
+                  (r) => r.captador_id === currentUser?.id && r.resposta === 'nao_encontrei',
+                )
+                const qualquerDescarte = demand.respostas_captador?.find(
+                  (r) => r.resposta === 'nao_encontrei',
+                )
+
+                const r = meuDescarte || qualquerDescarte
+                if (r) {
+                  reason = r.motivo || reason
+                  obs = r.observacao || obs
+                }
+              }
+
+              const isOwnerOrAdmin =
+                currentUser?.role === 'admin' ||
+                currentUser?.role === 'gestor' ||
+                currentUser?.id === (demand.sdr_id || demand.corretor_id)
+              const isCaptador = currentUser?.role === 'captador'
+              const canReopen = isOwnerOrAdmin
+                ? isGloballyLost
+                : isCaptador && demand.status_demanda === 'localmente_perdida' && !isGloballyLost
 
               return (
                 <div
@@ -124,8 +211,19 @@ export default function PerdidosPage() {
                         {demand.nome_cliente}
                       </h3>
                     </div>
-                    <div className="bg-[#F3F4F6] text-[#6B7280] text-[10px] font-black px-2.5 py-1 rounded-md shadow-sm uppercase tracking-widest shrink-0 border border-[#E5E5E5]">
-                      {demand.status_demanda === 'PERDIDA_BAIXA' ? 'BAIXA AUTOMÁTICA' : 'PERDIDA'}
+                    <div
+                      className={cn(
+                        'text-[10px] font-black px-2.5 py-1 rounded-md shadow-sm uppercase tracking-widest shrink-0 border',
+                        isGloballyLost
+                          ? 'bg-[#F3F4F6] text-[#6B7280] border-[#E5E5E5]'
+                          : 'bg-[#FEF2F2] text-[#EF4444] border-[#FECACA]',
+                      )}
+                    >
+                      {demand.db_status_demanda === 'PERDIDA_BAIXA'
+                        ? 'BAIXA AUTOMÁTICA'
+                        : isGloballyLost
+                          ? 'PERDIDA GLOBAL'
+                          : 'PERDIDA (VOCÊ)'}
                     </div>
                   </div>
 
@@ -149,7 +247,7 @@ export default function PerdidosPage() {
                       </div>
                       {obs && (
                         <div className="text-[12px] italic text-[#666666] line-clamp-2" title={obs}>
-                          "{obs}"
+                          "{obs.replace('[CONTINUA_BUSCANDO]', '').trim()}"
                         </div>
                       )}
                     </div>
@@ -158,10 +256,13 @@ export default function PerdidosPage() {
                   <div className="mt-auto pt-4 border-t border-[#E5E5E5] flex justify-end shrink-0">
                     <Button
                       variant="outline"
-                      onClick={() => handleReabrir(demand.id, demand.tipo)}
-                      disabled={isReopening === demand.id}
+                      onClick={() => handleReabrir(demand)}
+                      disabled={isReopening === demand.id || (!canReopen && isCaptador)}
                       className={cn(
-                        'w-full sm:w-auto font-black text-[#10B981] border-[#10B981]/30 bg-white hover:bg-[#ECFDF5] hover:border-[#10B981] transition-all min-h-[44px]',
+                        'w-full sm:w-auto font-black min-h-[44px] transition-all',
+                        canReopen
+                          ? 'text-[#10B981] border-[#10B981]/30 bg-white hover:bg-[#ECFDF5] hover:border-[#10B981]'
+                          : 'text-[#999999] border-[#E5E5E5] bg-[#F5F5F5] cursor-not-allowed opacity-70',
                         isReopening === demand.id && 'opacity-70',
                       )}
                     >
@@ -169,10 +270,12 @@ export default function PerdidosPage() {
                         <>
                           <Loader2 className="w-4 h-4 animate-spin mr-2" /> Reabrindo...
                         </>
-                      ) : (
+                      ) : canReopen ? (
                         <>
                           <RefreshCw className="w-4 h-4 mr-2" /> Reabrir Demanda
                         </>
+                      ) : (
+                        <>Bloqueado Globalmente</>
                       )}
                     </Button>
                   </div>

@@ -125,10 +125,10 @@ export function NaoEncontreiModal({ isOpen, onClose, onConfirm }: Props) {
                 htmlFor="finalizar"
                 className="text-[14px] font-bold text-[#1A3A52] cursor-pointer"
               >
-                Finalizar como Perdida
+                Mover para Perdidos
               </Label>
               <p className="text-[12px] text-[#666666] leading-tight">
-                Se ativado, a demanda será movida imediatamente para a aba de Perdidos.
+                Se ativado, o card sairá da sua tela de demandas ativas e ficará em Perdidos.
               </p>
             </div>
             <Switch
@@ -194,22 +194,22 @@ export function NaoEncontreiModal({ isOpen, onClose, onConfirm }: Props) {
               }, 300)
             }}
             disabled={isSubmitting}
-            className="w-full sm:w-1/2 min-h-[48px] font-bold text-[16px] bg-[#6B7280] border-transparent text-white enabled:hover:bg-[#4B5563]"
+            className="w-full sm:w-1/3 min-h-[48px] font-bold text-[16px] bg-[#6B7280] border-transparent text-white enabled:hover:bg-[#4B5563]"
           >
             Cancelar
           </Button>
           <Button
             onClick={handleConfirm}
             isLoading={isSubmitting}
-            loadingText="Processando..."
+            loadingText="Movendo..."
             className={cn(
-              'w-full sm:w-1/2 min-h-[48px] font-bold text-[16px] text-white border-transparent shadow-[0_4px_12px_rgba(0,0,0,0.1)] transition-transform enabled:active:scale-[0.98]',
+              'w-full sm:flex-1 min-h-[48px] font-bold text-[15px] sm:text-[16px] text-white border-transparent shadow-[0_4px_12px_rgba(0,0,0,0.1)] transition-transform enabled:active:scale-[0.98]',
               finalizar
                 ? 'bg-[#EF4444] enabled:hover:bg-[#DC2626]'
                 : 'bg-[#10B981] enabled:hover:bg-[#059669]',
             )}
           >
-            {finalizar ? 'Mover para Perdidos' : 'Confirmar Feedback'}
+            {finalizar ? 'Confirmar e Mover' : 'Apenas Enviar Feedback'}
           </Button>
         </DialogFooter>
       </DialogContent>

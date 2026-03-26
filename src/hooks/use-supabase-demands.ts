@@ -37,6 +37,7 @@ export interface SupabaseDemand {
   valor_maximo: number
   nivel_urgencia: string
   status_demanda: string
+  db_status_demanda?: string
   created_at: string
   tipo: 'Aluguel' | 'Venda'
   imoveis_captados: SupabaseCapturedProperty[]
@@ -57,14 +58,19 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
   const [demands, setDemands] = useState<SupabaseDemand[]>([])
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
-  const { users } = useAppStore()
+  const { users, currentUser } = useAppStore()
   const { fetchWithResilience } = useSmartSync()
 
   const usersRef = useRef(users)
+  const currentUserRef = useRef(currentUser)
 
   useEffect(() => {
     usersRef.current = users
   }, [users])
+
+  useEffect(() => {
+    currentUserRef.current = currentUser
+  }, [currentUser])
 
   const sortDemands = useCallback((list: SupabaseDemand[]) => {
     return [...list].sort((a, b) => {
@@ -74,50 +80,79 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
     })
   }, [])
 
+  const evalStatusDemanda = useCallback((dbStatus: string, respostas: any[]) => {
+    let st = dbStatus || 'aberta'
+    if (
+      currentUserRef.current?.role === 'captador' &&
+      (st === 'aberta' || st === 'sem_resposta_24h' || st === 'prioritaria')
+    ) {
+      const myResp = respostas.find(
+        (r: any) => r.captador_id === currentUserRef.current?.id && r.resposta === 'nao_encontrei',
+      )
+      if (
+        myResp &&
+        myResp.motivo !== 'Buscando outras opções' &&
+        !myResp.observacao?.includes('[CONTINUA_BUSCANDO]')
+      ) {
+        st = 'localmente_perdida'
+      }
+    }
+    return st
+  }, [])
+
   const formatData = useCallback(
     (data: any[]) => {
       const userMap = new Map((usersRef.current || []).map((u) => [u.id, u.name]))
 
-      return data.map((d: any) => ({
-        id: d.id,
-        nome_cliente: d.nome_cliente || d.cliente_nome || 'Cliente',
-        telefone: d.telefone || '',
-        email: d.email || '',
-        bairros: d.bairros || d.localizacoes || [],
-        valor_minimo: d.valor_minimo || 0,
-        valor_maximo: d.valor_maximo || d.orcamento_max || 0,
-        dormitorios: d.dormitorios || 0,
-        vagas_estacionamento: d.vagas_estacionamento || 0,
-        observacoes: d.observacoes || d.necessidades_especificas || '',
-        tipo_imovel: d.tipo_imovel || 'Casa',
-        nivel_urgencia: d.nivel_urgencia || d.urgencia || 'Média',
-        status_demanda: d.status_demanda || 'aberta',
-        is_prioritaria: d.is_prioritaria || false,
-        created_at: d.created_at || new Date().toISOString(),
-        tipo: type,
-        sdr_id: d.sdr_id,
-        corretor_id: d.corretor_id,
-        respostas_captador: (d.respostas_captador || []).sort(
+      return data.map((d: any) => {
+        const respostas = (d.respostas_captador || []).sort(
           (a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-        ),
-        prazos_captacao: d.prazos_captacao || [],
-        imoveis_captados: (d.imoveis_captados || [])
-          .map((i: any) => ({
-            ...i,
-            captador_nome: userMap.get(i.user_captador_id || i.captador_id) || 'Captador',
-            etapa_funil: i.etapa_funil || 'capturado',
-            data_visita: i.data_visita,
-            data_fechamento: i.data_fechamento,
-            dormitorios: i.dormitorios,
-            vagas: i.vagas,
-            observacoes: i.observacoes || i.localizacao_texto,
-          }))
-          .sort(
-            (a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-          ),
-      }))
+        )
+
+        const dbStatus = d.status_demanda || 'aberta'
+        const st = evalStatusDemanda(dbStatus, respostas)
+
+        return {
+          id: d.id,
+          nome_cliente: d.nome_cliente || d.cliente_nome || 'Cliente',
+          telefone: d.telefone || '',
+          email: d.email || '',
+          bairros: d.bairros || d.localizacoes || [],
+          valor_minimo: d.valor_minimo || 0,
+          valor_maximo: d.valor_maximo || d.orcamento_max || 0,
+          dormitorios: d.dormitorios || 0,
+          vagas_estacionamento: d.vagas_estacionamento || 0,
+          observacoes: d.observacoes || d.necessidades_especificas || '',
+          tipo_imovel: d.tipo_imovel || 'Casa',
+          nivel_urgencia: d.nivel_urgencia || d.urgencia || 'Média',
+          db_status_demanda: dbStatus,
+          status_demanda: st,
+          is_prioritaria: d.is_prioritaria || false,
+          created_at: d.created_at || new Date().toISOString(),
+          tipo: type,
+          sdr_id: d.sdr_id,
+          corretor_id: d.corretor_id,
+          respostas_captador: respostas,
+          prazos_captacao: d.prazos_captacao || [],
+          imoveis_captados: (d.imoveis_captados || [])
+            .map((i: any) => ({
+              ...i,
+              captador_nome: userMap.get(i.user_captador_id || i.captador_id) || 'Captador',
+              etapa_funil: i.etapa_funil || 'capturado',
+              data_visita: i.data_visita,
+              data_fechamento: i.data_fechamento,
+              dormitorios: i.dormitorios,
+              vagas: i.vagas,
+              observacoes: i.observacoes || i.localizacao_texto,
+            }))
+            .sort(
+              (a: any, b: any) =>
+                new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+            ),
+        }
+      })
     },
-    [type],
+    [type, evalStatusDemanda],
   )
 
   const fetchDemands = useCallback(
@@ -172,7 +207,8 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
             (d.status_demanda === 'aberta' ||
               d.status_demanda === 'prioritaria' ||
               d.status_demanda === 'atendida' ||
-              d.status_demanda === 'PERDIDA_BAIXA')
+              d.status_demanda === 'PERDIDA_BAIXA' ||
+              d.status_demanda === 'localmente_perdida')
           ) {
             const newDemand = formatData([
               { ...d, imoveis_captados: [], respostas_captador: [], prazos_captacao: [] },
@@ -181,22 +217,34 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
           }
 
           return sortDemands(
-            prev.map((x) =>
-              x.id === d.id
-                ? {
-                    ...x,
-                    ...d,
-                    nome_cliente: d.nome_cliente || d.cliente_nome || x.nome_cliente,
-                    bairros: d.bairros || d.localizacoes || x.bairros,
-                    valor_maximo: d.valor_maximo || d.orcamento_max || x.valor_maximo,
-                    observacoes: d.observacoes || d.necessidades_especificas || x.observacoes,
-                    nivel_urgencia: d.nivel_urgencia || d.urgencia || x.nivel_urgencia,
-                    status_demanda: d.status_demanda || x.status_demanda,
-                    is_prioritaria:
-                      d.is_prioritaria !== undefined ? d.is_prioritaria : x.is_prioritaria,
-                  }
-                : x,
-            ),
+            prev.map((x) => {
+              if (x.id === d.id) {
+                const newRespostas = d.respostas_captador || x.respostas_captador || []
+                const dbStatus =
+                  d.db_status_demanda !== undefined
+                    ? d.db_status_demanda
+                    : d.status_demanda !== undefined && d.status_demanda !== 'localmente_perdida'
+                      ? d.status_demanda
+                      : x.db_status_demanda || 'aberta'
+                const st = evalStatusDemanda(dbStatus, newRespostas)
+
+                return {
+                  ...x,
+                  ...d,
+                  nome_cliente: d.nome_cliente || d.cliente_nome || x.nome_cliente,
+                  bairros: d.bairros || d.localizacoes || x.bairros,
+                  valor_maximo: d.valor_maximo || d.orcamento_max || x.valor_maximo,
+                  observacoes: d.observacoes || d.necessidades_especificas || x.observacoes,
+                  nivel_urgencia: d.nivel_urgencia || d.urgencia || x.nivel_urgencia,
+                  db_status_demanda: dbStatus,
+                  status_demanda: st,
+                  respostas_captador: newRespostas,
+                  is_prioritaria:
+                    d.is_prioritaria !== undefined ? d.is_prioritaria : x.is_prioritaria,
+                }
+              }
+              return x
+            }),
           )
         })
       }
@@ -208,7 +256,7 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
       mounted = false
       window.removeEventListener('demanda-updated', handleDemandaUpdated as EventListener)
     }
-  }, [fetchDemands, type, formatData, sortDemands])
+  }, [fetchDemands, type, formatData, sortDemands, evalStatusDemanda])
 
   useConsolidatedSync({
     channelName: `realtime_sync_${type}`,
@@ -258,22 +306,28 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
               }
 
               return sortDemands(
-                prev.map((x) =>
-                  x.id === d.id
-                    ? {
-                        ...x,
-                        ...d,
-                        nome_cliente: d.nome_cliente || d.cliente_nome || x.nome_cliente,
-                        bairros: d.bairros || d.localizacoes || x.bairros,
-                        valor_maximo: d.valor_maximo || d.orcamento_max || x.valor_maximo,
-                        observacoes: d.observacoes || d.necessidades_especificas || x.observacoes,
-                        nivel_urgencia: d.nivel_urgencia || d.urgencia || x.nivel_urgencia,
-                        status_demanda: d.status_demanda || x.status_demanda,
-                        is_prioritaria:
-                          d.is_prioritaria !== undefined ? d.is_prioritaria : x.is_prioritaria,
-                      }
-                    : x,
-                ),
+                prev.map((x) => {
+                  if (x.id === d.id) {
+                    const newRespostas = x.respostas_captador || []
+                    const dbStatus = d.status_demanda || x.db_status_demanda || 'aberta'
+                    const st = evalStatusDemanda(dbStatus, newRespostas)
+                    return {
+                      ...x,
+                      ...d,
+                      nome_cliente: d.nome_cliente || d.cliente_nome || x.nome_cliente,
+                      bairros: d.bairros || d.localizacoes || x.bairros,
+                      valor_maximo: d.valor_maximo || d.orcamento_max || x.valor_maximo,
+                      observacoes: d.observacoes || d.necessidades_especificas || x.observacoes,
+                      nivel_urgencia: d.nivel_urgencia || d.urgencia || x.nivel_urgencia,
+                      db_status_demanda: dbStatus,
+                      status_demanda: st,
+                      respostas_captador: newRespostas,
+                      is_prioritaria:
+                        d.is_prioritaria !== undefined ? d.is_prioritaria : x.is_prioritaria,
+                    }
+                  }
+                  return x
+                }),
               )
             })
           } else if (payload.eventType === 'DELETE') {
@@ -305,6 +359,7 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
                   return {
                     ...d,
                     status_demanda: 'atendida',
+                    db_status_demanda: 'atendida',
                     imoveis_captados: [enrichedImv, ...(d.imoveis_captados || [])],
                   }
                 }
@@ -352,9 +407,12 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
                     )
                   }
 
-                  let newStatus = d.status_demanda
+                  let newStatus = d.db_status_demanda || d.status_demanda
                   if (imv.etapa_funil === 'fechado') newStatus = 'ganho'
-                  else if (d.status_demanda === 'ganho' && imv.etapa_funil !== 'fechado') {
+                  else if (
+                    (d.db_status_demanda === 'ganho' || d.status_demanda === 'ganho') &&
+                    imv.etapa_funil !== 'fechado'
+                  ) {
                     const otherClosed = newImoveis.some(
                       (i: any) => i.id !== imv.id && i.etapa_funil === 'fechado',
                     )
@@ -363,16 +421,28 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
                     newStatus = 'atendida'
                   }
 
-                  return { ...d, status_demanda: newStatus, imoveis_captados: newImoveis }
+                  const st = evalStatusDemanda(newStatus, d.respostas_captador || [])
+                  return {
+                    ...d,
+                    db_status_demanda: newStatus,
+                    status_demanda: st,
+                    imoveis_captados: newImoveis,
+                  }
                 } else if (currentlyHasIt) {
                   const newImoveis = (d.imoveis_captados || []).filter((i: any) => i.id !== imv.id)
-                  let newStatus = d.status_demanda
+                  let newStatus = d.db_status_demanda || d.status_demanda
                   const hasClosed = newImoveis.some((i: any) => i.etapa_funil === 'fechado')
                   if (!hasClosed && newStatus === 'ganho')
                     newStatus = newImoveis.length > 0 ? 'atendida' : 'aberta'
                   if (newImoveis.length === 0 && newStatus === 'atendida') newStatus = 'aberta'
 
-                  return { ...d, status_demanda: newStatus, imoveis_captados: newImoveis }
+                  const st = evalStatusDemanda(newStatus, d.respostas_captador || [])
+                  return {
+                    ...d,
+                    db_status_demanda: newStatus,
+                    status_demanda: st,
+                    imoveis_captados: newImoveis,
+                  }
                 }
                 return d
               })
@@ -389,9 +459,13 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
             setDemands((prev) => {
               return prev.map((d) => {
                 if (d.id === resp.demanda_locacao_id || d.id === resp.demanda_venda_id) {
+                  const newRespostas = [resp, ...(d.respostas_captador || [])]
+                  const dbStatus = d.db_status_demanda || 'aberta'
+                  const st = evalStatusDemanda(dbStatus, newRespostas)
                   return {
                     ...d,
-                    respostas_captador: [resp, ...(d.respostas_captador || [])],
+                    status_demanda: st,
+                    respostas_captador: newRespostas,
                   }
                 }
                 return d

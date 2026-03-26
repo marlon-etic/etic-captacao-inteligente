@@ -50,6 +50,16 @@ export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDeman
   const isNaoEncontrei = respostasNaoEncontrei.length > 0
   const latestResp = respostasNaoEncontrei[0]
 
+  const isGloballyLost =
+    demand.db_status_demanda === 'impossivel' || demand.db_status_demanda === 'PERDIDA_BAIXA'
+  const isLocallyLost = demand.status_demanda === 'localmente_perdida'
+  const isOwnerOrAdmin =
+    currentUser?.role === 'admin' ||
+    currentUser?.role === 'gestor' ||
+    currentUser?.id === (demand.sdr_id || demand.corretor_id)
+  const isCaptador = currentUser?.role === 'captador'
+  const canReopen = isOwnerOrAdmin ? isGloballyLost : isCaptador && isLocallyLost && !isGloballyLost
+
   let statusConfig = {
     label: 'DISPONÍVEL PARA TODOS',
     bg: 'bg-[#10B981]',
@@ -57,12 +67,20 @@ export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDeman
     icon: Lock,
   }
 
-  if (demand.status_demanda === 'impossivel' || demand.status_demanda === 'PERDIDA_BAIXA') {
+  if (isGloballyLost) {
     statusConfig = {
-      label: demand.status_demanda === 'PERDIDA_BAIXA' ? 'BAIXA AUTOMÁTICA' : 'PERDIDA / CANCELADA',
+      label:
+        demand.db_status_demanda === 'PERDIDA_BAIXA' ? 'BAIXA AUTOMÁTICA' : 'PERDIDA / CANCELADA',
       bg: 'bg-gray-500',
       text: 'text-white',
       icon: X,
+    }
+  } else if (isLocallyLost) {
+    statusConfig = {
+      label: 'PERDIDA (VOCÊ)',
+      bg: 'bg-[#EF4444]',
+      text: 'text-white',
+      icon: XCircle,
     }
   } else if (demand.status_demanda === 'atendida') {
     statusConfig = {
@@ -110,7 +128,7 @@ export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDeman
     if (hasAnswered) {
       toast({
         title: 'Aviso',
-        description: 'Você já marcou esta demanda como não encontrada.',
+        description: 'Você já registrou uma resposta para esta demanda.',
         variant: 'destructive',
       })
       return
@@ -123,24 +141,59 @@ export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDeman
     if (isSubmitting) return
     setIsSubmitting(true)
     try {
-      const table = demand.tipo === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
-      const { error } = await supabase
-        .from(table)
-        .update({ status_demanda: 'aberta' })
-        .eq('id', demand.id)
-      if (error) throw error
+      if (isCaptador && isLocallyLost && !isGloballyLost) {
+        const { error } = await supabase
+          .from('respostas_captador')
+          .delete()
+          .eq('captador_id', currentUser?.id)
+          .eq(demand.tipo === 'Aluguel' ? 'demanda_locacao_id' : 'demanda_venda_id', demand.id)
+          .eq('resposta', 'nao_encontrei')
 
-      window.dispatchEvent(
-        new CustomEvent('demanda-updated', {
-          detail: { tipo: demand.tipo, data: { id: demand.id, status_demanda: 'aberta' } },
-        }),
-      )
+        if (error) throw error
 
-      toast({
-        title: 'Demanda reaberta!',
-        description: `O status voltou para ABERTA.`,
-        className: 'bg-[#10B981] text-white border-none',
-      })
+        window.dispatchEvent(
+          new CustomEvent('demanda-updated', {
+            detail: {
+              tipo: demand.tipo,
+              data: {
+                id: demand.id,
+                db_status_demanda: demand.db_status_demanda || 'aberta',
+                respostas_captador: (demand.respostas_captador || []).filter(
+                  (r) => r.captador_id !== currentUser?.id,
+                ),
+              },
+            },
+          }),
+        )
+
+        toast({
+          title: 'Demanda reaberta!',
+          description: `O imóvel voltou para sua aba de capturas.`,
+          className: 'bg-[#10B981] text-white border-none',
+        })
+      } else if (isOwnerOrAdmin) {
+        const table = demand.tipo === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
+        const { error } = await supabase
+          .from(table)
+          .update({ status_demanda: 'aberta' })
+          .eq('id', demand.id)
+        if (error) throw error
+
+        window.dispatchEvent(
+          new CustomEvent('demanda-updated', {
+            detail: {
+              tipo: demand.tipo,
+              data: { id: demand.id, status_demanda: 'aberta', db_status_demanda: 'aberta' },
+            },
+          }),
+        )
+
+        toast({
+          title: 'Demanda reaberta!',
+          description: `O status voltou para ABERTA globalmente.`,
+          className: 'bg-[#10B981] text-white border-none',
+        })
+      }
     } catch (err: any) {
       toast({
         title: 'Erro ao reabrir',
@@ -157,11 +210,13 @@ export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDeman
     setIsSubmitting(true)
 
     try {
+      const finalObs = finalizar ? obs : obs ? `[CONTINUA_BUSCANDO] ${obs}` : '[CONTINUA_BUSCANDO]'
+
       const payload = {
         captador_id: currentUser?.id,
         resposta: 'nao_encontrei',
         motivo: reason,
-        observacao: obs,
+        observacao: finalObs,
         demanda_locacao_id: demand.tipo === 'Aluguel' ? demand.id : null,
         demanda_venda_id: demand.tipo === 'Venda' ? demand.id : null,
       }
@@ -170,15 +225,25 @@ export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDeman
 
       if (error) throw error
 
-      const table = demand.tipo === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
-
       if (finalizar) {
-        // Mover para perdidos imediatamente
-        await supabase.from(table).update({ status_demanda: 'impossivel' }).eq('id', demand.id)
-      } else {
-        // Manter aberta
-        await supabase.from(table).update({ status_demanda: 'aberta' }).eq('id', demand.id)
+        window.dispatchEvent(
+          new CustomEvent('demanda-updated', {
+            detail: {
+              tipo: demand.tipo,
+              data: {
+                id: demand.id,
+                respostas_captador: [payload, ...(demand.respostas_captador || [])],
+              },
+            },
+          }),
+        )
 
+        toast({
+          title: 'Demanda Finalizada',
+          description: 'A demanda foi movida para a aba de Perdidos.',
+          className: 'bg-[#EF4444] text-white border-none',
+        })
+      } else {
         const prazo = demand.prazos_captacao?.[0]
         if (prazo && prazo.prorrogacoes_usadas < 3) {
           const newPrazo = new Date()
@@ -192,29 +257,27 @@ export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDeman
             })
             .eq('id', prazo.id)
         }
+
+        window.dispatchEvent(
+          new CustomEvent('demanda-updated', {
+            detail: {
+              tipo: demand.tipo,
+              data: {
+                id: demand.id,
+                respostas_captador: [payload, ...(demand.respostas_captador || [])],
+              },
+            },
+          }),
+        )
+
+        toast({
+          title: 'Feedback Enviado',
+          description: 'Sua resposta foi registrada e a busca continuará.',
+          className: 'bg-[#10B981] text-white border-none',
+        })
       }
 
-      toast({
-        title: finalizar ? 'Demanda Finalizada' : 'Feedback Enviado',
-        description: finalizar
-          ? 'A demanda foi movida para a aba de Perdidos.'
-          : 'Sua resposta foi registrada e a busca continuará.',
-        className: finalizar
-          ? 'bg-[#EF4444] text-white border-none'
-          : 'bg-[#10B981] text-white border-none',
-      })
-
       setNaoEncontreiModalOpen(false)
-
-      // Atualizar estado global instantaneamente
-      window.dispatchEvent(
-        new CustomEvent('demanda-updated', {
-          detail: {
-            tipo: demand.tipo,
-            data: { id: demand.id, status_demanda: finalizar ? 'impossivel' : 'aberta' },
-          },
-        }),
-      )
     } catch (err: any) {
       toast({
         title: 'Erro ao registrar resposta',
@@ -258,13 +321,16 @@ export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDeman
 
       if (error) throw error
 
-      if (demand.status_demanda === 'sem_resposta_24h') {
+      if (demand.db_status_demanda === 'sem_resposta_24h') {
         const table = demand.tipo === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
         await supabase.from(table).update({ status_demanda: 'aberta' }).eq('id', demand.id)
 
         window.dispatchEvent(
           new CustomEvent('demanda-updated', {
-            detail: { tipo: demand.tipo, data: { id: demand.id, status_demanda: 'aberta' } },
+            detail: {
+              tipo: demand.tipo,
+              data: { id: demand.id, status_demanda: 'aberta', db_status_demanda: 'aberta' },
+            },
           }),
         )
       }
@@ -310,7 +376,7 @@ export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDeman
             >
               <statusConfig.icon className="w-3.5 h-3.5" />
               {statusConfig.label}
-              {isBrandNew && (
+              {isBrandNew && !isGloballyLost && !isLocallyLost && (
                 <span className="ml-1 bg-white/20 px-1.5 py-0.5 rounded-sm text-[9px] animate-pulse">
                   NOVA
                 </span>
@@ -327,7 +393,9 @@ export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDeman
           </div>
           {prazo &&
             (demand.status_demanda === 'aberta' || demand.status_demanda === 'sem_resposta_24h') &&
-            prazo.status !== 'respondido' && (
+            prazo.status !== 'respondido' &&
+            !isGloballyLost &&
+            !isLocallyLost && (
               <div className="flex flex-col items-end pointer-events-none">
                 <PrazoCounter prazoResposta={prazo.prazo_resposta} isExpired={isPrazoExpired} />
                 {prazo.prorrogacoes_usadas > 0 && (
@@ -426,58 +494,59 @@ export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDeman
             </Button>
           </div>
 
-          {(demand.status_demanda === 'aberta' || demand.status_demanda === 'sem_resposta_24h') && (
-            <div className="flex flex-col gap-2 mt-3 pt-3 border-t border-[#E5E5E5] pointer-events-auto">
-              <div className="grid grid-cols-2 gap-2">
-                <Button
-                  onClick={(e) => {
-                    e.preventDefault()
-                    e.stopPropagation()
-                    handleEncontrei(e)
-                  }}
-                  disabled={isSubmitting}
-                  className="w-full min-h-[48px] bg-[#10B981] hover:bg-[#059669] text-white font-bold text-[14px] lg:text-[16px] px-1 lg:px-2 shadow-[0_4px_12px_rgba(16,185,129,0.3)] transition-transform hover:scale-[1.02] relative z-10"
-                >
-                  <CheckCircle className="w-4 h-4 lg:w-5 lg:h-5 mr-1.5 shrink-0" />{' '}
-                  <span className="truncate">ENCONTREI</span>
-                </Button>
-                <Button
-                  onClick={(e) => {
-                    e.preventDefault()
-                    e.stopPropagation()
-                    handleNaoEncontrei(e)
-                  }}
-                  disabled={isSubmitting}
-                  className="w-full min-h-[48px] bg-[#EF4444] hover:bg-[#DC2626] text-white font-bold text-[14px] lg:text-[16px] px-1 lg:px-2 shadow-[0_4px_12px_rgba(239,68,68,0.3)] transition-transform hover:scale-[1.02] relative z-10"
-                >
-                  <XCircle className="w-4 h-4 lg:w-5 lg:h-5 mr-1.5 shrink-0" />{' '}
-                  <span className="truncate">NÃO ENCONTREI</span>
-                </Button>
-              </div>
-              {prazo && prazo.prorrogacoes_usadas < 3 && prazo.status !== 'respondido' && (
-                <Button
-                  variant="outline"
-                  onClick={(e) => {
-                    e.preventDefault()
-                    e.stopPropagation()
-                    handleProrrogar(e)
-                  }}
-                  disabled={isSubmitting}
-                  className="w-full h-[40px] text-[12px] font-bold border-[#1A3A52]/20 text-[#1A3A52] hover:bg-[#F8FAFC] relative z-10"
-                >
-                  <Clock className="w-4 h-4 mr-1.5" /> Prorrogar Prazo (+48h)
-                </Button>
-              )}
-              {prazo && prazo.prorrogacoes_usadas >= 3 && prazo.status !== 'respondido' && (
-                <div className="text-[11px] text-center text-[#EF4444] font-bold mt-1">
-                  Máximo de 3 prorrogações atingido.
+          {(demand.status_demanda === 'aberta' || demand.status_demanda === 'sem_resposta_24h') &&
+            !isGloballyLost &&
+            !isLocallyLost && (
+              <div className="flex flex-col gap-2 mt-3 pt-3 border-t border-[#E5E5E5] pointer-events-auto">
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      handleEncontrei(e)
+                    }}
+                    disabled={isSubmitting}
+                    className="w-full min-h-[48px] bg-[#10B981] hover:bg-[#059669] text-white font-bold text-[14px] lg:text-[16px] px-1 lg:px-2 shadow-[0_4px_12px_rgba(16,185,129,0.3)] transition-transform hover:scale-[1.02] relative z-10"
+                  >
+                    <CheckCircle className="w-4 h-4 lg:w-5 lg:h-5 mr-1.5 shrink-0" />{' '}
+                    <span className="truncate">ENCONTREI</span>
+                  </Button>
+                  <Button
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      handleNaoEncontrei(e)
+                    }}
+                    disabled={isSubmitting}
+                    className="w-full min-h-[48px] bg-[#EF4444] hover:bg-[#DC2626] text-white font-bold text-[14px] lg:text-[16px] px-1 lg:px-2 shadow-[0_4px_12px_rgba(239,68,68,0.3)] transition-transform hover:scale-[1.02] relative z-10"
+                  >
+                    <XCircle className="w-4 h-4 lg:w-5 lg:h-5 mr-1.5 shrink-0" />{' '}
+                    <span className="truncate">NÃO ENCONTREI</span>
+                  </Button>
                 </div>
-              )}
-            </div>
-          )}
+                {prazo && prazo.prorrogacoes_usadas < 3 && prazo.status !== 'respondido' && (
+                  <Button
+                    variant="outline"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      handleProrrogar(e)
+                    }}
+                    disabled={isSubmitting}
+                    className="w-full h-[40px] text-[12px] font-bold border-[#1A3A52]/20 text-[#1A3A52] hover:bg-[#F8FAFC] relative z-10"
+                  >
+                    <Clock className="w-4 h-4 mr-1.5" /> Prorrogar Prazo (+48h)
+                  </Button>
+                )}
+                {prazo && prazo.prorrogacoes_usadas >= 3 && prazo.status !== 'respondido' && (
+                  <div className="text-[11px] text-center text-[#EF4444] font-bold mt-1">
+                    Máximo de 3 prorrogações atingido.
+                  </div>
+                )}
+              </div>
+            )}
 
-          {(demand.status_demanda === 'impossivel' ||
-            demand.status_demanda === 'PERDIDA_BAIXA') && (
+          {(isGloballyLost || isLocallyLost) && canReopen && (
             <div className="flex flex-col gap-2 mt-3 pt-3 border-t border-[#E5E5E5] pointer-events-auto">
               <Button
                 onClick={(e) => {

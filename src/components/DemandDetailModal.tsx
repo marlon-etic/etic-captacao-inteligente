@@ -1,4 +1,4 @@
-import { X, RefreshCw, CheckCircle2 } from 'lucide-react'
+import { X, CheckCircle2 } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -59,6 +59,11 @@ export function DemandDetailModal({
 
   let statusLabel = demand.status_demanda
   if (statusLabel === 'aberta' && demand.is_prioritaria) statusLabel = 'priorizada'
+  if (demand.status_demanda === 'localmente_perdida') statusLabel = 'perdida (você)'
+  if (demand.db_status_demanda === 'impossivel' || demand.db_status_demanda === 'PERDIDA_BAIXA') {
+    statusLabel =
+      demand.db_status_demanda === 'PERDIDA_BAIXA' ? 'baixa automática' : 'perdida global'
+  }
 
   const respostasNaoEncontrei = (demand.respostas_captador || []).filter(
     (r: any) => r.resposta === 'nao_encontrei',
@@ -211,58 +216,69 @@ export function DemandDetailModal({
 
         {/* Rodapé Dinâmico */}
         <DialogFooter className="p-[16px] md:p-[20px] border-t border-[#E5E5E5] shrink-0 flex flex-col sm:flex-row gap-[12px] bg-white z-10 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] relative">
-          {onFoundProperty && demand.status_demanda !== 'impossivel' && (
-            <Button
-              className="min-h-[56px] w-full text-[16px] font-black bg-[#10B981] hover:bg-[#059669] text-white shadow-[0_4px_12px_rgba(16,185,129,0.3)] animate-pulse-green relative z-10"
-              onClick={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                onFoundProperty()
-              }}
-            >
-              <CheckCircle2 className="w-5 h-5 mr-2" /> ENCONTREI UM IMÓVEL
-            </Button>
-          )}
+          {onFoundProperty &&
+            demand.db_status_demanda !== 'impossivel' &&
+            demand.db_status_demanda !== 'PERDIDA_BAIXA' && (
+              <Button
+                className="min-h-[56px] w-full text-[16px] font-black bg-[#10B981] hover:bg-[#059669] text-white shadow-[0_4px_12px_rgba(16,185,129,0.3)] animate-pulse-green relative z-10"
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  onFoundProperty()
+                }}
+              >
+                <CheckCircle2 className="w-5 h-5 mr-2" /> ENCONTREI UM IMÓVEL
+              </Button>
+            )}
 
-          {onEdit && isOwnerOrAdmin && demand.status_demanda !== 'impossivel' && (
-            <Button
-              variant="outline"
-              className="min-h-[48px] w-full sm:flex-1 text-[14px] font-bold relative z-10"
-              onClick={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                onEdit()
-              }}
-            >
-              Editar Demanda
-            </Button>
-          )}
+          {onEdit &&
+            isOwnerOrAdmin &&
+            demand.db_status_demanda !== 'impossivel' &&
+            demand.db_status_demanda !== 'PERDIDA_BAIXA' && (
+              <Button
+                variant="outline"
+                className="min-h-[48px] w-full sm:flex-1 text-[14px] font-bold relative z-10"
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  onEdit()
+                }}
+              >
+                Editar Demanda
+              </Button>
+            )}
 
-          {onPrioritize && isOwnerOrAdmin && demand.status_demanda !== 'impossivel' && (
-            <Button
-              className="min-h-[48px] w-full sm:flex-1 text-[14px] font-bold bg-[#FCD34D] hover:bg-[#F59E0B] text-[#854D0E] border-none relative z-10"
-              onClick={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                onPrioritize()
-              }}
-            >
-              {demand.is_prioritaria ? 'REMOVER PRIORIDADE' : '⭐ PRIORIZAR'}
-            </Button>
-          )}
+          {onPrioritize &&
+            isOwnerOrAdmin &&
+            demand.db_status_demanda !== 'impossivel' &&
+            demand.db_status_demanda !== 'PERDIDA_BAIXA' && (
+              <Button
+                className="min-h-[48px] w-full sm:flex-1 text-[14px] font-bold bg-[#FCD34D] hover:bg-[#F59E0B] text-[#854D0E] border-none relative z-10"
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  onPrioritize()
+                }}
+              >
+                {demand.is_prioritaria ? 'REMOVER PRIORIDADE' : '⭐ PRIORIZAR'}
+              </Button>
+            )}
 
-          {onLost && isOwnerOrAdmin && demand.status_demanda !== 'impossivel' && (
-            <Button
-              className="min-h-[48px] w-full sm:flex-1 text-[14px] font-bold bg-[#EF4444] hover:bg-[#DC2626] text-white border-none relative z-10"
-              onClick={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                onLost()
-              }}
-            >
-              ❌ MARCAR PERDIDA
-            </Button>
-          )}
+          {onLost &&
+            isOwnerOrAdmin &&
+            demand.db_status_demanda !== 'impossivel' &&
+            demand.db_status_demanda !== 'PERDIDA_BAIXA' && (
+              <Button
+                className="min-h-[48px] w-full sm:flex-1 text-[14px] font-bold bg-[#EF4444] hover:bg-[#DC2626] text-white border-none relative z-10"
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  onLost()
+                }}
+              >
+                ❌ MARCAR PERDIDA
+              </Button>
+            )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

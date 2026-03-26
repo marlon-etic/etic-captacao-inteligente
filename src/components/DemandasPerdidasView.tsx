@@ -13,7 +13,10 @@ export function DemandasPerdidasView() {
   const filteredDemands = useMemo(() => {
     return demands
       .filter((d) => {
-        if (d.status_demanda !== 'impossivel' && d.status_demanda !== 'PERDIDA_BAIXA') return false
+        const isGloballyLost =
+          d.db_status_demanda === 'impossivel' || d.db_status_demanda === 'PERDIDA_BAIXA'
+        const isLocallyLost = d.status_demanda === 'localmente_perdida'
+        if (!isGloballyLost && !isLocallyLost) return false
 
         if (searchTerm) {
           const term = searchTerm.toLowerCase()
