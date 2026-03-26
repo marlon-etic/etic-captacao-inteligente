@@ -213,7 +213,9 @@ export default function HealthCheckTester() {
       })
       try {
         await supabase.auth.signOut()
-      } catch (e) {}
+      } catch (e) {
+        /* ignore */
+      }
     } finally {
       setIsRunning(false)
     }
