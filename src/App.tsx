@@ -33,6 +33,7 @@ import ResilienceTester from '@/pages/admin/ResilienceTester'
 import FunctionalTester from '@/pages/admin/FunctionalTester'
 import GoLiveTester from '@/pages/admin/GoLiveTester'
 import HealthCheckTester from '@/pages/admin/HealthCheckTester'
+import GoogleAuthTester from '@/pages/admin/GoogleAuthTester'
 import PontuacaoPage from '@/pages/dashboard/PontuacaoPage'
 import HistoricoPage from '@/pages/dashboard/HistoricoPage'
 import PerdidosPage from '@/pages/dashboard/PerdidosPage'
@@ -56,14 +57,12 @@ import { enableDebugLogging } from '@/debug'
 
 // --- ROOT-KILL: Supressão Global de Alertas de Conexão (Sandbox) ---
 if (typeof window !== 'undefined') {
-  // 1. Intercept offline event listeners globally to block 3rd party components
   const originalAddEventListener = window.addEventListener
   window.addEventListener = function (type: string, listener: any, options?: any) {
-    if (type === 'offline' || type === 'online') return // Blocks libraries from showing offline toasts
+    if (type === 'offline' || type === 'online') return
     return originalAddEventListener.call(this, type, listener, options)
   }
 
-  // 2. DOM Observer to hide any injected text/toast containing the forbidden warning
   const killConnectionAlerts = () => {
     if (!document.body) return
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null)
@@ -131,8 +130,6 @@ const LandlordProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ child
 const AppContent = () => {
   React.useEffect(() => {
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
-      // Intercepta e previne erros globais de "Failed to fetch" causados por rotinas
-      // automáticas do Supabase GoTrue Client (ex: autoRefreshToken no background)
       if (
         event.reason &&
         (event.reason.message === 'Failed to fetch' ||
@@ -158,6 +155,7 @@ const AppContent = () => {
           <Route path="/esqueci-senha" element={<EsqueciSenha />} />
           <Route path="/redefinir-senha" element={<RedefinirSenha />} />
           <Route path="/diagnostico" element={<HealthCheckTester />} />
+          <Route path="/google-auth-tester" element={<GoogleAuthTester />} />
 
           {/* Landlord Auth Routes */}
           <Route path="/landlord/login" element={<LandlordLogin />} />
@@ -207,6 +205,7 @@ const AppContent = () => {
             <Route path="functional-tester" element={<FunctionalTester />} />
             <Route path="go-live-tester" element={<GoLiveTester />} />
             <Route path="health-check" element={<HealthCheckTester />} />
+            <Route path="google-auth-tester" element={<GoogleAuthTester />} />
             <Route path="pontuacao" element={<PontuacaoPage />} />
             <Route path="historico" element={<HistoricoPage />} />
             <Route path="perdidos" element={<PerdidosPage />} />

@@ -1,6 +1,15 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Mail, Lock, LogIn, Building2, Loader2, AlertTriangle, Stethoscope } from 'lucide-react'
+import {
+  Mail,
+  Lock,
+  LogIn,
+  Building2,
+  Loader2,
+  AlertTriangle,
+  Stethoscope,
+  ShieldCheck,
+} from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -87,18 +96,29 @@ export default function Index() {
     try {
       const { error } = await signInWithGoogle()
       if (error) {
-        if (error.message?.toLowerCase().includes('validation') || error.status === 400) {
+        const errorMsg = error.message?.toLowerCase() || ''
+
+        if (
+          errorMsg.includes('provider is not enabled') ||
+          errorMsg.includes('unsupported provider')
+        ) {
           throw new Error(
-            `A URL atual (${window.location.origin}) não está autorizada no Supabase. Vá em Authentication > URL Configuration > Redirect URLs e adicione: ${window.location.origin}/*`,
+            'Google OAuth não está habilitado no Supabase. Vá em Authentication > Providers e ative o Google com suas credenciais do Google Cloud.',
+          )
+        }
+
+        if (errorMsg.includes('validation') || error.status === 400) {
+          throw new Error(
+            `A URL atual (${window.location.origin}) não está autorizada no Supabase ou as credenciais (Client ID/Secret) são inválidas. Verifique a configuração do Redirect URI.`,
           )
         }
         throw new Error(error.message || 'Erro ao conectar com o Google.')
       }
-      // O redirect será automático pelo Supabase Auth
+      // O redirect será automático pelo Supabase Auth se bem-sucedido
     } catch (err: any) {
       setInitError(err.message)
       toast({
-        title: 'Ação Necessária (Google Auth)',
+        title: 'Falha no Login Social',
         description: err.message,
         variant: 'destructive',
       })
@@ -203,6 +223,16 @@ export default function Index() {
                 <AlertTriangle className="h-4 w-4 text-red-600 shrink-0" />
                 <AlertDescription className="text-red-800 ml-2 font-medium text-sm text-left">
                   {initError}
+                  {initError.includes('Google OAuth') && (
+                    <div className="mt-2">
+                      <Link
+                        to="/google-auth-tester"
+                        className="text-blue-600 hover:underline font-bold text-xs flex items-center gap-1"
+                      >
+                        <ShieldCheck className="w-3 h-3" /> Rodar Diagnóstico do Google OAuth
+                      </Link>
+                    </div>
+                  )}
                 </AlertDescription>
               </Alert>
             </div>
@@ -358,13 +388,20 @@ export default function Index() {
         </CardContent>
       </Card>
 
-      <div className="mt-8 animate-fade-in-up">
+      <div className="mt-8 animate-fade-in-up flex flex-col gap-3">
         <Link
           to="/diagnostico"
-          className="text-[13px] text-[#666666] hover:text-[#1A3A52] font-semibold transition-all duration-300 flex items-center gap-2 bg-white px-4 py-2 rounded-full border-[2px] border-transparent hover:border-[#E5E5E5] shadow-sm hover:shadow"
+          className="text-[13px] text-[#666666] hover:text-[#1A3A52] font-semibold transition-all duration-300 flex items-center justify-center gap-2 bg-white px-4 py-2 rounded-full border-[2px] border-transparent hover:border-[#E5E5E5] shadow-sm hover:shadow"
         >
           <Stethoscope className="w-4 h-4 text-blue-500" />
-          Problemas no Login? Rodar Diagnóstico
+          Problemas no Login Convencional? Rodar Diagnóstico
+        </Link>
+        <Link
+          to="/google-auth-tester"
+          className="text-[13px] text-[#666666] hover:text-[#1A3A52] font-semibold transition-all duration-300 flex items-center justify-center gap-2 bg-white px-4 py-2 rounded-full border-[2px] border-transparent hover:border-[#E5E5E5] shadow-sm hover:shadow"
+        >
+          <ShieldCheck className="w-4 h-4 text-emerald-500" />
+          Diagnóstico e Validação do Google OAuth
         </Link>
       </div>
     </div>

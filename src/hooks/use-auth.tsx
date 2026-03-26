@@ -94,6 +94,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signInWithGoogle = async () => {
     try {
+      // Forçamos a limpeza de qualquer sessão "suja" antes de tentar OAuth
+      await supabase.auth.signOut()
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
