@@ -41,7 +41,8 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
     const d_loc = p.demanda_locacao
     const d_ven = p.demanda_venda
     const demanda = d_loc || d_ven
-    const tipo = d_loc ? 'Aluguel' : d_ven ? 'Venda' : 'Desconhecido'
+    const baseTipo = p.tipo && p.tipo !== 'Desconhecido' ? p.tipo : null
+    const tipo = baseTipo || (d_loc ? 'Aluguel' : d_ven ? 'Venda' : 'Ambos')
 
     return {
       id: p.id,
@@ -60,7 +61,7 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
         ? {
             id: demanda.id,
             clientName: demanda.nome_cliente || demanda.cliente_nome,
-            type: tipo,
+            type: d_loc ? 'Aluguel' : 'Venda',
             createdBy: demanda.sdr_id || demanda.corretor_id,
           }
         : null,
@@ -91,7 +92,7 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
         if (data) {
           let formatted = data.map(formatProperty)
           if (filterType) {
-            formatted = formatted.filter((f: any) => f.tipo === filterType)
+            formatted = formatted.filter((f: any) => f.tipo === filterType || f.tipo === 'Ambos')
           }
           setProperties(formatted)
         }
@@ -119,7 +120,7 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
 
         if (data) {
           const formatted = formatProperty(data)
-          if (!filterType || formatted.tipo === filterType) {
+          if (!filterType || formatted.tipo === filterType || formatted.tipo === 'Ambos') {
             setProperties((prev) => {
               const exists = prev.some((p) => p.id === formatted.id)
               if (exists) {
@@ -196,6 +197,8 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
                         etapa_funil: payload.new.etapa_funil || p.etapa_funil,
                         data_visita: payload.new.data_visita ?? p.data_visita,
                         data_fechamento: payload.new.data_fechamento ?? p.data_fechamento,
+                        status_captacao: payload.new.status_captacao || p.status_captacao,
+                        tipo: (payload.new as any).tipo || p.tipo,
                       }
                     : p,
                 )

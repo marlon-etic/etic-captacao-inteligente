@@ -40,7 +40,8 @@ export function PropertyDetailsModal({ property, onClose }: Props) {
                 Tipo
               </p>
               <p className="text-xl font-black text-blue-700 flex items-center gap-2 mt-1">
-                {property.tipo === 'Aluguel' ? '🏠' : '🏢'} {property.tipo}
+                {property.tipo === 'Aluguel' ? '🏠' : property.tipo === 'Ambos' ? '🔄' : '🏢'}{' '}
+                {property.tipo}
               </p>
             </div>
           </div>
@@ -116,7 +117,9 @@ export function PropertyDetailsModal({ property, onClose }: Props) {
                   className={
                     property.tipo === 'Aluguel'
                       ? 'bg-blue-600 border-none shadow-sm'
-                      : 'bg-green-600 border-none shadow-sm'
+                      : property.tipo === 'Ambos'
+                        ? 'bg-purple-600 border-none shadow-sm'
+                        : 'bg-green-600 border-none shadow-sm'
                   }
                 >
                   Vinculado

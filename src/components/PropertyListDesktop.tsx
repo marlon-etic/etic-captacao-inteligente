@@ -50,7 +50,9 @@ export function PropertyListDesktop({ properties, onSelect }: Props) {
                       {p.codigo_imovel}
                     </span>
                     <div className="flex items-center gap-1.5">
-                      <span className="text-[14px]">{p.tipo === 'Aluguel' ? '🏠' : '🏢'}</span>
+                      <span className="text-[14px]">
+                        {p.tipo === 'Aluguel' ? '🏠' : p.tipo === 'Ambos' ? '🔄' : '🏢'}
+                      </span>
                       <span className="text-[11px] text-gray-500 font-bold uppercase tracking-wider">
                         {p.tipo}
                       </span>
@@ -86,7 +88,9 @@ export function PropertyListDesktop({ properties, onSelect }: Props) {
                         className={
                           p.tipo === 'Aluguel'
                             ? 'text-blue-700 bg-blue-50 border-blue-200 font-black shadow-sm'
-                            : 'text-green-700 bg-green-50 border-green-200 font-black shadow-sm'
+                            : p.tipo === 'Ambos'
+                              ? 'text-purple-700 bg-purple-50 border-purple-200 font-black shadow-sm'
+                              : 'text-green-700 bg-green-50 border-green-200 font-black shadow-sm'
                         }
                       >
                         {p.demanda.clientName}

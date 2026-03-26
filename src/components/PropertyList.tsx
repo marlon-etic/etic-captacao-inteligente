@@ -27,7 +27,7 @@ export function PropertyList({ initialType }: Props) {
 
   const filteredProperties = useMemo(() => {
     return properties.filter((p) => {
-      if (filters.tipo !== 'Todos' && p.tipo !== filters.tipo) return false
+      if (filters.tipo !== 'Todos' && p.tipo !== filters.tipo && p.tipo !== 'Ambos') return false
       if (filters.bairro && !p.endereco?.toLowerCase().includes(filters.bairro.toLowerCase()))
         return false
       if (filters.minValor && p.preco < Number(filters.minValor)) return false

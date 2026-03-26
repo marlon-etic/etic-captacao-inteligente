@@ -70,13 +70,19 @@ interface AppState {
     action: 'encontrei' | 'nao_encontrei',
     payload: any,
   ) => Promise<any>
-  submitIndependentCapture: (payload: any) => { success: boolean; message: string }
-  submitGroupCapture: (demandIds: string[], payload: any) => { success: boolean; message: string }
-  claimLooseProperty: (code: string, demandId: string) => { success: boolean; message: string }
+  submitIndependentCapture: (payload: any) => Promise<{ success: boolean; message: string }>
+  submitGroupCapture: (
+    demandIds: string[],
+    payload: any,
+  ) => Promise<{ success: boolean; message: string }>
+  claimLooseProperty: (
+    code: string,
+    demandId: string,
+  ) => Promise<{ success: boolean; message: string }>
   linkLoosePropertyToDemand: (
     code: string,
     demandId: string,
-  ) => { success: boolean; message: string }
+  ) => Promise<{ success: boolean; message: string }>
   addPoints: (amount: number, userId?: string) => void
   getSimilarDemands: (id: string) => Demand[]
   triggerCron: () => void
@@ -1020,8 +1026,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           const table = locData ? 'demandas_locacao' : 'demandas_vendas'
           await supabase.from(table).update({ status_demanda: dbStatus }).eq('id', id)
         },
-        submitGroupCapture: (demandIds, payload) => {
-          return { success: true, message: '' }
+        submitGroupCapture: async (demandIds, payload) => {
+          return { success: true, message: 'Captura em grupo simulada com sucesso.' }
         },
         submitDemandResponse: async (id, action, payload) => {
           try {
@@ -1104,14 +1110,66 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
             return { success: false, message: err.message || 'Erro de conexão com o servidor' }
           }
         },
-        submitIndependentCapture: (payload) => {
-          return { success: true, message: '' }
+        submitIndependentCapture: async (payload) => {
+          try {
+            const { data: authData } = await supabase.auth.getUser()
+            if (!authData?.user) return { success: false, message: 'Usuário não autenticado' }
+
+            const code = payload.code || `IMV-AV-${Math.floor(Math.random() * 10000)}`
+            const { error } = await supabase.from('imoveis_captados').insert({
+              codigo_imovel: code,
+              endereco: payload.neighborhood || payload.address || 'Não informado',
+              preco: payload.value || 0,
+              dormitorios: payload.bedrooms || 0,
+              vagas: payload.parkingSpots || 0,
+              tipo: payload.propertyType || 'Ambos',
+              observacoes: payload.obs || '',
+              status_captacao: 'capturado',
+              user_captador_id: authData.user.id,
+              captador_id: authData.user.id,
+            } as any)
+
+            if (error) throw error
+            return { success: true, message: 'Imóvel avulso captado com sucesso!' }
+          } catch (err: any) {
+            return { success: false, message: err.message || 'Erro de conexão' }
+          }
         },
-        claimLooseProperty: (code, demandId) => {
-          return { success: true, message: '' }
+        claimLooseProperty: async (code, demandId) => {
+          try {
+            const { data: loc } = await supabase
+              .from('demandas_locacao')
+              .select('id')
+              .eq('id', demandId)
+              .single()
+            const { error } = await supabase
+              .from('imoveis_captados')
+              .update(loc ? { demanda_locacao_id: demandId } : { demanda_venda_id: demandId })
+              .eq('codigo_imovel', code)
+
+            if (error) throw error
+            return { success: true, message: 'Imóvel reivindicado com sucesso!' }
+          } catch (err: any) {
+            return { success: false, message: err.message || 'Erro ao reivindicar' }
+          }
         },
-        linkLoosePropertyToDemand: (code, demandId) => {
-          return { success: true, message: '' }
+        linkLoosePropertyToDemand: async (code, demandId) => {
+          try {
+            const { data: loc } = await supabase
+              .from('demandas_locacao')
+              .select('id')
+              .eq('id', demandId)
+              .single()
+            const { error } = await supabase
+              .from('imoveis_captados')
+              .update(loc ? { demanda_locacao_id: demandId } : { demanda_venda_id: demandId })
+              .eq('codigo_imovel', code)
+
+            if (error) throw error
+            return { success: true, message: 'Imóvel vinculado com sucesso!' }
+          } catch (err: any) {
+            return { success: false, message: err.message || 'Erro ao vincular' }
+          }
         },
         scheduleVisitByCode,
         submitProposalByCode,

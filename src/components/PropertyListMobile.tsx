@@ -36,10 +36,12 @@ export function PropertyListMobile({ properties, onSelect }: Props) {
                     className={
                       p.tipo === 'Aluguel'
                         ? 'bg-blue-600 border-none font-black shadow-sm'
-                        : 'bg-green-600 border-none font-black shadow-sm'
+                        : p.tipo === 'Ambos'
+                          ? 'bg-purple-600 border-none font-black shadow-sm'
+                          : 'bg-green-600 border-none font-black shadow-sm'
                     }
                   >
-                    {p.tipo === 'Aluguel' ? '🏠' : '🏢'} {p.tipo}
+                    {p.tipo === 'Aluguel' ? '🏠' : p.tipo === 'Ambos' ? '🔄' : '🏢'} {p.tipo}
                   </Badge>
                   {isRecent && (
                     <Badge className="bg-amber-500 border-none font-black uppercase tracking-wider shadow-sm animate-pulse">

@@ -116,7 +116,7 @@ export function CapturedPropertiesView({
 
   const filteredAndSorted = useMemo(() => {
     let result = allCaptured.filter(({ demand: d, property: p }) => {
-      if (p.discarded) return false
+      if (p.status === 'perdido') return false
 
       if (source === 'linked' && !d) return false
       if (source === 'loose' && d) return false
@@ -140,7 +140,13 @@ export function CapturedPropertiesView({
 
       if (filters.status !== 'Todos' && propStatus !== filters.status) return false
 
-      if (!filterType && filters.tipo !== 'Todos' && p.propertyType !== filters.tipo) return false
+      if (
+        !filterType &&
+        filters.tipo !== 'Todos' &&
+        p.propertyType !== filters.tipo &&
+        p.propertyType !== 'Ambos'
+      )
+        return false
       if (filters.bairro && !p.neighborhood?.toLowerCase().includes(filters.bairro.toLowerCase()))
         return false
 
