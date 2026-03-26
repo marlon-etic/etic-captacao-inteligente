@@ -98,7 +98,12 @@ export function useSmartSync() {
             return res
           } catch (err: any) {
             clearTimeout(timeoutId)
-            const isTimeout = err.name === 'AbortError' || err.message?.includes('aborted')
+
+            const errMsg = String(err?.message || err || '')
+            const isLockError = errMsg.includes('Lock broken') || errMsg.includes('steal')
+            const isTimeout =
+              !isLockError &&
+              (err?.name === 'AbortError' || errMsg.toLowerCase().includes('aborted'))
 
             attempt++
             consecutiveFailures++
@@ -107,7 +112,11 @@ export function useSmartSync() {
               const tryDuration = Date.now() - tryStart
               console.error(
                 `[Diagnostic - Request Failure] Falha ${key} (${attempt}/5) em ${tryDuration}ms:`,
-                isTimeout ? 'Timeout 30s excedido' : err.message,
+                isLockError
+                  ? 'Lock Supabase ocupado (retentando)'
+                  : isTimeout
+                    ? 'Timeout 30s excedido'
+                    : errMsg,
                 `às ${new Date().toLocaleTimeString()}`,
               )
             }
@@ -117,7 +126,7 @@ export function useSmartSync() {
               throw new Error('Operação demorou muito. Cancelada após 30s.')
             }
 
-            if (consecutiveFailures >= 3 && attempt === 1) {
+            if (consecutiveFailures >= 3 && attempt === 1 && !isLockError) {
               circuitBreakerUntil = Date.now() + 30000
               setCircuitBreakerActive(true)
               if (!disconnectedSince) setDisconnectedSince(Date.now())
