@@ -31,7 +31,9 @@ export function AppHeader({ onAddPropertyClick }: AppHeaderProps) {
 
   if (!currentUser) return null
 
-  const unreadCount = notificacoes.filter((n) => !n.lido).length
+  // Ensure robust fallback to prevent array errors when loading
+  const safeNotificacoes = notificacoes || []
+  const unreadCount = safeNotificacoes.filter((n) => !n.lido).length
 
   const getTitle = () => {
     if (location.pathname.includes('/app/pontuacao')) return 'Pontuação e Desempenho'
@@ -81,7 +83,7 @@ export function AppHeader({ onAddPropertyClick }: AppHeaderProps) {
         >
           <Star className="w-5 h-5 fill-white" />
           <span className="font-bold text-[14px] leading-none text-white">
-            {currentUser.points} pts
+            {currentUser.points || 0} pts
           </span>
         </Badge>
 
@@ -129,7 +131,7 @@ export function AppHeader({ onAddPropertyClick }: AppHeaderProps) {
             </SheetHeader>
 
             <div className="flex-1 overflow-y-auto">
-              {notificacoes.length === 0 ? (
+              {safeNotificacoes.length === 0 ? (
                 <div className="p-8 text-center text-[#999999] flex flex-col items-center h-full justify-center">
                   <Bell className="w-12 h-12 opacity-20 mb-3" />
                   <p className="font-bold">Nenhuma notificação</p>
@@ -137,7 +139,7 @@ export function AppHeader({ onAddPropertyClick }: AppHeaderProps) {
                 </div>
               ) : (
                 <div className="flex flex-col p-3 gap-2">
-                  {notificacoes.map((n) => (
+                  {safeNotificacoes.map((n) => (
                     <div
                       key={n.id}
                       onClick={() => {

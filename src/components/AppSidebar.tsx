@@ -44,20 +44,23 @@ export function AppSidebar() {
   const isCaptador = currentUser.role === 'captador'
   const isSDRCorretor = currentUser.role === 'sdr' || currentUser.role === 'corretor'
 
-  // Counters
-  const myActiveDemandsCount = demands.filter(
+  // Counters - protected with logical fallbacks
+  const safeDemands = demands || []
+  const safeProperties = looseProperties || []
+
+  const myActiveDemandsCount = safeDemands.filter(
     (d) =>
       d.createdBy === currentUser.id &&
       !['Perdida', 'Impossível', 'Negócio', 'Arquivado'].includes(d.status),
   ).length
 
-  const myAvailablePropsCount = looseProperties.filter((p) => {
+  const myAvailablePropsCount = safeProperties.filter((p) => {
     if (currentUser.role === 'sdr') return p.propertyType === 'Aluguel'
     if (currentUser.role === 'corretor') return p.propertyType === 'Venda'
     return true
   }).length
 
-  const historyCount = demands.filter((d) => d.createdBy === currentUser.id).length
+  const historyCount = safeDemands.filter((d) => d.createdBy === currentUser.id).length
 
   let navItems: any[] = []
 

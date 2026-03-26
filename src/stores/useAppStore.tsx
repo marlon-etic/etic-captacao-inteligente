@@ -14,13 +14,9 @@ import {
   DemandStatus,
   UserStats,
   WebhookEvent,
-  PropertyAction,
-  PropertyActionType,
   CapturedProperty,
   AppNotification,
   UserPreferences,
-  NotificationType,
-  NotificationUrgency,
   GroupComment,
   InactiveGroup,
   SystemLog,
@@ -224,13 +220,41 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
             .eq('id', session.user.id)
             .single()
 
-          if (supaUser && mounted) {
+          let finalSupaUser = supaUser
+
+          // RLS or trigger fallback: auto-create user in public.users if missing
+          if (!finalSupaUser && mounted) {
+            finalSupaUser = {
+              id: session.user.id,
+              nome:
+                session.user.user_metadata?.name ||
+                session.user.user_metadata?.full_name ||
+                session.user.email?.split('@')[0] ||
+                'Usuário',
+              email: session.user.email || '',
+              role: session.user.user_metadata?.role || 'captador',
+              status: 'ativo',
+              created_at: session.user.created_at || new Date().toISOString(),
+            }
+            supabase
+              .from('users')
+              .insert({
+                id: finalSupaUser.id,
+                email: finalSupaUser.email,
+                nome: finalSupaUser.nome,
+                role: finalSupaUser.role,
+                status: finalSupaUser.status,
+              })
+              .then()
+          }
+
+          if (finalSupaUser && mounted) {
             const u = {
-              id: supaUser.id,
-              name: supaUser.nome,
-              email: supaUser.email,
-              role: supaUser.role as any,
-              status: (supaUser.status || 'ativo') as any,
+              id: finalSupaUser.id,
+              name: finalSupaUser.nome || finalSupaUser.name,
+              email: finalSupaUser.email,
+              role: finalSupaUser.role as any,
+              status: (finalSupaUser.status || 'ativo') as any,
               points: 0,
               dailyPoints: 0,
               weeklyPoints: 0,
@@ -238,7 +262,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
               badges: [],
               stats: defaultStats,
               preferences: defaultPreferences,
-              createdAt: supaUser.created_at || new Date().toISOString(),
+              createdAt: finalSupaUser.created_at || new Date().toISOString(),
             } as User
             setCurrentUser(u)
             setSessionExpiresAt(Date.now() + SESSION_EXPIRATION_TIME)
@@ -270,7 +294,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         let retryCount = 0
         let supaUser = null
 
-        // OAuth signup triggers an insert to public.users via DB trigger. It may take a moment.
+        // Trigger an insert to public.users via DB trigger. It may take a moment.
         while (retryCount < 3 && !supaUser && mounted) {
           const { data } = await supabase
             .from('users')
@@ -286,10 +310,36 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           }
         }
 
+        // Auto-fix if trigger completely failed
+        if (!supaUser && mounted) {
+          supaUser = {
+            id: session.user.id,
+            nome:
+              session.user.user_metadata?.name ||
+              session.user.user_metadata?.full_name ||
+              session.user.email?.split('@')[0] ||
+              'Usuário',
+            email: session.user.email || '',
+            role: session.user.user_metadata?.role || 'captador',
+            status: 'ativo',
+            created_at: session.user.created_at || new Date().toISOString(),
+          }
+          supabase
+            .from('users')
+            .insert({
+              id: supaUser.id,
+              email: supaUser.email,
+              nome: supaUser.nome,
+              role: supaUser.role,
+              status: supaUser.status,
+            })
+            .then()
+        }
+
         if (supaUser && mounted) {
           const u = {
             id: supaUser.id,
-            name: supaUser.nome,
+            name: supaUser.nome || supaUser.name,
             email: supaUser.email,
             role: supaUser.role as any,
             status: (supaUser.status || 'ativo') as any,
