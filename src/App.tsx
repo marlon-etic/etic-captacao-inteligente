@@ -7,7 +7,6 @@ import { AuthProvider } from '@/hooks/use-auth'
 import { GlobalPontuacaoListener } from '@/components/GlobalPontuacaoListener'
 import { GlobalNotificationListener } from '@/components/GlobalNotificationListener'
 import { ErrorBoundary } from '@/components/common/ErrorBoundary'
-import { ConnectionStatus } from '@/components/common/ConnectionStatus'
 import Layout from '@/components/Layout'
 import Index from '@/pages/Index'
 import EsqueciSenha from '@/pages/EsqueciSenha'
@@ -54,7 +53,64 @@ import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import React from 'react'
 
 import { enableDebugLogging } from '@/debug'
-import { useConnectionHeartbeat } from '@/hooks/useConnectionHeartbeat'
+
+// --- ROOT-KILL: Supressão Global de Alertas de Conexão (Sandbox) ---
+if (typeof window !== 'undefined') {
+  // 1. Intercept offline event listeners globally to block 3rd party components
+  const originalAddEventListener = window.addEventListener
+  window.addEventListener = function (type: string, listener: any, options?: any) {
+    if (type === 'offline' || type === 'online') return // Blocks libraries from showing offline toasts
+    return originalAddEventListener.call(this, type, listener, options)
+  }
+
+  // 2. DOM Observer to hide any injected text/toast containing the forbidden warning
+  const killConnectionAlerts = () => {
+    if (!document.body) return
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null)
+    let node
+    while ((node = walker.nextNode())) {
+      const text = node.nodeValue?.toLowerCase() || ''
+      if (
+        text.includes('conexão perdida') ||
+        text.includes('conexao perdida') ||
+        text.includes('reconectando')
+      ) {
+        let el = node.parentElement
+        if (el && el.tagName !== 'SCRIPT' && el.tagName !== 'STYLE') {
+          let alertWrapper = el.closest(
+            '[role="alert"], [role="status"], .toast, [data-sonner-toast]',
+          )
+          if (alertWrapper) {
+            ;(alertWrapper as HTMLElement).style.setProperty('display', 'none', 'important')
+          } else {
+            el.style.setProperty('display', 'none', 'important')
+          }
+        }
+      }
+    }
+  }
+
+  const observer = new MutationObserver((mutations) => {
+    let shouldCheck = false
+    for (const m of mutations) {
+      if (m.addedNodes.length > 0 || m.type === 'characterData') {
+        shouldCheck = true
+        break
+      }
+    }
+    if (shouldCheck) killConnectionAlerts()
+  })
+
+  const startObserver = () => {
+    if (document.body) {
+      observer.observe(document.body, { childList: true, subtree: true, characterData: true })
+    } else {
+      setTimeout(startObserver, 10)
+    }
+  }
+  startObserver()
+}
+// -------------------------------------------------------------------
 
 enableDebugLogging()
 
@@ -73,8 +129,6 @@ const LandlordProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ child
 }
 
 const AppContent = () => {
-  useConnectionHeartbeat()
-
   React.useEffect(() => {
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
       // Intercepta e previne erros globais de "Failed to fetch" causados por rotinas
@@ -99,7 +153,6 @@ const AppContent = () => {
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <ConnectionStatus />
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/esqueci-senha" element={<EsqueciSenha />} />

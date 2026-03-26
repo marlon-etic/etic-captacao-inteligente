@@ -140,6 +140,30 @@ type Toast = Omit<ToasterToast, 'id'>
 function toast({ ...props }: Toast) {
   const id = genId()
 
+  // --- ROOT-KILL: Intercept offline/reconnecting alerts ---
+  const titleStr = typeof props.title === 'string' ? props.title.toLowerCase() : ''
+  const descStr = typeof props.description === 'string' ? props.description.toLowerCase() : ''
+
+  if (
+    titleStr.includes('conexão') ||
+    titleStr.includes('conexao') ||
+    titleStr.includes('reconectando') ||
+    titleStr.includes('offline') ||
+    descStr.includes('conexão') ||
+    descStr.includes('conexao') ||
+    descStr.includes('reconectando') ||
+    descStr.includes('offline')
+  ) {
+    // Silently ignore to prevent the UI from displaying any connection warnings
+    return {
+      id: id,
+      dismiss: () => dispatch({ type: 'DISMISS_TOAST', toastId: id }),
+      update: (newProps: ToasterToast) =>
+        dispatch({ type: 'UPDATE_TOAST', toast: { ...newProps, id } }),
+    }
+  }
+  // --------------------------------------------------------
+
   const update = (props: ToasterToast) =>
     dispatch({
       type: 'UPDATE_TOAST',

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'
+import React from 'react'
 
 interface ConnectionStatusProps {
   isConnected?: boolean
@@ -6,24 +6,8 @@ interface ConnectionStatusProps {
 }
 
 export const ConnectionStatus: React.FC<ConnectionStatusProps> = () => {
-  useEffect(() => {
-    if (import.meta.env.VITE_DEBUG_MODE === 'true') {
-      const handleOffline = () => console.log('[Network] Browser reported offline state')
-      const handleOnline = () => console.log('[Network] Browser reported online state')
-
-      window.addEventListener('offline', handleOffline)
-      window.addEventListener('online', handleOnline)
-
-      return () => {
-        window.removeEventListener('offline', handleOffline)
-        window.removeEventListener('online', handleOnline)
-      }
-    }
-  }, [])
-
-  // Operação Zero-Noise Connection (PROMPT-059):
-  // O componente visual de aviso foi completamente desativado.
-  // Qualquer interrupção de rede irá falhar silenciosamente no background
-  // (via useSmartSync) sem bloquear a interface ou exibir tarjas de erro.
+  // Operação Zero-Noise Connection & Root-Kill:
+  // O componente visual de aviso de conexão foi inteiramente desativado.
+  // Nenhum alerta visual interromperá a experiência da interface gráfica.
   return null
 }

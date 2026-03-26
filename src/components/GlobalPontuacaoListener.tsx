@@ -1,8 +1,18 @@
 import { useSupabasePontuacao } from '@/hooks/use-supabase-pontuacao'
+import useAppStore from '@/stores/useAppStore'
+
+function PontuacaoListenerInner() {
+  // Inicializa o listener de realtime
+  useSupabasePontuacao()
+  return null
+}
 
 export function GlobalPontuacaoListener() {
-  // Inicializa o listener global de pontuação para sincronização bidirecional e notificações em tempo real
-  useSupabasePontuacao()
+  const { currentUser } = useAppStore()
 
-  return null
+  // ROOT-KILL Fix: O realtime channel não deve ser ativado na página inicial (Index).
+  // Apenas renderiza (e consequentemente conecta o socket) se o usuário estiver autenticado.
+  if (!currentUser) return null
+
+  return <PontuacaoListenerInner />
 }
