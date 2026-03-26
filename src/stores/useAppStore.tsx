@@ -267,13 +267,26 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     // Setup an auth change listener to keep the user in sync if login happens outside (OAuth redirect)
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session?.user && !currentUser && mounted) {
-        const { data: supaUser } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', session.user.id)
-          .single()
+        let retryCount = 0
+        let supaUser = null
 
-        if (supaUser) {
+        // OAuth signup triggers an insert to public.users via DB trigger. It may take a moment.
+        while (retryCount < 3 && !supaUser && mounted) {
+          const { data } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', session.user.id)
+            .single()
+
+          if (data) {
+            supaUser = data
+          } else {
+            retryCount++
+            await new Promise((resolve) => setTimeout(resolve, 500))
+          }
+        }
+
+        if (supaUser && mounted) {
           const u = {
             id: supaUser.id,
             name: supaUser.nome,
