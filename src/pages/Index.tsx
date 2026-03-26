@@ -86,9 +86,17 @@ export default function Index() {
     setInitError(null)
     try {
       const { error } = await signInWithGoogle()
-      if (error) throw new Error(error.message || 'Erro ao conectar com o Google.')
+      if (error) {
+        if (error.message?.toLowerCase().includes('validation') || error.status === 400) {
+          throw new Error(
+            'O Login com Google não está configurado no painel do Supabase ou a URL atual não está autorizada (Allowlist).',
+          )
+        }
+        throw new Error(error.message || 'Erro ao conectar com o Google.')
+      }
       // O redirect será automático pelo Supabase Auth
     } catch (err: any) {
+      setInitError(err.message)
       toast({
         title: 'Erro no Login Social',
         description: err.message,
@@ -193,7 +201,7 @@ export default function Index() {
             <div className="mb-6 animate-fade-in-down">
               <Alert variant="destructive" className="bg-red-50 border-red-200">
                 <AlertTriangle className="h-4 w-4 text-red-600" />
-                <AlertDescription className="text-red-800 ml-2 font-medium">
+                <AlertDescription className="text-red-800 ml-2 font-medium text-sm text-left">
                   {initError}
                 </AlertDescription>
               </Alert>

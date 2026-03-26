@@ -94,10 +94,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signInWithGoogle = async () => {
     try {
+      // Omitindo `redirectTo` para evitar o erro "400 Validation Failed"
+      // Dessa forma o Supabase Auth utiliza a Site URL (Allowlist) configurada por padrão
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
         },
       })
       return { error }
