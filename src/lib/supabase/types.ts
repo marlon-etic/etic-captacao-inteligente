@@ -985,6 +985,7 @@ export type Database = {
         }
         Returns: Json
       }
+      fn_diagnose_oauth_setup: { Args: never; Returns: Json }
       fn_logar_falhas_api: {
         Args: {
           p_api: string
@@ -2077,6 +2078,39 @@ export const Constants = {
 //     END IF;
 //   
 //     RETURN jsonb_build_object('status', 'success', 'user_id', v_user_id, 'actions', v_actions);
+//   END;
+//   $function$
+//   
+// FUNCTION fn_diagnose_oauth_setup()
+//   CREATE OR REPLACE FUNCTION public.fn_diagnose_oauth_setup()
+//    RETURNS jsonb
+//    LANGUAGE plpgsql
+//    SECURITY DEFINER
+//   AS $function$
+//   DECLARE
+//     v_trigger_exists boolean;
+//     v_rls_enabled boolean;
+//     v_result jsonb;
+//   BEGIN
+//     -- Check if the crucial auto-sync trigger exists on auth.users
+//     SELECT EXISTS (
+//       SELECT 1 FROM pg_trigger
+//       WHERE tgname = 'on_auth_user_created'
+//     ) INTO v_trigger_exists;
+//   
+//     -- Check if RLS is enabled on public.users
+//     SELECT relrowsecurity INTO v_rls_enabled
+//     FROM pg_class
+//     WHERE relname = 'users';
+//   
+//     -- Compile results
+//     v_result := jsonb_build_object(
+//       'trigger_active', v_trigger_exists,
+//       'rls_active', COALESCE(v_rls_enabled, false),
+//       'timestamp', now()
+//     );
+//   
+//     RETURN v_result;
 //   END;
 //   $function$
 //   
