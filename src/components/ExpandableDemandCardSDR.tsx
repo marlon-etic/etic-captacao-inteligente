@@ -29,7 +29,7 @@ export function ExpandableDemandCardSDR({
   onAction,
 }: {
   demand: SupabaseDemand
-  onAction: (action: 'details' | 'edit' | 'lost' | 'prioritize', d: SupabaseDemand) => void
+  onAction?: (action: 'details' | 'edit' | 'lost' | 'prioritize', d: SupabaseDemand) => void
 }) {
   const { currentUser, logSolicitorContactAttempt } = useAppStore()
   const { toast } = useToast()
@@ -226,7 +226,7 @@ export function ExpandableDemandCardSDR({
               onClick={(e) => {
                 e.preventDefault()
                 e.stopPropagation()
-                onAction('prioritize', demand)
+                onAction?.('prioritize', demand)
               }}
             >
               <Star className="w-3 h-3 mr-1" /> {isPrioritized ? 'Remover Prioridade' : 'Priorizar'}
@@ -245,7 +245,7 @@ export function ExpandableDemandCardSDR({
             onClick={(e) => {
               e.preventDefault()
               e.stopPropagation()
-              onAction('details', demand)
+              onAction?.('details', demand)
             }}
           >
             Ver Detalhes
@@ -258,7 +258,7 @@ export function ExpandableDemandCardSDR({
               onClick={(e) => {
                 e.preventDefault()
                 e.stopPropagation()
-                onAction('lost', demand)
+                onAction?.('lost', demand)
               }}
             >
               <X className="w-4 h-4 mr-1.5" /> Perdida
