@@ -2141,6 +2141,28 @@ export const Constants = {
 //   END;
 //   $function$
 //   
+// FUNCTION handle_new_user()
+//   CREATE OR REPLACE FUNCTION public.handle_new_user()
+//    RETURNS trigger
+//    LANGUAGE plpgsql
+//    SECURITY DEFINER
+//   AS $function$
+//   BEGIN
+//     INSERT INTO public.users (id, email, nome, role, status)
+//     VALUES (
+//       NEW.id,
+//       NEW.email,
+//       COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.raw_user_meta_data->>'name', split_part(NEW.email, '@', 1)),
+//       COALESCE((NEW.raw_user_meta_data->>'role')::public.user_role, 'captador'::public.user_role),
+//       'ativo'
+//     )
+//     ON CONFLICT (id) DO UPDATE SET
+//       email = EXCLUDED.email,
+//       nome = COALESCE(public.users.nome, EXCLUDED.nome);
+//     RETURN NEW;
+//   END;
+//   $function$
+//   
 // FUNCTION log_realtime_error(text, text, uuid)
 //   CREATE OR REPLACE FUNCTION public.log_realtime_error(p_channel_name text, p_error_message text, p_user_id uuid DEFAULT NULL::uuid)
 //    RETURNS void
