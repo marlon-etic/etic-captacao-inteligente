@@ -94,15 +94,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signInWithGoogle = async () => {
     try {
-      // Forçamos a limpeza de qualquer sessão "suja" antes de tentar OAuth
+      // Limpeza forçada de cache pré-autenticação para evitar conflitos
       await supabase.auth.signOut()
 
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: `${window.location.origin}/`,
+          // Escopos recomendados para evitar conflitos de validação de consentimento
+          scopes: 'email profile',
         },
       })
+
+      // Note: O redirect ocorre imediatamente antes dessa linha se der tudo certo
       return { error }
     } catch (error: any) {
       return { error }

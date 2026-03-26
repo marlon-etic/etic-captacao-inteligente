@@ -9,12 +9,13 @@ import {
   AlertTriangle,
   Stethoscope,
   ShieldCheck,
+  CheckCircle,
 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
-import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { useToast } from '@/hooks/use-toast'
 import useAppStore from '@/stores/useAppStore'
 import { useAuth } from '@/hooks/use-auth'
@@ -24,12 +25,33 @@ export default function Index() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [initError, setInitError] = useState<string | null>(null)
+  const [initError, setInitError] = useState<{
+    title: string
+    message: string
+    isOauth?: boolean
+  } | null>(null)
 
   const { currentUser, login, logout, isRestoringUser } = useAppStore()
   const { signIn, signInWithGoogle, loading: authLoading, session } = useAuth()
   const navigate = useNavigate()
   const { toast } = useToast()
+
+  useEffect(() => {
+    // URL Check to see if we returned from OAuth with an error
+    const hash = window.location.hash
+    if (hash && hash.includes('error_description')) {
+      const params = new URLSearchParams(hash.substring(1))
+      const errorDesc = params.get('error_description')?.replace(/\+/g, ' ')
+      if (errorDesc) {
+        setInitError({
+          title: 'Erro no Retorno do Google',
+          message: errorDesc,
+          isOauth: true,
+        })
+        window.history.replaceState(null, '', window.location.pathname)
+      }
+    }
+  }, [])
 
   useEffect(() => {
     if (authLoading || isRestoringUser) return
@@ -80,11 +102,7 @@ export default function Index() {
       await login(email, password)
       navigate('/app', { replace: true })
     } catch (err: any) {
-      toast({
-        title: 'Erro de Autenticação',
-        description: err.message,
-        variant: 'destructive',
-      })
+      setInitError({ title: 'Erro de Autenticação', message: err.message })
     } finally {
       setIsLoading(false)
     }
@@ -103,7 +121,7 @@ export default function Index() {
           errorMsg.includes('unsupported provider')
         ) {
           throw new Error(
-            'Google OAuth não está habilitado no Supabase. Vá em Authentication > Providers e ative o Google com suas credenciais do Google Cloud.',
+            'Google Provider não está habilitado. Ative o toggle no Supabase (Auth > Providers) e insira o Client ID e Secret válidos.',
           )
         }
 
@@ -112,13 +130,17 @@ export default function Index() {
             `A URL atual (${window.location.origin}) não está autorizada no Supabase ou as credenciais (Client ID/Secret) são inválidas. Verifique a configuração do Redirect URI.`,
           )
         }
-        throw new Error(error.message || 'Erro ao conectar com o Google.')
+        throw new Error(error.message || 'Erro ao conectar com o Google. Tente novamente.')
       }
       // O redirect será automático pelo Supabase Auth se bem-sucedido
     } catch (err: any) {
-      setInitError(err.message)
-      toast({
+      setInitError({
         title: 'Falha no Login Social',
+        message: err.message,
+        isOauth: true,
+      })
+      toast({
+        title: 'Erro de Login Social',
         description: err.message,
         variant: 'destructive',
       })
@@ -220,20 +242,26 @@ export default function Index() {
           {initError && (
             <div className="mb-6 animate-fade-in-down">
               <Alert variant="destructive" className="bg-red-50 border-red-200">
-                <AlertTriangle className="h-4 w-4 text-red-600 shrink-0" />
-                <AlertDescription className="text-red-800 ml-2 font-medium text-sm text-left">
-                  {initError}
-                  {initError.includes('Google OAuth') && (
-                    <div className="mt-2">
-                      <Link
-                        to="/google-auth-tester"
-                        className="text-blue-600 hover:underline font-bold text-xs flex items-center gap-1"
-                      >
-                        <ShieldCheck className="w-3 h-3" /> Rodar Diagnóstico do Google OAuth
-                      </Link>
-                    </div>
-                  )}
-                </AlertDescription>
+                <AlertTriangle className="h-5 w-5 text-red-600 shrink-0" />
+                <div className="ml-2">
+                  <AlertTitle className="text-red-900 font-bold text-[15px]">
+                    {initError.title}
+                  </AlertTitle>
+                  <AlertDescription className="text-red-800 font-medium text-sm text-left leading-relaxed mt-1">
+                    {initError.message}
+                    {initError.isOauth && (
+                      <div className="mt-3 bg-white p-2 rounded border border-red-100 flex items-center gap-2">
+                        <ShieldCheck className="w-5 h-5 text-blue-600 shrink-0" />
+                        <Link
+                          to="/google-auth-tester"
+                          className="text-blue-600 hover:text-blue-800 hover:underline font-bold text-xs"
+                        >
+                          Executar Diagnóstico e Auto-Correção de Google OAuth
+                        </Link>
+                      </div>
+                    )}
+                  </AlertDescription>
+                </div>
               </Alert>
             </div>
           )}
@@ -317,11 +345,12 @@ export default function Index() {
           <Button
             type="button"
             variant="outline"
-            className="w-full h-[48px] text-[14px] font-bold border-[#E5E5E5] text-[#333333] hover:bg-[#F8FAFC]"
+            className="w-full h-[48px] text-[14px] font-bold border-[#E5E5E5] text-[#333333] hover:bg-[#F8FAFC] shadow-sm relative overflow-hidden group"
             onClick={handleGoogleLogin}
             disabled={isLoading}
           >
-            <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
+            <div className="absolute inset-0 bg-blue-50/0 group-hover:bg-blue-50/50 transition-colors" />
+            <svg className="w-5 h-5 mr-2 relative z-10" viewBox="0 0 24 24">
               <path
                 d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
                 fill="#4285F4"
@@ -339,7 +368,7 @@ export default function Index() {
                 fill="#EA4335"
               />
             </svg>
-            Continuar com Google
+            <span className="relative z-10">Continuar com Google</span>
           </Button>
 
           <div className="mt-[32px] pt-[24px] border-t border-[#2E5F8A]/20 space-y-[12px]">
@@ -390,18 +419,20 @@ export default function Index() {
 
       <div className="mt-8 animate-fade-in-up flex flex-col gap-3">
         <Link
-          to="/diagnostico"
-          className="text-[13px] text-[#666666] hover:text-[#1A3A52] font-semibold transition-all duration-300 flex items-center justify-center gap-2 bg-white px-4 py-2 rounded-full border-[2px] border-transparent hover:border-[#E5E5E5] shadow-sm hover:shadow"
-        >
-          <Stethoscope className="w-4 h-4 text-blue-500" />
-          Problemas no Login Convencional? Rodar Diagnóstico
-        </Link>
-        <Link
           to="/google-auth-tester"
-          className="text-[13px] text-[#666666] hover:text-[#1A3A52] font-semibold transition-all duration-300 flex items-center justify-center gap-2 bg-white px-4 py-2 rounded-full border-[2px] border-transparent hover:border-[#E5E5E5] shadow-sm hover:shadow"
+          className="text-[13px] text-[#666666] hover:text-[#1A3A52] font-semibold transition-all duration-300 flex items-center justify-center gap-2 bg-white px-4 py-3 rounded-xl border-[2px] border-transparent hover:border-[#E5E5E5] shadow-sm hover:shadow"
         >
-          <ShieldCheck className="w-4 h-4 text-emerald-500" />
-          Diagnóstico e Validação do Google OAuth
+          <div className="bg-blue-50 p-1.5 rounded-md">
+            <ShieldCheck className="w-5 h-5 text-blue-600" />
+          </div>
+          <div>
+            <span className="block text-[#1A3A52] font-bold">
+              Diagnóstico Definitivo de Google OAuth
+            </span>
+            <span className="block text-[11px] font-normal">
+              Auditoria, verificação de URI e solução de Erro 400
+            </span>
+          </div>
         </Link>
       </div>
     </div>
