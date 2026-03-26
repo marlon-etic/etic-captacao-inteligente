@@ -374,6 +374,7 @@ export type Database = {
           observacoes: string | null
           preco: number | null
           status_captacao: string | null
+          tipo: string | null
           updated_at: string | null
           user_captador_id: string | null
           vagas: number | null
@@ -398,6 +399,7 @@ export type Database = {
           observacoes?: string | null
           preco?: number | null
           status_captacao?: string | null
+          tipo?: string | null
           updated_at?: string | null
           user_captador_id?: string | null
           vagas?: number | null
@@ -422,6 +424,7 @@ export type Database = {
           observacoes?: string | null
           preco?: number | null
           status_captacao?: string | null
+          tipo?: string | null
           updated_at?: string | null
           user_captador_id?: string | null
           vagas?: number | null
@@ -1283,6 +1286,7 @@ export const Constants = {
 //   vagas: integer (nullable)
 //   observacoes: text (nullable)
 //   landlord_id: uuid (nullable)
+//   tipo: text (nullable, default: 'Ambos'::text)
 // Table: landlord_profiles
 //   id: uuid (not null, default: gen_random_uuid())
 //   user_id: uuid (not null)
