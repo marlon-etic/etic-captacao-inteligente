@@ -3,42 +3,33 @@ import { supabase } from '@/lib/supabase/client'
 import { toast } from '@/hooks/use-toast'
 
 const inFlightRequests = new Map<string, { promise: Promise<any>; timestamp: number }>()
-let consecutiveFailures = 0
-let circuitBreakerUntil = 0
 const offlineQueue: Array<{ id: string; fn: () => Promise<any> }> = []
 
 export function useSmartSync() {
-  const [isOnline, setIsOnline] = useState(navigator.onLine)
-  const [disconnectedSince, setDisconnectedSince] = useState<number | null>(null)
-  const [circuitBreakerActive, setCircuitBreakerActive] = useState(Date.now() < circuitBreakerUntil)
+  const [isOnline, setIsOnline] = useState(
+    typeof navigator !== 'undefined' ? navigator.onLine : true,
+  )
 
   useEffect(() => {
     const handleOnline = () => {
       setIsOnline(true)
-      setDisconnectedSince(null)
       processOfflineQueue()
     }
     const handleOffline = () => {
       setIsOnline(false)
-      setDisconnectedSince(Date.now())
     }
 
     window.addEventListener('online', handleOnline)
     window.addEventListener('offline', handleOffline)
 
-    const cbInterval = setInterval(() => {
-      setCircuitBreakerActive(Date.now() < circuitBreakerUntil)
-    }, 1000)
-
     return () => {
       window.removeEventListener('online', handleOnline)
       window.removeEventListener('offline', handleOffline)
-      clearInterval(cbInterval)
     }
   }, [])
 
   const processOfflineQueue = async () => {
-    if (!navigator.onLine || Date.now() < circuitBreakerUntil) return
+    if (!navigator.onLine) return
 
     const toProcess = [...offlineQueue]
     offlineQueue.length = 0
@@ -63,15 +54,11 @@ export function useSmartSync() {
         }
       }
 
-      if (Date.now() < circuitBreakerUntil) {
-        throw new Error('Circuit breaker ativo. Aguardando...')
-      }
-
       const reqStart = Date.now()
 
       const promise = (async () => {
         let attempt = 0
-        while (attempt < 6) {
+        while (attempt < 3) {
           if (!navigator.onLine) throw new Error('Offline')
 
           const controller = new AbortController()
@@ -80,56 +67,30 @@ export function useSmartSync() {
           try {
             const res = await fetcher(controller.signal)
             clearTimeout(timeoutId)
-            consecutiveFailures = 0
             return res
           } catch (err: any) {
             clearTimeout(timeoutId)
 
             const errMsg = String(err?.message || err || '')
-            const isLockError = errMsg.includes('Lock broken') || errMsg.includes('steal')
-            const isTimeout =
-              !isLockError &&
-              (err?.name === 'AbortError' || errMsg.toLowerCase().includes('aborted'))
-
-            const isPgError = typeof err?.code === 'string' && err.code.length === 5
-            const isRetryablePgError = err?.code === '40001' || err?.code === '40P01'
-            if (isPgError && !isRetryablePgError) {
-              throw err
-            }
-
             const isAuthError =
               err?.status === 401 ||
               err?.status === 403 ||
               errMsg.toLowerCase().includes('auth') ||
               errMsg.toLowerCase().includes('jwt')
-            if (isAuthError) {
-              throw err
-            }
 
             const isClientError = err?.status >= 400 && err?.status < 500 && !isAuthError
-            if (isClientError) {
+
+            if (isAuthError || isClientError) {
               throw err
             }
 
             attempt++
-            consecutiveFailures++
 
-            if (isTimeout) {
-              throw new Error('Operação demorou muito. Cancelada após 30s.')
-            }
-
-            if (consecutiveFailures >= 5 && attempt === 1 && !isLockError) {
-              circuitBreakerUntil = Date.now() + 30000
-              setCircuitBreakerActive(true)
-              if (!disconnectedSince) setDisconnectedSince(Date.now())
-              throw new Error('Muitas falhas de conexão. Circuit breaker ativado.')
-            }
-
-            if (attempt >= 6) {
+            if (attempt >= 3) {
               throw err
             }
 
-            const base = Math.min(Math.pow(2, attempt - 1) * 1000, 60000)
+            const base = Math.min(Math.pow(2, attempt) * 1000, 10000)
             const jitter = base * 0.2 * (Math.random() * 2 - 1)
             await new Promise((resolve) => setTimeout(resolve, base + jitter))
           }
@@ -145,16 +106,15 @@ export function useSmartSync() {
         inFlightRequests.delete(key)
       }
     },
-    [disconnectedSince],
+    [],
   )
 
   const enqueueMutation = useCallback((fn: () => Promise<any>) => {
-    if (navigator.onLine && Date.now() >= circuitBreakerUntil) {
+    if (navigator.onLine) {
       fn().catch((err: any) => {
-        const isPgError = typeof err?.code === 'string' && err.code.length === 5
         const isClientError = err?.status >= 400 && err?.status < 500
 
-        if (!isPgError && !isClientError) {
+        if (!isClientError) {
           if (offlineQueue.length < 50) offlineQueue.push({ id: Math.random().toString(), fn })
         } else {
           console.warn('Erro lógico na mutação ignorado da fila offline:', err)
@@ -173,8 +133,8 @@ export function useSmartSync() {
     fetchWithResilience,
     enqueueMutation,
     isOnline,
-    disconnectedSince,
-    circuitBreakerActive,
+    disconnectedSince: null,
+    circuitBreakerActive: false,
   }
 }
 
@@ -195,7 +155,7 @@ export function useConsolidatedSync({
     channel.subscribe((status) => {
       if (import.meta.env.VITE_DEBUG_MODE && status === 'CHANNEL_ERROR') {
         console.log(
-          `[Diagnostic] Erro no canal ${channelName} às ${new Date().toLocaleTimeString()}`,
+          `[Diagnostic] Erro silenciado no canal ${channelName} às ${new Date().toLocaleTimeString()}`,
         )
       }
     })
@@ -208,7 +168,7 @@ export function useConsolidatedSync({
         if (navigator.onLine) {
           onFallbackPoll()
         }
-      }, 60000)
+      }, 120000) // Alterado de 60s para 120s para reduzir carga no DB
     }
 
     const delayTimeout = setTimeout(startPolling, initialDelay)

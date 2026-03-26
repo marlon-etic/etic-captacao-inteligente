@@ -1,4 +1,4 @@
-import { useRef, useCallback } from 'react'
+import { useCallback } from 'react'
 import { useAuth } from '@/hooks/use-auth'
 import { supabase } from '@/lib/supabase/client'
 import { useSmartSync, useConsolidatedSync } from '@/hooks/useSmartSync'
@@ -22,7 +22,7 @@ export const useRealtimeSync = ({
   pollingFn,
 }: RealtimeSyncOptions) => {
   const { user: authUser } = useAuth()
-  const { fetchWithResilience, circuitBreakerActive } = useSmartSync()
+  const { fetchWithResilience } = useSmartSync()
 
   const executePoll = useCallback(async () => {
     if (!authUser?.id) return
@@ -30,7 +30,7 @@ export const useRealtimeSync = ({
     try {
       const data = await fetchWithResilience(`poll_${table}`, async (signal) => {
         if (pollingFn) {
-          // O fallback wrapper controlará a promise abortando via timeout se exceder 30s
+          // O fallback wrapper controlará a promise abortando via timeout
           return await pollingFn()
         } else {
           const { data: resData, error } = await supabase
@@ -86,7 +86,7 @@ export const useRealtimeSync = ({
     reconnect: executePoll,
     stopPolling: () => {},
     toggleRealtime: () => {},
-    isRealtimeEnabled: !circuitBreakerActive,
+    isRealtimeEnabled: true,
     invokeCount: 1,
   }
 }
