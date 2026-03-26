@@ -56,6 +56,7 @@ export default function Index() {
         ) {
           throw new Error('Sua conta foi bloqueada pelo administrador.')
         } else if (
+          supaError.status === 400 ||
           supaError.message.includes('Invalid login') ||
           supaError.message.includes('credentials')
         ) {
@@ -96,6 +97,7 @@ export default function Index() {
         ) {
           throw new Error('Sua conta foi bloqueada pelo administrador.')
         } else if (
+          authError.status === 400 ||
           authError.message.includes('Invalid login') ||
           authError.message.includes('credentials')
         ) {
