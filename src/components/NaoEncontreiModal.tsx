@@ -17,7 +17,7 @@ import { CheckCircle2, Circle } from 'lucide-react'
 interface Props {
   isOpen: boolean
   onClose: () => void
-  onConfirm: (reason: string, obs: string, continueSearch: boolean) => void
+  onConfirm: (reason: string, obs: string, finalizar: boolean) => void
 }
 
 const OPTIONS = ['Fora do perfil', 'Buscando outras opções', 'Fora do mercado', 'Outro']
@@ -25,7 +25,7 @@ const OPTIONS = ['Fora do perfil', 'Buscando outras opções', 'Fora do mercado'
 export function NaoEncontreiModal({ isOpen, onClose, onConfirm }: Props) {
   const [option, setOption] = useState<string>('')
   const [obs, setObs] = useState<string>('')
-  const [continueSearch, setContinueSearch] = useState<boolean>(true)
+  const [finalizar, setFinalizar] = useState<boolean>(true)
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -42,13 +42,13 @@ export function NaoEncontreiModal({ isOpen, onClose, onConfirm }: Props) {
     setIsSubmitting(true)
 
     try {
-      await Promise.resolve(onConfirm(option, obs, continueSearch))
+      await Promise.resolve(onConfirm(option, obs, finalizar))
     } finally {
       setIsSubmitting(false)
       setTimeout(() => {
         setOption('')
         setObs('')
-        setContinueSearch(true)
+        setFinalizar(true)
       }, 300)
     }
   }
@@ -63,7 +63,7 @@ export function NaoEncontreiModal({ isOpen, onClose, onConfirm }: Props) {
             setOption('')
             setObs('')
             setError('')
-            setContinueSearch(true)
+            setFinalizar(true)
           }, 300)
         }
       }}
@@ -88,6 +88,11 @@ export function NaoEncontreiModal({ isOpen, onClose, onConfirm }: Props) {
                     if (!isSubmitting) {
                       setOption(opt)
                       setError('')
+                      if (opt === 'Buscando outras opções') {
+                        setFinalizar(false)
+                      } else {
+                        setFinalizar(true)
+                      }
                     }
                   }}
                   className={cn(
@@ -118,21 +123,21 @@ export function NaoEncontreiModal({ isOpen, onClose, onConfirm }: Props) {
             <div className="mt-4 p-4 bg-[#F8FAFC] border border-[#E5E5E5] rounded-[12px] flex items-start sm:items-center justify-between gap-4">
               <div className="flex flex-col gap-1">
                 <Label
-                  htmlFor="continue"
+                  htmlFor="finalizar"
                   className="text-[14px] font-bold text-[#1A3A52] cursor-pointer"
                 >
-                  Tentar novamente em 24h
+                  Finalizar como Perdida
                 </Label>
                 <p className="text-[12px] text-[#666666] leading-tight">
-                  Manter a demanda na sua lista de abertas para continuar a busca amanhã.
+                  Se ativado, a demanda será movida imediatamente para a aba de Perdidos.
                 </p>
               </div>
               <Switch
-                id="continue"
-                checked={continueSearch}
-                onCheckedChange={setContinueSearch}
+                id="finalizar"
+                checked={finalizar}
+                onCheckedChange={setFinalizar}
                 disabled={isSubmitting}
-                className="data-[state=checked]:bg-[#10B981]"
+                className="data-[state=checked]:bg-[#EF4444]"
               />
             </div>
 
@@ -188,7 +193,7 @@ export function NaoEncontreiModal({ isOpen, onClose, onConfirm }: Props) {
                   setOption('')
                   setObs('')
                   setError('')
-                  setContinueSearch(true)
+                  setFinalizar(true)
                 }, 300)
               }}
               disabled={isSubmitting}
@@ -199,10 +204,15 @@ export function NaoEncontreiModal({ isOpen, onClose, onConfirm }: Props) {
             <Button
               onClick={handleConfirm}
               isLoading={isSubmitting}
-              loadingText="Enviando..."
-              className="w-full sm:w-1/2 min-h-[48px] font-bold text-[16px] bg-[#10B981] text-white enabled:hover:bg-[#059669] border-transparent shadow-[0_4px_12px_rgba(16,185,129,0.3)] transition-transform enabled:active:scale-[0.98]"
+              loadingText="Processando..."
+              className={cn(
+                'w-full sm:w-1/2 min-h-[48px] font-bold text-[16px] text-white border-transparent shadow-[0_4px_12px_rgba(0,0,0,0.1)] transition-transform enabled:active:scale-[0.98]',
+                finalizar
+                  ? 'bg-[#EF4444] enabled:hover:bg-[#DC2626]'
+                  : 'bg-[#10B981] enabled:hover:bg-[#059669]',
+              )}
             >
-              Confirmar
+              {finalizar ? 'Mover para Perdidos' : 'Confirmar Feedback'}
             </Button>
           </DialogFooter>
         </div>

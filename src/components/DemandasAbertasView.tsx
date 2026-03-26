@@ -22,17 +22,16 @@ export function DemandasAbertasView() {
     return demands
       .filter((d) => {
         const isAberta = d.status_demanda === 'aberta' || d.status_demanda === 'sem_resposta_24h'
-        const isPerdida = d.status_demanda === 'impossivel' || d.status_demanda === 'PERDIDA_BAIXA'
         const isPrioritizada = !!d.is_prioritaria
 
-        // Ensure we only show relevant statuses in this view
-        if (!isAberta && !isPerdida && !isPrioritizada) {
+        // Ensure we only show ACTIVE demands in this view
+        // Lost demands (impossivel / PERDIDA_BAIXA) should never show here
+        if (!isAberta && !isPrioritizada) {
           return false
         }
 
         if (statusFilter === 'Aberta' && !isAberta) return false
         if (statusFilter === 'Priorizada' && !isPrioritizada) return false
-        if (statusFilter === 'Perdidas' && !isPerdida) return false
 
         if (searchTerm) {
           const term = searchTerm.toLowerCase()
@@ -65,10 +64,9 @@ export function DemandasAbertasView() {
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="Todas">📋 Todas</SelectItem>
+              <SelectItem value="Todas">📋 Todas Ativas</SelectItem>
               <SelectItem value="Priorizada">🔴 Priorizadas</SelectItem>
               <SelectItem value="Aberta">🟢 Abertas</SelectItem>
-              <SelectItem value="Perdidas">⚫ Perdidas</SelectItem>
             </SelectContent>
           </Select>
         </div>

@@ -152,11 +152,7 @@ export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDeman
     }
   }
 
-  const handleNaoEncontreiConfirm = async (
-    reason: string,
-    obs: string,
-    continueSearch: boolean,
-  ) => {
+  const handleNaoEncontreiConfirm = async (reason: string, obs: string, finalizar: boolean) => {
     if (isSubmitting) return
     setIsSubmitting(true)
 
@@ -174,32 +170,51 @@ export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDeman
 
       if (error) throw error
 
-      // Do NOT set it to impossivel automatically. Keep it 'aberta' tracking history.
-      const finalStatus = 'aberta'
       const table = demand.tipo === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
-      await supabase.from(table).update({ status_demanda: 'aberta' }).eq('id', demand.id)
 
-      const prazo = demand.prazos_captacao?.[0]
-      if (prazo && prazo.prorrogacoes_usadas < 3 && continueSearch) {
-        const newPrazo = new Date()
-        newPrazo.setTime(Date.now() + 24 * 3600000)
-        await supabase
-          .from('prazos_captacao')
-          .update({
-            prazo_resposta: newPrazo.toISOString(),
-            prorrogacoes_usadas: prazo.prorrogacoes_usadas + 1,
-            status: 'ativo',
-          })
-          .eq('id', prazo.id)
+      if (finalizar) {
+        // Mover para perdidos imediatamente
+        await supabase.from(table).update({ status_demanda: 'impossivel' }).eq('id', demand.id)
+      } else {
+        // Manter aberta
+        await supabase.from(table).update({ status_demanda: 'aberta' }).eq('id', demand.id)
+
+        const prazo = demand.prazos_captacao?.[0]
+        if (prazo && prazo.prorrogacoes_usadas < 3) {
+          const newPrazo = new Date()
+          newPrazo.setTime(Date.now() + 24 * 3600000)
+          await supabase
+            .from('prazos_captacao')
+            .update({
+              prazo_resposta: newPrazo.toISOString(),
+              prorrogacoes_usadas: prazo.prorrogacoes_usadas + 1,
+              status: 'ativo',
+            })
+            .eq('id', prazo.id)
+        }
       }
 
       toast({
-        title: 'Feedback Enviado',
-        description: `Sua resposta foi registrada no histórico da demanda.`,
-        className: 'bg-[#10B981] text-white border-none',
+        title: finalizar ? 'Demanda Finalizada' : 'Feedback Enviado',
+        description: finalizar
+          ? 'A demanda foi movida para a aba de Perdidos.'
+          : 'Sua resposta foi registrada e a busca continuará.',
+        className: finalizar
+          ? 'bg-[#EF4444] text-white border-none'
+          : 'bg-[#10B981] text-white border-none',
       })
 
       setNaoEncontreiModalOpen(false)
+
+      // Atualizar estado global instantaneamente
+      window.dispatchEvent(
+        new CustomEvent('demanda-updated', {
+          detail: {
+            tipo: demand.tipo,
+            data: { id: demand.id, status_demanda: finalizar ? 'impossivel' : 'aberta' },
+          },
+        }),
+      )
     } catch (err: any) {
       toast({
         title: 'Erro ao registrar resposta',
