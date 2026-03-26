@@ -7,7 +7,6 @@ export const ConnectionStatus: React.FC = () => {
   const { isOnline, disconnectedSince, circuitBreakerActive } = useSmartSync()
   const [visualState, setVisualState] = useState<VisualState>('hidden')
 
-  // Se o navegador está offline OU o disjuntor ativou por falhas repetidas
   const isCurrentlyDisconnected = !isOnline || circuitBreakerActive
 
   useEffect(() => {
@@ -19,24 +18,19 @@ export const ConnectionStatus: React.FC = () => {
       const checkState = () => {
         const elapsed = Date.now() - start
         if (elapsed >= 15000) {
-          // Desconexão crítica (>15s)
           setVisualState((prev) => (prev !== 'disconnected' ? 'disconnected' : prev))
-        } else if (elapsed >= 5000) {
-          // Reconexão ativa (5s - 15s)
+        } else if (elapsed >= 8000) {
           setVisualState((prev) => (prev !== 'reconnecting' ? 'reconnecting' : prev))
         } else {
-          // Oscilação momentânea (<5s), mantém silencioso
           setVisualState((prev) => (prev !== 'hidden' ? 'hidden' : prev))
         }
       }
 
-      checkState() // Checa imediatamente
+      checkState()
       interval = setInterval(checkState, 1000)
     } else {
-      // Quando reconecta, atualiza o estado imediatamente sem delay
       setVisualState((prev) => {
         if (prev === 'reconnecting' || prev === 'disconnected') {
-          // Só mostra o indicador verde de "Recuperado" se o usuário chegou a ver um alerta
           return 'recovered'
         }
         return 'hidden'
@@ -48,7 +42,6 @@ export const ConnectionStatus: React.FC = () => {
     }
   }, [isCurrentlyDisconnected, disconnectedSince])
 
-  // Lógica separada para remover o aviso verde após 2.5s
   useEffect(() => {
     let timeout: NodeJS.Timeout
     if (visualState === 'recovered') {
@@ -58,15 +51,6 @@ export const ConnectionStatus: React.FC = () => {
     }
     return () => {
       if (timeout) clearTimeout(timeout)
-    }
-  }, [visualState])
-
-  // Logging de diagnóstico para Dev Mode
-  useEffect(() => {
-    if (import.meta.env.VITE_DEBUG_MODE) {
-      console.log(
-        `[Diagnostic - ConnectionStatus] Status visual alterado para: ${visualState} às ${new Date().toLocaleTimeString()}`,
-      )
     }
   }, [visualState])
 

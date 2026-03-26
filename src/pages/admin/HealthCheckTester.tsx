@@ -103,14 +103,12 @@ export default function HealthCheckTester() {
 
       update('rls', 'running', 'Validando RLS...')
       await wait(400)
-      const { error: rlsErr } = await supabase
-        .from('users')
-        .insert({
-          id: '00000000-0000-0000-0000-000000000000',
-          email: 'x@x.com',
-          nome: 'X',
-          role: 'admin',
-        })
+      const { error: rlsErr } = await supabase.from('users').insert({
+        id: '00000000-0000-0000-0000-000000000000',
+        email: 'x@x.com',
+        nome: 'X',
+        role: 'admin',
+      })
       if (!rlsErr || (rlsErr.code !== '42501' && rlsErr.code !== '23505'))
         console.warn('RLS warn', rlsErr)
       update('rls', 'passed', 'Bloqueio RLS anônimo verificado perfeitamente.')
