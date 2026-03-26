@@ -2,13 +2,22 @@
 DO $$
 DECLARE
   v_user_id uuid;
+  v_existing_id uuid;
 BEGIN
   SELECT id INTO v_user_id FROM auth.users WHERE email = 'marlon@eticimoveis.com.br' LIMIT 1;
   IF v_user_id IS NOT NULL THEN
-    INSERT INTO public.users (id, email, nome, role, status)
-    VALUES (v_user_id, 'marlon@eticimoveis.com.br', 'Marlon', 'admin', 'ativo')
-    ON CONFLICT (id) DO UPDATE 
-    SET email = EXCLUDED.email, nome = EXCLUDED.nome, role = EXCLUDED.role, status = EXCLUDED.status;
+    SELECT id INTO v_existing_id FROM public.users WHERE email = 'marlon@eticimoveis.com.br' LIMIT 1;
+    
+    IF v_existing_id IS NOT NULL THEN
+      UPDATE public.users 
+      SET role = 'admin', status = 'ativo', nome = 'Marlon'
+      WHERE id = v_existing_id;
+    ELSE
+      INSERT INTO public.users (id, email, nome, role, status)
+      VALUES (v_user_id, 'marlon@eticimoveis.com.br', 'Marlon', 'admin', 'ativo')
+      ON CONFLICT (id) DO UPDATE 
+      SET email = EXCLUDED.email, nome = EXCLUDED.nome, role = EXCLUDED.role, status = EXCLUDED.status;
+    END IF;
   END IF;
 END $$;
 
