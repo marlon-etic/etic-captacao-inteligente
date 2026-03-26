@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Mail, Lock, LogIn, Building2, Loader2, AlertTriangle } from 'lucide-react'
+import { Mail, Lock, LogIn, Building2, Loader2, AlertTriangle, Stethoscope } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -156,7 +156,7 @@ export default function Index() {
   if (currentUser) return null
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-[16px] bg-[#F5F5F5]">
+    <div className="min-h-screen flex flex-col items-center justify-center p-[16px] bg-[#F5F5F5]">
       <Card className="w-full max-w-md shadow-[0_8px_32px_rgba(26,58,82,0.15)] border-[2px] border-[#2E5F8A] animate-fade-in-up bg-[#FFFFFF]">
         <CardHeader className="space-y-[12px] text-center pb-[24px]">
           <div className="mx-auto w-[64px] h-[64px] bg-[#1A3A52] rounded-[16px] flex items-center justify-center mb-[8px] shadow-[0_4px_12px_rgba(26,58,82,0.2)]">
@@ -293,6 +293,16 @@ export default function Index() {
           </div>
         </CardContent>
       </Card>
+
+      <div className="mt-8 animate-fade-in-up">
+        <Link
+          to="/diagnostico"
+          className="text-[13px] text-[#666666] hover:text-[#1A3A52] font-semibold transition-all duration-300 flex items-center gap-2 bg-white px-4 py-2 rounded-full border-[2px] border-transparent hover:border-[#E5E5E5] shadow-sm hover:shadow"
+        >
+          <Stethoscope className="w-4 h-4 text-blue-500" />
+          Problemas no Login? Rodar Diagnóstico
+        </Link>
+      </div>
     </div>
   )
 }

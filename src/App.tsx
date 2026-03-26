@@ -104,6 +104,7 @@ const AppContent = () => {
           <Route path="/" element={<Index />} />
           <Route path="/esqueci-senha" element={<EsqueciSenha />} />
           <Route path="/redefinir-senha" element={<RedefinirSenha />} />
+          <Route path="/diagnostico" element={<HealthCheckTester />} />
 
           {/* Landlord Auth Routes */}
           <Route path="/landlord/login" element={<LandlordLogin />} />

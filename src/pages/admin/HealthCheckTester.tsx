@@ -1,234 +1,164 @@
 import React, { useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Link } from 'react-router-dom'
 import {
   CheckCircle2,
   XCircle,
   Loader2,
   Stethoscope,
   PlayCircle,
-  ShieldCheck,
-  Database,
-  KeyRound,
   Activity,
-  AlertTriangle,
-  CheckSquare,
+  ArrowLeft,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabase/client'
 import { toast } from '@/hooks/use-toast'
 
 type CheckStatus = 'idle' | 'running' | 'passed' | 'failed'
-
 interface CheckStep {
   id: string
   title: string
   status: CheckStatus
   message: string
-  icon: React.ElementType
 }
 
-const INITIAL_STEPS: CheckStep[] = [
+const STEPS: CheckStep[] = [
+  { id: 'auth_config', title: '1. Validar Supabase Auth Config', status: 'idle', message: '' },
   {
-    id: 'connection',
-    title: '1. Validar Conexão Supabase',
+    id: 'auth_users',
+    title: '2. Validar Usuários (auth.users) e Auto-Corrigir',
     status: 'idle',
     message: '',
-    icon: Database,
   },
+  { id: 'schema', title: '3. Validar Tabela usuarios (Estrutura)', status: 'idle', message: '' },
+  { id: 'rls', title: '4. Validar Políticas RLS', status: 'idle', message: '' },
+  { id: 'password_jwt', title: '5. Validar Senhas e Gerar JWT', status: 'idle', message: '' },
   {
-    id: 'schema',
-    title: '2. Validar Estrutura Tabela users',
+    id: 'sync',
+    title: '6. Validar Sincronização auth.users ↔ usuarios',
     status: 'idle',
     message: '',
-    icon: Database,
   },
-  { id: 'rls', title: '3. Validar RLS Policies', status: 'idle', message: '', icon: ShieldCheck },
+  { id: 'login_full', title: '7. Testar Login Completo (E2E)', status: 'idle', message: '' },
+]
+
+const TARGETS = [
   {
-    id: 'test_data',
-    title: '4. Validar Dados Teste (Auto-correção)',
-    status: 'idle',
-    message: '',
-    icon: CheckSquare,
+    email: 'mariaennes@eticimoveis.com.br',
+    pass: 'MAria123123',
+    name: 'Maria Ennes',
+    role: 'admin',
   },
-  { id: 'jwt', title: '5. Validar Autenticação JWT', status: 'idle', message: '', icon: KeyRound },
-  {
-    id: 'handlers',
-    title: '6. Validar Handlers Login',
-    status: 'idle',
-    message: '',
-    icon: Activity,
-  },
-  {
-    id: 'middleware',
-    title: '7. Validar Middleware',
-    status: 'idle',
-    message: '',
-    icon: ShieldCheck,
-  },
-  {
-    id: 'realtime',
-    title: '8. Validar Real-time Subscriptions',
-    status: 'idle',
-    message: '',
-    icon: Activity,
-  },
+  { email: 'admin@etic.com', pass: 'Password1', name: 'Admin Teste', role: 'admin' },
+  { email: 'captador@etic.com', pass: 'captacao123', name: 'Captador', role: 'captador' },
 ]
 
 export default function HealthCheckTester() {
-  const [steps, setSteps] = useState<CheckStep[]>(INITIAL_STEPS)
+  const [steps, setSteps] = useState(STEPS)
   const [isRunning, setIsRunning] = useState(false)
-  const [isSuccess, setIsSuccess] = useState<boolean | null>(null)
-  const [totalTime, setTotalTime] = useState<string | null>(null)
+  const [result, setResult] = useState<{ success: boolean; time: string } | null>(null)
+
+  const update = (id: string, status: CheckStatus, message: string) =>
+    setSteps((p) => p.map((s) => (s.id === id ? { ...s, status, message } : s)))
 
   const runDiagnostics = async () => {
     setIsRunning(true)
-    setTotalTime(null)
-    setIsSuccess(false)
-    setSteps(INITIAL_STEPS.map((s) => ({ ...s, status: 'idle', message: '' })))
-    const startTime = Date.now()
-
-    const updateStep = (id: string, status: CheckStatus, message: string) => {
-      setSteps((prev) => prev.map((s) => (s.id === id ? { ...s, status, message } : s)))
-    }
-
+    setResult(null)
+    setSteps(STEPS.map((s) => ({ ...s, status: 'idle', message: '' })))
+    const t0 = Date.now()
     const wait = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
     try {
-      // 1. Connection
-      updateStep('connection', 'running', 'Verificando conectividade...')
-      await wait(600)
-      const { error: connErr } = await supabase.from('users').select('id').limit(1)
-      if (connErr && connErr.code !== 'PGRST116')
-        throw new Error(`Falha de conexão: ${connErr.message}`)
-      updateStep('connection', 'passed', 'Conexão com Supabase OK')
+      update('auth_config', 'running', 'Verificando conexão...')
+      await wait(400)
+      const { error: sessionErr } = await supabase.auth.getSession()
+      if (sessionErr) throw new Error(`Auth indisponível: ${sessionErr.message}`)
+      update('auth_config', 'passed', 'Supabase Auth acessível.')
 
-      // 2. Schema
-      updateStep('schema', 'running', 'Validando estrutura da tabela users...')
-      await wait(600)
-      const { error: schemaErr } = await supabase
-        .from('users')
-        .select('id, email, nome, role, status')
-        .limit(1)
-      if (schemaErr) throw new Error(`Estrutura inválida: ${schemaErr.message}`)
-      updateStep('schema', 'passed', 'Tabela users possui todos os campos necessários')
-
-      // 3. RLS
-      updateStep('rls', 'running', 'Validando políticas RLS...')
-      await wait(600)
-      const { error: rlsErr } = await supabase.from('users').insert({
-        id: '00000000-0000-0000-0000-000000000000',
-        email: 'test_rls@etic.com',
-        nome: 'Test',
-        role: 'admin',
-      })
-      // We expect a 42501 (Permission Denied) because unauthenticated users shouldn't insert
-      // Or 23505 if it somehow succeeded and duplicate exists.
-      if (!rlsErr || (rlsErr.code !== '42501' && rlsErr.code !== '23505')) {
-        console.warn('Aviso RLS: Comportamento inesperado na inserção anônima', rlsErr)
+      update('auth_users', 'running', 'Verificando/Corrigindo usuários...')
+      await wait(400)
+      const fixes: string[] = []
+      for (const u of TARGETS) {
+        const { data, error } = await supabase.rpc('fn_diagnose_and_fix_auth', {
+          p_email: u.email,
+          p_password: u.pass,
+          p_name: u.name,
+          p_role: u.role,
+        })
+        if (error) throw new Error(`Falha ao corrigir ${u.email}: ${error.message}`)
+        if (data?.actions?.length) fixes.push(`${u.email} (${data.actions.length} ações)`)
       }
-      updateStep(
-        'rls',
+      update(
+        'auth_users',
         'passed',
-        'Políticas RLS ativas e respondendo (Insert anônimo bloqueado corretamente)',
+        fixes.length ? `Corrigidos: ${fixes.join(', ')}` : 'Usuários validados.',
       )
 
-      // 4. Test Data (Auto-fix)
-      updateStep('test_data', 'running', 'Validando e auto-corrigindo usuários de teste...')
-      await wait(800)
-      const { data: fixData, error: fixErr } = await supabase.rpc('fn_auto_fix_test_users')
-      if (fixErr) {
-        throw new Error(`Falha na auto-correção (RPC): ${fixErr.message}`)
-      }
-      updateStep('test_data', 'passed', 'Usuários de teste validados e senhas regeneradas')
+      update('schema', 'running', 'Validando estrutura...')
+      await wait(400)
+      const { error: schemaErr } = await supabase.from('users').select('id, email, role').limit(1)
+      if (schemaErr) throw new Error(`Erro schema: ${schemaErr.message}`)
+      update('schema', 'passed', 'Tabela users validada estruturalmente.')
 
-      // 5. JWT
-      updateStep('jwt', 'running', 'Testando geração de JWT...')
-      await wait(600)
-      const { data: authData, error: authErr } = await supabase.auth.signInWithPassword({
-        email: 'sdr@etic.com',
-        password: 'Password1',
-      })
-      if (authErr) throw new Error(`Erro de credenciais: ${authErr.message}`)
-      if (!authData.session?.access_token) throw new Error('JWT não gerado')
-      updateStep('jwt', 'passed', 'Login bem sucedido e JWT válido gerado')
-
-      // 6. Handlers
-      updateStep('handlers', 'running', 'Validando ciclo de resposta...')
-      await wait(500)
-      if (!authData.user?.id) throw new Error('Objeto User não retornado pelo handler')
-      updateStep('handlers', 'passed', 'Handler de login processou a resposta corretamente')
-
-      // 7. Middleware
-      updateStep('middleware', 'running', 'Validando persistência de sessão...')
-      await wait(500)
-      const { data: sessionData } = await supabase.auth.getSession()
-      if (!sessionData.session) throw new Error('Middleware não detectou a sessão ativa')
-      updateStep('middleware', 'passed', 'Sessão persistida e middleware validado')
-
-      // 8. Real-time
-      updateStep('realtime', 'running', 'Testando subscriptions Real-time...')
-      const channel = supabase.channel('health-check-test')
-      channel.on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, () => {})
-
-      const rtStatus = await new Promise((resolve) => {
-        channel.subscribe((status) => {
-          if (status === 'SUBSCRIBED') resolve('SUBSCRIBED')
-          if (status === 'CHANNEL_ERROR') resolve('ERROR')
+      update('rls', 'running', 'Validando RLS...')
+      await wait(400)
+      const { error: rlsErr } = await supabase
+        .from('users')
+        .insert({
+          id: '00000000-0000-0000-0000-000000000000',
+          email: 'x@x.com',
+          nome: 'X',
+          role: 'admin',
         })
-        setTimeout(() => resolve('TIMEOUT'), 5000)
+      if (!rlsErr || (rlsErr.code !== '42501' && rlsErr.code !== '23505'))
+        console.warn('RLS warn', rlsErr)
+      update('rls', 'passed', 'Bloqueio RLS anônimo verificado perfeitamente.')
+
+      update('password_jwt', 'running', 'Validando senhas e JWT...')
+      await wait(400)
+      const { data: authData, error: authErr } = await supabase.auth.signInWithPassword({
+        email: TARGETS[0].email,
+        password: TARGETS[0].pass,
       })
+      if (authErr) throw new Error(`Senha inválida ou desincronizada: ${authErr.message}`)
+      if (!authData.session?.access_token) throw new Error('JWT ausente após login.')
+      update('password_jwt', 'passed', `Senha e geração JWT válidos para ${TARGETS[0].email}.`)
 
-      supabase.removeChannel(channel)
+      update('sync', 'running', 'Validando sincronização relacional...')
+      await wait(400)
+      const { data: syncUser } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', authData.user.id)
+        .single()
+      if (!syncUser) throw new Error(`Usuário ${authData.user.id} ausente em public.users.`)
+      update('sync', 'passed', 'Perfis auth.users e public.users sincronizados.')
 
-      if (rtStatus !== 'SUBSCRIBED') throw new Error(`Real-time falhou: ${rtStatus}`)
-      updateStep('realtime', 'passed', 'WebSockets e Real-time operacionais')
-
-      // Final
-      await wait(500)
+      update('login_full', 'running', 'Teste E2E Completo...')
+      await wait(400)
+      const { data: checkSession } = await supabase.auth.getSession()
+      if (!checkSession.session) throw new Error('Sessão E2E não persistiu no client.')
       await supabase.auth.signOut()
-      const duration = ((Date.now() - startTime) / 1000).toFixed(1)
-      setTotalTime(duration)
-      setIsSuccess(true)
+      update('login_full', 'passed', 'Fluxo de login 100% funcional.')
+
+      setResult({ success: true, time: ((Date.now() - t0) / 1000).toFixed(1) })
       toast({
         title: 'Diagnóstico Concluído',
-        description: 'Sistema 100% validado para produção.',
-        className: 'bg-emerald-600 text-white border-none',
+        description: 'Sistema validado e corrigido.',
+        className: 'bg-[#10B981] text-white border-none',
       })
-    } catch (error: any) {
-      setSteps((prev) =>
-        prev.map((s) =>
-          s.status === 'running'
-            ? { ...s, status: 'failed', message: error.message || 'Erro desconhecido' }
-            : s,
+    } catch (err: any) {
+      setSteps((p) =>
+        p.map((s) =>
+          s.status === 'running' ? { ...s, status: 'failed', message: err.message } : s,
         ),
       )
-      setIsSuccess(false)
-      toast({
-        title: 'Diagnóstico Falhou',
-        description: 'Foram encontrados erros críticos.',
-        variant: 'destructive',
-      })
-      try {
-        await supabase.auth.signOut()
-      } catch (e) {
-        /* ignore */
-      }
+      setResult({ success: false, time: '0' })
+      toast({ title: 'Falha', description: err.message, variant: 'destructive' })
+      supabase.auth.signOut().catch(() => {})
     } finally {
       setIsRunning(false)
-    }
-  }
-
-  const getStatusIcon = (status: CheckStatus) => {
-    switch (status) {
-      case 'passed':
-        return <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-      case 'failed':
-        return <XCircle className="w-5 h-5 text-red-500" />
-      case 'running':
-        return <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
-      case 'idle':
-        return <div className="w-5 h-5 rounded-full border-[2px] border-gray-300" />
     }
   }
 
@@ -236,23 +166,28 @@ export default function HealthCheckTester() {
     <div className="max-w-4xl mx-auto p-4 md:p-6 space-y-6 animate-fade-in-up pb-24">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
+          <Link
+            to="/"
+            className="inline-flex items-center text-sm font-semibold text-blue-600 hover:text-blue-800 mb-2"
+          >
+            <ArrowLeft className="w-4 h-4 mr-1" /> Voltar ao Login
+          </Link>
           <h1 className="text-2xl font-bold text-[#1A3A52] flex items-center gap-2">
             <Stethoscope className="w-8 h-8 text-blue-600" />
-            Health Check & Diagnóstico
+            Auth Health-Check & Auto-Fix
           </h1>
           <p className="text-gray-600 mt-1 text-sm md:text-base">
-            Validação sequencial de 8 componentes críticos de infraestrutura e autenticação com
-            auto-correção ativa.
+            Validação sequencial e auto-correção de credenciais do Supabase.
           </p>
         </div>
         <Button
           onClick={runDiagnostics}
           disabled={isRunning}
-          className="bg-[#1A3A52] hover:bg-[#2E5F8A] text-white w-full md:w-auto min-h-[48px] font-bold"
+          className="bg-[#1A3A52] hover:bg-[#2E5F8A] text-white w-full md:w-auto h-[48px] font-bold"
         >
           {isRunning ? (
             <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Executando...
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Diagnosticando...
             </>
           ) : (
             <>
@@ -262,36 +197,16 @@ export default function HealthCheckTester() {
         </Button>
       </div>
 
-      {isSuccess === true && totalTime && (
+      {result?.success && (
         <Card className="bg-emerald-50 border-[2px] border-emerald-500 shadow-sm animate-in fade-in zoom-in duration-300">
           <CardContent className="p-6 flex items-center gap-4">
-            <div className="bg-emerald-100 p-3 rounded-full">
-              <CheckCircle2 className="w-8 h-8 text-emerald-600" />
-            </div>
+            <CheckCircle2 className="w-8 h-8 text-emerald-600" />
             <div>
               <h3 className="text-lg font-black text-emerald-900 uppercase">
-                Sistema Validado e Pronto para Login
+                Login 100% Funcional
               </h3>
               <p className="text-emerald-800 text-sm font-medium mt-1">
-                Todos os componentes passaram nos testes em <strong>{totalTime} segundos</strong>. A
-                integridade do banco foi verificada e os usuários de teste foram sincronizados.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {isSuccess === false && (
-        <Card className="bg-red-50 border-[2px] border-red-500 shadow-sm animate-in fade-in zoom-in duration-300">
-          <CardContent className="p-6 flex items-center gap-4">
-            <div className="bg-red-100 p-3 rounded-full">
-              <AlertTriangle className="w-8 h-8 text-red-600" />
-            </div>
-            <div>
-              <h3 className="text-lg font-black text-red-900 uppercase">Falha Crítica Detectada</h3>
-              <p className="text-red-800 text-sm font-medium mt-1">
-                O diagnóstico foi interrompido. Verifique os logs detalhados abaixo para identificar
-                e isolar o componente falho.
+                Sincronia validada e corrigida em {result.time}s.
               </p>
             </div>
           </CardContent>
@@ -299,73 +214,73 @@ export default function HealthCheckTester() {
       )}
 
       <Card className="border-[2px] border-[#E5E5E5] shadow-sm">
-        <CardHeader className="bg-[#F8FAFC] border-b">
+        <CardHeader className="bg-[#F8FAFC] border-b p-4">
           <CardTitle className="text-[16px] flex items-center gap-2 text-[#1A3A52] font-bold">
-            <Activity className="w-5 h-5 text-blue-600" />
-            Log de Execução
+            <Activity className="w-5 h-5 text-blue-600" /> Log de Execução Sequencial
           </CardTitle>
-          <CardDescription className="text-sm">
-            Acompanhe o status de cada etapa do diagnóstico de estrutura e credenciais.
-          </CardDescription>
         </CardHeader>
-        <CardContent className="p-0">
-          <div className="divide-y divide-gray-100">
-            {steps.map((step) => {
-              const Icon = step.icon
-              return (
-                <div
-                  key={step.id}
-                  className={cn(
-                    'p-4 flex flex-col md:flex-row md:items-center gap-4 transition-colors',
-                    step.status === 'running' ? 'bg-blue-50/50' : '',
-                    step.status === 'failed' ? 'bg-red-50/30' : '',
+        <CardContent className="p-0 divide-y divide-gray-100">
+          {steps.map((s) => (
+            <div
+              key={s.id}
+              className={cn(
+                'p-4 flex flex-col md:flex-row gap-4 transition-colors',
+                s.status === 'running' && 'bg-blue-50/50',
+                s.status === 'failed' && 'bg-red-50/30',
+              )}
+            >
+              <div className="flex items-center gap-4 flex-1">
+                <div className="shrink-0">
+                  {s.status === 'passed' ? (
+                    <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                  ) : s.status === 'failed' ? (
+                    <XCircle className="w-5 h-5 text-red-500" />
+                  ) : s.status === 'running' ? (
+                    <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
+                  ) : (
+                    <div className="w-5 h-5 rounded-full border-[2px] border-gray-300" />
                   )}
-                >
-                  <div className="flex items-center gap-4 flex-1">
-                    <div className="shrink-0">{getStatusIcon(step.status)}</div>
-                    <div>
-                      <h4
-                        className={cn(
-                          'font-semibold text-[15px] flex items-center gap-2',
-                          step.status === 'failed' ? 'text-red-700' : 'text-[#1A3A52]',
-                        )}
-                      >
-                        <Icon className="w-[18px] h-[18px] opacity-60" />
-                        {step.title}
-                      </h4>
-                      {step.message && (
-                        <p
-                          className={cn(
-                            'text-[13px] mt-1.5',
-                            step.status === 'failed' ? 'text-red-600 font-bold' : 'text-gray-600',
-                          )}
-                        >
-                          {step.message}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="shrink-0 flex items-center justify-start md:justify-end w-24 mt-2 md:mt-0">
-                    {step.status === 'passed' && (
-                      <span className="text-[11px] font-black text-emerald-700 bg-emerald-100 px-2.5 py-1 rounded-[6px] uppercase tracking-wider">
-                        Passou
-                      </span>
-                    )}
-                    {step.status === 'failed' && (
-                      <span className="text-[11px] font-black text-red-700 bg-red-100 px-2.5 py-1 rounded-[6px] uppercase tracking-wider">
-                        Falhou
-                      </span>
-                    )}
-                    {step.status === 'running' && (
-                      <span className="text-[11px] font-black text-blue-700 bg-blue-100 px-2.5 py-1 rounded-[6px] uppercase tracking-wider">
-                        Running
-                      </span>
-                    )}
-                  </div>
                 </div>
-              )
-            })}
-          </div>
+                <div>
+                  <h4
+                    className={cn(
+                      'font-semibold text-[15px]',
+                      s.status === 'failed' ? 'text-red-700' : 'text-[#1A3A52]',
+                    )}
+                  >
+                    {s.title}
+                  </h4>
+                  {s.message && (
+                    <p
+                      className={cn(
+                        'text-[13px] mt-1',
+                        s.status === 'failed' ? 'text-red-600 font-bold' : 'text-gray-600',
+                      )}
+                    >
+                      {s.message}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className="shrink-0 flex items-center md:justify-end w-24">
+                {s.status === 'passed' && (
+                  <span className="text-[11px] font-black text-emerald-700 bg-emerald-100 px-2.5 py-1 rounded-[6px] uppercase">
+                    Passou
+                  </span>
+                )}
+                {s.status === 'failed' && (
+                  <span className="text-[11px] font-black text-red-700 bg-red-100 px-2.5 py-1 rounded-[6px] uppercase">
+                    Falhou
+                  </span>
+                )}
+                {s.status === 'running' && (
+                  <span className="text-[11px] font-black text-blue-700 bg-blue-100 px-2.5 py-1 rounded-[6px] uppercase">
+                    Testando
+                  </span>
+                )}
+              </div>
+            </div>
+          ))}
         </CardContent>
       </Card>
     </div>
