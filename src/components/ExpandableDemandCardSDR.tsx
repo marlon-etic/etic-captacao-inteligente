@@ -282,3 +282,5 @@ export function ExpandableDemandCardSDR({
         </div>
       </div>
     </Card>
+  )
+}
