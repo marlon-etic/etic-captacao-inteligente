@@ -116,14 +116,12 @@ export default function HealthCheckTester() {
       // 3. RLS
       updateStep('rls', 'running', 'Validando políticas RLS...')
       await wait(600)
-      const { error: rlsErr } = await supabase
-        .from('users')
-        .insert({
-          id: '00000000-0000-0000-0000-000000000000',
-          email: 'test_rls@etic.com',
-          nome: 'Test',
-          role: 'admin',
-        })
+      const { error: rlsErr } = await supabase.from('users').insert({
+        id: '00000000-0000-0000-0000-000000000000',
+        email: 'test_rls@etic.com',
+        nome: 'Test',
+        role: 'admin',
+      })
       // We expect a 42501 (Permission Denied) because unauthenticated users shouldn't insert
       // Or 23505 if it somehow succeeded and duplicate exists.
       if (!rlsErr || (rlsErr.code !== '42501' && rlsErr.code !== '23505')) {
