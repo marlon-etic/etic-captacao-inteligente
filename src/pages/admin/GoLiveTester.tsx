@@ -2,9 +2,17 @@ import React, { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { CheckCircle2, XCircle, ClipboardCheck, PlayCircle, Download } from 'lucide-react'
+import {
+  CheckCircle2,
+  XCircle,
+  ClipboardCheck,
+  PlayCircle,
+  Download,
+  ServerCrash,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from '@/hooks/use-toast'
+import { Link } from 'react-router-dom'
 
 type TestStatus = 'idle' | 'passed' | 'failed'
 interface TestItem {
@@ -167,9 +175,18 @@ export default function GoLiveTester() {
             está 100% pronto para produção.
           </p>
         </div>
-        <div className="flex gap-2 w-full md:w-auto">
+        <div className="flex flex-wrap gap-2 w-full md:w-auto">
+          <Button
+            asChild
+            variant="outline"
+            className="flex-1 md:flex-none border-red-200 text-red-700 hover:bg-red-50 hover:text-red-800"
+          >
+            <Link to="/app/database-reset">
+              <ServerCrash className="w-4 h-4 mr-2" /> Resetar Base de Produção
+            </Link>
+          </Button>
           <Button variant="outline" onClick={reset} className="flex-1 md:flex-none">
-            <PlayCircle className="w-4 h-4 mr-2" /> Resetar
+            <PlayCircle className="w-4 h-4 mr-2" /> Limpar QA
           </Button>
           <Button
             onClick={exportReport}
