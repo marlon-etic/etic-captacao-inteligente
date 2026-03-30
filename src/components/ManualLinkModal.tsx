@@ -14,6 +14,9 @@ import { Search, Home, DollarSign, MapPin } from 'lucide-react'
 import { CapturedProperty, Demand } from '@/types'
 import useAppStore from '@/stores/useAppStore'
 import { useToast } from '@/hooks/use-toast'
+import { calculateMatching, getScoreBadgeColor, getScoreProgressColor } from '@/lib/matching'
+import { Progress } from '@/components/ui/progress'
+import { cn } from '@/lib/utils'
 
 interface ManualLinkModalProps {
   isOpen: boolean
@@ -29,27 +32,40 @@ export function ManualLinkModal({ isOpen, onClose, property }: ManualLinkModalPr
   const compatibleDemands = useMemo(() => {
     if (!property || !currentUser) return []
 
-    return demands.filter((d) => {
-      if (d.createdBy !== currentUser.id) return false
-      if (['Perdida', 'Impossível', 'Negócio', 'Arquivado'].includes(d.status)) return false
+    return demands
+      .map((d) => {
+        const clienteMock = {
+          bairros:
+            d.location && Array.isArray(d.location)
+              ? d.location
+              : d.location?.split(',').map((s: string) => s.trim()) || [],
+          valor_minimo: d.minBudget || 0,
+          valor_maximo: d.maxBudget || d.budget || 0,
+          dormitorios: d.bedrooms || 0,
+          vagas_estacionamento: d.parkingSpots || 0,
+          nivel_urgencia: 'Média',
+        }
 
-      if (property.propertyType && d.type && property.propertyType !== d.type) return false
+        const imovelMock = {
+          endereco: Array.isArray(property.neighborhood)
+            ? property.neighborhood[0]
+            : property.neighborhood || '',
+          preco: property.value || 0,
+          dormitorios: property.bedrooms || property.dormitorios || 0,
+          vagas: property.parkingSpots || property.vagas || 0,
+        }
 
-      const pLoc = property.neighborhood?.toLowerCase() || ''
-      const dLocs =
-        d.location
-          ?.toLowerCase()
-          .split(',')
-          .map((s) => s.trim()) || []
-      const neighborhoodMatch = dLocs.some((dLoc) => dLoc.includes(pLoc) || pLoc.includes(dLoc))
-      if (!neighborhoodMatch) return false
+        const match = calculateMatching(imovelMock, clienteMock)
+        return { ...d, score: match.score }
+      })
+      .filter((d) => {
+        if (d.createdBy !== currentUser.id) return false
+        if (['Perdida', 'Impossível', 'Negócio', 'Arquivado'].includes(d.status)) return false
+        if (property.propertyType && d.type && property.propertyType !== d.type) return false
 
-      const minVal = (d.minBudget || d.budget || 0) * 0.9
-      const maxVal = (d.maxBudget || d.budget || 0) * 1.1
-      if (property.value < minVal || property.value > maxVal) return false
-
-      return true
-    })
+        return d.score >= 60
+      })
+      .sort((a, b) => b.score - a.score)
   }, [demands, currentUser, property])
 
   const filteredDemands = useMemo(() => {
@@ -136,7 +152,20 @@ export function ManualLinkModal({ isOpen, onClose, property }: ManualLinkModalPr
                         {d.status}
                       </Badge>
                     </div>
+                    <Badge
+                      className={cn(
+                        'text-[12px] font-black px-2.5 py-1 border-none shadow-sm',
+                        getScoreBadgeColor(d.score),
+                      )}
+                    >
+                      {d.score}% Match
+                    </Badge>
                   </div>
+                  <Progress
+                    value={d.score}
+                    indicatorClassName={getScoreProgressColor(d.score)}
+                    className="h-1.5"
+                  />
 
                   <div className="flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-[#333333]">
                     <span className="flex items-center gap-1">

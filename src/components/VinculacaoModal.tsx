@@ -14,6 +14,8 @@ import { CheckCircle2, XCircle, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
 import { supabase } from '@/lib/supabase/client'
+import { calculateMatching, getScoreBadgeColor, getScoreProgressColor } from '@/lib/matching'
+import { Progress } from '@/components/ui/progress'
 
 export interface VinculacaoImovelData {
   id: string
@@ -90,74 +92,19 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
     }
   }, [isOpen, imovel])
 
-  // Calcular scoring para cada demanda aberta
   const scoredDemands = useMemo(() => {
     if (!imovel) return []
 
     return activeDemands
       .map((d) => {
-        // 1. Valor (±20%) - Peso: 25%
-        let valorMatch = 0
-        const imovelPreco = imovel.preco || 0
-        const demandMax = d.valor_maximo || 0
-        const demandMin = d.valor_minimo || 0
-
-        if (demandMax > 0) {
-          const margin = demandMax * 0.2 // 20% de margem
-          if (imovelPreco <= demandMax + margin && imovelPreco >= demandMin - margin) {
-            valorMatch = 1
-          }
-        } else {
-          valorMatch = 1 // Se não tem máximo definido, conta como match
-        }
-
-        // 2. Bairro (Match Exato/Parcial string) - Peso: 25%
-        let bairroMatch = 0
-        if (d.bairros && d.bairros.length > 0) {
-          if (
-            d.bairros.some((b: string) => imovel.endereco?.toLowerCase().includes(b.toLowerCase()))
-          ) {
-            bairroMatch = 1
-          }
-        } else {
-          bairroMatch = 1 // Indiferente
-        }
-
-        // 3. Dormitórios (±1) - Peso: 25%
-        let dormMatch = 0
-        const demandDorms = d.dormitorios || 0
-        const imovelDorms = imovel.dormitorios || 0
-        if (demandDorms > 0) {
-          if (imovelDorms >= demandDorms - 1 && imovelDorms <= demandDorms + 1) {
-            dormMatch = 1
-          }
-        } else {
-          dormMatch = 1
-        }
-
-        // 4. Vagas (±1) - Peso: 25%
-        let vagasMatch = 0
-        const demandVagas = d.vagas_estacionamento || 0
-        const imovelVagas = imovel.vagas || 0
-        if (demandVagas > 0) {
-          if (imovelVagas >= demandVagas - 1 && imovelVagas <= demandVagas + 1) {
-            vagasMatch = 1
-          }
-        } else {
-          vagasMatch = 1
-        }
-
-        // Scoring total: (valor * 0.25) + (bairro * 0.25) + (dorm * 0.25) + (vagas * 0.25)
-        const totalScore =
-          valorMatch * 0.25 + bairroMatch * 0.25 + dormMatch * 0.25 + vagasMatch * 0.25
-        const percent = Math.round(totalScore * 100)
-
+        const match = calculateMatching(imovel, d)
         return {
           ...d,
-          score: percent,
-          details: { valorMatch, bairroMatch, dormMatch, vagasMatch },
+          score: match.score,
+          details: match.details,
         }
       })
+      .filter((d) => d.score >= 60)
       .sort((a, b) => b.score - a.score)
   }, [activeDemands, imovel])
 
@@ -251,19 +198,17 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
               ) : scoredDemands.length > 0 ? (
                 <div className="flex flex-col p-3 gap-2">
                   {scoredDemands.map((d) => {
-                    const isGreen = d.score >= 50
                     const isSelected = selectedDemandId === d.id
+                    const badgeColor = getScoreBadgeColor(d.score)
+                    const progressColor = getScoreProgressColor(d.score)
+
                     return (
                       <div
                         key={d.id}
                         onClick={() => setSelectedDemandId(d.id)}
                         className={cn(
-                          'p-4 rounded-[12px] cursor-pointer transition-all duration-200 border-2 flex flex-col gap-2',
-                          isGreen
-                            ? 'bg-green-50 border-transparent hover:border-green-200'
-                            : 'bg-red-50 border-transparent hover:border-red-200',
-                          isSelected &&
-                            (isGreen ? '!border-green-500 shadow-md' : '!border-red-500 shadow-md'),
+                          'p-4 rounded-[12px] cursor-pointer transition-all duration-200 border-2 flex flex-col gap-2 bg-white hover:border-[#E5E5E5] shadow-sm',
+                          isSelected && '!border-[#1A3A52] shadow-md bg-[#F8FAFC]',
                         )}
                       >
                         <div className="flex justify-between items-start">
@@ -272,20 +217,24 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
                               {d.nome_cliente || 'Cliente Padrão'}
                             </span>
                             <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mt-0.5">
-                              {d.tipo === 'Aluguel' ? 'Locação' : 'Venda'}
+                              {d.tipo === 'Aluguel' ? 'Locação' : 'Venda'}{' '}
+                              {d.nivel_urgencia ? `• ${d.nivel_urgencia}` : ''}
                             </span>
                           </div>
                           <Badge
                             className={cn(
                               'text-[12px] font-black px-2.5 py-1 shadow-sm border-none shrink-0',
-                              isGreen
-                                ? 'bg-[#10B981] hover:bg-[#059669] text-white'
-                                : 'bg-[#EF4444] hover:bg-[#DC2626] text-white',
+                              badgeColor,
                             )}
                           >
                             {d.score}% Match
                           </Badge>
                         </div>
+                        <Progress
+                          value={d.score}
+                          indicatorClassName={progressColor}
+                          className="h-1.5 mt-1"
+                        />
                         <div className="flex flex-col gap-1 text-[13px] text-slate-700 mt-1">
                           <div className="flex items-center gap-2">
                             <span className="w-4 text-center">💰</span>
@@ -350,9 +299,7 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
                   <Badge
                     className={cn(
                       'text-[18px] font-black px-3 py-1 shadow-sm border-none shrink-0',
-                      selectedDemand.score >= 50
-                        ? 'bg-[#10B981] text-white'
-                        : 'bg-[#EF4444] text-white',
+                      getScoreBadgeColor(selectedDemand.score),
                     )}
                   >
                     {selectedDemand.score}%
@@ -371,7 +318,7 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
                     <div
                       className={cn(
                         'grid grid-cols-[1.5fr_2fr_2fr] gap-3 p-3.5 text-[13px] border-b items-center transition-colors',
-                        selectedDemand.details.valorMatch
+                        selectedDemand.details.valorScore > 0
                           ? 'bg-[#D4EDDA] text-[#155724]'
                           : 'bg-[#F8D7DA] text-[#721C24]',
                       )}
@@ -382,7 +329,7 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
                       </div>
                       <div className="flex items-center justify-between font-bold">
                         R$ {imovel?.preco?.toLocaleString('pt-BR')}
-                        {selectedDemand.details.valorMatch ? (
+                        {selectedDemand.details.valorScore > 0 ? (
                           <CheckCircle2 className="w-4 h-4 text-[#155724]" />
                         ) : (
                           <XCircle className="w-4 h-4 text-[#721C24]" />
@@ -394,7 +341,7 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
                     <div
                       className={cn(
                         'grid grid-cols-[1.5fr_2fr_2fr] gap-3 p-3.5 text-[13px] border-b items-center transition-colors',
-                        selectedDemand.details.bairroMatch
+                        selectedDemand.details.localizacaoScore > 0
                           ? 'bg-[#D4EDDA] text-[#155724]'
                           : 'bg-[#F8D7DA] text-[#721C24]',
                       )}
@@ -410,7 +357,7 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
                         <span className="truncate pr-2" title={imovel?.endereco}>
                           {imovel?.endereco || 'Não informado'}
                         </span>
-                        {selectedDemand.details.bairroMatch ? (
+                        {selectedDemand.details.localizacaoScore > 0 ? (
                           <CheckCircle2 className="w-4 h-4 shrink-0 text-[#155724]" />
                         ) : (
                           <XCircle className="w-4 h-4 shrink-0 text-[#721C24]" />
@@ -422,7 +369,7 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
                     <div
                       className={cn(
                         'grid grid-cols-[1.5fr_2fr_2fr] gap-3 p-3.5 text-[13px] border-b items-center transition-colors',
-                        selectedDemand.details.dormMatch
+                        selectedDemand.details.dormitoriosScore > 0
                           ? 'bg-[#D4EDDA] text-[#155724]'
                           : 'bg-[#F8D7DA] text-[#721C24]',
                       )}
@@ -433,7 +380,7 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
                       </div>
                       <div className="flex items-center justify-between font-bold">
                         {imovel?.dormitorios || '0'}
-                        {selectedDemand.details.dormMatch ? (
+                        {selectedDemand.details.dormitoriosScore > 0 ? (
                           <CheckCircle2 className="w-4 h-4 text-[#155724]" />
                         ) : (
                           <XCircle className="w-4 h-4 text-[#721C24]" />
@@ -445,7 +392,7 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
                     <div
                       className={cn(
                         'grid grid-cols-[1.5fr_2fr_2fr] gap-3 p-3.5 text-[13px] items-center transition-colors',
-                        selectedDemand.details.vagasMatch
+                        selectedDemand.details.vagasScore > 0
                           ? 'bg-[#D4EDDA] text-[#155724]'
                           : 'bg-[#F8D7DA] text-[#721C24]',
                       )}
@@ -456,7 +403,7 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
                       </div>
                       <div className="flex items-center justify-between font-bold">
                         {imovel?.vagas || '0'}
-                        {selectedDemand.details.vagasMatch ? (
+                        {selectedDemand.details.vagasScore > 0 ? (
                           <CheckCircle2 className="w-4 h-4 text-[#155724]" />
                         ) : (
                           <XCircle className="w-4 h-4 text-[#721C24]" />

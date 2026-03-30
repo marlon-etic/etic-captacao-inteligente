@@ -18,6 +18,8 @@ import {
 import { useSupabaseDemands, SupabaseDemand } from '@/hooks/use-supabase-demands'
 import { cn } from '@/lib/utils'
 import { Slider } from '@/components/ui/slider'
+import { calculateMatching, getScoreBadgeColor, getScoreProgressColor } from '@/lib/matching'
+import { Progress } from '@/components/ui/progress'
 import {
   Select,
   SelectContent,
@@ -65,37 +67,54 @@ export function DemandSelector({ propertyData, onSelectDemand }: Props) {
   }, [propertyData])
 
   const filteredDemands = useMemo(() => {
-    return allDemands.filter((d) => {
-      if (d.status_demanda !== 'aberta') return false
+    return allDemands
+      .map((d) => {
+        // Only calculate intelligent score if we have property data context
+        if (propertyData?.price && propertyData?.neighborhood) {
+          const imovelMock = {
+            endereco: propertyData.neighborhood,
+            preco: propertyData.price,
+            dormitorios: propertyData.bedrooms || 0,
+            vagas: propertyData.parking || 0,
+          }
+          const match = calculateMatching(imovelMock, d)
+          return { ...d, score: match.score }
+        }
+        return { ...d, score: 0 }
+      })
+      .filter((d) => {
+        if (d.status_demanda !== 'aberta') return false
+        if (tipo !== 'Todos' && d.tipo !== tipo) return false
 
-      if (tipo !== 'Todos' && d.tipo !== tipo) return false
+        // Se temos os dados do imóvel base, usamos o limiar de 60%
+        if (propertyData && propertyData.price && propertyData.neighborhood) {
+          return d.score >= 60
+        }
 
-      if (bairro && bairro.trim() !== '') {
-        const searchBairro = bairro.toLowerCase()
-        const hasMatch = d.bairros.some((b) => b.toLowerCase().includes(searchBairro))
-        if (!hasMatch) return false
-      }
+        // Senão aplicamos os filtros manuais restritos (fallback navigation)
+        if (bairro && bairro.trim() !== '') {
+          const searchBairro = bairro.toLowerCase()
+          const hasMatch = d.bairros.some((b) => b.toLowerCase().includes(searchBairro))
+          if (!hasMatch) return false
+        }
 
-      if (propertyData?.price) {
-        // If property has price, demand must afford it
-        if (d.valor_maximo > 0 && propertyData.price > d.valor_maximo) return false
-      } else {
-        // If filtering by slider
-        if (d.valor_maximo > 0 && d.valor_maximo < budget[0]) return false
-      }
+        if (budget[0] > 0) {
+          if (d.valor_maximo > 0 && d.valor_maximo < budget[0]) return false
+        }
 
-      if (dormitorios !== 'Todos') {
-        const dormNum = parseInt(dormitorios)
-        if (d.dormitorios && d.dormitorios > dormNum) return false // Demand wants more rooms than property has
-      }
+        if (dormitorios !== 'Todos') {
+          const dormNum = parseInt(dormitorios)
+          if (d.dormitorios && d.dormitorios > dormNum) return false
+        }
 
-      if (vagas !== 'Todos') {
-        const vagasNum = parseInt(vagas)
-        if (d.vagas_estacionamento && d.vagas_estacionamento > vagasNum) return false
-      }
+        if (vagas !== 'Todos') {
+          const vagasNum = parseInt(vagas)
+          if (d.vagas_estacionamento && d.vagas_estacionamento > vagasNum) return false
+        }
 
-      return true
-    })
+        return true
+      })
+      .sort((a, b) => b.score - a.score)
   }, [allDemands, bairro, budget, dormitorios, vagas, tipo, propertyData])
 
   const formatPrice = (val: number) => {
@@ -212,15 +231,37 @@ export function DemandSelector({ propertyData, onSelectDemand }: Props) {
                     )}
                   >
                     <div className="flex justify-between items-start gap-2 mb-1.5">
-                      <span className="font-bold text-[#1A3A52] text-[14px] line-clamp-1">
-                        {d.nome_cliente}
-                      </span>
+                      <div className="flex flex-col gap-0.5">
+                        <span className="font-bold text-[#1A3A52] text-[14px] line-clamp-1">
+                          {d.nome_cliente}
+                        </span>
+                        {d.score > 0 && (
+                          <span
+                            className={cn(
+                              'text-[10px] font-bold uppercase tracking-wider',
+                              getScoreBadgeColor(d.score)
+                                .replace('bg-', 'text-')
+                                .replace('text-white', '')
+                                .replace('hover:', ''),
+                            )}
+                          >
+                            {d.score}% Match
+                          </span>
+                        )}
+                      </div>
                       {capturedCount > 0 && (
                         <Badge className="bg-[#4CAF50]/10 text-[#2E7D32] border-none text-[10px] px-1.5 h-5 shrink-0">
                           {capturedCount} captações
                         </Badge>
                       )}
                     </div>
+                    {d.score > 0 && (
+                      <Progress
+                        value={d.score}
+                        indicatorClassName={getScoreProgressColor(d.score)}
+                        className="h-1 mb-2"
+                      />
+                    )}
                     <div className="flex items-center gap-1.5 text-[12px] text-[#666666] mb-1">
                       <MapPin className="w-3.5 h-3.5" />
                       <span className="truncate">{d.bairros?.join(', ')}</span>
