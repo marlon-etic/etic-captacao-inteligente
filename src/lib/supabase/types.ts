@@ -1504,6 +1504,9 @@ export const Constants = {
 //   Policy "Admin sees audit log" (ALL, PERMISSIVE) roles={authenticated}
 //     USING: ((((current_setting('request.jwt.claims'::text, true))::jsonb -> 'user_metadata'::text) ->> 'role'::text) = ANY (ARRAY['admin'::text, 'gestor'::text]))
 // Table: demandas_locacao
+//   Policy "Admin JWT full access demandas_locacao" (ALL, PERMISSIVE) roles={authenticated}
+//     USING: ((((auth.jwt() -> 'user_metadata'::text) ->> 'role'::text) = 'admin'::text) OR (((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text) OR (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND ((users.role)::text = ANY (ARRAY['admin'::text, 'gestor'::text]))))))
+//     WITH CHECK: ((((auth.jwt() -> 'user_metadata'::text) ->> 'role'::text) = 'admin'::text) OR (((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text) OR (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND ((users.role)::text = ANY (ARRAY['admin'::text, 'gestor'::text]))))))
 //   Policy "Admin and Gestor full access Locacao" (ALL, PERMISSIVE) roles={authenticated}
 //     USING: (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND ((users.role)::text = ANY (ARRAY['admin'::text, 'gestor'::text])))))
 //   Policy "Admin sees all locacao" (ALL, PERMISSIVE) roles={public}
@@ -1519,6 +1522,9 @@ export const Constants = {
 //   Policy "SDRs manage own locacao" (ALL, PERMISSIVE) roles={public}
 //     USING: ((sdr_id = auth.uid()) AND (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND (users.role = 'sdr'::user_role)))))
 // Table: demandas_vendas
+//   Policy "Admin JWT full access demandas_vendas" (ALL, PERMISSIVE) roles={authenticated}
+//     USING: ((((auth.jwt() -> 'user_metadata'::text) ->> 'role'::text) = 'admin'::text) OR (((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text) OR (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND ((users.role)::text = ANY (ARRAY['admin'::text, 'gestor'::text]))))))
+//     WITH CHECK: ((((auth.jwt() -> 'user_metadata'::text) ->> 'role'::text) = 'admin'::text) OR (((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text) OR (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND ((users.role)::text = ANY (ARRAY['admin'::text, 'gestor'::text]))))))
 //   Policy "Admin and Gestor full access Vendas" (ALL, PERMISSIVE) roles={authenticated}
 //     USING: (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND ((users.role)::text = ANY (ARRAY['admin'::text, 'gestor'::text])))))
 //   Policy "Admin sees all vendas" (ALL, PERMISSIVE) roles={public}
@@ -1542,6 +1548,9 @@ export const Constants = {
 //     USING: true
 //     WITH CHECK: true
 // Table: imoveis_captados
+//   Policy "Admin JWT full access imoveis_captados" (ALL, PERMISSIVE) roles={authenticated}
+//     USING: ((((auth.jwt() -> 'user_metadata'::text) ->> 'role'::text) = 'admin'::text) OR (((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text) OR (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND ((users.role)::text = ANY (ARRAY['admin'::text, 'gestor'::text]))))))
+//     WITH CHECK: ((((auth.jwt() -> 'user_metadata'::text) ->> 'role'::text) = 'admin'::text) OR (((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text) OR (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND ((users.role)::text = ANY (ARRAY['admin'::text, 'gestor'::text]))))))
 //   Policy "Admin can delete captures" (DELETE, PERMISSIVE) roles={authenticated}
 //     USING: (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND (users.role = 'admin'::user_role))))
 //   Policy "Authenticated users can read all captures" (SELECT, PERMISSIVE) roles={authenticated}
@@ -1573,6 +1582,9 @@ export const Constants = {
 //   Policy "Authenticated users can read pontuacao" (SELECT, PERMISSIVE) roles={authenticated}
 //     USING: true
 // Table: prazos_captacao
+//   Policy "Admin JWT full access prazos_captacao" (ALL, PERMISSIVE) roles={authenticated}
+//     USING: ((((auth.jwt() -> 'user_metadata'::text) ->> 'role'::text) = 'admin'::text) OR (((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text) OR (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND ((users.role)::text = ANY (ARRAY['admin'::text, 'gestor'::text]))))))
+//     WITH CHECK: ((((auth.jwt() -> 'user_metadata'::text) ->> 'role'::text) = 'admin'::text) OR (((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text) OR (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND ((users.role)::text = ANY (ARRAY['admin'::text, 'gestor'::text]))))))
 //   Policy "All users can read prazos" (SELECT, PERMISSIVE) roles={public}
 //     USING: true
 //   Policy "Captadores can insert prazos" (INSERT, PERMISSIVE) roles={public}
@@ -1588,6 +1600,9 @@ export const Constants = {
 //   Policy "Users can view own realtime logs" (SELECT, PERMISSIVE) roles={authenticated}
 //     USING: (auth.uid() = user_id)
 // Table: respostas_captador
+//   Policy "Admin JWT full access respostas_captador" (ALL, PERMISSIVE) roles={authenticated}
+//     USING: ((((auth.jwt() -> 'user_metadata'::text) ->> 'role'::text) = 'admin'::text) OR (((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text) OR (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND ((users.role)::text = ANY (ARRAY['admin'::text, 'gestor'::text]))))))
+//     WITH CHECK: ((((auth.jwt() -> 'user_metadata'::text) ->> 'role'::text) = 'admin'::text) OR (((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text) OR (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND ((users.role)::text = ANY (ARRAY['admin'::text, 'gestor'::text]))))))
 //   Policy "Admin sees all respostas" (ALL, PERMISSIVE) roles={public}
 //     USING: (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND (users.role = 'admin'::user_role))))
 //   Policy "Authenticated read respostas" (SELECT, PERMISSIVE) roles={authenticated}
