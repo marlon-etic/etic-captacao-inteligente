@@ -158,8 +158,10 @@ export function AddPropertyModal({ isOpen, onClose, onSuccess }: Props) {
   return (
     <Dialog open={isOpen} onOpenChange={(val) => !val && onClose()}>
       <DialogContent
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onInteractOutside={(e) => e.preventDefault()}
         className={cn(
-          'w-full p-0 flex flex-col rounded-[16px] bg-[#FFFFFF] border-0 shadow-2xl overflow-hidden z-[110] transition-all duration-300',
+          'w-full p-0 flex flex-col rounded-[16px] bg-[#FFFFFF] border-0 shadow-2xl overflow-hidden transition-all duration-300 z-[1050] pointer-events-auto',
           step === 1 ? 'max-w-xl' : 'max-w-5xl',
         )}
       >
@@ -284,12 +286,18 @@ export function AddPropertyModal({ isOpen, onClose, onSuccess }: Props) {
             </ScrollArea>
 
             <div className="p-4 md:p-6 border-t border-[#E5E5E5] bg-[#F8FAFC] shrink-0 flex justify-end gap-3">
-              <Button variant="outline" onClick={onClose} className="min-h-[48px] font-bold">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onClose}
+                className="min-h-[48px] font-bold pointer-events-auto"
+              >
                 Cancelar
               </Button>
               <Button
+                type="button"
                 onClick={handleNextStep}
-                className="min-h-[48px] bg-[#1A3A52] text-white font-black px-6"
+                className="min-h-[48px] bg-[#1A3A52] text-white font-black px-6 pointer-events-auto"
               >
                 Próximo: Vincular Demanda <LinkIcon className="w-4 h-4 ml-2" />
               </Button>
@@ -319,25 +327,28 @@ export function AddPropertyModal({ isOpen, onClose, onSuccess }: Props) {
 
             <div className="p-4 md:p-6 border-t border-[#E5E5E5] bg-[#F8FAFC] shrink-0 flex flex-col sm:flex-row justify-between gap-3">
               <Button
+                type="button"
                 variant="outline"
                 onClick={() => setStep(1)}
-                className="min-h-[48px] font-bold order-2 sm:order-1"
+                className="min-h-[48px] font-bold order-2 sm:order-1 pointer-events-auto"
               >
                 Voltar
               </Button>
               <div className="flex gap-2 order-1 sm:order-2 flex-col sm:flex-row">
                 <Button
+                  type="button"
                   variant="outline"
                   onClick={() => handleSubmit(true)}
                   disabled={isSubmitting || demandId !== null}
-                  className="min-h-[48px] font-bold text-[#666666] hover:bg-[#F5F5F5]"
+                  className="min-h-[48px] font-bold text-[#666666] hover:bg-[#F5F5F5] pointer-events-auto"
                 >
                   <Unlink className="w-4 h-4 mr-2" /> Salvar Sem Vincular
                 </Button>
                 <Button
+                  type="button"
                   onClick={() => handleSubmit(false)}
                   disabled={isSubmitting || demandId === null}
-                  className="min-h-[48px] bg-[#10B981] hover:bg-[#059669] text-white font-black px-6 shadow-[0_4px_12px_rgba(16,185,129,0.3)]"
+                  className="min-h-[48px] bg-[#10B981] hover:bg-[#059669] text-white font-black px-6 shadow-[0_4px_12px_rgba(16,185,129,0.3)] pointer-events-auto"
                 >
                   {isSubmitting ? (
                     'Salvando...'

@@ -116,7 +116,11 @@ export function CapturePropertyModal({ demand, isOpen, onClose, onSuccess }: Pro
 
   return (
     <Dialog open={isOpen} onOpenChange={(val) => !val && onClose()}>
-      <DialogContent className="w-full max-w-[calc(100%-32px)] md:max-w-xl p-0 flex flex-col rounded-[16px] bg-[#FFFFFF] border-0 shadow-2xl overflow-hidden">
+      <DialogContent
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onInteractOutside={(e) => e.preventDefault()}
+        className="w-full max-w-[calc(100%-32px)] md:max-w-xl p-0 flex flex-col rounded-[16px] bg-[#FFFFFF] border-0 shadow-2xl overflow-hidden z-[1050] pointer-events-auto"
+      >
         <DialogHeader className="p-4 md:p-6 border-b border-[#E5E5E5] shrink-0 bg-[#1A3A52] text-white relative">
           <DialogTitle className="text-xl font-black flex items-center gap-2 pr-8">
             Capturar Imóvel
@@ -227,17 +231,19 @@ export function CapturePropertyModal({ demand, isOpen, onClose, onSuccess }: Pro
 
         <div className="p-4 md:p-6 border-t border-[#E5E5E5] bg-[#F8FAFC] shrink-0 flex justify-end gap-3">
           <Button
+            type="button"
             variant="outline"
             onClick={onClose}
             disabled={isSubmitting}
-            className="min-h-[48px] font-bold"
+            className="min-h-[48px] font-bold pointer-events-auto"
           >
             Cancelar
           </Button>
           <Button
+            type="button"
             onClick={handleSubmit}
             disabled={isSubmitting}
-            className="min-h-[48px] bg-[#10B981] hover:bg-[#059669] text-white font-black px-6"
+            className="min-h-[48px] bg-[#10B981] hover:bg-[#059669] text-white font-black px-6 pointer-events-auto"
           >
             {isSubmitting ? (
               'Salvando...'
