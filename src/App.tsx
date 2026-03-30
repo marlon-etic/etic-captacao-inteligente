@@ -139,7 +139,9 @@ const AppContent = () => {
         reasonStr.includes('Failed to fetch') ||
         reasonStr.toLowerCase().includes('refresh token') ||
         reasonMsg.toLowerCase().includes('refresh token') ||
-        reasonStr.includes('AuthApiError')
+        reasonStr.includes('AuthApiError') ||
+        reasonStr.includes('stole it') ||
+        reasonMsg.includes('stole it')
       ) {
         console.warn(
           '[System] Suppressed network/auth fetch error from background task:',
