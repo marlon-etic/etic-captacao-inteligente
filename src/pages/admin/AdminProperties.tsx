@@ -118,6 +118,7 @@ export default function AdminProperties() {
         { event: '*', schema: 'public', table: 'imoveis_captados' },
         (payload) => {
           if (payload.eventType === 'DELETE') {
+            console.log('🔴 [ADMIN REALTIME] DELETE recebido:', payload)
             setProperties((prev) => prev.filter((p) => p.id !== payload.old.id))
             setSelectedIds((prev) => prev.filter((id) => id !== payload.old.id))
           } else {

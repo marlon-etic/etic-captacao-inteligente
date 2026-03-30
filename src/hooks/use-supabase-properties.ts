@@ -80,38 +80,33 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
         const { data: userData } = await supabase.auth.getUser()
         if (!userData?.user) return
 
-        // 🔍 DIAGNÓSTICO RAIZ: Buscando direto do Supabase PRIMEIRO para comparar
-        const { data: directSupabaseData, error: supabaseError } = await supabase
-          .from('imoveis_captados')
-          .select('id')
-
         console.group('🔍 [DIAGNÓSTICO] Origem de Dados de Imóveis')
-        console.log('1. Real Supabase Count:', directSupabaseData?.length || 0)
-        if (supabaseError) console.error('Erro na query direta:', supabaseError)
 
-        const data = await fetchWithResilience(`properties_${filterType || 'all'}`, async () => {
-          const { data: resData, error } = await supabase
-            .from('imoveis_captados')
-            .select('*, demanda_locacao:demandas_locacao(*), demanda_venda:demandas_vendas(*)')
-            .order('created_at', { ascending: false })
-          if (error) throw error
-          console.log('2. Query principal retornou:', resData?.length || 0, 'registros')
-          return resData
-        })
+        let finalData: any[] = []
 
-        console.log('3. Data após fetchWithResilience:', data?.length || 0, 'registros')
+        // 1. Tentar buscar dados diretos do Supabase primeiro (SEM CACHE) para evitar "dados fantasmas" do fetchWithResilience
+        const { data: directData, error: directError } = await supabase
+          .from('imoveis_captados')
+          .select('*, demanda_locacao:demandas_locacao(*), demanda_venda:demandas_vendas(*)')
+          .order('created_at', { ascending: false })
 
-        // 🚨 PREVENÇÃO DE DADOS FANTASMAS 🚨
-        // Se o Supabase estiver vazio, MAS fetchWithResilience retornar dados (fallback hardcoded/mock),
-        // nós FORÇAMOS array vazio para limpar a UI definitivamente.
-        let finalData = data || []
-        if (directSupabaseData && directSupabaseData.length === 0) {
-          if (finalData.length > 0) {
-            console.warn(
-              '⚠️ ALERTA: fetchWithResilience retornou dados FANTASMAS ou MOCK! Forçando array vazio.',
-            )
-          }
-          finalData = []
+        if (!directError && directData) {
+          console.log('1. Direct Supabase Fetch OK. Count:', directData.length)
+          finalData = directData
+        } else {
+          console.log(
+            '1. Direct Supabase Fetch Falhou, usando fallback com fetchWithResilience. Erro:',
+            directError,
+          )
+          const data = await fetchWithResilience(`properties_${filterType || 'all'}`, async () => {
+            const { data: resData, error } = await supabase
+              .from('imoveis_captados')
+              .select('*, demanda_locacao:demandas_locacao(*), demanda_venda:demandas_vendas(*)')
+              .order('created_at', { ascending: false })
+            if (error) throw error
+            return resData
+          })
+          finalData = data || []
         }
         console.groupEnd()
 
@@ -132,15 +127,27 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
   const fetchSingleProperty = useCallback(
     async (id: string) => {
       try {
-        const data = await fetchWithResilience(`property_${id}`, async () => {
-          const { data: resData, error } = await supabase
-            .from('imoveis_captados')
-            .select('*, demanda_locacao:demandas_locacao(*), demanda_venda:demandas_vendas(*)')
-            .eq('id', id)
-            .single()
-          if (error) throw error
-          return resData
-        })
+        let data: any = null
+        // Bypassing cache to get fresh data
+        const { data: resData, error } = await supabase
+          .from('imoveis_captados')
+          .select('*, demanda_locacao:demandas_locacao(*), demanda_venda:demandas_vendas(*)')
+          .eq('id', id)
+          .single()
+
+        if (!error && resData) {
+          data = resData
+        } else {
+          data = await fetchWithResilience(`property_${id}`, async () => {
+            const { data: fallbackData, error: fallbackError } = await supabase
+              .from('imoveis_captados')
+              .select('*, demanda_locacao:demandas_locacao(*), demanda_venda:demandas_vendas(*)')
+              .eq('id', id)
+              .single()
+            if (fallbackError) throw fallbackError
+            return fallbackData
+          })
+        }
 
         if (data) {
           const formatted = formatProperty(data)
@@ -235,8 +242,13 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
           'postgres_changes',
           { event: 'DELETE', schema: 'public', table: 'imoveis_captados' },
           (payload) => {
+            console.log('🔴 [REALTIME] DELETE recebido na tabela imoveis_captados:', payload)
             setSyncing(true)
-            setProperties((prev) => prev.filter((p) => p.id !== payload.old.id))
+            setProperties((prev) => {
+              const updated = prev.filter((p) => p.id !== payload.old.id)
+              console.log(`Removido imóvel ${payload.old.id}. Total restante: ${updated.length}`)
+              return updated
+            })
             setTimeout(() => setSyncing(false), 500)
           },
         )
