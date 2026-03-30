@@ -989,6 +989,7 @@ export type Database = {
         Returns: Json
       }
       fn_diagnose_oauth_setup: { Args: never; Returns: Json }
+      fn_hard_reset_imoveis: { Args: never; Returns: undefined }
       fn_logar_falhas_api: {
         Args: {
           p_api: string
@@ -2126,6 +2127,33 @@ export const Constants = {
 //     );
 //   
 //     RETURN v_result;
+//   END;
+//   $function$
+//   
+// FUNCTION fn_hard_reset_imoveis()
+//   CREATE OR REPLACE FUNCTION public.fn_hard_reset_imoveis()
+//    RETURNS void
+//    LANGUAGE plpgsql
+//    SECURITY DEFINER
+//   AS $function$
+//   DECLARE
+//       v_is_admin boolean;
+//   BEGIN
+//       -- Verifica se o usuário atual tem permissão de administrador ou gestor
+//       SELECT EXISTS (
+//           SELECT 1 FROM public.users 
+//           WHERE id = auth.uid() AND role IN ('admin', 'gestor')
+//       ) INTO v_is_admin;
+//   
+//       IF NOT v_is_admin THEN
+//           RAISE EXCEPTION 'Acesso negado. Apenas administradores podem executar o reset total.';
+//       END IF;
+//   
+//       -- Deleta todos os registros de imoveis_captados (sem condição WHERE)
+//       DELETE FROM public.imoveis_captados;
+//       
+//       -- Limpa a tabela de cache para evitar resíduos de chamadas a APIs de terceiros
+//       DELETE FROM public.vistasoft_cache;
 //   END;
 //   $function$
 //   
