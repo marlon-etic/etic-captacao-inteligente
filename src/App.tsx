@@ -34,6 +34,7 @@ import FunctionalTester from '@/pages/admin/FunctionalTester'
 import GoLiveTester from '@/pages/admin/GoLiveTester'
 import HealthCheckTester from '@/pages/admin/HealthCheckTester'
 import DatabaseReset from '@/pages/admin/DatabaseReset'
+import AdminProperties from '@/pages/admin/AdminProperties'
 import PontuacaoPage from '@/pages/dashboard/PontuacaoPage'
 import HistoricoPage from '@/pages/dashboard/HistoricoPage'
 import PerdidosPage from '@/pages/dashboard/PerdidosPage'
@@ -191,6 +192,10 @@ const AppContent = () => {
           <Route path="/perfil" element={<Navigate to="/app/perfil" replace />} />
           <Route path="/notificacoes" element={<Navigate to="/app/notificacoes" replace />} />
           <Route path="/ajuda" element={<Navigate to="/app/ajuda" replace />} />
+          <Route
+            path="/admin/properties"
+            element={<Navigate to="/app/admin/properties" replace />}
+          />
 
           <Route path="/app" element={<Layout />}>
             <Route index element={<DashboardRedirect />} />
@@ -215,6 +220,7 @@ const AppContent = () => {
             <Route path="go-live-tester" element={<GoLiveTester />} />
             <Route path="health-check" element={<HealthCheckTester />} />
             <Route path="database-reset" element={<DatabaseReset />} />
+            <Route path="admin/properties" element={<AdminProperties />} />
             <Route path="pontuacao" element={<PontuacaoPage />} />
             <Route path="historico" element={<HistoricoPage />} />
             <Route path="perdidos" element={<PerdidosPage />} />
