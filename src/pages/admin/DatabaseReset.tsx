@@ -171,11 +171,12 @@ export default function DatabaseReset() {
       }
 
       // 3. Limpar localStorage e sessionStorage completamente (Preservar apenas Autenticação)
+      const preserveKeys = ['sb-', 'supabase.auth.token']
       const localKeysToRemove = []
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i)
         // Remove tudo, menos chaves essenciais de autenticação do Supabase
-        if (key && !key.startsWith('sb-')) {
+        if (key && !preserveKeys.some((pk) => key.startsWith(pk))) {
           localKeysToRemove.push(key)
         }
       }
@@ -184,19 +185,32 @@ export default function DatabaseReset() {
       const sessionKeysToRemove = []
       for (let i = 0; i < sessionStorage.length; i++) {
         const key = sessionStorage.key(i)
-        if (key && !key.startsWith('sb-')) {
+        if (key && !preserveKeys.some((pk) => key.startsWith(pk))) {
           sessionKeysToRemove.push(key)
         }
       }
       sessionKeysToRemove.forEach((k) => sessionStorage.removeItem(k))
 
-      // Limpeza de IndexedDB para remover qualquer cache de plugins/PWA
-      if (window.indexedDB && typeof window.indexedDB.databases === 'function') {
+      // Limpeza de IndexedDB para remover qualquer cache de plugins/PWA ou persistência (ex: idb-keyval, localforage)
+      if (window.indexedDB) {
         try {
-          const dbs = await window.indexedDB.databases()
-          dbs.forEach((db) => {
-            if (db.name) window.indexedDB.deleteDatabase(db.name)
-          })
+          if (typeof window.indexedDB.databases === 'function') {
+            const dbs = await window.indexedDB.databases()
+            dbs.forEach((db) => {
+              if (db.name) window.indexedDB.deleteDatabase(db.name)
+            })
+          } else {
+            // Fallback para nomes de DBs comuns se databases() não for suportado
+            const commonDbs = [
+              'localforage',
+              'workbox-expiration',
+              'workbox-routing',
+              'keyval-store',
+              'supabase-auth',
+              'firebaseLocalStorageDb',
+            ]
+            commonDbs.forEach((name) => window.indexedDB.deleteDatabase(name))
+          }
           console.log('[DEBUG] IndexedDB limpo com sucesso')
         } catch (err) {
           console.warn('Erro ao limpar IndexedDB', err)
@@ -251,7 +265,8 @@ export default function DatabaseReset() {
 
       // 5. Forçar reload total da página para limpar o estado em memória (Zustand, React Query, etc)
       setTimeout(() => {
-        window.location.reload()
+        // Redireciona para a raiz para evitar carregar a mesma página de cache e forçar hard reload
+        window.location.href = window.location.pathname + '?reset=' + Date.now()
       }, 1500)
     } catch (e: any) {
       toast({ title: 'Erro no Hard Reset', description: e.message, variant: 'destructive' })

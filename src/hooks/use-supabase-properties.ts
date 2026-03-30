@@ -105,21 +105,21 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
         // Se o Supabase estiver vazio, MAS fetchWithResilience retornar dados (fallback hardcoded/mock),
         // nós FORÇAMOS array vazio para limpar a UI definitivamente.
         let finalData = data || []
-        if (directSupabaseData && directSupabaseData.length === 0 && finalData.length > 0) {
-          console.warn(
-            '⚠️ ALERTA: fetchWithResilience retornou dados FANTASMAS ou MOCK! Forçando array vazio.',
-          )
+        if (directSupabaseData && directSupabaseData.length === 0) {
+          if (finalData.length > 0) {
+            console.warn(
+              '⚠️ ALERTA: fetchWithResilience retornou dados FANTASMAS ou MOCK! Forçando array vazio.',
+            )
+          }
           finalData = []
         }
         console.groupEnd()
 
-        if (finalData) {
-          let formatted = finalData.map(formatProperty)
-          if (filterType) {
-            formatted = formatted.filter((f: any) => f.tipo === filterType || f.tipo === 'Ambos')
-          }
-          setProperties(formatted)
+        let formatted = finalData.map(formatProperty)
+        if (filterType) {
+          formatted = formatted.filter((f: any) => f.tipo === filterType || f.tipo === 'Ambos')
         }
+        setProperties(formatted)
       } catch (err: any) {
         console.error('[useSupabaseProperties]', err)
       } finally {
