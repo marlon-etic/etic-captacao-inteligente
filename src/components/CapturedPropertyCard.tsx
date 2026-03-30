@@ -133,8 +133,8 @@ export function CapturedPropertyCard({
       : 'bg-[#3B82F6] text-white'
   const badgeIcon = isClosed ? '🟢' : isVisita ? '🟠' : '🔵'
 
-  const propType = property.propertyType || demand?.type || 'Venda'
-  const isAluguel = propType === 'Aluguel'
+  const propType = property.tipo || property.propertyType || demand?.type || 'Venda'
+  const isAluguel = propType === 'Aluguel' || propType?.toLowerCase() === 'aluguel'
 
   const isCaptador = currentUser?.role === 'captador'
   const isSDRCorretorAdmin =
@@ -170,7 +170,12 @@ export function CapturedPropertyCard({
 
         {/* Banner */}
         <div className="flex items-center gap-2 pointer-events-auto">
-          <Badge className="font-bold text-[10px] text-white px-2 py-1 bg-[#1A3A52] shadow-sm">
+          <Badge
+            className={cn(
+              'font-bold text-[10px] text-white px-2 py-1 shadow-sm tracking-widest',
+              isAluguel ? 'bg-[#3B82F6] hover:bg-[#2563EB]' : 'bg-[#EF4444] hover:bg-[#DC2626]',
+            )}
+          >
             {isAluguel ? '🏠 ALUGUEL' : '🏢 VENDA'}
           </Badge>
         </div>

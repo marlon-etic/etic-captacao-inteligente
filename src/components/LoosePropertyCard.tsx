@@ -84,6 +84,9 @@ export function LoosePropertyCard({
     else if (onClaim) onClaim(property)
   }
 
+  const propType = property.tipo || property.propertyType || 'Venda'
+  const isAluguel = propType === 'Aluguel' || propType?.toLowerCase() === 'aluguel'
+
   const captureDateStr = property.capturedAt
     ? new Date(property.capturedAt).toLocaleDateString('pt-BR')
     : (() => {
@@ -114,8 +117,13 @@ export function LoosePropertyCard({
             </Badge>
           </div>
           <div className="absolute bottom-3 left-3 pointer-events-auto z-10">
-            <Badge className="font-bold text-[10px] text-white px-2 py-1 bg-[#1A3A52] shadow-sm uppercase tracking-widest">
-              {property.propertyType === 'Aluguel' ? '🏠 ALUGUEL' : '🏢 VENDA'}
+            <Badge
+              className={cn(
+                'font-bold text-[10px] text-white px-2 py-1 shadow-sm uppercase tracking-widest',
+                isAluguel ? 'bg-[#3B82F6] hover:bg-[#2563EB]' : 'bg-[#EF4444] hover:bg-[#DC2626]',
+              )}
+            >
+              {isAluguel ? '🏠 ALUGUEL' : '🏢 VENDA'}
             </Badge>
           </div>
         </div>

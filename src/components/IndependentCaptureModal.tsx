@@ -38,6 +38,7 @@ const indepSchema = z
   .object({
     tipoVinculacao: z.enum(['vinculado', 'solto'], { required_error: 'Selecione uma opção' }),
     demandId: z.string().optional(),
+    tipoImovel: z.enum(['Aluguel', 'Venda']).optional(),
     neighborhood: z.string().min(1, 'Este bairro não está na lista de atuação da Étic Imóveis'),
     neighborhoodOther: z.string().max(50, 'Máximo 50 caracteres').optional(),
     code: z.string().min(1, 'Obrigatório').max(20, 'Máximo 20 caracteres'),
@@ -54,6 +55,18 @@ const indepSchema = z
     {
       message: 'Selecione uma demanda',
       path: ['demandId'],
+    },
+  )
+  .refine(
+    (data) => {
+      if (data.tipoVinculacao === 'solto') {
+        return !!data.tipoImovel
+      }
+      return true
+    },
+    {
+      message: 'Selecione o tipo do imóvel',
+      path: ['tipoImovel'],
     },
   )
   .refine(
@@ -91,6 +104,7 @@ export function IndependentCaptureModal({
     defaultValues: {
       tipoVinculacao: undefined as any,
       demandId: '',
+      tipoImovel: undefined,
       neighborhood: '',
       neighborhoodOther: '',
       code: '',
@@ -108,10 +122,14 @@ export function IndependentCaptureModal({
     const bairro_tipo = data.neighborhood === 'OUTROS' ? 'outro' : 'listado'
 
     if (data.tipoVinculacao === 'vinculado') {
+      const selectedDemand = openDemands.find((d) => d.id === data.demandId)
+      const inferredType = selectedDemand?.type === 'Aluguel' ? 'Aluguel' : 'Venda'
       const res = submitDemandResponse(data.demandId, 'encontrei', {
         ...data,
         neighborhood: finalNeighborhood,
         bairro_tipo,
+        propertyType: inferredType,
+        tipo: inferredType,
       })
       if (!res.success) {
         toast({ title: 'Erro', description: res.message, variant: 'destructive' })
@@ -122,6 +140,8 @@ export function IndependentCaptureModal({
         ...data,
         neighborhood: finalNeighborhood,
         bairro_tipo,
+        propertyType: data.tipoImovel,
+        tipo: data.tipoImovel,
       })
       if (!res.success) {
         toast({ title: 'Erro', description: res.message, variant: 'destructive' })
@@ -204,6 +224,30 @@ export function IndependentCaptureModal({
                             </SelectItem>
                           ))
                         )}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
+            {tipoVinculacao === 'solto' && (
+              <FormField
+                control={form.control}
+                name="tipoImovel"
+                render={({ field }) => (
+                  <FormItem className="animate-in fade-in slide-in-from-top-2">
+                    <FormLabel>Tipo de Imóvel</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Venda ou Aluguel?" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="Venda">🏢 Venda</SelectItem>
+                        <SelectItem value="Aluguel">🏠 Aluguel</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />

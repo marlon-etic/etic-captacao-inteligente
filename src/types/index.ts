@@ -142,6 +142,7 @@ export interface CapturedProperty {
   captador_id?: string
   captador_name?: string
   propertyType?: 'Venda' | 'Aluguel'
+  tipo?: string
   bedrooms?: number
   bathrooms?: number
   parkingSpots?: number

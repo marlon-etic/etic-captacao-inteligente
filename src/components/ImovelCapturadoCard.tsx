@@ -29,6 +29,9 @@ export function ImovelCapturadoCard({
     return <Badge className="bg-[#3B82F6] text-white">🔵 Captado</Badge>
   }
 
+  const propType = property.tipo || property.propertyType || demand?.type || 'Venda'
+  const isAluguel = propType === 'Aluguel' || propType?.toLowerCase() === 'aluguel'
+
   const publicUrl = property.codigo_imovel ? getPropertyPublicUrl(property.codigo_imovel) : null
 
   return (
@@ -38,6 +41,14 @@ export function ImovelCapturadoCard({
           <span className="font-black text-[#1A3A52] text-[15px] truncate">
             {property.codigo_imovel || 'Sem código'}
           </span>
+          <Badge
+            className={cn(
+              'font-bold text-[10px] text-white px-2 py-0.5 shadow-sm uppercase tracking-widest',
+              isAluguel ? 'bg-[#3B82F6] hover:bg-[#2563EB]' : 'bg-[#EF4444] hover:bg-[#DC2626]',
+            )}
+          >
+            {isAluguel ? 'ALUGUEL' : 'VENDA'}
+          </Badge>
           {getStatusBadge()}
           {publicUrl && (
             <a

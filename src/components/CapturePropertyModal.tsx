@@ -79,6 +79,7 @@ export function CapturePropertyModal({ demand, isOpen, onClose, onSuccess }: Pro
         captador_id: currentUser?.id,
         demanda_locacao_id: demand.tipo === 'Aluguel' ? demand.id : null,
         demanda_venda_id: demand.tipo === 'Venda' ? demand.id : null,
+        tipo: demand.tipo === 'Aluguel' ? 'Aluguel' : 'Venda',
         localizacao_texto: extraInfo,
         dormitorios: bedrooms ? Number(bedrooms) : null,
         vagas: parking ? Number(parking) : null,
