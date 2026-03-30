@@ -2149,13 +2149,16 @@ export const Constants = {
 //           RAISE EXCEPTION 'Acesso negado. Apenas administradores podem executar o reset total.';
 //       END IF;
 //   
-//       -- Deleta todos os registros de imoveis_captados (sem condição WHERE)
+//       -- Deleta todos os registros relacionados a imóveis
 //       DELETE FROM public.imoveis_captados;
-//       
-//       -- Limpa a tabela de cache para evitar resíduos de chamadas a APIs de terceiros
 //       DELETE FROM public.vistasoft_cache;
+//       DELETE FROM public.property_performance;
+//       DELETE FROM public.tenant_proposals;
 //   
-//       -- Tentar deletar de tabelas virtuais/reais caso existam no schema do projeto (ignorar erros se não existirem)
+//       -- Limpa pontuação relacionada a imóveis genéricos (sem demanda)
+//       DELETE FROM public.pontuacao_captador WHERE tipo_pontuacao = 'captura_sem_demanda';
+//   
+//       -- Deleta de tabelas virtuais/futuras se existirem
 //       BEGIN
 //           EXECUTE 'DELETE FROM public.visitas_agendadas';
 //       EXCEPTION WHEN undefined_table THEN NULL;
