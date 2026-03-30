@@ -258,57 +258,67 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
                         key={d.id}
                         onClick={() => setSelectedDemandId(d.id)}
                         className={cn(
-                          'p-3 rounded-[10px] cursor-pointer transition-all duration-200 border',
+                          'p-4 rounded-[12px] cursor-pointer transition-all duration-200 border-2 flex flex-col gap-2',
                           isGreen
-                            ? 'bg-green-100 border-green-200 hover:bg-green-200'
-                            : 'bg-red-100 border-red-200 hover:bg-red-200',
-                          isSelected && 'ring-2 ring-[#1A3A52] shadow-md scale-[1.02]',
+                            ? 'bg-green-50 border-transparent hover:border-green-200'
+                            : 'bg-red-50 border-transparent hover:border-red-200',
+                          isSelected &&
+                            (isGreen ? '!border-green-500 shadow-md' : '!border-red-500 shadow-md'),
                         )}
                       >
-                        <div className="flex justify-between items-start mb-1.5">
-                          <div className="flex items-center gap-2 pr-2">
-                            <span className="font-bold text-[14px] text-[#1A3A52] line-clamp-1">
+                        <div className="flex justify-between items-start">
+                          <div className="flex flex-col pr-2">
+                            <span className="font-bold text-[15px] text-[#1A3A52] line-clamp-1 leading-tight">
                               {d.nome_cliente || 'Cliente Padrão'}
                             </span>
-                            <Badge
-                              variant="outline"
-                              className="text-[9px] px-1.5 py-0 uppercase bg-white/50 text-[#1A3A52] border-[#1A3A52]/20"
-                            >
+                            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mt-0.5">
                               {d.tipo === 'Aluguel' ? 'Locação' : 'Venda'}
-                            </Badge>
+                            </span>
                           </div>
                           <Badge
                             className={cn(
-                              'text-[11px] font-black px-2 py-0.5 shadow-sm border-none shrink-0',
-                              isGreen ? 'bg-[#10B981] text-white' : 'bg-[#EF4444] text-white',
+                              'text-[12px] font-black px-2.5 py-1 shadow-sm border-none shrink-0',
+                              isGreen
+                                ? 'bg-[#10B981] hover:bg-[#059669] text-white'
+                                : 'bg-[#EF4444] hover:bg-[#DC2626] text-white',
                             )}
                           >
                             {d.score}% Match
                           </Badge>
                         </div>
-                        <div className="text-[12px] text-[#666666] leading-relaxed space-y-0.5">
-                          <p className="flex items-center gap-1">
-                            <span className="w-4">📍</span>{' '}
-                            <span className="truncate text-black font-medium">
+                        <div className="flex flex-col gap-1 text-[13px] text-slate-700 mt-1">
+                          <div className="flex items-center gap-2">
+                            <span className="w-4 text-center">💰</span>
+                            <span className="font-medium text-slate-900">
+                              {d.valor_minimo > 0
+                                ? `R$ ${d.valor_minimo.toLocaleString('pt-BR')} - `
+                                : ''}
+                              R$ {d.valor_maximo?.toLocaleString('pt-BR') || 'Indiferente'}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="w-4 text-center">📍</span>
+                            <span
+                              className="font-medium text-slate-900 truncate"
+                              title={d.bairros?.join(', ')}
+                            >
                               {d.bairros?.join(', ') || 'Indiferente'}
                             </span>
-                          </p>
-                          <p className="flex items-center gap-1">
-                            <span className="w-4">💰</span>{' '}
-                            <span className="text-black font-medium">
-                              Até R$ {d.valor_maximo?.toLocaleString('pt-BR')}
-                            </span>
-                          </p>
-                          <p className="flex items-center gap-1">
-                            <span className="w-4">🛏️</span>{' '}
-                            <span className="text-black font-medium">
-                              {d.dormitorios || 'Indif.'} dorms
-                            </span>{' '}
-                            • 🚗{' '}
-                            <span className="text-black font-medium">
-                              {d.vagas_estacionamento || 'Indif.'} vagas
-                            </span>
-                          </p>
+                          </div>
+                          <div className="flex items-center gap-4 mt-0.5">
+                            <div className="flex items-center gap-1">
+                              <span className="w-4 text-center">🛏️</span>
+                              <span className="font-medium text-slate-900">
+                                {d.dormitorios || 'Indif.'} dorm
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <span className="w-4 text-center">🚗</span>
+                              <span className="font-medium text-slate-900">
+                                {d.vagas_estacionamento || 'Indif.'} vagas
+                              </span>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     )
