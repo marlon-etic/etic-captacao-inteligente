@@ -50,6 +50,22 @@ export default function AdminProperties() {
   } | null>(null)
 
   useEffect(() => {
+    const handleBroadcast = (payload: any) => {
+      if (payload.payload?.ids && Array.isArray(payload.payload.ids)) {
+        setProperties((prev) => prev.filter((p) => !payload.payload.ids.includes(p.id)))
+        setSelectedIds((prev) => prev.filter((id) => !payload.payload.ids.includes(id)))
+      }
+    }
+
+    const channel = supabase.channel('global_imoveis_sync')
+    channel.on('broadcast', { event: 'imovel_deleted' }, handleBroadcast).subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [])
+
+  useEffect(() => {
     const checkAdmin = async () => {
       if (!user) return
       const { data } = await supabase.from('users').select('role').eq('id', user.id).single()
@@ -179,11 +195,39 @@ export default function AdminProperties() {
     if (!confirmDelete) return
     setIsProcessing(true)
     try {
-      const { error } = await supabase.from('imoveis_captados').delete().in('id', confirmDelete.ids)
+      const idsToDelete = confirmDelete.ids
+      const { error } = await supabase.from('imoveis_captados').delete().in('id', idsToDelete)
       if (error) throw error
-      toast({ title: '✅ Imóvel deletado com sucesso', className: 'bg-emerald-600 text-white' })
+
+      // Disparar broadcast manual para todos os clientes removerem instantaneamente
+      const channels = supabase.getChannels()
+      const globalChannel = channels.find((c) => c.topic === 'realtime:global_imoveis_sync')
+      if (globalChannel) {
+        globalChannel.send({
+          type: 'broadcast',
+          event: 'imovel_deleted',
+          payload: { ids: idsToDelete },
+        })
+        console.log('🔴 [ADMIN] Broadcast de deleção enviado:', idsToDelete)
+      } else {
+        const tempChannel = supabase.channel('global_imoveis_sync')
+        tempChannel.subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            tempChannel.send({
+              type: 'broadcast',
+              event: 'imovel_deleted',
+              payload: { ids: idsToDelete },
+            })
+            setTimeout(() => supabase.removeChannel(tempChannel), 1000)
+          }
+        })
+      }
+
+      setProperties((prev) => prev.filter((p) => !idsToDelete.includes(p.id)))
       setSelectedIds([])
+      toast({ title: '✅ Imóvel deletado com sucesso', className: 'bg-emerald-600 text-white' })
     } catch (err: any) {
+      console.error(err)
       toast({ title: 'Erro ao deletar imóvel. Tente novamente.', variant: 'destructive' })
     } finally {
       setIsProcessing(false)

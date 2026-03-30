@@ -8,11 +8,13 @@ import { StickyFilterBar, FilterDef } from '@/components/StickyFilterBar'
 import { FilterSidebar } from '@/components/FilterSidebar'
 import { useViewFilters } from '@/hooks/useViewFilters'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useDeletedProperties } from '@/hooks/useDeletedProperties'
 
 export function LoosePropertiesView({ filterType }: { filterType?: 'Venda' | 'Aluguel' }) {
   const { looseProperties, currentUser } = useAppStore()
   const [claimProperty, setClaimProperty] = useState<CapturedProperty | null>(null)
   const [ignoredCodes, setIgnoredCodes] = useState<string[]>([])
+  const deletedIds = useDeletedProperties()
 
   const defaultFilters = filterType
     ? { periodo: 'Todos', bairro: '' }
@@ -57,6 +59,7 @@ export function LoosePropertiesView({ filterType }: { filterType?: 'Venda' | 'Al
   const sortedProperties = useMemo(() => {
     return [...looseProperties]
       .filter((p) => {
+        if (deletedIds.includes(p.id || '') || deletedIds.includes(p.code)) return false
         if (filterType && p.propertyType !== filterType) return false
         if (p.status_reivindicacao && p.status_reivindicacao !== 'disponivel') return false
         if (ignoredCodes.includes(p.code)) return false

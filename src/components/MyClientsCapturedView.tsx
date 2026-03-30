@@ -24,8 +24,10 @@ import { StickyFilterBar, FilterDef } from '@/components/StickyFilterBar'
 import { FilterSidebar } from '@/components/FilterSidebar'
 import { useViewFilters } from '@/hooks/useViewFilters'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useDeletedProperties } from '@/hooks/useDeletedProperties'
 
 export function MyClientsCapturedView({ filterType }: { filterType?: 'Venda' | 'Aluguel' }) {
+  const deletedIds = useDeletedProperties()
   const {
     demands,
     users,
@@ -83,7 +85,7 @@ export function MyClientsCapturedView({ filterType }: { filterType?: 'Venda' | '
 
     myDemands.forEach((d) => {
       d.capturedProperties?.forEach((p) => {
-        if (!p.discarded) {
+        if (!p.discarded && !deletedIds.includes(p.id || '') && !deletedIds.includes(p.code)) {
           if (
             filters.bairro &&
             !p.neighborhood?.toLowerCase().includes(filters.bairro.toLowerCase())

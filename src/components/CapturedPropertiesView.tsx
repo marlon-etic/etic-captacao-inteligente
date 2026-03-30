@@ -12,6 +12,7 @@ import { useSupabaseProperties } from '@/hooks/use-supabase-properties'
 import { SyncIndicator } from './SyncIndicator'
 import { VinculacaoModal } from './VinculacaoModal'
 import { PropertyDetailsModal } from './PropertyDetailsModal'
+import { useDeletedProperties } from '@/hooks/useDeletedProperties'
 
 interface Props {
   filterType?: 'Venda' | 'Aluguel'
@@ -24,6 +25,7 @@ export function CapturedPropertiesView({
   source,
   emptyStateText = 'Nenhum imóvel captado no momento.',
 }: Props) {
+  const deletedIds = useDeletedProperties()
   const {
     currentUser,
     scheduleVisitByCode,
@@ -92,26 +94,28 @@ export function CapturedPropertiesView({
   }
 
   const allCaptured = useMemo(() => {
-    return supabaseProps.map((p) => ({
-      demand: p.demanda as Demand,
-      property: {
-        id: p.id,
-        code: p.codigo_imovel,
-        neighborhood: p.endereco,
-        value: p.preco,
-        captador_id: p.user_captador_id,
-        captador_name: p.captador_nome,
-        capturedAt: p.created_at,
-        status: p.status_captacao,
-        propertyType: p.tipo,
-        bedrooms: p.dormitorios,
-        parkingSpots: p.vagas,
-        obs: p.observacoes,
-        etapa_funil: p.etapa_funil,
-        data_visita: p.data_visita,
-        data_fechamento: p.data_fechamento,
-      } as any,
-    }))
+    return supabaseProps
+      .filter((p) => !deletedIds.includes(p.id))
+      .map((p) => ({
+        demand: p.demanda as Demand,
+        property: {
+          id: p.id,
+          code: p.codigo_imovel,
+          neighborhood: p.endereco,
+          value: p.preco,
+          captador_id: p.user_captador_id,
+          captador_name: p.captador_nome,
+          capturedAt: p.created_at,
+          status: p.status_captacao,
+          propertyType: p.tipo,
+          bedrooms: p.dormitorios,
+          parkingSpots: p.vagas,
+          obs: p.observacoes,
+          etapa_funil: p.etapa_funil,
+          data_visita: p.data_visita,
+          data_fechamento: p.data_fechamento,
+        } as any,
+      }))
   }, [supabaseProps])
 
   const filteredAndSorted = useMemo(() => {

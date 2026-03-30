@@ -6,6 +6,7 @@ import { PropertyListDesktop } from './PropertyListDesktop'
 import { PropertyFilters } from './PropertyFilters'
 import { PropertyDetailsModal } from './PropertyDetailsModal'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useDeletedProperties } from '@/hooks/useDeletedProperties'
 
 interface Props {
   initialType?: 'Venda' | 'Aluguel'
@@ -13,6 +14,7 @@ interface Props {
 
 export function PropertyList({ initialType }: Props) {
   const isMobile = useIsMobile()
+  const deletedIds = useDeletedProperties()
   const { properties, loading } = useSupabaseProperties()
   const [filters, setFilters] = useState({
     bairro: '',
@@ -28,6 +30,7 @@ export function PropertyList({ initialType }: Props) {
 
   const filteredProperties = useMemo(() => {
     return properties.filter((p) => {
+      if (deletedIds.includes(p.id)) return false
       if (filters.tipo !== 'Todos' && p.tipo !== filters.tipo && p.tipo !== 'Ambos') return false
       if (filters.bairro && !p.endereco?.toLowerCase().includes(filters.bairro.toLowerCase()))
         return false
