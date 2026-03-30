@@ -1542,6 +1542,8 @@ export const Constants = {
 //     USING: true
 //     WITH CHECK: true
 // Table: imoveis_captados
+//   Policy "Admin can delete captures" (DELETE, PERMISSIVE) roles={authenticated}
+//     USING: (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND (users.role = 'admin'::user_role))))
 //   Policy "Authenticated users can read all captures" (SELECT, PERMISSIVE) roles={authenticated}
 //     USING: true
 //   Policy "Captadores insert captures" (INSERT, PERMISSIVE) roles={authenticated}
