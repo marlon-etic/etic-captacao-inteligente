@@ -139,7 +139,7 @@ export default function DatabaseReset() {
     try {
       console.log('[DEBUG] Executando RPC zerar_testes...')
       const { error } = await supabase.rpc('zerar_testes')
-      
+
       if (error) throw error
 
       // Dispara broadcast para reload global
@@ -162,9 +162,10 @@ export default function DatabaseReset() {
 
       toast({
         title: '✅ Base de Testes Zerada',
-        description: 'Todos os registros operacionais anteriores a 30/03/2026 foram deletados. Broadcast enviado.',
+        description:
+          'Todos os registros operacionais anteriores a 30/03/2026 foram deletados. Broadcast enviado.',
       })
-      
+
       setTimeout(() => {
         window.location.reload()
       }, 1500)
@@ -426,10 +427,11 @@ export default function DatabaseReset() {
         <Card className="border-orange-500 shadow-sm bg-orange-50/30">
           <CardHeader className="bg-orange-100/50 pb-4 border-b border-orange-200">
             <CardTitle className="text-lg text-orange-900 flex items-center gap-2">
-              <RefreshCw className="w-5 h-5" /> 3. Zerar Base de Testes (< 30/03/2026)
+              <RefreshCw className="w-5 h-5" /> 3. Zerar Base de Testes (&lt; 30/03/2026)
             </CardTitle>
             <CardDescription className="text-orange-700 font-medium">
-              Remove todas as demandas, imóveis e interações de teste criadas antes de 30/03/2026. Preserva os usuários e dispara atualização instantânea para todos online.
+              Remove todas as demandas, imóveis e interações de teste criadas antes de 30/03/2026.
+              Preserva os usuários e dispara atualização instantânea para todos online.
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-6">
@@ -516,10 +518,14 @@ export default function DatabaseReset() {
               <AlertTriangle className="w-5 h-5" /> ZERAR BASE DE TESTES
             </AlertDialogTitle>
             <AlertDialogDescription className="text-gray-700 text-base">
-              Você está prestes a <strong>deletar todos os dados operacionais</strong> (imóveis, demandas, visitas, negócios e pontuação) criados antes de <strong>30/03/2026</strong>.
-              <br /><br />
-              Essa ação enviará um sinal para todos os usuários logados atualizarem seus dashboards instantaneamente. Usuários não serão afetados.
-              <br /><br />
+              Você está prestes a <strong>deletar todos os dados operacionais</strong> (imóveis,
+              demandas, visitas, negócios e pontuação) criados antes de <strong>30/03/2026</strong>.
+              <br />
+              <br />
+              Essa ação enviará um sinal para todos os usuários logados atualizarem seus dashboards
+              instantaneamente. Usuários não serão afetados.
+              <br />
+              <br />
               Para confirmar, digite <strong>ZERAR</strong> abaixo:
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -534,7 +540,9 @@ export default function DatabaseReset() {
           </div>
 
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setZerarTestesConfirm('')}>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => setZerarTestesConfirm('')}>
+              Cancelar
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={(e) => {
                 e.preventDefault()
