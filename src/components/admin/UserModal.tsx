@@ -43,7 +43,7 @@ export function UserModal({ isOpen, onClose, user }: UserModalProps) {
       .object({
         name: z.string().min(3, 'Nome é obrigatório'),
         email: z.string().email('Email inválido'),
-        role: z.enum(['captador', 'sdr', 'corretor', 'admin', 'gestor'] as const, {
+        role: z.enum(['captador', 'sdr', 'corretor', 'admin'] as const, {
           required_error: 'Perfil é obrigatório',
         }),
         whatsapp: z
@@ -53,7 +53,7 @@ export function UserModal({ isOpen, onClose, user }: UserModalProps) {
             (val) => !val || val.replace(/\D/g, '').length >= 10,
             'WhatsApp inválido (mínimo 10 dígitos)',
           ),
-        status: z.enum(['ativo', 'inativo', 'bloqueado']).default('ativo'),
+        status: z.enum(['ativo', 'inativo']).default('ativo'),
         password: z.string().optional(),
         confirmPassword: z.string().optional(),
       })
@@ -139,6 +139,13 @@ export function UserModal({ isOpen, onClose, user }: UserModalProps) {
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     if (isProcessingUser) return
+
+    console.log('[UserModal] Submitting user form:', {
+      ...values,
+      password: values.password ? '[HIDDEN]' : undefined,
+      confirmPassword: values.confirmPassword ? '[HIDDEN]' : undefined,
+    })
+
     try {
       const isDuplicate = users.some(
         (u) => u.email.toLowerCase() === values.email.toLowerCase() && u.id !== user?.id,
@@ -273,7 +280,6 @@ export function UserModal({ isOpen, onClose, user }: UserModalProps) {
                         <SelectItem value="captador">Captador</SelectItem>
                         <SelectItem value="sdr">SDR</SelectItem>
                         <SelectItem value="corretor">Corretor</SelectItem>
-                        <SelectItem value="gestor">Gestor</SelectItem>
                         <SelectItem value="admin">Admin</SelectItem>
                       </SelectContent>
                     </Select>
