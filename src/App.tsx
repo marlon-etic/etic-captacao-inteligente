@@ -129,13 +129,21 @@ const LandlordProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ child
 const AppContent = () => {
   React.useEffect(() => {
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      const reasonStr = String(event.reason)
+      const reasonMsg = event.reason?.message || ''
+
       if (
-        event.reason &&
-        (event.reason.message === 'Failed to fetch' ||
-          event.reason.name === 'TypeError' ||
-          String(event.reason).includes('Failed to fetch'))
+        reasonMsg === 'Failed to fetch' ||
+        event.reason?.name === 'TypeError' ||
+        reasonStr.includes('Failed to fetch') ||
+        reasonStr.toLowerCase().includes('refresh token') ||
+        reasonMsg.toLowerCase().includes('refresh token') ||
+        reasonStr.includes('AuthApiError')
       ) {
-        console.warn('[System] Suppressed network fetch error from background task:', event.reason)
+        console.warn(
+          '[System] Suppressed network/auth fetch error from background task:',
+          event.reason,
+        )
         event.preventDefault()
       }
     }

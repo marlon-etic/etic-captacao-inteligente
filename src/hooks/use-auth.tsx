@@ -32,15 +32,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const { data, error } = await supabase.auth.getSession()
         if (error) {
           console.warn('[useAuth] Session error:', error.message)
+          if (error.message.toLowerCase().includes('refresh token')) {
+            await supabase.auth.signOut().catch(() => {})
+          }
         }
 
         if (mounted) {
-          setSession(data?.session ?? null)
-          setUser(data?.session?.user ?? null)
+          setSession(error ? null : (data?.session ?? null))
+          setUser(error ? null : (data?.session?.user ?? null))
           setLoading(false)
         }
-      } catch (err) {
+      } catch (err: any) {
         console.warn('[useAuth] Unexpected init error:', err)
+        if (err?.message?.toLowerCase().includes('refresh token')) {
+          await supabase.auth.signOut().catch(() => {})
+        }
         if (mounted) {
           setSession(null)
           setUser(null)
