@@ -1018,6 +1018,7 @@ export type Database = {
         Returns: undefined
       }
       refresh_admin_dashboard_summary: { Args: never; Returns: undefined }
+      zerar_testes: { Args: never; Returns: undefined }
     }
     Enums: {
       notificacao_prioridade: "alta" | "normal" | "baixa"
@@ -1509,6 +1510,8 @@ export const Constants = {
 //     WITH CHECK: ((((auth.jwt() -> 'user_metadata'::text) ->> 'role'::text) = 'admin'::text) OR (((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text) OR (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND ((users.role)::text = ANY (ARRAY['admin'::text, 'gestor'::text]))))))
 //   Policy "Admin and Gestor full access Locacao" (ALL, PERMISSIVE) roles={authenticated}
 //     USING: (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND ((users.role)::text = ANY (ARRAY['admin'::text, 'gestor'::text])))))
+//   Policy "Admin can delete demandas_locacao" (DELETE, PERMISSIVE) roles={authenticated}
+//     USING: ((((auth.jwt() -> 'user_metadata'::text) ->> 'role'::text) = ANY (ARRAY['admin'::text, 'gestor'::text])) OR (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND ((users.role)::text = ANY (ARRAY['admin'::text, 'gestor'::text]))))))
 //   Policy "Admin sees all locacao" (ALL, PERMISSIVE) roles={public}
 //     USING: (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND (users.role = 'admin'::user_role))))
 //   Policy "Captador can see demands" (SELECT, PERMISSIVE) roles={authenticated}
@@ -1527,6 +1530,8 @@ export const Constants = {
 //     WITH CHECK: ((((auth.jwt() -> 'user_metadata'::text) ->> 'role'::text) = 'admin'::text) OR (((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text) OR (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND ((users.role)::text = ANY (ARRAY['admin'::text, 'gestor'::text]))))))
 //   Policy "Admin and Gestor full access Vendas" (ALL, PERMISSIVE) roles={authenticated}
 //     USING: (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND ((users.role)::text = ANY (ARRAY['admin'::text, 'gestor'::text])))))
+//   Policy "Admin can delete demandas_vendas" (DELETE, PERMISSIVE) roles={authenticated}
+//     USING: ((((auth.jwt() -> 'user_metadata'::text) ->> 'role'::text) = ANY (ARRAY['admin'::text, 'gestor'::text])) OR (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND ((users.role)::text = ANY (ARRAY['admin'::text, 'gestor'::text]))))))
 //   Policy "Admin sees all vendas" (ALL, PERMISSIVE) roles={public}
 //     USING: (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND (users.role = 'admin'::user_role))))
 //   Policy "Broker sees own Vendas demands" (SELECT, PERMISSIVE) roles={authenticated}
@@ -1552,7 +1557,7 @@ export const Constants = {
 //     USING: ((((auth.jwt() -> 'user_metadata'::text) ->> 'role'::text) = 'admin'::text) OR (((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text) OR (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND ((users.role)::text = ANY (ARRAY['admin'::text, 'gestor'::text]))))))
 //     WITH CHECK: ((((auth.jwt() -> 'user_metadata'::text) ->> 'role'::text) = 'admin'::text) OR (((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text) OR (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND ((users.role)::text = ANY (ARRAY['admin'::text, 'gestor'::text]))))))
 //   Policy "Admin can delete captures" (DELETE, PERMISSIVE) roles={authenticated}
-//     USING: (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND (users.role = 'admin'::user_role))))
+//     USING: ((((auth.jwt() -> 'user_metadata'::text) ->> 'role'::text) = ANY (ARRAY['admin'::text, 'gestor'::text])) OR (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND ((users.role)::text = ANY (ARRAY['admin'::text, 'gestor'::text]))))))
 //   Policy "Admin can update captures" (UPDATE, PERMISSIVE) roles={authenticated}
 //     USING: (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND (users.role = 'admin'::user_role))))
 //     WITH CHECK: (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND (users.role = 'admin'::user_role))))
@@ -2663,6 +2668,35 @@ export const Constants = {
 //       END IF;
 //       
 //       RETURN NEW;
+//   END;
+//   $function$
+//   
+// FUNCTION zerar_testes()
+//   CREATE OR REPLACE FUNCTION public.zerar_testes()
+//    RETURNS void
+//    LANGUAGE plpgsql
+//    SECURITY DEFINER
+//   AS $function$
+//   DECLARE
+//       v_is_admin boolean;
+//   BEGIN
+//       -- Verifica se o usuário atual tem permissão de administrador ou gestor
+//       SELECT EXISTS (
+//           SELECT 1 FROM public.users 
+//           WHERE id = auth.uid() AND role::text IN ('admin', 'gestor')
+//       ) INTO v_is_admin;
+//   
+//       IF NOT v_is_admin THEN
+//           RAISE EXCEPTION 'Acesso negado. Apenas administradores podem executar o reset total.';
+//       END IF;
+//   
+//       -- Deleta registros de operacionais anteriores a 30/03/2026 (Zera Testes)
+//       DELETE FROM public.imoveis_captados WHERE created_at < '2026-03-30 00:00:00'::timestamp;
+//       DELETE FROM public.demandas_locacao WHERE created_at < '2026-03-30 00:00:00'::timestamp;
+//       DELETE FROM public.demandas_vendas WHERE created_at < '2026-03-30 00:00:00'::timestamp;
+//       DELETE FROM public.grupos_demandas WHERE created_at < '2026-03-30 00:00:00'::timestamp;
+//       DELETE FROM public.pontuacao_captador WHERE created_at < '2026-03-30 00:00:00'::timestamp;
+//       DELETE FROM public.notificacoes WHERE created_at < '2026-03-30 00:00:00'::timestamp;
 //   END;
 //   $function$
 //   
