@@ -17,6 +17,7 @@ import useAppStore from '@/stores/useAppStore'
 import { supabase } from '@/lib/supabase/client'
 import { X, CheckCircle2 } from 'lucide-react'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { BairroCombobox } from './BairroCombobox'
 
 interface Props {
   demand: SupabaseDemand | null
@@ -55,7 +56,7 @@ export function CapturePropertyModal({ demand, isOpen, onClose, onSuccess }: Pro
   const handleSubmit = async () => {
     const newErrors: Record<string, string> = {}
     if (!code) newErrors.code = 'Código é obrigatório'
-    if (!address) newErrors.address = 'Localização é obrigatória'
+    if (!address) newErrors.address = 'Bairro é obrigatório'
     if (!price || Number(price) <= 0) newErrors.price = 'Preço deve ser maior que zero'
 
     if (Object.keys(newErrors).length > 0) {
@@ -178,16 +179,15 @@ export function CapturePropertyModal({ demand, isOpen, onClose, onSuccess }: Pro
 
               <div className="md:col-span-2">
                 <Label className="font-bold text-[#333333] mb-1.5 block">
-                  Localização / Endereço <span className="text-red-500">*</span>
+                  Bairro <span className="text-red-500">*</span>
                 </Label>
-                <Input
+                <BairroCombobox
                   value={address}
-                  onChange={(e) => {
-                    setAddress(e.target.value)
+                  onChange={(val) => {
+                    setAddress(val)
                     setErrors((prev) => ({ ...prev, address: '' }))
                   }}
-                  placeholder="Ex: Rua das Flores, 123 - Jardins"
-                  className={errors.address ? 'border-red-500 ring-red-500' : ''}
+                  error={!!errors.address}
                 />
                 {errors.address && (
                   <p className="text-red-500 text-xs mt-1 font-medium">{errors.address}</p>

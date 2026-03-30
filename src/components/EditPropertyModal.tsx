@@ -18,10 +18,12 @@ import { supabase } from '@/lib/supabase/client'
 import { useToast } from '@/hooks/use-toast'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Loader2, CheckCircle2 } from 'lucide-react'
+import { Controller } from 'react-hook-form'
+import { BairroCombobox } from './BairroCombobox'
 
 const editSchema = z.object({
   code: z.string().min(1, 'Código é obrigatório'),
-  address: z.string().min(1, 'Endereço é obrigatório'),
+  address: z.string().min(1, 'Bairro é obrigatório'),
   price: z.coerce.number().positive('Preço deve ser maior que zero'),
   bedrooms: z.coerce.number().min(0).optional().catch(0),
   parking: z.coerce.number().min(0).optional().catch(0),
@@ -157,8 +159,19 @@ export function EditPropertyModal({ isOpen, onClose, property }: Props) {
               </div>
 
               <div>
-                <Label className="font-bold text-[#333333]">Endereço / Localização</Label>
-                <Input {...form.register('address')} disabled={isSubmitting} />
+                <Label className="font-bold text-[#333333]">Bairro</Label>
+                <Controller
+                  control={form.control}
+                  name="address"
+                  render={({ field }) => (
+                    <BairroCombobox
+                      value={field.value}
+                      onChange={field.onChange}
+                      error={!!form.formState.errors.address}
+                      disabled={isSubmitting}
+                    />
+                  )}
+                />
                 {form.formState.errors.address && (
                   <p className="text-red-500 text-xs mt-1 font-bold">
                     {form.formState.errors.address.message}
