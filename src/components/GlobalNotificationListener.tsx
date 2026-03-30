@@ -55,7 +55,9 @@ export function GlobalNotificationListener() {
             className: customColor,
             onClick: () => {
               const data = notif.dados_relacionados
-              if (data?.demanda_id) {
+              if (data?.status === 'perdido') {
+                window.dispatchEvent(new CustomEvent('navigate-to', { detail: `/app/perdidos` }))
+              } else if (data?.demanda_id) {
                 window.dispatchEvent(
                   new CustomEvent('navigate-to', { detail: `/app/demandas?id=${data.demanda_id}` }),
                 )

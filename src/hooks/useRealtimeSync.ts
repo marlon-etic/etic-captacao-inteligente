@@ -68,6 +68,12 @@ export const useRealtimeSync = ({
         'postgres_changes',
         { event: '*', schema: 'public', table, filter: filterString },
         (payload: any) => {
+          if (authUser) {
+            import('@/lib/notificationHandler').then((m) =>
+              m.processRealtimeNotification(table, payload, authUser),
+            )
+          }
+
           onDataChange({
             new: payload.new,
             old: payload.old,

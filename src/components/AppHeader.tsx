@@ -1,15 +1,9 @@
-import { Bell, Menu, Star, Check } from 'lucide-react'
+import { Bell, Menu, Star, Check, AlertCircle, Home, FileText, UserPlus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { SidebarTrigger, useSidebar } from '@/components/ui/sidebar'
 import { Badge } from '@/components/ui/badge'
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-  SheetDescription,
-} from '@/components/ui/sheet'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import useAppStore from '@/stores/useAppStore'
 import { cn } from '@/lib/utils'
 import { useNavigate, useLocation } from 'react-router-dom'
@@ -31,7 +25,6 @@ export function AppHeader({ onAddPropertyClick }: AppHeaderProps) {
 
   if (!currentUser) return null
 
-  // Ensure robust fallback to prevent array errors when loading
   const safeNotificacoes = notificacoes || []
   const unreadCount = safeNotificacoes.filter((n) => !n.lido).length
 
@@ -44,6 +37,15 @@ export function AppHeader({ onAddPropertyClick }: AppHeaderProps) {
     if (currentUser.role === 'captador') return 'Demandas de Captação'
     if (currentUser.role === 'gestor' || currentUser.role === 'admin') return 'Dashboard Gerencial'
     return 'Demandas'
+  }
+
+  const getNotificationIcon = (tipo: string, title: string) => {
+    if (tipo === 'nova_demanda') return <UserPlus className="w-5 h-5 text-blue-500" />
+    if (tipo === 'novo_imovel') return <Home className="w-5 h-5 text-emerald-500" />
+    if (tipo === 'imovel_capturado') return <FileText className="w-5 h-5 text-indigo-500" />
+    if (title.toLowerCase().includes('perdido'))
+      return <AlertCircle className="w-5 h-5 text-red-500" />
+    return <Bell className="w-5 h-5 text-gray-500" />
   }
 
   return (
@@ -87,8 +89,8 @@ export function AppHeader({ onAddPropertyClick }: AppHeaderProps) {
           </span>
         </Badge>
 
-        <Sheet>
-          <SheetTrigger asChild>
+        <Popover>
+          <PopoverTrigger asChild>
             <Button
               variant="ghost"
               size="icon"
@@ -104,100 +106,130 @@ export function AppHeader({ onAddPropertyClick }: AppHeaderProps) {
                 </span>
               )}
             </Button>
-          </SheetTrigger>
-          <SheetContent
-            side="right"
-            className="w-full sm:w-[400px] p-0 flex flex-col z-[1050] bg-[#F5F5F5] border-l-0 sm:border-l sm:border-[#E5E5E5]"
+          </PopoverTrigger>
+          <PopoverContent
+            side="bottom"
+            align="end"
+            className="w-[380px] p-0 flex flex-col z-[1050] bg-white border border-[#E5E5E5] shadow-xl rounded-xl overflow-hidden"
           >
-            <SheetHeader className="p-4 border-b border-[#E5E5E5] bg-white shrink-0">
-              <div className="flex justify-between items-center">
-                <SheetTitle className="text-[20px] font-black text-[#1A3A52] flex items-center gap-2">
-                  <Bell className="w-5 h-5" /> Notificações
-                </SheetTitle>
-                {unreadCount > 0 && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={markAllAsRead}
-                    className="text-[12px] h-8 text-[#2E5F8A] font-bold"
-                  >
-                    <Check className="w-4 h-4 mr-1" /> Marcar lidas
-                  </Button>
-                )}
-              </div>
-              <SheetDescription className="hidden">
-                Lista de notificações do sistema
-              </SheetDescription>
-            </SheetHeader>
+            <div className="p-4 border-b border-[#E5E5E5] bg-[#F9FAFB] flex justify-between items-center shrink-0">
+              <h3 className="text-[16px] font-black text-[#1A3A52] flex items-center gap-2">
+                <Bell className="w-5 h-5" /> Notificações
+              </h3>
+              {unreadCount > 0 && (
+                <Badge variant="secondary" className="bg-[#1A3A52] text-white hover:bg-[#2E5F8A]">
+                  {unreadCount} novas
+                </Badge>
+              )}
+            </div>
 
-            <div className="flex-1 overflow-y-auto">
+            <ScrollArea className="flex-1 max-h-[400px] overflow-y-auto">
               {safeNotificacoes.length === 0 ? (
-                <div className="p-8 text-center text-[#999999] flex flex-col items-center h-full justify-center">
+                <div className="p-8 text-center text-[#999999] flex flex-col items-center justify-center">
                   <Bell className="w-12 h-12 opacity-20 mb-3" />
                   <p className="font-bold">Nenhuma notificação</p>
                   <p className="text-sm mt-1">Você está atualizado.</p>
                 </div>
               ) : (
-                <div className="flex flex-col p-3 gap-2">
+                <div className="flex flex-col">
                   {safeNotificacoes.map((n) => (
                     <div
                       key={n.id}
+                      className={cn(
+                        'p-4 cursor-pointer transition-all border-b border-gray-100 flex gap-3 hover:bg-gray-50',
+                        !n.lido ? 'bg-blue-50/30' : 'bg-white opacity-80',
+                      )}
                       onClick={() => {
                         if (!n.lido) markAsRead(n.id)
-                        if (n.dados_relacionados?.demanda_id) {
+                        if (n.dados_relacionados?.status === 'perdido') {
+                          navigate(`/app/perdidos`)
+                        } else if (n.dados_relacionados?.demanda_id) {
                           navigate(`/app/demandas?id=${n.dados_relacionados.demanda_id}`)
                         } else if (n.dados_relacionados?.imovel_id) {
                           navigate(`/app/disponivel-geral`)
                         }
                       }}
-                      className={cn(
-                        'p-4 rounded-[8px] cursor-pointer transition-all border flex gap-3 shadow-sm',
-                        !n.lido ? 'bg-white' : 'bg-[#F9FAFB] opacity-70',
-                        n.prioridade === 'alta' && !n.lido
-                          ? 'border-l-4 border-l-[#EF4444] border-y-transparent border-r-transparent shadow-[0_2px_8px_rgba(239,68,68,0.15)]'
-                          : n.prioridade === 'normal' && !n.lido
-                            ? 'border-l-4 border-l-[#3B82F6] border-y-transparent border-r-transparent shadow-[0_2px_8px_rgba(59,130,246,0.15)]'
-                            : !n.lido
-                              ? 'border-l-4 border-l-[#6B7280] border-y-transparent border-r-transparent'
-                              : 'border-transparent',
-                      )}
                     >
+                      <div className="mt-1 shrink-0 bg-white rounded-full p-1.5 shadow-sm border border-gray-100">
+                        {getNotificationIcon(n.tipo, n.titulo)}
+                      </div>
+
                       <div className="flex-1 min-w-0">
-                        <p
-                          className={cn(
-                            'text-[14px] leading-tight',
-                            !n.lido ? 'font-black text-[#1A3A52]' : 'font-bold text-[#666666]',
-                          )}
-                        >
-                          {n.titulo}
-                        </p>
-                        <p className="text-[13px] text-[#333333] mt-1 line-clamp-2 leading-snug">
+                        <div className="flex justify-between items-start mb-1">
+                          <p
+                            className={cn(
+                              'text-[14px] leading-tight pr-2',
+                              !n.lido ? 'font-bold text-[#1A3A52]' : 'font-medium text-[#666666]',
+                            )}
+                          >
+                            {n.titulo}
+                          </p>
+                          <span className="text-[10px] text-[#999999] font-medium whitespace-nowrap">
+                            {formatDistanceToNow(new Date(n.created_at), {
+                              addSuffix: true,
+                              locale: ptBR,
+                            })}
+                          </span>
+                        </div>
+
+                        <p className="text-[13px] text-[#4B5563] mt-1 line-clamp-2 leading-snug">
                           {n.mensagem}
                         </p>
-                        <p className="text-[11px] text-[#999999] mt-2 font-semibold">
-                          {formatDistanceToNow(new Date(n.created_at), {
-                            addSuffix: true,
-                            locale: ptBR,
-                          })}
-                        </p>
+
+                        <div className="flex items-center justify-between mt-3">
+                          <span
+                            className={cn(
+                              'text-[11px] font-semibold px-2 py-0.5 rounded-full',
+                              n.prioridade === 'alta'
+                                ? 'bg-red-100 text-red-700'
+                                : n.prioridade === 'normal'
+                                  ? 'bg-blue-100 text-blue-700'
+                                  : 'bg-gray-100 text-gray-700',
+                            )}
+                          >
+                            {n.prioridade.toUpperCase()}
+                          </span>
+
+                          {!n.lido && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 text-[11px] font-bold text-blue-600 hover:text-blue-800 hover:bg-blue-50 px-2"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                markAsRead(n.id)
+                              }}
+                            >
+                              <Check className="w-3 h-3 mr-1" /> Marcar como lido
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))}
                 </div>
               )}
-            </div>
+            </ScrollArea>
 
-            <div className="p-3 border-t border-[#E5E5E5] bg-white shrink-0">
+            <div className="p-2 border-t border-[#E5E5E5] bg-[#F9FAFB] shrink-0 grid grid-cols-2 gap-2">
               <Button
                 variant="outline"
-                className="w-full font-bold min-h-[44px]"
+                className="w-full text-[13px] font-bold h-9"
                 onClick={() => navigate('/app/notificacoes')}
               >
-                Ver Histórico Completo
+                Ver Todas
+              </Button>
+              <Button
+                variant="default"
+                className="w-full text-[13px] font-bold h-9 bg-[#1A3A52] hover:bg-[#2E5F8A]"
+                onClick={() => markAllAsRead()}
+                disabled={unreadCount === 0}
+              >
+                Limpar Tudo
               </Button>
             </div>
-          </SheetContent>
-        </Sheet>
+          </PopoverContent>
+        </Popover>
       </div>
     </header>
   )
