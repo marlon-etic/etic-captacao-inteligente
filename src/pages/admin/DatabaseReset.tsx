@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { AlertTriangle, Download, Trash2, ShieldAlert, CheckCircle2 } from 'lucide-react'
+import { AlertTriangle, Download, Trash2, ShieldAlert, CheckCircle2, RefreshCw } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { toast } from '@/hooks/use-toast'
 import {
@@ -24,6 +24,11 @@ export default function DatabaseReset() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [dateLimit, setDateLimit] = useState(() => new Date().toISOString().slice(0, 16))
   const [success, setSuccess] = useState(false)
+
+  // Hard Reset State
+  const [hardResetConfirm, setHardResetConfirm] = useState('')
+  const [hardResetOpen, setHardResetOpen] = useState(false)
+  const [hardResetLoading, setHardResetLoading] = useState(false)
 
   const loadCounts = async () => {
     try {
@@ -115,17 +120,92 @@ export default function DatabaseReset() {
     }
   }
 
+  const executeHardReset = async () => {
+    if (hardResetConfirm !== 'ESVAZIAR') {
+      toast({
+        title: 'Erro',
+        description: 'Digite ESVAZIAR para confirmar.',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    setHardResetLoading(true)
+    try {
+      // 1. Executar DELETE no Supabase
+      const { error } = await supabase.rpc('fn_hard_reset_imoveis')
+      if (error) {
+        if (error.message.includes('does not exist')) {
+          await supabase.rpc('fn_reset_database', {
+            p_delete_before: new Date('2100-01-01').toISOString(),
+          })
+        } else {
+          throw error
+        }
+      }
+
+      // 2 & 3. Limpar localStorage e sessionStorage completamente
+      const localKeysToRemove = []
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i)
+        if (
+          key &&
+          (key.includes('imoveis') ||
+            key.includes('properties') ||
+            key.includes('poll_') ||
+            key.includes('vistasoft'))
+        ) {
+          localKeysToRemove.push(key)
+        }
+      }
+      localKeysToRemove.forEach((k) => localStorage.removeItem(k))
+
+      const sessionKeysToRemove = []
+      for (let i = 0; i < sessionStorage.length; i++) {
+        const key = sessionStorage.key(i)
+        if (
+          key &&
+          (key.includes('imoveis') || key.includes('properties') || key.includes('poll_'))
+        ) {
+          sessionKeysToRemove.push(key)
+        }
+      }
+      sessionKeysToRemove.forEach((k) => sessionStorage.removeItem(k))
+
+      // 4. Desconectar subscriptions
+      await supabase.removeAllChannels()
+
+      setSuccess(true)
+      setHardResetOpen(false)
+      setHardResetConfirm('')
+
+      toast({
+        title: 'Reset Completo Efetuado',
+        description:
+          'Base de imóveis esvaziada, cache limpo e conexões encerradas. Recarregando a aplicação...',
+      })
+
+      // 5 & 6. Forçar reload do componente/aplicação para limpar memória
+      setTimeout(() => {
+        window.location.reload()
+      }, 2000)
+    } catch (e: any) {
+      toast({ title: 'Erro no Hard Reset', description: e.message, variant: 'destructive' })
+    } finally {
+      setHardResetLoading(false)
+    }
+  }
+
   return (
     <div className="max-w-4xl mx-auto p-4 md:p-6 space-y-6 animate-fade-in-up">
       <div>
         <h1 className="text-2xl font-bold text-[#1A3A52] flex items-center gap-2">
           <ShieldAlert className="w-8 h-8 text-red-500" />
-          Reset da Base de Imóveis (Go-Live)
+          Reset da Base de Dados (Go-Live)
         </h1>
         <p className="text-gray-600 mt-1 max-w-3xl text-sm md:text-base">
-          Esta ferramenta limpa todos os dados de teste (imóveis, demandas, visitas e negócios),
-          preservando as contas de usuários, políticas de segurança e estrutura do sistema.
-          Recomendado apenas antes do Go-Live.
+          Ferramentas para limpeza segura dos dados antes de entrar em produção. Contas de usuários,
+          permissões, RLS e configurações de segurança são sempre preservados.
         </p>
       </div>
 
@@ -135,7 +215,7 @@ export default function DatabaseReset() {
             <CheckCircle2 className="w-10 h-10" />
           </div>
           <h2 className="text-2xl font-black text-[#1A3A52] mb-1">
-            Base de imóveis resetada com sucesso! Pronto para iniciar do zero.
+            Base limpa com sucesso! Pronto para operar.
           </h2>
           <p className="text-[#333333] font-medium max-w-xl">
             Todos os usuários, permissões, roles e configurações de segurança foram totalmente
@@ -151,7 +231,7 @@ export default function DatabaseReset() {
               <Download className="w-5 h-5" /> 1. Backup de Segurança
             </CardTitle>
             <CardDescription>
-              Antes de deletar os dados, faça o download de um snapshot completo em JSON.
+              Faça o download de um snapshot completo em JSON antes de remover os dados.
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-6">
@@ -168,7 +248,9 @@ export default function DatabaseReset() {
             <Button
               onClick={handleBackup}
               disabled={
-                loading || (counts.imoveis === 0 && counts.locacao === 0 && counts.vendas === 0)
+                loading ||
+                hardResetLoading ||
+                (counts.imoveis === 0 && counts.locacao === 0 && counts.vendas === 0)
               }
               className="w-full bg-orange-600 hover:bg-orange-700 text-white"
             >
@@ -180,10 +262,10 @@ export default function DatabaseReset() {
         <Card className="border-red-200">
           <CardHeader className="bg-red-50/50 pb-4">
             <CardTitle className="text-lg text-red-800 flex items-center gap-2">
-              <Trash2 className="w-5 h-5" /> 2. Limpeza Seletiva (Purge)
+              <Trash2 className="w-5 h-5" /> 2. Limpeza Seletiva (Por Data)
             </CardTitle>
             <CardDescription>
-              Deletar dados de teste criados até a data selecionada. Preserva usuários e RLS.
+              Deleta dados de teste criados até a data selecionada. Preserva usuários e RLS.
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-6 space-y-4">
@@ -193,38 +275,54 @@ export default function DatabaseReset() {
                 type="datetime-local"
                 value={dateLimit}
                 onChange={(e) => setDateLimit(e.target.value)}
-                disabled={loading}
+                disabled={loading || hardResetLoading}
               />
-              <p className="text-xs text-gray-500">
-                Tabelas afetadas: imoveis_captados, demandas_locacao, demandas_vendas. <br />
-                (Visitas e negócios fechados são excluídos junto com seus imóveis).
-              </p>
             </div>
             <Button
               onClick={() => setDialogOpen(true)}
-              disabled={loading}
-              variant="destructive"
-              className="w-full"
+              disabled={loading || hardResetLoading}
+              variant="outline"
+              className="w-full border-red-200 text-red-700 hover:bg-red-50"
             >
-              <AlertTriangle className="w-4 h-4 mr-2" /> Executar Reset da Base
+              <AlertTriangle className="w-4 h-4 mr-2" /> Executar Limpeza Seletiva
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="border-red-500 md:col-span-2 shadow-sm bg-red-50/30">
+          <CardHeader className="bg-red-100/50 pb-4 border-b border-red-200">
+            <CardTitle className="text-lg text-red-900 flex items-center gap-2">
+              <RefreshCw className="w-5 h-5" /> 3. Reset Completo Sem Cache (Purge Total)
+            </CardTitle>
+            <CardDescription className="text-red-700 font-medium">
+              Esvazia <strong>TODA</strong> a base de imóveis captados de uma só vez. Limpa todos os
+              caches locais (localStorage/sessionStorage), derruba conexões real-time e força o
+              reload da interface.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <Button
+              onClick={() => setHardResetOpen(true)}
+              disabled={loading || hardResetLoading}
+              variant="destructive"
+              className="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white px-8 py-6 text-base"
+            >
+              <RefreshCw className="w-5 h-5 mr-2" /> Esvaziar Imóveis e Limpar Cache Frontend
             </Button>
           </CardContent>
         </Card>
       </div>
 
+      {/* Dialog para Reset Seletivo */}
       <AlertDialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="text-red-600 flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5" /> ATENÇÃO: Ação Irreversível
+              <AlertTriangle className="w-5 h-5" /> ATENÇÃO: Limpeza Seletiva
             </AlertDialogTitle>
             <AlertDialogDescription className="text-gray-700 text-base">
-              Você está prestes a <strong>deletar permanentemente</strong> os imóveis, demandas,
-              respostas e logs do sistema criados até a data selecionada.
-              <br />
-              <br />
-              Os usuários (captadores, corretores, SDRs, admins), políticas RLS e regras do sistema{' '}
-              <strong>NÃO</strong> serão afetados.
+              Você está prestes a <strong>deletar</strong> os imóveis e demandas criados até a data
+              selecionada.
               <br />
               <br />
               Para confirmar, digite <strong>CONFIRMAR</strong> no campo abaixo:
@@ -251,6 +349,61 @@ export default function DatabaseReset() {
               className="bg-red-600 hover:bg-red-700"
             >
               {loading ? 'Processando...' : 'Deletar Dados'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Dialog para Hard Reset */}
+      <AlertDialog open={hardResetOpen} onOpenChange={setHardResetOpen}>
+        <AlertDialogContent className="border-red-500 border-2">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-red-700 flex items-center gap-2 text-xl">
+              <AlertTriangle className="w-6 h-6" /> RESET EXTREMO DA BASE (SEM CACHE)
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-800 text-base leading-relaxed">
+              Você está prestes a fazer um <strong>DELETE completo</strong> na tabela de imóveis
+              captados.
+              <br />
+              <br />
+              Esta ação irá automaticamente:
+              <ul className="list-disc pl-5 mt-2 space-y-1 font-medium text-red-900/80">
+                <li>
+                  Esvaziar todos os registros da tabela{' '}
+                  <code className="bg-red-100 px-1 rounded">imoveis_captados</code>
+                </li>
+                <li>
+                  Limpar os caches <code className="bg-red-100 px-1 rounded">localStorage</code> e{' '}
+                  <code className="bg-red-100 px-1 rounded">sessionStorage</code>
+                </li>
+                <li>Desconectar todas as assinaturas ativas de tempo real</li>
+                <li>Forçar o recarregamento total da página (F5)</li>
+              </ul>
+              <br />
+              Digite <strong>ESVAZIAR</strong> abaixo para prosseguir:
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div className="my-2">
+            <Input
+              value={hardResetConfirm}
+              onChange={(e) => setHardResetConfirm(e.target.value)}
+              placeholder="Digite ESVAZIAR"
+              className="border-red-400 focus-visible:ring-red-600 font-bold text-center text-lg uppercase"
+            />
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setHardResetConfirm('')}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault()
+                executeHardReset()
+              }}
+              disabled={hardResetConfirm !== 'ESVAZIAR' || hardResetLoading}
+              className="bg-red-700 hover:bg-red-800 text-white w-full sm:w-auto"
+            >
+              {hardResetLoading ? 'Esvaziando Sistema...' : 'Confirmar Esvaziamento'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
