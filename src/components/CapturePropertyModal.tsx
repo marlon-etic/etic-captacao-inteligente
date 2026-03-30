@@ -116,7 +116,12 @@ export function CapturePropertyModal({ demand, isOpen, onClose, onSuccess }: Pro
 
   return (
     <Dialog open={isOpen} onOpenChange={(val) => !val && onClose()}>
-      <DialogContent className="w-full max-w-[calc(100%-32px)] md:max-w-xl p-0 flex flex-col rounded-[16px] bg-[#FFFFFF] border-0 shadow-2xl overflow-hidden">
+      <DialogContent
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onInteractOutside={(e) => e.preventDefault()}
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-[calc(100%-32px)] md:max-w-xl p-0 flex flex-col rounded-[16px] bg-[#FFFFFF] border-0 shadow-2xl overflow-hidden"
+      >
         <DialogHeader className="p-4 md:p-6 border-b border-[#E5E5E5] shrink-0 bg-[#1A3A52] text-white relative">
           <DialogTitle className="text-xl font-black flex items-center gap-2 pr-8">
             Capturar Imóvel
@@ -132,8 +137,8 @@ export function CapturePropertyModal({ demand, isOpen, onClose, onSuccess }: Pro
           </DialogClose>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 p-4 md:p-6 bg-white">
-          <div className="space-y-4">
+        <ScrollArea className="flex-1 p-4 md:p-6 bg-white" onClick={(e) => e.stopPropagation()}>
+          <div className="space-y-4" onClick={(e) => e.stopPropagation()}>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label className="font-bold text-[#333333] mb-1.5 block">
