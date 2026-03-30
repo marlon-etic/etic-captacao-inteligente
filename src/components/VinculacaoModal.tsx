@@ -7,22 +7,13 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { CheckCircle2, XCircle, MinusCircle } from 'lucide-react'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { CheckCircle2, XCircle, Search } from 'lucide-react'
 import { useSupabaseDemands } from '@/hooks/use-supabase-demands'
 import { cn } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
-import useAppStore from '@/stores/useAppStore'
 import { supabase } from '@/lib/supabase/client'
 
 export interface VinculacaoImovelData {
@@ -32,7 +23,7 @@ export interface VinculacaoImovelData {
   preco: number
   dormitorios?: number
   vagas?: number
-  tipo?: 'Venda' | 'Aluguel'
+  tipo?: 'Venda' | 'Aluguel' | 'Ambos' | string
 }
 
 interface Props {
@@ -44,9 +35,8 @@ interface Props {
 
 export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
   const { toast } = useToast()
-  const { currentUser } = useAppStore()
 
-  // Always fetch both, filter visually
+  // Buscar todas as demandas ativas
   const { demands: locacaoDemands } = useSupabaseDemands('Aluguel')
   const { demands: vendaDemands } = useSupabaseDemands('Venda')
 
@@ -60,122 +50,97 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
     }
   }, [isOpen])
 
-  const availableDemands = useMemo(() => {
+  // Calcular scoring para cada demanda aberta
+  const scoredDemands = useMemo(() => {
+    if (!imovel) return []
     const all = [...locacaoDemands, ...vendaDemands]
-    return all
-      .filter((d) => {
-        if (d.status_demanda !== 'aberta') return false
 
-        const isOwner = d.sdr_id === currentUser?.id || d.corretor_id === currentUser?.id
-        const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'gestor'
+    // Filtrar apenas as abertas (não restringimos por usuário para que o captador veja todas as ativas)
+    const openDemands = all.filter((d) => d.status_demanda === 'aberta')
 
-        return isOwner || isAdmin
+    return openDemands
+      .map((d) => {
+        // 1. Valor (±20%) - Peso: 30%
+        let valorMatch = 0
+        const imovelPreco = imovel.preco || 0
+        const demandMax = d.valor_maximo || 0
+        const demandMin = d.valor_minimo || 0
+
+        if (demandMax > 0) {
+          const margin = demandMax * 0.2 // 20% de margem
+          if (imovelPreco <= demandMax + margin && imovelPreco >= demandMin - margin) {
+            valorMatch = 1
+          }
+        } else {
+          valorMatch = 1 // Se não tem máximo definido, conta como match
+        }
+
+        // 2. Bairro (Match Exato/Parcial string) - Peso: 40%
+        let bairroMatch = 0
+        if (d.bairros && d.bairros.length > 0) {
+          if (
+            d.bairros.some((b: string) => imovel.endereco?.toLowerCase().includes(b.toLowerCase()))
+          ) {
+            bairroMatch = 1
+          }
+        } else {
+          bairroMatch = 1 // Indiferente
+        }
+
+        // 3. Dormitórios (±1) - Peso: 15%
+        let dormMatch = 0
+        const demandDorms = d.dormitorios || 0
+        const imovelDorms = imovel.dormitorios || 0
+        if (demandDorms > 0) {
+          if (imovelDorms >= demandDorms - 1 && imovelDorms <= demandDorms + 1) {
+            dormMatch = 1
+          }
+        } else {
+          dormMatch = 1
+        }
+
+        // 4. Vagas (±1) - Peso: 15%
+        let vagasMatch = 0
+        const demandVagas = d.vagas_estacionamento || 0
+        const imovelVagas = imovel.vagas || 0
+        if (demandVagas > 0) {
+          if (imovelVagas >= demandVagas - 1 && imovelVagas <= demandVagas + 1) {
+            vagasMatch = 1
+          }
+        } else {
+          vagasMatch = 1
+        }
+
+        // Scoring total: (valor * 0.3) + (bairro * 0.4) + (dorm * 0.15) + (vagas * 0.15)
+        const totalScore =
+          valorMatch * 0.3 + bairroMatch * 0.4 + dormMatch * 0.15 + vagasMatch * 0.15
+        const percent = Math.round(totalScore * 100)
+
+        return {
+          ...d,
+          score: percent,
+          details: { valorMatch, bairroMatch, dormMatch, vagasMatch },
+        }
       })
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-  }, [locacaoDemands, vendaDemands, currentUser])
+      .sort((a, b) => b.score - a.score)
+  }, [locacaoDemands, vendaDemands, imovel])
 
   const selectedDemand = useMemo(() => {
-    return availableDemands.find((d) => d.id === selectedDemandId) || null
-  }, [availableDemands, selectedDemandId])
-
-  const matchData = useMemo(() => {
-    if (!selectedDemand || !imovel) return null
-
-    let score = 0
-    let maxScore = 4
-
-    // Preço
-    const hasMin = selectedDemand.valor_minimo > 0
-    const hasMax = selectedDemand.valor_maximo > 0
-    let matchPreco = false
-    if (hasMax) {
-      matchPreco =
-        imovel.preco <= selectedDemand.valor_maximo &&
-        (!hasMin || imovel.preco >= selectedDemand.valor_minimo)
-    } else {
-      matchPreco = true // If no max price defined, assume match
-    }
-    if (matchPreco && hasMax) score++
-    if (!hasMax) maxScore--
-
-    // Dormitórios
-    const hasDorms = (selectedDemand.dormitorios || 0) > 0
-    const matchDorms = (imovel.dormitorios || 0) >= (selectedDemand.dormitorios || 0)
-    if (matchDorms && hasDorms) score++
-    if (!hasDorms) maxScore--
-
-    // Vagas
-    const hasVagas = (selectedDemand.vagas_estacionamento || 0) > 0
-    const matchVagas = (imovel.vagas || 0) >= (selectedDemand.vagas_estacionamento || 0)
-    if (matchVagas && hasVagas) score++
-    if (!hasVagas) maxScore--
-
-    // Localização
-    const hasLoc = selectedDemand.bairros && selectedDemand.bairros.length > 0
-    const matchLoc =
-      hasLoc &&
-      selectedDemand.bairros.some((b: string) =>
-        imovel.endereco?.toLowerCase().includes(b.toLowerCase()),
-      )
-    if (matchLoc) score++
-    if (!hasLoc) maxScore--
-
-    // Prevent division by zero
-    const percent = maxScore > 0 ? Math.round((score / maxScore) * 100) : 100
-
-    return {
-      percent,
-      rows: [
-        {
-          label: 'Localização',
-          clienteVal: hasLoc ? selectedDemand.bairros.join(', ') : 'Indiferente',
-          imovelVal: imovel.endereco || 'Não informado',
-          match: !hasLoc ? 'na' : matchLoc,
-        },
-        {
-          label: 'Orçamento / Preço',
-          clienteVal: hasMax
-            ? `Até R$ ${selectedDemand.valor_maximo.toLocaleString('pt-BR')}`
-            : 'Indiferente',
-          imovelVal: `R$ ${imovel.preco.toLocaleString('pt-BR')}`,
-          match: !hasMax ? 'na' : matchPreco,
-        },
-        {
-          label: 'Dormitórios',
-          clienteVal: hasDorms ? `${selectedDemand.dormitorios} ou mais` : 'Indiferente',
-          imovelVal: imovel.dormitorios ? imovel.dormitorios.toString() : 'Não informado',
-          match: !hasDorms ? 'na' : matchDorms,
-        },
-        {
-          label: 'Vagas',
-          clienteVal: hasVagas ? `${selectedDemand.vagas_estacionamento} ou mais` : 'Indiferente',
-          imovelVal: imovel.vagas ? imovel.vagas.toString() : 'Não informado',
-          match: !hasVagas ? 'na' : matchVagas,
-        },
-      ],
-    }
-  }, [selectedDemand, imovel])
-
-  const isMatchValid = matchData !== null && matchData.percent >= 60
+    return scoredDemands.find((d) => d.id === selectedDemandId) || null
+  }, [scoredDemands, selectedDemandId])
 
   const handleVincular = async (e?: React.MouseEvent) => {
     if (e) {
       e.preventDefault()
       e.stopPropagation()
     }
-    if (import.meta.env.DEV) {
-      console.log(`🔘 [Click] VinculacaoModal Action: vincular`, {
-        imovelId: imovel?.id,
-        demandId: selectedDemand?.id,
-      })
-    }
-    if (!imovel || !selectedDemand || !isMatchValid) return
+    if (!imovel || !selectedDemand) return
 
-    // Check if already linked
+    // Evitar duplicidade de vínculo
     if (selectedDemand.imoveis_captados?.some((i: any) => i.id === imovel.id)) {
       toast({
         title: 'Aviso',
-        description: 'Este imóvel já está vinculado a este cliente',
+        description: 'Este imóvel já está vinculado a este cliente.',
         variant: 'destructive',
       })
       return
@@ -183,7 +148,10 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
 
     setIsLinking(true)
     try {
-      const isLocacao = selectedDemand.tipo === 'Aluguel'
+      const isLocacao =
+        selectedDemand.tipo === 'Aluguel' || selectedDemand.tipo_demanda === 'Aluguel'
+
+      // Atualizar imóvel com o ID da demanda correspondente
       const { error } = await supabase
         .from('imoveis_captados')
         .update({
@@ -194,6 +162,7 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
 
       if (error) throw error
 
+      // Atualizar status da demanda para atendida
       const table = isLocacao ? 'demandas_locacao' : 'demandas_vendas'
       await supabase.from(table).update({ status_demanda: 'atendida' }).eq('id', selectedDemand.id)
 
@@ -209,7 +178,7 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
       console.error(err)
       toast({
         title: 'Erro ao vincular',
-        description: 'Erro ao vincular cliente. Tente novamente.',
+        description: 'Erro ao vincular demanda. Tente novamente.',
         variant: 'destructive',
       })
     } finally {
@@ -219,135 +188,232 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[700px] bg-white p-0 gap-0 overflow-hidden rounded-[16px] shadow-2xl flex flex-col max-h-[85vh] z-[1100]">
-        <DialogHeader className="p-[24px] border-b border-[#E5E5E5] bg-[#F8FAFC] shrink-0 relative z-10 pointer-events-none">
+      <DialogContent className="sm:max-w-[850px] bg-white p-0 gap-0 overflow-hidden rounded-[16px] shadow-2xl flex flex-col max-h-[90vh] z-[1100]">
+        <DialogHeader className="p-[24px] border-b border-[#E5E5E5] bg-[#F8FAFC] shrink-0 relative z-10">
           <DialogTitle className="text-[20px] font-black text-[#1A3A52]">
-            Vincular Cliente ao Imóvel {imovel?.codigo_imovel}
+            Vincular Imóvel {imovel?.codigo_imovel} a uma Demanda
           </DialogTitle>
           <DialogDescription className="text-[14px] text-[#666666] mt-1">
-            Selecione uma demanda aberta para comparar as características e confirmar a vinculação.
+            Selecione uma demanda abaixo. O sistema calcula o{' '}
+            <strong className="text-[#333333]">Match Score</strong> com base em Valor, Bairro,
+            Dormitórios e Vagas.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="p-[24px] flex flex-col gap-[24px] overflow-y-auto flex-1 relative z-0">
-          {/* Seletor de Demanda */}
-          <div className="space-y-2 relative z-10">
-            <label className="text-[14px] font-bold text-[#333333]">
-              Selecione o Cliente / Demanda
-            </label>
-            {availableDemands.length > 0 ? (
-              <Select value={selectedDemandId} onValueChange={setSelectedDemandId}>
-                <SelectTrigger className="w-full h-[48px] bg-white relative z-10">
-                  <SelectValue placeholder="Escolha uma demanda aberta..." />
-                </SelectTrigger>
-                <SelectContent className="z-[1200]">
-                  <ScrollArea className="h-[250px]">
-                    {availableDemands.map((d) => (
-                      <SelectItem
-                        key={d.id}
-                        value={d.id}
-                        className="py-3 cursor-pointer relative z-10"
-                      >
-                        <div className="flex flex-col text-left">
-                          <span className="font-bold text-[#1A3A52] text-[14px]">
-                            {d.nome_cliente}
-                          </span>
-                          <span className="text-[12px] text-[#666666] mt-0.5">
-                            {d.tipo} • {d.bairros?.join(', ') || 'Sem bairro'} • R${' '}
-                            {d.valor_maximo?.toLocaleString('pt-BR')}
-                          </span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </ScrollArea>
-                </SelectContent>
-              </Select>
-            ) : (
-              <div className="p-4 bg-[#FFFBEB] text-[#B45309] border border-[#FDE68A] rounded-[8px] text-[14px] font-medium pointer-events-none">
-                Nenhuma demanda aberta disponível para vinculação no momento.
-              </div>
-            )}
-          </div>
-
-          {/* Área de Comparação */}
-          {selectedDemand && matchData && (
-            <div className="flex flex-col animate-fade-in pointer-events-none">
-              <div className="flex items-center justify-between bg-white border border-[#E5E5E5] rounded-t-[12px] p-4 shadow-sm relative z-0">
-                <span className="font-bold text-[#333333] text-[14px]">
-                  Compatibilidade com o cliente:
-                </span>
-                <Badge
-                  className={cn(
-                    'text-[14px] font-black px-3 py-1 shadow-sm border-none',
-                    matchData.percent >= 60 ? 'bg-[#10B981] text-white' : 'bg-[#EF4444] text-white',
-                  )}
-                >
-                  {matchData.percent}% Match
-                </Badge>
-              </div>
-
-              <div className="border border-t-0 border-[#E5E5E5] rounded-b-[12px] overflow-hidden bg-[#F8FAFC]">
-                {/* Header Tabela */}
-                <div className="grid grid-cols-[1.5fr_2fr_2fr] gap-3 p-3 bg-[#1A3A52] text-white text-[11px] font-bold uppercase tracking-wider">
-                  <div>Característica</div>
-                  <div>Cliente Deseja</div>
-                  <div>Imóvel Possui</div>
-                </div>
-
-                {/* Linhas */}
-                <div className="flex flex-col">
-                  {matchData.rows.map((row, i) => {
-                    const bgColor =
-                      row.match === true
-                        ? 'bg-[#D4EDDA] border-[#C3E6CB]'
-                        : row.match === false
-                          ? 'bg-[#F8D7DA] border-[#F5C6CB]'
-                          : 'bg-[#E9ECEF] border-[#DFE2E6]'
-
-                    const textColor =
-                      row.match === true
-                        ? 'text-[#155724]'
-                        : row.match === false
-                          ? 'text-[#721C24]'
-                          : 'text-[#383D41]'
-
+        <div className="flex flex-col md:flex-row flex-1 overflow-hidden relative z-0 bg-[#F8FAFC]">
+          {/* Lista de Demandas c/ Score */}
+          <div className="w-full md:w-1/2 border-r border-[#E5E5E5] flex flex-col bg-white">
+            <div className="p-3 bg-[#F8FAFC] border-b border-[#E5E5E5] font-bold text-[13px] text-[#333333] flex justify-between items-center">
+              <span>Demandas Ativas ({scoredDemands.length})</span>
+            </div>
+            <ScrollArea className="flex-1 h-[450px]">
+              {scoredDemands.length > 0 ? (
+                <div className="flex flex-col p-3 gap-2">
+                  {scoredDemands.map((d) => {
+                    const isGreen = d.score >= 50
+                    const isSelected = selectedDemandId === d.id
                     return (
                       <div
-                        key={i}
+                        key={d.id}
+                        onClick={() => setSelectedDemandId(d.id)}
                         className={cn(
-                          'grid grid-cols-[1.5fr_2fr_2fr] gap-3 p-3 text-[13px] border-b last:border-b-0 items-center transition-colors',
-                          bgColor,
-                          textColor,
+                          'p-3 rounded-[10px] cursor-pointer transition-all duration-200 border',
+                          isGreen
+                            ? 'bg-green-100 border-green-200 hover:bg-green-200'
+                            : 'bg-red-100 border-red-200 hover:bg-red-200',
+                          isSelected && 'ring-2 ring-[#1A3A52] shadow-md scale-[1.02]',
                         )}
                       >
-                        <div className="font-bold">{row.label}</div>
-                        <div className="font-medium truncate pr-2" title={row.clienteVal}>
-                          {row.clienteVal}
+                        <div className="flex justify-between items-start mb-1.5">
+                          <span className="font-bold text-[14px] text-[#1A3A52] line-clamp-1 pr-2">
+                            {d.nome_cliente}
+                          </span>
+                          <Badge
+                            className={cn(
+                              'text-[11px] font-black px-2 py-0.5 shadow-sm border-none shrink-0',
+                              isGreen ? 'bg-[#10B981] text-white' : 'bg-[#EF4444] text-white',
+                            )}
+                          >
+                            {d.score}% Match
+                          </Badge>
                         </div>
-                        <div className="font-bold flex items-center justify-between gap-2">
-                          <span className="truncate" title={row.imovelVal}>
-                            {row.imovelVal}
-                          </span>
-                          <span className="shrink-0">
-                            {row.match === true && (
-                              <CheckCircle2 className="w-4 h-4 text-[#155724]" />
-                            )}
-                            {row.match === false && <XCircle className="w-4 h-4 text-[#721C24]" />}
-                            {row.match === 'na' && (
-                              <MinusCircle className="w-4 h-4 text-[#6C757D]" />
-                            )}
-                          </span>
+                        <div className="text-[12px] text-[#666666] leading-relaxed space-y-0.5">
+                          <p className="flex items-center gap-1">
+                            <span className="w-4">📍</span>{' '}
+                            <span className="truncate">
+                              {d.bairros?.join(', ') || 'Sem bairro'}
+                            </span>
+                          </p>
+                          <p className="flex items-center gap-1">
+                            <span className="w-4">💰</span> Até R${' '}
+                            {d.valor_maximo?.toLocaleString('pt-BR')}
+                          </p>
+                          <p className="flex items-center gap-1">
+                            <span className="w-4">🛏️</span> {d.dormitorios || 'Indif.'} dorms • 🚗{' '}
+                            {d.vagas_estacionamento || 'Indif.'} vagas
+                          </p>
                         </div>
                       </div>
                     )
                   })}
                 </div>
+              ) : (
+                <div className="p-8 text-center text-[#999999] text-[14px] flex flex-col items-center">
+                  <Search className="w-10 h-10 mb-3 opacity-20" />
+                  Nenhuma demanda em aberto encontrada.
+                </div>
+              )}
+            </ScrollArea>
+          </div>
+
+          {/* Área de Comparação / Preview */}
+          <div className="w-full md:w-1/2 flex flex-col bg-[#F8FAFC]">
+            {selectedDemand ? (
+              <div className="p-5 flex flex-col h-full overflow-y-auto animate-fade-in">
+                <div className="flex items-center justify-between bg-white border border-[#E5E5E5] rounded-[12px] p-4 shadow-sm mb-5">
+                  <div>
+                    <span className="block text-[11px] font-bold text-[#999999] uppercase mb-1">
+                      Análise de Compatibilidade
+                    </span>
+                    <span className="font-black text-[18px] text-[#1A3A52] line-clamp-1">
+                      {selectedDemand.nome_cliente}
+                    </span>
+                  </div>
+                  <Badge
+                    className={cn(
+                      'text-[18px] font-black px-3 py-1 shadow-sm border-none shrink-0',
+                      selectedDemand.score >= 50
+                        ? 'bg-[#10B981] text-white'
+                        : 'bg-[#EF4444] text-white',
+                    )}
+                  >
+                    {selectedDemand.score}%
+                  </Badge>
+                </div>
+
+                <div className="border border-[#E5E5E5] rounded-[12px] overflow-hidden bg-white shadow-sm flex-1">
+                  <div className="grid grid-cols-[1.5fr_2fr_2fr] gap-3 p-3 bg-[#1A3A52] text-white text-[11px] font-bold uppercase tracking-wider">
+                    <div>Critério</div>
+                    <div>Demanda</div>
+                    <div>Imóvel</div>
+                  </div>
+
+                  <div className="flex flex-col">
+                    {/* Orçamento */}
+                    <div
+                      className={cn(
+                        'grid grid-cols-[1.5fr_2fr_2fr] gap-3 p-3.5 text-[13px] border-b items-center transition-colors',
+                        selectedDemand.details.valorMatch
+                          ? 'bg-[#D4EDDA] text-[#155724]'
+                          : 'bg-[#F8D7DA] text-[#721C24]',
+                      )}
+                    >
+                      <div className="font-bold">Orçamento</div>
+                      <div className="font-medium">
+                        Até R$ {selectedDemand.valor_maximo?.toLocaleString('pt-BR')}
+                      </div>
+                      <div className="flex items-center justify-between font-bold">
+                        R$ {imovel?.preco?.toLocaleString('pt-BR')}
+                        {selectedDemand.details.valorMatch ? (
+                          <CheckCircle2 className="w-4 h-4 text-[#155724]" />
+                        ) : (
+                          <XCircle className="w-4 h-4 text-[#721C24]" />
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Localização */}
+                    <div
+                      className={cn(
+                        'grid grid-cols-[1.5fr_2fr_2fr] gap-3 p-3.5 text-[13px] border-b items-center transition-colors',
+                        selectedDemand.details.bairroMatch
+                          ? 'bg-[#D4EDDA] text-[#155724]'
+                          : 'bg-[#F8D7DA] text-[#721C24]',
+                      )}
+                    >
+                      <div className="font-bold">Localização</div>
+                      <div
+                        className="truncate font-medium"
+                        title={selectedDemand.bairros?.join(', ')}
+                      >
+                        {selectedDemand.bairros?.join(', ') || 'Indiferente'}
+                      </div>
+                      <div className="flex items-center justify-between font-bold">
+                        <span className="truncate pr-2" title={imovel?.endereco}>
+                          {imovel?.endereco || 'Não informado'}
+                        </span>
+                        {selectedDemand.details.bairroMatch ? (
+                          <CheckCircle2 className="w-4 h-4 shrink-0 text-[#155724]" />
+                        ) : (
+                          <XCircle className="w-4 h-4 shrink-0 text-[#721C24]" />
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Dormitórios */}
+                    <div
+                      className={cn(
+                        'grid grid-cols-[1.5fr_2fr_2fr] gap-3 p-3.5 text-[13px] border-b items-center transition-colors',
+                        selectedDemand.details.dormMatch
+                          ? 'bg-[#D4EDDA] text-[#155724]'
+                          : 'bg-[#F8D7DA] text-[#721C24]',
+                      )}
+                    >
+                      <div className="font-bold">Dormitórios</div>
+                      <div className="font-medium">
+                        {selectedDemand.dormitorios || 'Indiferente'}
+                      </div>
+                      <div className="flex items-center justify-between font-bold">
+                        {imovel?.dormitorios || '0'}
+                        {selectedDemand.details.dormMatch ? (
+                          <CheckCircle2 className="w-4 h-4 text-[#155724]" />
+                        ) : (
+                          <XCircle className="w-4 h-4 text-[#721C24]" />
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Vagas */}
+                    <div
+                      className={cn(
+                        'grid grid-cols-[1.5fr_2fr_2fr] gap-3 p-3.5 text-[13px] items-center transition-colors',
+                        selectedDemand.details.vagasMatch
+                          ? 'bg-[#D4EDDA] text-[#155724]'
+                          : 'bg-[#F8D7DA] text-[#721C24]',
+                      )}
+                    >
+                      <div className="font-bold">Vagas</div>
+                      <div className="font-medium">
+                        {selectedDemand.vagas_estacionamento || 'Indiferente'}
+                      </div>
+                      <div className="flex items-center justify-between font-bold">
+                        {imovel?.vagas || '0'}
+                        {selectedDemand.details.vagasMatch ? (
+                          <CheckCircle2 className="w-4 h-4 text-[#155724]" />
+                        ) : (
+                          <XCircle className="w-4 h-4 text-[#721C24]" />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
-          )}
+            ) : (
+              <div className="flex-1 flex flex-col items-center justify-center text-[#999999] p-8 text-center bg-[#F8FAFC]">
+                <div className="w-16 h-16 rounded-full bg-white border border-[#E5E5E5] flex items-center justify-center mb-4 shadow-sm">
+                  <Search className="w-8 h-8 opacity-40" />
+                </div>
+                <h4 className="text-[16px] font-bold text-[#1A3A52] mb-1">Análise Detalhada</h4>
+                <p className="text-[13px] font-medium max-w-[250px]">
+                  Clique em qualquer demanda na lista ao lado para ver os detalhes do match e
+                  confirmar a vinculação.
+                </p>
+              </div>
+            )}
+          </div>
         </div>
 
-        <DialogFooter className="p-[20px] border-t border-[#E5E5E5] bg-[#F8FAFC] flex gap-3 justify-end items-center sm:justify-end shrink-0 relative z-10">
+        <DialogFooter className="p-[20px] border-t border-[#E5E5E5] bg-[#F8FAFC] flex gap-3 justify-end items-center shrink-0 relative z-10">
           <Button
             variant="outline"
             onClick={(e) => {
@@ -355,35 +421,24 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
               e.stopPropagation()
               onClose()
             }}
-            className="font-bold min-w-[120px] relative z-10"
+            className="font-bold min-w-[120px]"
           >
             Cancelar
           </Button>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div className="inline-block">
-                <Button
-                  disabled={!selectedDemand || !isMatchValid || isLinking}
-                  onClick={handleVincular}
-                  isLoading={isLinking}
-                  loadingText="Vinculando..."
-                  className={cn(
-                    'font-bold transition-all shadow-sm min-w-[160px] relative z-10',
-                    isMatchValid
-                      ? 'bg-[#10B981] enabled:hover:bg-[#059669] text-white border-transparent'
-                      : 'bg-[#E5E5E5] text-[#999999] border-transparent',
-                  )}
-                >
-                  Vincular Cliente
-                </Button>
-              </div>
-            </TooltipTrigger>
-            {selectedDemand && !isMatchValid && (
-              <TooltipContent className="bg-gray-900 text-white p-2 text-xs font-medium z-[1200]">
-                <p>Compatibilidade insuficiente para vincular (mínimo 60%)</p>
-              </TooltipContent>
+          <Button
+            disabled={!selectedDemand || isLinking}
+            onClick={handleVincular}
+            isLoading={isLinking}
+            loadingText="Vinculando..."
+            className={cn(
+              'font-bold transition-all shadow-sm min-w-[160px]',
+              selectedDemand
+                ? 'bg-[#1A3A52] hover:bg-[#112839] text-white'
+                : 'bg-[#E5E5E5] text-[#999999]',
             )}
-          </Tooltip>
+          >
+            Confirmar Vínculo
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
