@@ -133,18 +133,34 @@ export default function DatabaseReset() {
     setHardResetLoading(true)
     try {
       // 1. Executar DELETE no Supabase
+      // Tentativa de DELETE direto via API (pode falhar por RLS, mas tentamos)
+      console.log('[DEBUG] Executando DELETE direto em imoveis_captados...')
+      const { error: directDeleteError } = await supabase
+        .from('imoveis_captados')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000')
+      if (directDeleteError)
+        console.warn(
+          '[DEBUG] DELETE direto falhou (provavelmente RLS), prosseguindo com RPC:',
+          directDeleteError.message,
+        )
+
+      // Executar RPC que possui bypass de RLS (Security Definer)
+      console.log('[DEBUG] Executando RPC de hard reset...')
       const { error } = await supabase.rpc('fn_hard_reset_imoveis')
       if (error) {
         if (error.message.includes('does not exist')) {
-          await supabase.rpc('fn_reset_database', {
+          const { error: resetDbError } = await supabase.rpc('fn_reset_database', {
             p_delete_before: new Date('2100-01-01').toISOString(),
           })
+          if (resetDbError) throw resetDbError
         } else {
           throw error
         }
       }
 
       // 2. Validação pós-delete para confirmar que a tabela está vazia
+      console.log('[DEBUG] Validando se tabela está vazia...')
       const { count, error: countError } = await supabase
         .from('imoveis_captados')
         .select('*', { count: 'exact', head: true })
@@ -173,6 +189,52 @@ export default function DatabaseReset() {
         }
       }
       sessionKeysToRemove.forEach((k) => sessionStorage.removeItem(k))
+
+      // Limpeza de IndexedDB para remover qualquer cache de plugins/PWA
+      if (window.indexedDB && typeof window.indexedDB.databases === 'function') {
+        try {
+          const dbs = await window.indexedDB.databases()
+          dbs.forEach((db) => {
+            if (db.name) window.indexedDB.deleteDatabase(db.name)
+          })
+          console.log('[DEBUG] IndexedDB limpo com sucesso')
+        } catch (err) {
+          console.warn('Erro ao limpar IndexedDB', err)
+        }
+      }
+
+      // Limpeza de cookies
+      document.cookie.split(';').forEach(function (c) {
+        document.cookie = c
+          .replace(/^ +/, '')
+          .replace(/=.*/, '=;expires=' + new Date().toUTCString() + ';path=/')
+      })
+
+      // Limpeza de Service Workers (Caches de API)
+      if ('serviceWorker' in navigator) {
+        try {
+          const registrations = await navigator.serviceWorker.getRegistrations()
+          for (const registration of registrations) {
+            await registration.unregister()
+          }
+          console.log('[DEBUG] Service Workers removidos com sucesso')
+        } catch (err) {
+          console.warn('Erro ao remover Service Workers', err)
+        }
+      }
+
+      // Limpar Caches da API (CacheStorage do navegador)
+      if ('caches' in window) {
+        try {
+          const cacheNames = await caches.keys()
+          for (const name of cacheNames) {
+            await caches.delete(name)
+          }
+          console.log('[DEBUG] Cache Storage limpo com sucesso')
+        } catch (err) {
+          console.warn('Erro ao limpar Cache Storage', err)
+        }
+      }
 
       // 4. Desconectar todas as subscriptions do realtime
       await supabase.removeAllChannels()
