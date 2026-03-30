@@ -175,8 +175,24 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
     let mounted = true
     if (mounted) fetchProperties()
 
+    const handleGlobalDelete = (e: CustomEvent) => {
+      const deletedId = e.detail?.id
+      if (deletedId) {
+        setProperties((prev) => prev.filter((p) => p.id !== deletedId))
+      }
+    }
+
+    const handleForceRefresh = () => {
+      fetchProperties(false)
+    }
+
+    window.addEventListener('global-delete-imovel', handleGlobalDelete as EventListener)
+    window.addEventListener('force-refresh-data', handleForceRefresh)
+
     return () => {
       mounted = false
+      window.removeEventListener('global-delete-imovel', handleGlobalDelete as EventListener)
+      window.removeEventListener('force-refresh-data', handleForceRefresh)
     }
   }, [fetchProperties])
 

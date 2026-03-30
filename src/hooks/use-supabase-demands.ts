@@ -198,6 +198,45 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
     let mounted = true
     if (mounted) fetchDemands()
 
+    const handleGlobalDeleteImovel = (e: CustomEvent) => {
+      const deletedId = e.detail?.id
+      if (deletedId) {
+        setDemands((prev) =>
+          prev.map((d) => {
+            if (d.imoveis_captados && d.imoveis_captados.some((i: any) => i.id === deletedId)) {
+              const newImoveis = d.imoveis_captados.filter((i: any) => i.id !== deletedId)
+
+              // Recalculate status
+              let newStatus = d.db_status_demanda || d.status_demanda
+              const hasClosed = newImoveis.some((i: any) => i.etapa_funil === 'fechado')
+              if (!hasClosed && newStatus === 'ganho') {
+                newStatus = newImoveis.length > 0 ? 'atendida' : 'aberta'
+              }
+              if (newImoveis.length === 0 && newStatus === 'atendida') {
+                newStatus = 'aberta'
+              }
+              const st = evalStatusDemanda(newStatus, d.respostas_captador || [])
+
+              return {
+                ...d,
+                db_status_demanda: newStatus,
+                status_demanda: st,
+                imoveis_captados: newImoveis,
+              }
+            }
+            return d
+          }),
+        )
+      }
+    }
+
+    const handleForceRefresh = () => {
+      fetchDemands(false)
+    }
+
+    window.addEventListener('global-delete-imovel', handleGlobalDeleteImovel as EventListener)
+    window.addEventListener('force-refresh-data', handleForceRefresh)
+
     const handleDemandaUpdated = (e: CustomEvent) => {
       if (e.detail?.tipo === type && e.detail?.data) {
         const d = e.detail.data
@@ -254,6 +293,8 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
 
     return () => {
       mounted = false
+      window.removeEventListener('global-delete-imovel', handleGlobalDeleteImovel as EventListener)
+      window.removeEventListener('force-refresh-data', handleForceRefresh)
       window.removeEventListener('demanda-updated', handleDemandaUpdated as EventListener)
     }
   }, [fetchDemands, type, formatData, sortDemands, evalStatusDemanda])

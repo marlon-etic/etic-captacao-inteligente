@@ -30,6 +30,11 @@ export default function DatabaseReset() {
   const [hardResetOpen, setHardResetOpen] = useState(false)
   const [hardResetLoading, setHardResetLoading] = useState(false)
 
+  // Zerar Testes State
+  const [zerarTestesConfirm, setZerarTestesConfirm] = useState('')
+  const [zerarTestesOpen, setZerarTestesOpen] = useState(false)
+  const [zerarTestesLoading, setZerarTestesLoading] = useState(false)
+
   const loadCounts = async () => {
     try {
       const [imoveis, locacao, vendas] = await Promise.all([
@@ -117,6 +122,56 @@ export default function DatabaseReset() {
       toast({ title: 'Erro ao resetar', description: e.message, variant: 'destructive' })
     } finally {
       setLoading(false)
+    }
+  }
+
+  const executeZerarTestes = async () => {
+    if (zerarTestesConfirm !== 'ZERAR') {
+      toast({
+        title: 'Erro',
+        description: 'Digite ZERAR para confirmar.',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    setZerarTestesLoading(true)
+    try {
+      console.log('[DEBUG] Executando RPC zerar_testes...')
+      const { error } = await supabase.rpc('zerar_testes')
+      
+      if (error) throw error
+
+      // Dispara broadcast para reload global
+      const tempChannel = supabase.channel('global-deletes')
+      tempChannel.subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          tempChannel.send({
+            type: 'broadcast',
+            event: 'RESET_BASE',
+            payload: { timestamp: Date.now() },
+          })
+          setTimeout(() => supabase.removeChannel(tempChannel), 1000)
+        }
+      })
+
+      setSuccess(true)
+      setZerarTestesOpen(false)
+      setZerarTestesConfirm('')
+      loadCounts()
+
+      toast({
+        title: '✅ Base de Testes Zerada',
+        description: 'Todos os registros operacionais anteriores a 30/03/2026 foram deletados. Broadcast enviado.',
+      })
+      
+      setTimeout(() => {
+        window.location.reload()
+      }, 1500)
+    } catch (e: any) {
+      toast({ title: 'Erro ao Zerar Testes', description: e.message, variant: 'destructive' })
+    } finally {
+      setZerarTestesLoading(false)
     }
   }
 
@@ -368,10 +423,30 @@ export default function DatabaseReset() {
           </CardContent>
         </Card>
 
-        <Card className="border-red-500 md:col-span-2 shadow-sm bg-red-50/30">
+        <Card className="border-orange-500 shadow-sm bg-orange-50/30">
+          <CardHeader className="bg-orange-100/50 pb-4 border-b border-orange-200">
+            <CardTitle className="text-lg text-orange-900 flex items-center gap-2">
+              <RefreshCw className="w-5 h-5" /> 3. Zerar Base de Testes (< 30/03/2026)
+            </CardTitle>
+            <CardDescription className="text-orange-700 font-medium">
+              Remove todas as demandas, imóveis e interações de teste criadas antes de 30/03/2026. Preserva os usuários e dispara atualização instantânea para todos online.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <Button
+              onClick={() => setZerarTestesOpen(true)}
+              disabled={loading || hardResetLoading || zerarTestesLoading}
+              className="w-full bg-orange-600 hover:bg-orange-700 text-white"
+            >
+              <RefreshCw className="w-4 h-4 mr-2" /> Zerar Base de Testes
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="border-red-500 shadow-sm bg-red-50/30">
           <CardHeader className="bg-red-100/50 pb-4 border-b border-red-200">
             <CardTitle className="text-lg text-red-900 flex items-center gap-2">
-              <RefreshCw className="w-5 h-5" /> 3. Reset Completo Sem Cache (Purge Total)
+              <AlertTriangle className="w-5 h-5" /> 4. Reset Completo (Purge Total)
             </CardTitle>
             <CardDescription className="text-red-700 font-medium">
               Esvazia <strong>TODA</strong> a base de imóveis captados de uma só vez. Limpa todos os
@@ -428,6 +503,47 @@ export default function DatabaseReset() {
               className="bg-red-600 hover:bg-red-700"
             >
               {loading ? 'Processando...' : 'Deletar Dados'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Dialog para Zerar Testes */}
+      <AlertDialog open={zerarTestesOpen} onOpenChange={setZerarTestesOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-orange-600 flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5" /> ZERAR BASE DE TESTES
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-700 text-base">
+              Você está prestes a <strong>deletar todos os dados operacionais</strong> (imóveis, demandas, visitas, negócios e pontuação) criados antes de <strong>30/03/2026</strong>.
+              <br /><br />
+              Essa ação enviará um sinal para todos os usuários logados atualizarem seus dashboards instantaneamente. Usuários não serão afetados.
+              <br /><br />
+              Para confirmar, digite <strong>ZERAR</strong> abaixo:
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div className="my-2">
+            <Input
+              value={zerarTestesConfirm}
+              onChange={(e) => setZerarTestesConfirm(e.target.value)}
+              placeholder="Digite ZERAR"
+              className="border-orange-300 focus-visible:ring-orange-500 font-bold"
+            />
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setZerarTestesConfirm('')}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault()
+                executeZerarTestes()
+              }}
+              disabled={zerarTestesConfirm !== 'ZERAR' || zerarTestesLoading}
+              className="bg-orange-600 hover:bg-orange-700 text-white"
+            >
+              {zerarTestesLoading ? 'Processando...' : 'Confirmar Limpeza'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

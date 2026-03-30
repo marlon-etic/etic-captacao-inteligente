@@ -199,23 +199,24 @@ export default function AdminProperties() {
       const { error } = await supabase.from('imoveis_captados').delete().in('id', idsToDelete)
       if (error) throw error
 
-      // Disparar broadcast manual para todos os clientes removerem instantaneamente
+      // Disparar broadcast manual para todos os clientes removerem instantaneamente via global-deletes
       const channels = supabase.getChannels()
-      const globalChannel = channels.find((c) => c.topic === 'realtime:global_imoveis_sync')
+      const globalChannel = channels.find((c) => c.topic === 'realtime:global-deletes')
+
       if (globalChannel) {
         globalChannel.send({
           type: 'broadcast',
-          event: 'imovel_deleted',
+          event: 'DELETE_IMOVEL',
           payload: { ids: idsToDelete },
         })
         console.log('🔴 [ADMIN] Broadcast de deleção enviado:', idsToDelete)
       } else {
-        const tempChannel = supabase.channel('global_imoveis_sync')
+        const tempChannel = supabase.channel('global-deletes')
         tempChannel.subscribe((status) => {
           if (status === 'SUBSCRIBED') {
             tempChannel.send({
               type: 'broadcast',
-              event: 'imovel_deleted',
+              event: 'DELETE_IMOVEL',
               payload: { ids: idsToDelete },
             })
             setTimeout(() => supabase.removeChannel(tempChannel), 1000)
