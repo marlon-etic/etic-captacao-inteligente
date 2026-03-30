@@ -144,17 +144,22 @@ export default function DatabaseReset() {
         }
       }
 
-      // 2 & 3. Limpar localStorage e sessionStorage completamente
+      // 2. Validação pós-delete para confirmar que a tabela está vazia
+      const { count, error: countError } = await supabase
+        .from('imoveis_captados')
+        .select('*', { count: 'exact', head: true })
+
+      if (countError) throw countError
+      if (count !== null && count > 0) {
+        throw new Error(`Falha no reset: AINDA EXISTEM ${count} imóveis na base. O DELETE falhou.`)
+      }
+
+      // 3. Limpar localStorage e sessionStorage completamente (Preservar apenas Autenticação)
       const localKeysToRemove = []
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i)
-        if (
-          key &&
-          (key.includes('imoveis') ||
-            key.includes('properties') ||
-            key.includes('poll_') ||
-            key.includes('vistasoft'))
-        ) {
+        // Remove tudo, menos chaves essenciais de autenticação do Supabase
+        if (key && !key.startsWith('sb-')) {
           localKeysToRemove.push(key)
         }
       }
@@ -163,16 +168,13 @@ export default function DatabaseReset() {
       const sessionKeysToRemove = []
       for (let i = 0; i < sessionStorage.length; i++) {
         const key = sessionStorage.key(i)
-        if (
-          key &&
-          (key.includes('imoveis') || key.includes('properties') || key.includes('poll_'))
-        ) {
+        if (key && !key.startsWith('sb-')) {
           sessionKeysToRemove.push(key)
         }
       }
       sessionKeysToRemove.forEach((k) => sessionStorage.removeItem(k))
 
-      // 4. Desconectar subscriptions
+      // 4. Desconectar todas as subscriptions do realtime
       await supabase.removeAllChannels()
 
       setSuccess(true)
@@ -180,15 +182,15 @@ export default function DatabaseReset() {
       setHardResetConfirm('')
 
       toast({
-        title: 'Reset Completo Efetuado',
+        title: '✅ Base de imóveis resetada com sucesso!',
         description:
-          'Base de imóveis esvaziada, cache limpo e conexões encerradas. Recarregando a aplicação...',
+          'Cache limpo e conexões encerradas. Pronto para iniciar do zero. Recarregando...',
       })
 
-      // 5 & 6. Forçar reload do componente/aplicação para limpar memória
+      // 5. Forçar reload total da página para limpar o estado em memória (Zustand, React Query, etc)
       setTimeout(() => {
         window.location.reload()
-      }, 2000)
+      }, 1500)
     } catch (e: any) {
       toast({ title: 'Erro no Hard Reset', description: e.message, variant: 'destructive' })
     } finally {
@@ -369,15 +371,19 @@ export default function DatabaseReset() {
               Esta ação irá automaticamente:
               <ul className="list-disc pl-5 mt-2 space-y-1 font-medium text-red-900/80">
                 <li>
-                  Esvaziar todos os registros da tabela{' '}
-                  <code className="bg-red-100 px-1 rounded">imoveis_captados</code>
+                  Esvaziar todos os registros das tabelas{' '}
+                  <code className="bg-red-100 px-1 rounded">imoveis_captados</code>,{' '}
+                  <code className="bg-red-100 px-1 rounded">visitas_agendadas</code> e{' '}
+                  <code className="bg-red-100 px-1 rounded">negocios_fechados</code>
                 </li>
                 <li>
                   Limpar os caches <code className="bg-red-100 px-1 rounded">localStorage</code> e{' '}
-                  <code className="bg-red-100 px-1 rounded">sessionStorage</code>
+                  <code className="bg-red-100 px-1 rounded">sessionStorage</code> integralmente
                 </li>
                 <li>Desconectar todas as assinaturas ativas de tempo real</li>
-                <li>Forçar o recarregamento total da página (F5)</li>
+                <li>
+                  Forçar o recarregamento total da página (F5) para limpar o estado em memória
+                </li>
               </ul>
               <br />
               Digite <strong>ESVAZIAR</strong> abaixo para prosseguir:
