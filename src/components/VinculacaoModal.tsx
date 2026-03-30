@@ -224,8 +224,8 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[850px] bg-white p-0 gap-0 overflow-hidden rounded-[16px] shadow-2xl flex flex-col max-h-[90vh] z-[1100]">
-        <DialogHeader className="p-[24px] border-b border-[#E5E5E5] bg-[#F8FAFC] shrink-0 relative z-10">
+      <DialogContent className="sm:max-w-[850px] w-[95vw] md:w-full bg-white p-0 gap-0 overflow-hidden rounded-[16px] shadow-2xl flex flex-col max-h-[90dvh] z-[1100]">
+        <DialogHeader className="p-[24px] border-b border-[#E5E5E5] bg-[#F8FAFC] shrink-0 relative z-20">
           <DialogTitle className="text-[20px] font-black text-[#1A3A52]">
             Vincular Imóvel {imovel?.codigo_imovel} a uma Demanda
           </DialogTitle>
@@ -236,13 +236,13 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-col md:flex-row flex-1 overflow-hidden relative z-0 bg-[#F8FAFC]">
+        <div className="flex flex-col md:flex-row flex-1 overflow-y-auto md:overflow-hidden min-h-0 relative z-0 bg-[#F8FAFC]">
           {/* Lista de Demandas c/ Score */}
-          <div className="w-full md:w-1/2 border-r border-[#E5E5E5] flex flex-col bg-white">
-            <div className="p-3 bg-[#F8FAFC] border-b border-[#E5E5E5] font-bold text-[13px] text-[#333333] flex justify-between items-center">
+          <div className="w-full md:w-1/2 border-b md:border-b-0 md:border-r border-[#E5E5E5] flex flex-col bg-white min-h-[300px] md:min-h-0 relative z-10">
+            <div className="p-3 bg-[#F8FAFC] border-b border-[#E5E5E5] font-bold text-[13px] text-[#333333] flex justify-between items-center shrink-0 sticky top-0 z-20">
               <span>Demandas Ativas ({scoredDemands.length})</span>
             </div>
-            <ScrollArea className="flex-1 h-[450px]">
+            <ScrollArea className="flex-1 min-h-[300px] md:min-h-0">
               {loadingDemands ? (
                 <div className="p-8 text-center text-[#999999] text-[14px] flex flex-col items-center">
                   <div className="w-8 h-8 border-4 border-[#1A3A52]/20 border-t-[#1A3A52] rounded-full animate-spin mb-3"></div>
@@ -335,9 +335,9 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
           </div>
 
           {/* Área de Comparação / Preview */}
-          <div className="w-full md:w-1/2 flex flex-col bg-[#F8FAFC]">
+          <div className="w-full md:w-1/2 flex flex-col bg-[#F8FAFC] min-h-[400px] md:min-h-0 relative z-0">
             {selectedDemand ? (
-              <div className="p-5 flex flex-col h-full overflow-y-auto animate-fade-in">
+              <div className="p-5 flex flex-col h-full overflow-y-auto animate-fade-in min-h-0">
                 <div className="flex items-center justify-between bg-white border border-[#E5E5E5] rounded-[12px] p-4 shadow-sm mb-5">
                   <div>
                     <span className="block text-[11px] font-bold text-[#999999] uppercase mb-1">
@@ -481,7 +481,7 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
           </div>
         </div>
 
-        <DialogFooter className="p-[20px] border-t border-[#E5E5E5] bg-[#F8FAFC] flex gap-3 justify-end items-center shrink-0 relative z-10">
+        <DialogFooter className="p-[20px] border-t border-[#E5E5E5] bg-[#F8FAFC] flex gap-3 justify-end items-center shrink-0 mt-auto sticky bottom-0 z-50 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] pointer-events-auto">
           <Button
             variant="outline"
             onClick={(e) => {
@@ -499,13 +499,13 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
             isLoading={isLinking}
             loadingText="Vinculando..."
             className={cn(
-              'font-bold transition-all shadow-sm min-w-[160px]',
+              'font-bold transition-all shadow-sm min-w-[160px] pointer-events-auto',
               selectedDemand
                 ? 'bg-[#1A3A52] hover:bg-[#112839] text-white'
                 : 'bg-[#E5E5E5] text-[#999999]',
             )}
           >
-            Confirmar Vínculo
+            CONFIRMAR E VINCULAR
           </Button>
         </DialogFooter>
       </DialogContent>
