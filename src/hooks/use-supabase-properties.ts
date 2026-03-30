@@ -73,46 +73,49 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
   }, [])
 
   const fetchProperties = useCallback(
-  async (isBackground = false) => {
-    try {
-      if (!isBackground) setLoading(true)
+    async (isBackground = false) => {
+      try {
+        if (!isBackground) setLoading(true)
 
-      const { data: userData } = await supabase.auth.getUser()
-      if (!userData?.user) return
+        const { data: userData } = await supabase.auth.getUser()
+        if (!userData?.user) return
 
-      // 🔍 DIAGNÓSTICO RAIZ: Buscando direto do Supabase PRIMEIRO para comparar
-      const { data: directSupabaseData, error: supabaseError } = await supabase
-        .from('imoveis_captados')
-        .select('id')
-        
-      console.group('🔍 [DIAGNÓSTICO] Origem de Dados de Imóveis')
-      console.log('1. Real Supabase Count:', directSupabaseData?.length || 0)
-      if (supabaseError) console.error('Erro na query direta:', supabaseError)
-
-      const data = await fetchWithResilience(`properties_${filterType || 'all'}`, async () => {
-        const { data: resData, error } = await supabase
+        // 🔍 DIAGNÓSTICO RAIZ: Buscando direto do Supabase PRIMEIRO para comparar
+        const { data: directSupabaseData, error: supabaseError } = await supabase
           .from('imoveis_captados')
-          .select('*, demanda_locacao:demandas_locacao(*), demanda_venda:demandas_vendas(*)')
-          .order('created_at', { ascending: false })
-        if (error) throw error
-        console.log('2. Query principal retornou:', resData?.length || 0, 'registros')
-        return resData
-      })
+          .select('id')
 
-      console.log('3. Data após fetchWithResilience:', data?.length || 0, 'registros')
-        
-      // 🚨 PREVENÇÃO DE DADOS FANTASMAS 🚨
-      // Se o Supabase estiver vazio, MAS fetchWithResilience retornar dados (fallback hardcoded/mock), 
-      // nós FORÇAMOS array vazio para limpar a UI definitivamente.
-      let finalData = data || []
-      if (directSupabaseData && directSupabaseData.length === 0 && finalData.length > 0) {
-         console.warn('⚠️ ALERTA: fetchWithResilience retornou dados FANTASMAS ou MOCK! Forçando array vazio.')
-         finalData = []
-      }
-      console.groupEnd()
+        console.group('🔍 [DIAGNÓSTICO] Origem de Dados de Imóveis')
+        console.log('1. Real Supabase Count:', directSupabaseData?.length || 0)
+        if (supabaseError) console.error('Erro na query direta:', supabaseError)
 
-      if (finalData) {
-        let formatted = finalData.map(formatProperty)          if (filterType) {
+        const data = await fetchWithResilience(`properties_${filterType || 'all'}`, async () => {
+          const { data: resData, error } = await supabase
+            .from('imoveis_captados')
+            .select('*, demanda_locacao:demandas_locacao(*), demanda_venda:demandas_vendas(*)')
+            .order('created_at', { ascending: false })
+          if (error) throw error
+          console.log('2. Query principal retornou:', resData?.length || 0, 'registros')
+          return resData
+        })
+
+        console.log('3. Data após fetchWithResilience:', data?.length || 0, 'registros')
+
+        // 🚨 PREVENÇÃO DE DADOS FANTASMAS 🚨
+        // Se o Supabase estiver vazio, MAS fetchWithResilience retornar dados (fallback hardcoded/mock),
+        // nós FORÇAMOS array vazio para limpar a UI definitivamente.
+        let finalData = data || []
+        if (directSupabaseData && directSupabaseData.length === 0 && finalData.length > 0) {
+          console.warn(
+            '⚠️ ALERTA: fetchWithResilience retornou dados FANTASMAS ou MOCK! Forçando array vazio.',
+          )
+          finalData = []
+        }
+        console.groupEnd()
+
+        if (finalData) {
+          let formatted = finalData.map(formatProperty)
+          if (filterType) {
             formatted = formatted.filter((f: any) => f.tipo === filterType || f.tipo === 'Ambos')
           }
           setProperties(formatted)
