@@ -50,22 +50,39 @@ export function EditPropertyModal({ isOpen, onClose, property }: Props) {
     },
   })
 
+  const originalObs = property ? ((property as any).observacoes ?? property.obs ?? '') : ''
+  const hasOriginalObs = originalObs && String(originalObs).trim() !== ''
+
   useEffect(() => {
     if (property && isOpen) {
       form.reset({
-        code: property.code || '',
-        address: property.neighborhood || '',
-        price: property.value || 0,
-        bedrooms: property.bedrooms || 0,
-        parking: property.parkingSpots || 0,
-        obs: property.obs || '',
+        code: property.code || (property as any).codigo_imovel || '',
+        address: property.neighborhood || (property as any).endereco || '',
+        price: property.value || (property as any).preco || 0,
+        bedrooms: (property as any).dormitorios ?? property.bedrooms ?? 0,
+        parking: (property as any).vagas ?? property.parkingSpots ?? 0,
+        obs: originalObs,
       })
     }
-  }, [property, isOpen, form])
+  }, [property, isOpen, form, originalObs])
 
   const onSubmit = async (data: z.infer<typeof editSchema>) => {
     if (!property?.id) return
     setIsSubmitting(true)
+
+    const payload: any = {
+      codigo_imovel: data.code.toUpperCase(),
+      endereco: data.address,
+      preco: data.price,
+      dormitorios: data.bedrooms,
+      vagas: data.parking,
+    }
+
+    if (!hasOriginalObs) {
+      payload.observacoes = data.obs
+    } else {
+      payload.observacoes = originalObs
+    }
 
     let attempt = 0
     let success = false
@@ -76,14 +93,7 @@ export function EditPropertyModal({ isOpen, onClose, property }: Props) {
       try {
         const { error } = await supabase
           .from('imoveis_captados')
-          .update({
-            codigo_imovel: data.code.toUpperCase(),
-            endereco: data.address,
-            preco: data.price,
-            dormitorios: data.bedrooms,
-            vagas: data.parking,
-            observacoes: data.obs,
-          })
+          .update(payload)
           .eq('id', property.id)
 
         if (error) {
@@ -182,7 +192,7 @@ export function EditPropertyModal({ isOpen, onClose, property }: Props) {
                 <Textarea
                   {...form.register('obs')}
                   className="min-h-[80px]"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || hasOriginalObs}
                   placeholder="Detalhes adicionais..."
                 />
                 <div className="text-right text-[11px] text-[#999999] mt-1 font-medium">
@@ -191,6 +201,11 @@ export function EditPropertyModal({ isOpen, onClose, property }: Props) {
                 {form.formState.errors.obs && (
                   <p className="text-red-500 text-xs mt-1 font-bold">
                     {form.formState.errors.obs.message}
+                  </p>
+                )}
+                {hasOriginalObs && (
+                  <p className="text-[#999999] text-[11px] mt-1 italic">
+                    * Observações originais preservadas e não podem ser sobrescritas.
                   </p>
                 )}
               </div>
