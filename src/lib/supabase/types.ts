@@ -2154,6 +2154,17 @@ export const Constants = {
 //       
 //       -- Limpa a tabela de cache para evitar resíduos de chamadas a APIs de terceiros
 //       DELETE FROM public.vistasoft_cache;
+//   
+//       -- Tentar deletar de tabelas virtuais/reais caso existam no schema do projeto (ignorar erros se não existirem)
+//       BEGIN
+//           EXECUTE 'DELETE FROM public.visitas_agendadas';
+//       EXCEPTION WHEN undefined_table THEN NULL;
+//       END;
+//   
+//       BEGIN
+//           EXECUTE 'DELETE FROM public.negocios_fechados';
+//       EXCEPTION WHEN undefined_table THEN NULL;
+//       END;
 //   END;
 //   $function$
 //   
