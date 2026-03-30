@@ -11,7 +11,6 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { CheckCircle2, XCircle, Search } from 'lucide-react'
-import { useSupabaseDemands } from '@/hooks/use-supabase-demands'
 import { cn } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
 import { supabase } from '@/lib/supabase/client'
@@ -36,31 +35,68 @@ interface Props {
 export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
   const { toast } = useToast()
 
-  // Buscar todas as demandas ativas
-  const { demands: locacaoDemands } = useSupabaseDemands('Aluguel')
-  const { demands: vendaDemands } = useSupabaseDemands('Venda')
-
+  const [activeDemands, setActiveDemands] = useState<any[]>([])
+  const [loadingDemands, setLoadingDemands] = useState(false)
   const [selectedDemandId, setSelectedDemandId] = useState<string>('')
   const [isLinking, setIsLinking] = useState(false)
 
-  // Reset state when modal opens
+  // Fetch all open demands when modal opens
   useEffect(() => {
     if (isOpen) {
       setSelectedDemandId('')
+
+      const fetchDemands = async () => {
+        if (!imovel) return
+        setLoadingDemands(true)
+        try {
+          let locacao: any[] = []
+          let vendas: any[] = []
+
+          if (!imovel.tipo || imovel.tipo === 'Ambos' || imovel.tipo === 'Aluguel') {
+            const { data } = await supabase
+              .from('demandas_locacao')
+              .select(
+                'id, nome_cliente, bairros, valor_maximo, valor_minimo, dormitorios, vagas_estacionamento, status_demanda, imoveis_captados(*)',
+              )
+              .eq('status_demanda', 'aberta')
+              .not('sdr_id', 'is', null)
+
+            if (data) locacao = data.map((d) => ({ ...d, tipo: 'Aluguel' }))
+          }
+
+          if (!imovel.tipo || imovel.tipo === 'Ambos' || imovel.tipo === 'Venda') {
+            const { data } = await supabase
+              .from('demandas_vendas')
+              .select(
+                'id, nome_cliente, bairros, valor_maximo, valor_minimo, dormitorios, vagas_estacionamento, status_demanda, imoveis_captados(*)',
+              )
+              .eq('status_demanda', 'aberta')
+              .not('corretor_id', 'is', null)
+
+            if (data) vendas = data.map((d) => ({ ...d, tipo: 'Venda' }))
+          }
+
+          setActiveDemands([...locacao, ...vendas])
+        } catch (err) {
+          console.error('Error fetching open demands:', err)
+        } finally {
+          setLoadingDemands(false)
+        }
+      }
+
+      fetchDemands()
+    } else {
+      setActiveDemands([])
     }
-  }, [isOpen])
+  }, [isOpen, imovel])
 
   // Calcular scoring para cada demanda aberta
   const scoredDemands = useMemo(() => {
     if (!imovel) return []
-    const all = [...locacaoDemands, ...vendaDemands]
 
-    // Filtrar apenas as abertas (não restringimos por usuário para que o captador veja todas as ativas)
-    const openDemands = all.filter((d) => d.status_demanda === 'aberta')
-
-    return openDemands
+    return activeDemands
       .map((d) => {
-        // 1. Valor (±20%) - Peso: 30%
+        // 1. Valor (±20%) - Peso: 25%
         let valorMatch = 0
         const imovelPreco = imovel.preco || 0
         const demandMax = d.valor_maximo || 0
@@ -75,7 +111,7 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
           valorMatch = 1 // Se não tem máximo definido, conta como match
         }
 
-        // 2. Bairro (Match Exato/Parcial string) - Peso: 40%
+        // 2. Bairro (Match Exato/Parcial string) - Peso: 25%
         let bairroMatch = 0
         if (d.bairros && d.bairros.length > 0) {
           if (
@@ -87,7 +123,7 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
           bairroMatch = 1 // Indiferente
         }
 
-        // 3. Dormitórios (±1) - Peso: 15%
+        // 3. Dormitórios (±1) - Peso: 25%
         let dormMatch = 0
         const demandDorms = d.dormitorios || 0
         const imovelDorms = imovel.dormitorios || 0
@@ -99,7 +135,7 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
           dormMatch = 1
         }
 
-        // 4. Vagas (±1) - Peso: 15%
+        // 4. Vagas (±1) - Peso: 25%
         let vagasMatch = 0
         const demandVagas = d.vagas_estacionamento || 0
         const imovelVagas = imovel.vagas || 0
@@ -111,9 +147,9 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
           vagasMatch = 1
         }
 
-        // Scoring total: (valor * 0.3) + (bairro * 0.4) + (dorm * 0.15) + (vagas * 0.15)
+        // Scoring total: (valor * 0.25) + (bairro * 0.25) + (dorm * 0.25) + (vagas * 0.25)
         const totalScore =
-          valorMatch * 0.3 + bairroMatch * 0.4 + dormMatch * 0.15 + vagasMatch * 0.15
+          valorMatch * 0.25 + bairroMatch * 0.25 + dormMatch * 0.25 + vagasMatch * 0.25
         const percent = Math.round(totalScore * 100)
 
         return {
@@ -123,7 +159,7 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
         }
       })
       .sort((a, b) => b.score - a.score)
-  }, [locacaoDemands, vendaDemands, imovel])
+  }, [activeDemands, imovel])
 
   const selectedDemand = useMemo(() => {
     return scoredDemands.find((d) => d.id === selectedDemandId) || null
@@ -207,7 +243,12 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
               <span>Demandas Ativas ({scoredDemands.length})</span>
             </div>
             <ScrollArea className="flex-1 h-[450px]">
-              {scoredDemands.length > 0 ? (
+              {loadingDemands ? (
+                <div className="p-8 text-center text-[#999999] text-[14px] flex flex-col items-center">
+                  <div className="w-8 h-8 border-4 border-[#1A3A52]/20 border-t-[#1A3A52] rounded-full animate-spin mb-3"></div>
+                  Buscando demandas abertas...
+                </div>
+              ) : scoredDemands.length > 0 ? (
                 <div className="flex flex-col p-3 gap-2">
                   {scoredDemands.map((d) => {
                     const isGreen = d.score >= 50
@@ -225,9 +266,17 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
                         )}
                       >
                         <div className="flex justify-between items-start mb-1.5">
-                          <span className="font-bold text-[14px] text-[#1A3A52] line-clamp-1 pr-2">
-                            {d.nome_cliente}
-                          </span>
+                          <div className="flex items-center gap-2 pr-2">
+                            <span className="font-bold text-[14px] text-[#1A3A52] line-clamp-1">
+                              {d.nome_cliente || 'Cliente Padrão'}
+                            </span>
+                            <Badge
+                              variant="outline"
+                              className="text-[9px] px-1.5 py-0 uppercase bg-white/50 text-[#1A3A52] border-[#1A3A52]/20"
+                            >
+                              {d.tipo === 'Aluguel' ? 'Locação' : 'Venda'}
+                            </Badge>
+                          </div>
                           <Badge
                             className={cn(
                               'text-[11px] font-black px-2 py-0.5 shadow-sm border-none shrink-0',
@@ -240,17 +289,25 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
                         <div className="text-[12px] text-[#666666] leading-relaxed space-y-0.5">
                           <p className="flex items-center gap-1">
                             <span className="w-4">📍</span>{' '}
-                            <span className="truncate">
-                              {d.bairros?.join(', ') || 'Sem bairro'}
+                            <span className="truncate text-black font-medium">
+                              {d.bairros?.join(', ') || 'Indiferente'}
                             </span>
                           </p>
                           <p className="flex items-center gap-1">
-                            <span className="w-4">💰</span> Até R${' '}
-                            {d.valor_maximo?.toLocaleString('pt-BR')}
+                            <span className="w-4">💰</span>{' '}
+                            <span className="text-black font-medium">
+                              Até R$ {d.valor_maximo?.toLocaleString('pt-BR')}
+                            </span>
                           </p>
                           <p className="flex items-center gap-1">
-                            <span className="w-4">🛏️</span> {d.dormitorios || 'Indif.'} dorms • 🚗{' '}
-                            {d.vagas_estacionamento || 'Indif.'} vagas
+                            <span className="w-4">🛏️</span>{' '}
+                            <span className="text-black font-medium">
+                              {d.dormitorios || 'Indif.'} dorms
+                            </span>{' '}
+                            • 🚗{' '}
+                            <span className="text-black font-medium">
+                              {d.vagas_estacionamento || 'Indif.'} vagas
+                            </span>
                           </p>
                         </div>
                       </div>
@@ -260,7 +317,8 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
               ) : (
                 <div className="p-8 text-center text-[#999999] text-[14px] flex flex-col items-center">
                   <Search className="w-10 h-10 mb-3 opacity-20" />
-                  Nenhuma demanda em aberto encontrada.
+                  <span className="font-bold mb-1">0 SUGESTÕES ENCONTRADAS</span>
+                  <span>Nenhuma demanda em aberto corresponde.</span>
                 </div>
               )}
             </ScrollArea>
