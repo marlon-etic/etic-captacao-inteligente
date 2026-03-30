@@ -134,12 +134,7 @@ export function IndependentCaptureModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent
-        onPointerDownOutside={(e) => e.preventDefault()}
-        onInteractOutside={(e) => e.preventDefault()}
-        onClick={(e) => e.stopPropagation()}
-        className="sm:max-w-[500px]"
-      >
+      <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>Nova Captação</DialogTitle>
           <DialogDescription>
@@ -148,11 +143,7 @@ export function IndependentCaptureModal({
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form
-            onSubmit={form.handleSubmit(onSubmit)}
-            className="space-y-4 mt-2"
-            onClick={(e) => e.stopPropagation()}
-          >
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 mt-2">
             <FormField
               control={form.control}
               name="tipoVinculacao"

@@ -158,9 +158,6 @@ export function AddPropertyModal({ isOpen, onClose, onSuccess }: Props) {
   return (
     <Dialog open={isOpen} onOpenChange={(val) => !val && onClose()}>
       <DialogContent
-        onPointerDownOutside={(e) => e.preventDefault()}
-        onInteractOutside={(e) => e.preventDefault()}
-        onClick={(e) => e.stopPropagation()}
         className={cn(
           'w-full p-0 flex flex-col rounded-[16px] bg-[#FFFFFF] border-0 shadow-2xl overflow-hidden z-[110] transition-all duration-300',
           step === 1 ? 'max-w-xl' : 'max-w-5xl',
@@ -179,11 +176,9 @@ export function AddPropertyModal({ isOpen, onClose, onSuccess }: Props) {
 
         {step === 1 ? (
           <>
-            <ScrollArea
-              className="flex-1 p-4 md:p-6 bg-white max-h-[70vh]"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="space-y-4" onClick={(e) => e.stopPropagation()}>
+            <ScrollArea className="flex-1 p-4 md:p-6 bg-white max-h-[70vh]">
+              <div className="space-y-4">
+                {' '}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="md:col-span-2">
                     <Label className="font-bold text-[#333333] mb-1.5 block">Finalidade</Label>
