@@ -2328,6 +2328,29 @@ export const Constants = {
 //   END;
 //   $function$
 //   
+// FUNCTION fn_set_tipo_imovel()
+//   CREATE OR REPLACE FUNCTION public.fn_set_tipo_imovel()
+//    RETURNS trigger
+//    LANGUAGE plpgsql
+//    SECURITY DEFINER
+//   AS $function$
+//   BEGIN
+//     -- Automatically infer type based on linked demand
+//     IF NEW.demanda_locacao_id IS NOT NULL THEN
+//       NEW.tipo := 'Aluguel';
+//     ELSIF NEW.demanda_venda_id IS NOT NULL THEN
+//       NEW.tipo := 'Venda';
+//     END IF;
+//   
+//     -- Ensure it's not null if missing (default to Venda if solto and no type specified)
+//     IF NEW.tipo IS NULL THEN
+//       NEW.tipo := 'Venda';
+//     END IF;
+//   
+//     RETURN NEW;
+//   END;
+//   $function$
+//   
 // FUNCTION handle_new_user()
 //   CREATE OR REPLACE FUNCTION public.handle_new_user()
 //    RETURNS trigger
@@ -2722,6 +2745,7 @@ export const Constants = {
 //   pontuacao_imovel_trigger: CREATE TRIGGER pontuacao_imovel_trigger AFTER INSERT ON public.imoveis_captados FOR EACH ROW EXECUTE FUNCTION fn_calculate_points_on_insert()
 //   trg_notify_imovel_atualizado: CREATE TRIGGER trg_notify_imovel_atualizado AFTER UPDATE ON public.imoveis_captados FOR EACH ROW EXECUTE FUNCTION notify_imovel_atualizado()
 //   trg_notify_novo_imovel: CREATE TRIGGER trg_notify_novo_imovel AFTER INSERT ON public.imoveis_captados FOR EACH ROW EXECUTE FUNCTION notify_novo_imovel()
+//   trg_set_tipo_imovel: CREATE TRIGGER trg_set_tipo_imovel BEFORE INSERT OR UPDATE ON public.imoveis_captados FOR EACH ROW EXECUTE FUNCTION fn_set_tipo_imovel()
 //   update_imoveis_captados_updated_at: CREATE TRIGGER update_imoveis_captados_updated_at BEFORE UPDATE ON public.imoveis_captados FOR EACH ROW EXECUTE FUNCTION set_updated_at()
 // Table: respostas_captador
 //   marcar_prazo_resposta_trigger: CREATE TRIGGER marcar_prazo_resposta_trigger AFTER INSERT ON public.respostas_captador FOR EACH ROW EXECUTE FUNCTION marcar_prazo_respondido_resposta()
@@ -2752,6 +2776,7 @@ export const Constants = {
 //   CREATE INDEX idx_imoveis_captados_status_captacao ON public.imoveis_captados USING btree (status_captacao)
 //   CREATE INDEX idx_imoveis_captados_user_captador_id ON public.imoveis_captados USING btree (user_captador_id)
 //   CREATE INDEX idx_imoveis_captados_user_captador_id_perf ON public.imoveis_captados USING btree (user_captador_id)
+//   CREATE INDEX idx_imoveis_tipo ON public.imoveis_captados USING btree (tipo)
 //   CREATE UNIQUE INDEX imoveis_captados_codigo_imovel_key ON public.imoveis_captados USING btree (codigo_imovel)
 // Table: landlord_profiles
 //   CREATE INDEX idx_landlord_profiles_user_id ON public.landlord_profiles USING btree (user_id)
