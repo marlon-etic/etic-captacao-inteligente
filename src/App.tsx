@@ -142,7 +142,13 @@ const AppContent = () => {
         reasonMsg.toLowerCase().includes('refresh token') ||
         reasonStr.includes('AuthApiError') ||
         reasonStr.includes('stole it') ||
-        reasonMsg.includes('stole it')
+        reasonMsg.includes('stole it') ||
+        reasonStr.includes('invalid_credentials') ||
+        reasonStr.includes('Invalid login credentials') ||
+        reasonStr.includes('HTTP 400') ||
+        reasonMsg.includes('invalid_credentials') ||
+        reasonMsg.includes('Invalid login credentials') ||
+        reasonMsg.includes('HTTP 400')
       ) {
         console.warn(
           '[System] Suppressed network/auth fetch error from background task:',

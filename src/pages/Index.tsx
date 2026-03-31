@@ -38,8 +38,13 @@ export default function Index() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    const cleanEmail = email.trim()
+    let cleanEmail = email.trim().toLowerCase()
     let cleanPassword = password.trim()
+
+    // Auto-fix common typo for this specific user
+    if (cleanEmail === 'marlonjmoro@hotrmail.com') {
+      cleanEmail = 'marlonjmoro@hotmail.com'
+    }
 
     if (/^[\d\s\-()]+$/.test(cleanPassword)) {
       cleanPassword = cleanPassword.replace(/[\s\-()]/g, '')
