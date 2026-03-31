@@ -37,7 +37,15 @@ export default function Index() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!email || !password) {
+
+    const cleanEmail = email.trim()
+    let cleanPassword = password.trim()
+
+    if (/^[\d\s\-()]+$/.test(cleanPassword)) {
+      cleanPassword = cleanPassword.replace(/[\s\-()]/g, '')
+    }
+
+    if (!cleanEmail || !cleanPassword) {
       toast({
         title: 'Atenção',
         description: 'Preencha todos os campos.',
@@ -49,7 +57,7 @@ export default function Index() {
     setIsLoading(true)
     setInitError(null)
     try {
-      const { error: supaError } = await signIn(email, password)
+      const { error: supaError } = await signIn(cleanEmail, cleanPassword)
 
       if (supaError) {
         if (
@@ -71,7 +79,7 @@ export default function Index() {
         }
       }
 
-      await login(email, password)
+      await login(cleanEmail, cleanPassword)
       navigate('/app', { replace: true })
     } catch (err: any) {
       setInitError({ title: 'Erro de Autenticação', message: err.message })
