@@ -51,11 +51,11 @@ $$;
 
 CREATE EXTENSION IF NOT EXISTS pg_cron;
 
-DO $$
+DO $BODY$
 BEGIN
   -- Tenta criar o cron job de limpeza diária, ignorando se falhar por falta de permissão ou já existir
   BEGIN
-    PERFORM cron.schedule('clean_captadores_busca', '0 0 * * *', $$
+    PERFORM cron.schedule('clean_captadores_busca', '0 0 * * *', $CRON$
       UPDATE public.demandas_locacao
       SET captadores_busca = (
         SELECT COALESCE(jsonb_agg(elem), '[]'::jsonb)
@@ -71,8 +71,8 @@ BEGIN
         WHERE (elem->>'data_clique')::timestamp > NOW() - INTERVAL '1 day'
       )
       WHERE captadores_busca IS NOT NULL AND jsonb_array_length(captadores_busca) > 0;
-    $$);
+    $CRON$);
   EXCEPTION WHEN OTHERS THEN
     RAISE NOTICE 'Não foi possível agendar o pg_cron. Certifique-se de que a extensão está ativada e o usuário tem permissão.';
   END;
-END $$;
+END $BODY$;
