@@ -1052,7 +1052,7 @@ export type Database = {
         | "busca_iniciada_outros"
         | "busca_iniciada_responsavel"
         | "busca_iniciada_admin"
-      user_role: "admin" | "sdr" | "corretor" | "captador"
+      user_role: "admin" | "sdr" | "corretor" | "captador" | "gestor"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1190,7 +1190,7 @@ export const Constants = {
         "busca_iniciada_responsavel",
         "busca_iniciada_admin",
       ],
-      user_role: ["admin", "sdr", "corretor", "captador"],
+      user_role: ["admin", "sdr", "corretor", "captador", "gestor"],
     },
   },
 } as const
