@@ -2,7 +2,7 @@ CREATE OR REPLACE FUNCTION public.trg_notify_busca_iniciada_multipla()
 RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
-AS $function$
+AS $$
 DECLARE
   v_old_count int;
   v_new_count int;
@@ -79,7 +79,7 @@ BEGIN
 
   RETURN NEW;
 END;
-$function$;
+$$;
 
 DROP TRIGGER IF EXISTS trg_notify_busca_iniciada_locacao ON public.demandas_locacao;
 CREATE TRIGGER trg_notify_busca_iniciada_locacao

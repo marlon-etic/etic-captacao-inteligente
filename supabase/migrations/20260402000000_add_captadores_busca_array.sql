@@ -11,7 +11,7 @@ CREATE OR REPLACE FUNCTION public.append_captador_busca(
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
-AS $function$
+AS $$
 DECLARE
   v_current_arr jsonb;
   v_filtered_arr jsonb;
@@ -47,15 +47,15 @@ BEGIN
     UPDATE public.demandas_vendas SET captadores_busca = v_filtered_arr WHERE id = p_demanda_id;
   END IF;
 END;
-$function$;
+$$;
 
 CREATE EXTENSION IF NOT EXISTS pg_cron;
 
-DO $function$
+DO $$
 BEGIN
   -- Tenta criar o cron job de limpeza diária, ignorando se falhar por falta de permissão ou já existir
   BEGIN
-    PERFORM cron.schedule('clean_captadores_busca', '0 0 * * *', $
+    PERFORM cron.schedule('clean_captadores_busca', '0 0 * * *', $$
       UPDATE public.demandas_locacao
       SET captadores_busca = (
         SELECT COALESCE(jsonb_agg(elem), '[]'::jsonb)
@@ -71,8 +71,8 @@ BEGIN
         WHERE (elem->>'data_clique')::timestamp > NOW() - INTERVAL '1 day'
       )
       WHERE captadores_busca IS NOT NULL AND jsonb_array_length(captadores_busca) > 0;
-    $);
+    $$);
   EXCEPTION WHEN OTHERS THEN
     RAISE NOTICE 'Não foi possível agendar o pg_cron. Certifique-se de que a extensão está ativada e o usuário tem permissão.';
   END;
-END $function$;
+END $$;
