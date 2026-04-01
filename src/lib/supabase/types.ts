@@ -107,6 +107,7 @@ export type Database = {
           telefone: string | null
           tenant_score: number | null
           tipo_demanda: string | null
+          tipo_imovel: string | null
           updated_at: string | null
           urgencia: string | null
           vagas: number | null
@@ -138,6 +139,7 @@ export type Database = {
           telefone?: string | null
           tenant_score?: number | null
           tipo_demanda?: string | null
+          tipo_imovel?: string | null
           updated_at?: string | null
           urgencia?: string | null
           vagas?: number | null
@@ -169,6 +171,7 @@ export type Database = {
           telefone?: string | null
           tenant_score?: number | null
           tipo_demanda?: string | null
+          tipo_imovel?: string | null
           updated_at?: string | null
           urgencia?: string | null
           vagas?: number | null
@@ -1252,6 +1255,7 @@ export const Constants = {
 //   tenant_score: integer (nullable, default: 0)
 //   vinculacao_captador_id: uuid (nullable)
 //   captadores_busca: jsonb (nullable, default: '[]'::jsonb)
+//   tipo_imovel: text (nullable, default: 'Casa'::text)
 // Table: demandas_vendas
 //   id: uuid (not null, default: gen_random_uuid())
 //   cliente_nome: character varying (nullable)
@@ -1264,7 +1268,7 @@ export const Constants = {
 //   created_at: timestamp with time zone (nullable, default: now())
 //   updated_at: timestamp with time zone (nullable, default: now())
 //   corretor_id: uuid (nullable)
-//   tipo_imovel: character varying (nullable)
+//   tipo_imovel: character varying (nullable, default: 'Casa'::character varying)
 //   nome_cliente: character varying (nullable)
 //   telefone: character varying (nullable)
 //   email: character varying (nullable)
@@ -1449,6 +1453,7 @@ export const Constants = {
 //   FOREIGN KEY demandas_locacao_sdr_id_fkey: FOREIGN KEY (sdr_id) REFERENCES users(id) ON DELETE SET NULL
 //   CHECK demandas_locacao_status_demanda_check: CHECK (((status_demanda)::text = ANY ((ARRAY['aberta'::character varying, 'atendida'::character varying, 'impossivel'::character varying, 'sem_resposta_24h'::character varying, 'ganho'::character varying])::text[])))
 //   CHECK demandas_locacao_telefone_check: CHECK (((telefone IS NULL) OR (((telefone)::text ~ '^\([0-9]{2}\) 9[0-9]{4}-[0-9]{4}'::text) AND (length((telefone)::text) = 15))))
+//   CHECK demandas_locacao_tipo_imovel_check: CHECK ((tipo_imovel = ANY (ARRAY['Casa'::text, 'Apartamento'::text, 'Terreno'::text, 'Galpão'::text, 'Comercial'::text])))
 //   CHECK demandas_locacao_vagas_estacionamento_check: CHECK (((vagas_estacionamento >= 0) AND (vagas_estacionamento <= 10)))
 //   FOREIGN KEY demandas_locacao_vinculacao_captador_id_fkey: FOREIGN KEY (vinculacao_captador_id) REFERENCES auth.users(id) ON DELETE SET NULL
 //   FOREIGN KEY fk_demandas_locacao_sdr: FOREIGN KEY (sdr_id) REFERENCES users(id) ON DELETE SET NULL
@@ -1464,7 +1469,7 @@ export const Constants = {
 //   CHECK demandas_vendas_status_demanda_check: CHECK (((status_demanda)::text = ANY ((ARRAY['aberta'::character varying, 'atendida'::character varying, 'impossivel'::character varying, 'sem_resposta_24h'::character varying, 'ganho'::character varying])::text[])))
 //   CHECK demandas_vendas_telefone_check: CHECK (((telefone)::text ~ '^\([0-9]{2}\) 9[0-9]{4}-[0-9]{4}
 ::text))
-//   CHECK demandas_vendas_tipo_imovel_check: CHECK (((tipo_imovel)::text = ANY ((ARRAY['Casa'::character varying, 'Apartamento'::character varying, 'Terreno'::character varying])::text[])))
+//   CHECK demandas_vendas_tipo_imovel_check: CHECK (((tipo_imovel)::text = ANY ((ARRAY['Casa'::character varying, 'Apartamento'::character varying, 'Terreno'::character varying, 'Galpão'::character varying, 'Comercial'::character varying])::text[])))
 //   CHECK demandas_vendas_vagas_estacionamento_check: CHECK (((vagas_estacionamento >= 0) AND (vagas_estacionamento <= 10)))
 //   FOREIGN KEY demandas_vendas_vinculacao_captador_id_fkey: FOREIGN KEY (vinculacao_captador_id) REFERENCES auth.users(id) ON DELETE SET NULL
 // Table: grupos_demandas
