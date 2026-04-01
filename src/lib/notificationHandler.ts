@@ -45,6 +45,11 @@ export const createNotification = async (
   }
 }
 
+const getUsersByRole = async (role: string) => {
+  const { data } = await supabase.from('users').select('id').eq('role', role).eq('status', 'ativo')
+  return data?.map((u) => u.id) || []
+}
+
 export const processRealtimeNotification = async (
   table: string,
   payload: any,
@@ -65,110 +70,147 @@ export const processRealtimeNotification = async (
   }
 
   try {
+    const admins = await getUsersByRole('admin')
+
     if (table === 'imoveis_captados') {
       const imovel = payload.new
-      const oldImovel = payload.old
+      const oldImovel = payload.old || {}
+
+      const usersToNotify = new Set<string>()
+      const captadorId = imovel.user_captador_id || imovel.captador_id
+      let sdrId = null
+      let corretorId = null
+
+      if (imovel.demanda_locacao_id) {
+        const { data: demanda } = await supabase
+          .from('demandas_locacao')
+          .select('sdr_id')
+          .eq('id', imovel.demanda_locacao_id)
+          .single()
+        sdrId = demanda?.sdr_id
+      }
+      if (imovel.demanda_venda_id) {
+        const { data: demanda } = await supabase
+          .from('demandas_vendas')
+          .select('corretor_id')
+          .eq('id', imovel.demanda_venda_id)
+          .single()
+        corretorId = demanda?.corretor_id
+      }
 
       if (payload.eventType === 'INSERT') {
-        if (imovel.demanda_locacao_id) {
-          const { data: demanda } = await supabase
-            .from('demandas_locacao')
-            .select('sdr_id')
-            .eq('id', imovel.demanda_locacao_id)
-            .single()
-          if (demanda?.sdr_id) {
-            await createNotification(
-              demanda.sdr_id,
-              'novo_imovel',
-              'Novo Imóvel Cadastrado',
-              `O imóvel ${imovel.codigo_imovel || 'S/C'} foi cadastrado para sua demanda de locação.`,
-              { imovel_id: imovel.id, demanda_id: imovel.demanda_locacao_id },
-              'normal',
-            )
+        admins.forEach((id) => usersToNotify.add(id))
+        if (captadorId) usersToNotify.add(captadorId)
+        if (sdrId) usersToNotify.add(sdrId)
+        if (corretorId) usersToNotify.add(corretorId)
+
+        if (!imovel.demanda_locacao_id && !imovel.demanda_venda_id) {
+          if (imovel.tipo === 'Aluguel' || imovel.tipo === 'Ambos') {
+            const sdrs = await getUsersByRole('sdr')
+            sdrs.forEach((id) => usersToNotify.add(id))
           }
-        } else if (imovel.demanda_venda_id) {
-          const { data: demanda } = await supabase
-            .from('demandas_vendas')
-            .select('corretor_id')
-            .eq('id', imovel.demanda_venda_id)
-            .single()
-          if (demanda?.corretor_id) {
-            await createNotification(
-              demanda.corretor_id,
-              'novo_imovel',
-              'Novo Imóvel Cadastrado',
-              `O imóvel ${imovel.codigo_imovel || 'S/C'} foi cadastrado para sua demanda de venda.`,
-              { imovel_id: imovel.id, demanda_id: imovel.demanda_venda_id },
-              'normal',
-            )
+          if (imovel.tipo === 'Venda' || imovel.tipo === 'Ambos') {
+            const corretores = await getUsersByRole('corretor')
+            corretores.forEach((id) => usersToNotify.add(id))
           }
         }
+
+        const promises = Array.from(usersToNotify).map((userId) =>
+          createNotification(
+            userId,
+            'novo_imovel',
+            'Novo Imóvel Cadastrado',
+            `O imóvel ${imovel.codigo_imovel || 'S/C'} foi cadastrado no sistema.`,
+            { imovel_id: imovel.id },
+            'normal',
+          ),
+        )
+        await Promise.all(promises)
       }
 
       if (payload.eventType === 'UPDATE') {
         const wasLinkedLocacao = !oldImovel?.demanda_locacao_id && imovel.demanda_locacao_id
         const wasLinkedVenda = !oldImovel?.demanda_venda_id && imovel.demanda_venda_id
-        if (
-          (wasLinkedLocacao || wasLinkedVenda) &&
-          (imovel.user_captador_id || imovel.captador_id)
-        ) {
-          await createNotification(
-            imovel.user_captador_id || imovel.captador_id,
-            'imovel_capturado',
-            'Imóvel Vinculado',
-            `O imóvel ${imovel.codigo_imovel || ''} foi vinculado a uma demanda.`,
-            { imovel_id: imovel.id },
-            'normal',
-          )
-        }
 
-        // CRÍTICO: Imóvel marcado como "PERDIDO"
-        if (imovel.status_captacao === 'perdido' && oldImovel?.status_captacao !== 'perdido') {
-          const usersToNotify = new Set<string>()
-          let hasInterestedParties = false
-
-          if (imovel.user_captador_id || imovel.captador_id) {
-            usersToNotify.add(imovel.user_captador_id || imovel.captador_id)
-            hasInterestedParties = true
-          }
-          if (imovel.demanda_locacao_id) {
-            const { data: demanda } = await supabase
-              .from('demandas_locacao')
-              .select('sdr_id')
-              .eq('id', imovel.demanda_locacao_id)
-              .single()
-            if (demanda?.sdr_id) {
-              usersToNotify.add(demanda.sdr_id)
-              hasInterestedParties = true
-            }
-          }
-          if (imovel.demanda_venda_id) {
-            const { data: demanda } = await supabase
-              .from('demandas_vendas')
-              .select('corretor_id')
-              .eq('id', imovel.demanda_venda_id)
-              .single()
-            if (demanda?.corretor_id) {
-              usersToNotify.add(demanda.corretor_id)
-              hasInterestedParties = true
-            }
-          }
-
-          const { data: admins } = await supabase
-            .from('users')
-            .select('id')
-            .eq('role', 'admin')
-            .eq('status', 'ativo')
-          if (admins) {
-            admins.forEach((a) => usersToNotify.add(a.id))
-          }
+        if (wasLinkedLocacao || wasLinkedVenda) {
+          usersToNotify.clear()
+          admins.forEach((id) => usersToNotify.add(id))
+          if (captadorId) usersToNotify.add(captadorId)
+          if (sdrId) usersToNotify.add(sdrId)
+          if (corretorId) usersToNotify.add(corretorId)
 
           const promises = Array.from(usersToNotify).map((userId) =>
             createNotification(
               userId,
-              'status_atualizado', // Using DB enum equivalent to imovel_perdido
+              'imovel_capturado',
+              'Imóvel Vinculado',
+              `O imóvel ${imovel.codigo_imovel || 'S/C'} foi vinculado a uma demanda.`,
+              { imovel_id: imovel.id, demanda_id: imovel.demanda_locacao_id || imovel.demanda_venda_id },
+              'normal',
+            ),
+          )
+          await Promise.all(promises)
+        }
+
+        const visitado = imovel.etapa_funil === 'visitado' && oldImovel.etapa_funil !== 'visitado'
+        if (visitado) {
+          usersToNotify.clear()
+          admins.forEach((id) => usersToNotify.add(id))
+          if (captadorId) usersToNotify.add(captadorId)
+          if (sdrId) usersToNotify.add(sdrId)
+          if (corretorId) usersToNotify.add(corretorId)
+
+          const promises = Array.from(usersToNotify).map((userId) =>
+            createNotification(
+              userId,
+              'status_atualizado',
+              'Visita Agendada',
+              `Visita marcada para o imóvel ${imovel.codigo_imovel || 'S/C'}.`,
+              { imovel_id: imovel.id, status: 'visitado' },
+              'normal',
+            ),
+          )
+          await Promise.all(promises)
+        }
+
+        const fechado =
+          (imovel.etapa_funil === 'fechado' && oldImovel.etapa_funil !== 'fechado') ||
+          (imovel.status_captacao === 'fechado' && oldImovel.status_captacao !== 'fechado')
+        if (fechado) {
+          usersToNotify.clear()
+          admins.forEach((id) => usersToNotify.add(id))
+          if (captadorId) usersToNotify.add(captadorId)
+          if (sdrId) usersToNotify.add(sdrId)
+          if (corretorId) usersToNotify.add(corretorId)
+
+          const promises = Array.from(usersToNotify).map((userId) =>
+            createNotification(
+              userId,
+              'status_atualizado',
+              'Negócio Fechado! 🎉',
+              `O imóvel ${imovel.codigo_imovel || 'S/C'} foi fechado com sucesso!`,
+              { imovel_id: imovel.id, status: 'fechado' },
+              'alta',
+            ),
+          )
+          await Promise.all(promises)
+        }
+
+        const perdido =
+          imovel.status_captacao === 'perdido' && oldImovel.status_captacao !== 'perdido'
+        if (perdido) {
+          usersToNotify.clear()
+          admins.forEach((id) => usersToNotify.add(id))
+          if (captadorId) usersToNotify.add(captadorId)
+          if (sdrId) usersToNotify.add(sdrId)
+          if (corretorId) usersToNotify.add(corretorId)
+
+          const promises = Array.from(usersToNotify).map((userId) =>
+            createNotification(
+              userId,
+              'status_atualizado',
               'Imóvel Perdido',
-              `O imóvel ${imovel.codigo_imovel || 'S/C'} em ${imovel.localizacao_texto || imovel.endereco || 'localização não informada'} foi marcado como perdido${imovel.observacoes ? ' - Motivo: ' + imovel.observacoes : ''}.`,
+              `O imóvel ${imovel.codigo_imovel || 'S/C'} foi marcado como perdido.`,
               { imovel_id: imovel.id, status: 'perdido' },
               'alta',
             ),
@@ -177,21 +219,51 @@ export const processRealtimeNotification = async (
         }
       }
     } else if (table === 'demandas_locacao' || table === 'demandas_vendas') {
+      const demanda = payload.new
+      const oldDemanda = payload.old || {}
+      const isLocacao = table === 'demandas_locacao'
+      const ownerId = isLocacao ? demanda.sdr_id : demanda.corretor_id
+
+      const captadores = await getUsersByRole('captador')
+      const usersToNotify = new Set<string>()
+
       if (payload.eventType === 'INSERT') {
-        const { data: captadores } = await supabase
-          .from('users')
-          .select('id')
-          .eq('role', 'captador')
-          .eq('status', 'ativo')
-        if (captadores) {
-          const promises = captadores.map((c) =>
+        admins.forEach((id) => usersToNotify.add(id))
+        captadores.forEach((id) => usersToNotify.add(id))
+        if (ownerId) usersToNotify.add(ownerId)
+
+        const promises = Array.from(usersToNotify).map((userId) =>
+          createNotification(
+            userId,
+            'nova_demanda',
+            isLocacao ? 'Nova Demanda de Locação' : 'Nova Demanda de Venda',
+            `Uma nova demanda foi criada para ${demanda.nome_cliente || demanda.cliente_nome || 'Cliente'}.`,
+            { demanda_id: demanda.id, tipo_demanda: isLocacao ? 'Aluguel' : 'Venda' },
+            'normal',
+          ),
+        )
+        await Promise.all(promises)
+      }
+
+      if (payload.eventType === 'UPDATE') {
+        const ganho = demanda.status_demanda === 'ganho' && oldDemanda.status_demanda !== 'ganho'
+        const perdido =
+          demanda.status_demanda &&
+          demanda.status_demanda.includes('PERDIDA') &&
+          oldDemanda.status_demanda !== demanda.status_demanda
+
+        if (ganho || perdido) {
+          admins.forEach((id) => usersToNotify.add(id))
+          if (ownerId) usersToNotify.add(ownerId)
+
+          const promises = Array.from(usersToNotify).map((userId) =>
             createNotification(
-              c.id,
-              'nova_demanda',
-              'Nova Demanda',
-              `Uma nova demanda foi criada por ${payload.new.nome_cliente || payload.new.cliente_nome || 'Cliente'}.`,
-              { demanda_id: payload.new.id },
-              'normal',
+              userId,
+              'status_atualizado',
+              ganho ? 'Demanda Ganha! 🏆' : 'Demanda Perdida',
+              `A demanda de ${demanda.nome_cliente || demanda.cliente_nome || 'Cliente'} foi marcada como ${ganho ? 'ganha' : 'perdida'}.`,
+              { demanda_id: demanda.id, status: demanda.status_demanda },
+              ganho ? 'alta' : 'normal',
             ),
           )
           await Promise.all(promises)

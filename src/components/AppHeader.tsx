@@ -1,4 +1,4 @@
-import { Bell, Menu, Star, Check, AlertCircle, Home, FileText, UserPlus } from 'lucide-react'
+import { Bell, Menu, Star, Check, AlertCircle, Home, FileText, UserPlus, ClipboardList, Link as LinkIcon, Calendar } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { SidebarTrigger, useSidebar } from '@/components/ui/sidebar'
 import { Badge } from '@/components/ui/badge'
@@ -40,11 +40,13 @@ export function AppHeader({ onAddPropertyClick }: AppHeaderProps) {
   }
 
   const getNotificationIcon = (tipo: string, title: string) => {
-    if (tipo === 'nova_demanda') return <UserPlus className="w-5 h-5 text-blue-500" />
+    const t = title.toLowerCase()
+    if (t.includes('perdido') || t.includes('perdida')) return <AlertCircle className="w-5 h-5 text-red-500" />
+    if (t.includes('fechado') || t.includes('ganha')) return <Check className="w-5 h-5 text-emerald-500" />
+    if (t.includes('visita')) return <Calendar className="w-5 h-5 text-orange-500" />
+    if (t.includes('vinculad') || tipo === 'imovel_capturado') return <LinkIcon className="w-5 h-5 text-indigo-500" />
+    if (tipo === 'nova_demanda') return <ClipboardList className="w-5 h-5 text-blue-500" />
     if (tipo === 'novo_imovel') return <Home className="w-5 h-5 text-emerald-500" />
-    if (tipo === 'imovel_capturado') return <FileText className="w-5 h-5 text-indigo-500" />
-    if (title.toLowerCase().includes('perdido'))
-      return <AlertCircle className="w-5 h-5 text-red-500" />
     return <Bell className="w-5 h-5 text-gray-500" />
   }
 
