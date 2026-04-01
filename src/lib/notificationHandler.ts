@@ -145,7 +145,10 @@ export const processRealtimeNotification = async (
               'imovel_capturado',
               'Imóvel Vinculado',
               `O imóvel ${imovel.codigo_imovel || 'S/C'} foi vinculado a uma demanda.`,
-              { imovel_id: imovel.id, demanda_id: imovel.demanda_locacao_id || imovel.demanda_venda_id },
+              {
+                imovel_id: imovel.id,
+                demanda_id: imovel.demanda_locacao_id || imovel.demanda_venda_id,
+              },
               'normal',
             ),
           )
