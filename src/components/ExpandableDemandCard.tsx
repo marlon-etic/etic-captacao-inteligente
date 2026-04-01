@@ -31,7 +31,7 @@ import { PrazoCounter } from './PrazoCounter'
 import { RespostasBadge, RespostasHistory } from './RespostasHistory'
 
 export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
-  const { currentUser } = useAppStore()
+  const { currentUser, users } = useAppStore()
   const { toast } = useToast()
 
   const [isCaptureModalOpen, setIsCaptureModalOpen] = useState(false)
@@ -45,6 +45,41 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
     currentUser?.role === 'gestor' ||
     demand.sdr_id === currentUser?.id ||
     demand.corretor_id === currentUser?.id
+
+  const handleAtribuirBusca = async (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (isSubmitting) return
+    setIsSubmitting(true)
+    try {
+      const table = demand.tipo === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
+      const { error } = await supabase
+        .from(table)
+        .update({ vinculacao_captador_id: currentUser?.id })
+        .eq('id', demand.id)
+
+      if (error) throw error
+
+      window.dispatchEvent(
+        new CustomEvent('demanda-updated', {
+          detail: {
+            tipo: demand.tipo,
+            data: { id: demand.id, vinculacao_captador_id: currentUser?.id },
+          },
+        }),
+      )
+
+      toast({
+        title: 'Busca Atribuída',
+        description: 'Você está buscando imóveis para esta demanda.',
+        className: 'bg-[#10B981] text-white border-none',
+      })
+    } catch (err: any) {
+      toast({ title: 'Erro ao atribuir', description: err.message, variant: 'destructive' })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
   const togglePriority = async (e: React.MouseEvent) => {
     e.preventDefault()
@@ -300,6 +335,27 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
             )}
 
             <RespostasBadge respostas={respostasNaoEncontrei} />
+
+            {currentUser?.role === 'captador' &&
+              ((demand as any).vinculacao_captador_id ? (
+                <Badge className="bg-green-100 text-green-800 hover:bg-green-100 text-[10px] font-black px-2 py-1 flex items-center gap-1 shadow-sm border border-green-200">
+                  🔍{' '}
+                  {(demand as any).vinculacao_captador_id === currentUser.id
+                    ? 'Você está buscando'
+                    : `${users?.find((u) => u.id === (demand as any).vinculacao_captador_id)?.nome || 'Captador'} - Buscando`}{' '}
+                  em {demand.bairros?.[0] || 'Região'}
+                </Badge>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-6 text-[10px] font-bold px-2 py-0 border-dashed border-[#10B981] text-[#10B981] hover:bg-[#10B981]/10 z-10 relative pointer-events-auto"
+                  onClick={handleAtribuirBusca}
+                  disabled={isSubmitting}
+                >
+                  🔍 Eu busco este imóvel
+                </Button>
+              ))}
           </div>
 
           <div className="flex items-center gap-2 shrink-0 pointer-events-auto">

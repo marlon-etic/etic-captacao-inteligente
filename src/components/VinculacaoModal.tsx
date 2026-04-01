@@ -134,16 +134,34 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
       const isLocacao =
         selectedDemand.tipo === 'Aluguel' || selectedDemand.tipo_demanda === 'Aluguel'
 
-      // Atualizar imóvel com o ID da demanda correspondente
-      const { error } = await supabase
+      // Buscar imóvel atual
+      const { data: existingImovel, error: fetchError } = await supabase
         .from('imoveis_captados')
-        .update({
-          demanda_locacao_id: isLocacao ? selectedDemand.id : null,
-          demanda_venda_id: !isLocacao ? selectedDemand.id : null,
-        })
+        .select('*')
         .eq('id', imovel.id)
+        .single()
 
-      if (error) throw error
+      if (fetchError) throw fetchError
+
+      // Multipla vinculação: Sempre duplicar o imóvel mantendo os dados para associar à nova demanda,
+      // preservando o original (seja genérico "disponível" ou já de outra demanda).
+      const { id: _, created_at, updated_at, codigo_imovel, ...imovelData } = existingImovel
+
+      const novoCodigo = codigo_imovel
+        ? `${codigo_imovel}-V${Math.floor(Math.random() * 1000)}`
+        : null
+
+      const newImovel = {
+        ...imovelData,
+        codigo_imovel: novoCodigo,
+        demanda_locacao_id: isLocacao ? selectedDemand.id : null,
+        demanda_venda_id: !isLocacao ? selectedDemand.id : null,
+        status_captacao: 'capturado', // Reset status in the new funnel
+        etapa_funil: 'capturado',
+      }
+
+      const { error: insertError } = await supabase.from('imoveis_captados').insert(newImovel)
+      if (insertError) throw insertError
 
       // Atualizar status da demanda para atendida
       const table = isLocacao ? 'demandas_locacao' : 'demandas_vendas'

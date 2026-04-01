@@ -289,6 +289,15 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
           </span>
 
           <div className="flex items-center gap-2 pointer-events-auto flex-wrap justify-end">
+            {currentUser?.role === 'captador' && (demand as any).vinculacao_captador_id && (
+              <Badge className="bg-green-100 text-green-800 hover:bg-green-100 text-[10px] font-black px-2 py-1 flex items-center gap-1 shadow-sm border border-green-200">
+                🔍{' '}
+                {(demand as any).vinculacao_captador_id === currentUser.id
+                  ? 'Você está buscando'
+                  : `${users?.find((u) => u.id === (demand as any).vinculacao_captador_id)?.nome || 'Captador'} - Buscando`}
+              </Badge>
+            )}
+
             <RespostasBadge respostas={respostasNaoEncontrei} />
             <div
               className={cn(
