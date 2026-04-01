@@ -53,6 +53,7 @@ export interface SupabaseDemand {
   sdr_id?: string
   corretor_id?: string
   vinculacao_captador_id?: string
+  captadores_busca?: any[]
 }
 
 export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
@@ -134,6 +135,7 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
           sdr_id: d.sdr_id,
           corretor_id: d.corretor_id,
           vinculacao_captador_id: d.vinculacao_captador_id,
+          captadores_busca: d.captadores_busca || [],
           respostas_captador: respostas,
           prazos_captacao: d.prazos_captacao || [],
           imoveis_captados: (d.imoveis_captados || [])
@@ -208,7 +210,6 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
             if (d.imoveis_captados && d.imoveis_captados.some((i: any) => i.id === deletedId)) {
               const newImoveis = d.imoveis_captados.filter((i: any) => i.id !== deletedId)
 
-              // Recalculate status
               let newStatus = d.db_status_demanda || d.status_demanda
               const hasClosed = newImoveis.some((i: any) => i.etapa_funil === 'fechado')
               if (!hasClosed && newStatus === 'ganho') {
@@ -286,6 +287,7 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
                     d.vinculacao_captador_id !== undefined
                       ? d.vinculacao_captador_id
                       : x.vinculacao_captador_id,
+                  captadores_busca: d.captadores_busca || x.captadores_busca || [],
                 }
               }
               return x
@@ -375,6 +377,7 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
                         d.vinculacao_captador_id !== undefined
                           ? d.vinculacao_captador_id
                           : x.vinculacao_captador_id,
+                      captadores_busca: d.captadores_busca || x.captadores_busca || [],
                     }
                   }
                   return x

@@ -44,32 +44,47 @@ export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDeman
   const { currentUser, users } = useAppStore()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const handleAtribuirBusca = async (e: React.MouseEvent) => {
+  const handleAtribuirBuscaMultipla = async (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
     if (isSubmitting) return
     setIsSubmitting(true)
     try {
-      const table = demand.tipo === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
-      const { error } = await supabase
-        .from(table)
-        .update({ vinculacao_captador_id: currentUser?.id })
-        .eq('id', demand.id)
-
+      const { error } = await supabase.rpc('append_captador_busca', {
+        p_demanda_id: demand.id,
+        p_tipo_demanda: demand.tipo,
+        p_captador_id: currentUser?.id,
+        p_nome: currentUser?.name || currentUser?.nome || 'Captador',
+        p_regiao: demand.bairros?.[0] || 'Região',
+      })
       if (error) throw error
+
+      const newEntry = {
+        captador_id: currentUser?.id,
+        nome: currentUser?.name || currentUser?.nome || 'Captador',
+        regiao: demand.bairros?.[0] || 'Região',
+        data_clique: new Date().toISOString(),
+      }
+      const currentList = (demand.captadores_busca || []).filter(
+        (c: any) => new Date(c.data_clique).getTime() > Date.now() - 24 * 3600000,
+      )
+      const newList = [
+        ...currentList.filter((c: any) => c.captador_id !== currentUser?.id),
+        newEntry,
+      ]
 
       window.dispatchEvent(
         new CustomEvent('demanda-updated', {
           detail: {
             tipo: demand.tipo,
-            data: { id: demand.id, vinculacao_captador_id: currentUser?.id },
+            data: { id: demand.id, captadores_busca: newList },
           },
         }),
       )
 
       toast({
-        title: 'Busca Atribuída',
-        description: 'Você está buscando imóveis para esta demanda.',
+        title: 'Busca Iniciada',
+        description: 'Você e outros captadores podem buscar imóveis para esta demanda.',
         className: 'bg-[#10B981] text-white border-none',
       })
     } catch (err: any) {
@@ -385,6 +400,12 @@ export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDeman
   const capturedCount = demand.imoveis_captados?.length || 0
   const isBrandNew = new Date().getTime() - new Date(demand.created_at).getTime() < 1000 * 60 * 5
 
+  const activeCaptadores = (demand.captadores_busca || []).filter(
+    (c: any) => new Date(c.data_clique).getTime() > Date.now() - 24 * 3600000,
+  )
+  const isMeSearching = activeCaptadores.some((c: any) => c.captador_id === currentUser?.id)
+  const captadoresNames = activeCaptadores.map((c: any) => c.nome?.split(' ')[0]).join(' + ')
+
   return (
     <>
       <Card
@@ -426,26 +447,33 @@ export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDeman
 
             <RespostasBadge respostas={respostasNaoEncontrei} />
 
-            {currentUser?.role === 'captador' &&
-              ((demand as any).vinculacao_captador_id ? (
-                <Badge className="bg-green-100 text-green-800 hover:bg-green-100 text-[10px] font-black px-2 py-1 flex items-center gap-1 shadow-sm border border-green-200">
-                  🔍{' '}
-                  {(demand as any).vinculacao_captador_id === currentUser.id
-                    ? 'Você está buscando'
-                    : `${users?.find((u) => u.id === (demand as any).vinculacao_captador_id)?.nome || 'Captador'} - Buscando`}{' '}
-                  em {demand.bairros?.[0] || 'Região'}
-                </Badge>
-              ) : (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-6 text-[10px] font-bold px-2 py-0 border-dashed border-[#10B981] text-[#10B981] hover:bg-[#10B981]/10 z-10 relative pointer-events-auto"
-                  onClick={handleAtribuirBusca}
-                  disabled={isSubmitting}
-                >
-                  🔍 Eu busco este imóvel
-                </Button>
-              ))}
+            {currentUser?.role === 'captador' && (
+              <>
+                {activeCaptadores.length > 0 && (
+                  <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 text-[10px] font-black px-2 py-1 flex items-center gap-1 shadow-sm border border-blue-200">
+                    🔵 {captadoresNames} - {activeCaptadores[0]?.regiao || 'Região'}
+                  </Badge>
+                )}
+                {!isMeSearching && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-6 text-[10px] font-bold px-2 py-0 border-dashed border-blue-500 text-blue-600 hover:bg-blue-50 z-10 relative pointer-events-auto shadow-sm"
+                    onClick={handleAtribuirBuscaMultipla}
+                    disabled={isSubmitting}
+                  >
+                    🔍 Eu busco este imóvel
+                  </Button>
+                )}
+              </>
+            )}
+
+            {isOwnerOrAdmin && activeCaptadores.length > 0 && (
+              <Badge className="bg-purple-100 text-purple-800 hover:bg-purple-100 text-[10px] font-black px-2 py-1 flex items-center gap-1 shadow-sm border border-purple-200">
+                👀 {activeCaptadores.length} captadores buscando - Adicione imóveis ou marque
+                visitas
+              </Badge>
+            )}
           </div>
           {prazo &&
             (demand.status_demanda === 'aberta' || demand.status_demanda === 'sem_resposta_24h') &&

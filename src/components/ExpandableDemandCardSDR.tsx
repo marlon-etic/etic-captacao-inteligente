@@ -97,6 +97,9 @@ export function ExpandableDemandCardSDR({
   }
 
   const capturedCount = demand.imoveis_captados?.length || 0
+  const activeCaptadores = (demand.captadores_busca || []).filter(
+    (c: any) => new Date(c.data_clique).getTime() > Date.now() - 24 * 3600000,
+  )
 
   return (
     <Card
@@ -142,6 +145,12 @@ export function ExpandableDemandCardSDR({
           )}
 
           <RespostasBadge respostas={respostasNaoEncontrei} />
+
+          {activeCaptadores.length > 0 && (
+            <Badge className="bg-purple-100 text-purple-800 hover:bg-purple-100 text-[10px] font-black px-2 py-1 flex items-center gap-1 shadow-sm border border-purple-200">
+              👀 {activeCaptadores.length} captadores buscando - Adicione imóveis ou marque visitas
+            </Badge>
+          )}
         </div>
 
         {isPending && !isLost && (
