@@ -69,6 +69,20 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
         }),
       )
 
+      import('@/lib/notificationHandler')
+        .then(({ notifyBuscaIniciada }) => {
+          notifyBuscaIniciada(
+            demand.id,
+            demand.tipo,
+            demand.nome_cliente,
+            demand.bairros || [],
+            currentUser?.id || '',
+            currentUser?.name || 'Captador',
+            demand.sdr_id || demand.corretor_id || null,
+          )
+        })
+        .catch(console.error)
+
       toast({
         title: 'Busca Atribuída',
         description: 'Você está buscando imóveis para esta demanda.',
@@ -338,18 +352,18 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
 
             {currentUser?.role === 'captador' &&
               ((demand as any).vinculacao_captador_id ? (
-                <Badge className="bg-green-100 text-green-800 hover:bg-green-100 text-[10px] font-black px-2 py-1 flex items-center gap-1 shadow-sm border border-green-200">
+                <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 text-[10px] font-black px-2 py-1 flex items-center gap-1 shadow-sm border border-blue-200">
                   🔍{' '}
                   {(demand as any).vinculacao_captador_id === currentUser.id
                     ? 'Você está buscando'
-                    : `${users?.find((u) => u.id === (demand as any).vinculacao_captador_id)?.nome || 'Captador'} - Buscando`}{' '}
+                    : `${users?.find((u) => u.id === (demand as any).vinculacao_captador_id)?.name || users?.find((u) => u.id === (demand as any).vinculacao_captador_id)?.nome || 'Captador'} - Buscando`}{' '}
                   em {demand.bairros?.[0] || 'Região'}
                 </Badge>
               ) : (
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-6 text-[10px] font-bold px-2 py-0 border-dashed border-[#10B981] text-[#10B981] hover:bg-[#10B981]/10 z-10 relative pointer-events-auto"
+                  className="h-6 text-[10px] font-bold px-2 py-0 border-dashed border-blue-500 text-blue-600 hover:bg-blue-50 z-10 relative pointer-events-auto shadow-sm"
                   onClick={handleAtribuirBusca}
                   disabled={isSubmitting}
                 >

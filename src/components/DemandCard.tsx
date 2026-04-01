@@ -290,12 +290,70 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
 
           <div className="flex items-center gap-2 pointer-events-auto flex-wrap justify-end">
             {currentUser?.role === 'captador' && (demand as any).vinculacao_captador_id && (
-              <Badge className="bg-green-100 text-green-800 hover:bg-green-100 text-[10px] font-black px-2 py-1 flex items-center gap-1 shadow-sm border border-green-200">
+              <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 text-[10px] font-black px-2 py-1 flex items-center gap-1 shadow-sm border border-blue-200">
                 🔍{' '}
                 {(demand as any).vinculacao_captador_id === currentUser.id
                   ? 'Você está buscando'
-                  : `${users?.find((u) => u.id === (demand as any).vinculacao_captador_id)?.nome || 'Captador'} - Buscando`}
+                  : `${users?.find((u) => u.id === (demand as any).vinculacao_captador_id)?.name || users?.find((u) => u.id === (demand as any).vinculacao_captador_id)?.nome || 'Captador'} - Buscando em ${demand.location?.split(',')[0] || 'Região'}`}
               </Badge>
+            )}
+
+            {currentUser?.role === 'captador' && !(demand as any).vinculacao_captador_id && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-6 text-[10px] font-bold px-2 py-0 border-dashed border-blue-500 text-blue-600 hover:bg-blue-50 z-10 relative pointer-events-auto shadow-sm"
+                onClick={async (e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  try {
+                    const table = demand.type === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
+                    const { error } = await supabase
+                      .from(table)
+                      .update({ vinculacao_captador_id: currentUser?.id })
+                      .eq('id', demand.id)
+
+                    if (error) throw error
+
+                    window.dispatchEvent(
+                      new CustomEvent('demanda-updated', {
+                        detail: {
+                          tipo: demand.type,
+                          data: { id: demand.id, vinculacao_captador_id: currentUser?.id },
+                        },
+                      }),
+                    )
+
+                    import('@/lib/notificationHandler')
+                      .then(({ notifyBuscaIniciada }) => {
+                        notifyBuscaIniciada(
+                          demand.id,
+                          demand.type as any,
+                          demand.clientName,
+                          [demand.location],
+                          currentUser?.id || '',
+                          currentUser?.name || 'Captador',
+                          demand.createdBy || null,
+                        )
+                      })
+                      .catch(console.error)
+
+                    toast({
+                      title: 'Busca Atribuída',
+                      description: 'Você está buscando imóveis para esta demanda.',
+                      className: 'bg-[#10B981] text-white border-none',
+                    })
+                  } catch (err: any) {
+                    toast({
+                      title: 'Erro ao atribuir',
+                      description: err.message,
+                      variant: 'destructive',
+                    })
+                  }
+                }}
+              >
+                🔍 Eu busco este imóvel
+              </Button>
             )}
 
             <RespostasBadge respostas={respostasNaoEncontrei} />

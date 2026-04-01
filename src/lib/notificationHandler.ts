@@ -8,7 +8,14 @@ const generateEventHash = (table: string, payload: any) => {
 
 export const createNotification = async (
   userId: string,
-  tipo: 'nova_demanda' | 'novo_imovel' | 'imovel_capturado' | 'status_atualizado',
+  tipo:
+    | 'nova_demanda'
+    | 'novo_imovel'
+    | 'imovel_capturado'
+    | 'status_atualizado'
+    | 'busca_iniciada_outros'
+    | 'busca_iniciada_responsavel'
+    | 'busca_iniciada_admin',
   titulo: string,
   mensagem: string,
   dadosRelacionados: any,
@@ -45,9 +52,80 @@ export const createNotification = async (
   }
 }
 
-const getUsersByRole = async (role: string) => {
+export const getUsersByRole = async (role: string) => {
   const { data } = await supabase.from('users').select('id').eq('role', role).eq('status', 'ativo')
   return data?.map((u) => u.id) || []
+}
+
+export const notifyBuscaIniciada = async (
+  demandaId: string,
+  demandaTipo: 'Aluguel' | 'Venda',
+  clienteNome: string,
+  bairros: string[],
+  captadorId: string,
+  captadorNome: string,
+  responsavelId: string | null,
+) => {
+  try {
+    const checkDuplicate = async (userId: string, tipo: string) => {
+      const { data } = await supabase
+        .from('notificacoes')
+        .select('id')
+        .eq('usuario_id', userId)
+        .eq('tipo', tipo as any)
+        .filter('dados_relacionados->>demanda_id', 'eq', demandaId)
+        .limit(1)
+      return data && data.length > 0
+    }
+
+    // 1. Admin
+    const admins = await getUsersByRole('admin')
+    for (const adminId of admins) {
+      if (!(await checkDuplicate(adminId, 'busca_iniciada_admin'))) {
+        await createNotification(
+          adminId,
+          'busca_iniciada_admin' as any,
+          'Busca atribuída',
+          `${captadorNome} atribuído à demanda ${clienteNome}`,
+          { demanda_id: demandaId, tipo_demanda: demandaTipo },
+          'normal',
+        )
+      }
+    }
+
+    // 2. Responsável
+    if (responsavelId && !admins.includes(responsavelId)) {
+      if (!(await checkDuplicate(responsavelId, 'busca_iniciada_responsavel'))) {
+        await createNotification(
+          responsavelId,
+          'busca_iniciada_responsavel' as any,
+          'Captador atribuído',
+          `${captadorNome} está buscando imóvel para sua demanda ${clienteNome}`,
+          { demanda_id: demandaId, tipo_demanda: demandaTipo },
+          'normal',
+        )
+      }
+    }
+
+    // 3. Outros Captadores
+    const captadores = await getUsersByRole('captador')
+    for (const capId of captadores) {
+      if (capId !== captadorId) {
+        if (!(await checkDuplicate(capId, 'busca_iniciada_outros'))) {
+          await createNotification(
+            capId,
+            'busca_iniciada_outros' as any,
+            'Demanda em busca',
+            `${captadorNome} está buscando imóvel para demanda ${clienteNome} em ${bairros.join(', ')}`,
+            { demanda_id: demandaId, tipo_demanda: demandaTipo },
+            'normal',
+          )
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Erro ao enviar notificacoes de busca iniciada:', err)
+  }
 }
 
 export const processRealtimeNotification = async (

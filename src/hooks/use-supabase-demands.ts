@@ -52,6 +52,7 @@ export interface SupabaseDemand {
   is_prioritaria?: boolean
   sdr_id?: string
   corretor_id?: string
+  vinculacao_captador_id?: string
 }
 
 export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
@@ -132,6 +133,7 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
           tipo: type,
           sdr_id: d.sdr_id,
           corretor_id: d.corretor_id,
+          vinculacao_captador_id: d.vinculacao_captador_id,
           respostas_captador: respostas,
           prazos_captacao: d.prazos_captacao || [],
           imoveis_captados: (d.imoveis_captados || [])
@@ -280,6 +282,10 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
                   respostas_captador: newRespostas,
                   is_prioritaria:
                     d.is_prioritaria !== undefined ? d.is_prioritaria : x.is_prioritaria,
+                  vinculacao_captador_id:
+                    d.vinculacao_captador_id !== undefined
+                      ? d.vinculacao_captador_id
+                      : x.vinculacao_captador_id,
                 }
               }
               return x
@@ -365,6 +371,10 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
                       respostas_captador: newRespostas,
                       is_prioritaria:
                         d.is_prioritaria !== undefined ? d.is_prioritaria : x.is_prioritaria,
+                      vinculacao_captador_id:
+                        d.vinculacao_captador_id !== undefined
+                          ? d.vinculacao_captador_id
+                          : x.vinculacao_captador_id,
                     }
                   }
                   return x

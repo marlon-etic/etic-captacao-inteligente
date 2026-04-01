@@ -1033,6 +1033,9 @@ export type Database = {
         | "novo_imovel"
         | "imovel_capturado"
         | "status_atualizado"
+        | "busca_iniciada_outros"
+        | "busca_iniciada_responsavel"
+        | "busca_iniciada_admin"
       user_role: "admin" | "sdr" | "corretor" | "captador"
     }
     CompositeTypes: {
@@ -1167,6 +1170,9 @@ export const Constants = {
         "novo_imovel",
         "imovel_capturado",
         "status_atualizado",
+        "busca_iniciada_outros",
+        "busca_iniciada_responsavel",
+        "busca_iniciada_admin",
       ],
       user_role: ["admin", "sdr", "corretor", "captador"],
     },
