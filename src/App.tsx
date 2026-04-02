@@ -196,6 +196,7 @@ const AppContent = () => {
 
           {/* Redirects for common root routes to avoid 404s */}
           <Route path="/demandas" element={<Navigate to="/app/demandas" replace />} />
+          <Route path="/demanda/:id" element={<Navigate to="/app/demandas" replace />} />
           <Route path="/perfil" element={<Navigate to="/app/perfil" replace />} />
           <Route path="/notificacoes" element={<Navigate to="/app/notificacoes" replace />} />
           <Route path="/ajuda" element={<Navigate to="/app/ajuda" replace />} />
@@ -207,6 +208,7 @@ const AppContent = () => {
           <Route path="/app" element={<Layout />}>
             <Route index element={<DashboardRedirect />} />
             <Route path="demandas" element={<Demandas />} />
+            <Route path="demanda/:id" element={<Demandas />} />
             <Route path="nova-demanda" element={<NovaDemanda />} />
             <Route path="ranking" element={<Ranking />} />
             <Route path="perfil" element={<Perfil />} />

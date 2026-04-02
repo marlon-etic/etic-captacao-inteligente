@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -46,6 +47,7 @@ const InfoItem = ({ label, value }: { label: string; value: React.ReactNode }) =
 export function DemandCard({ demand, index, onAction }: DemandCardProps) {
   const { users, logSolicitorContactAttempt, markDemandLost, currentUser } = useAppStore()
   const [showDetails, setShowDetails] = useState(false)
+  const navigate = useNavigate()
   const [showLostModal, setShowLostModal] = useState(false)
   const [isExtending, setIsExtending] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -279,7 +281,11 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
       <Card
         onClick={(e) => {
           if ((e.target as HTMLElement).closest('button')) return
-          setShowDetails(true)
+          if (demand.id) {
+            navigate(`/demanda/${demand.id}`)
+          } else {
+            toast({ title: 'Detalhes indisponíveis', variant: 'destructive' })
+          }
         }}
         className={cn(
           'w-full h-full flex flex-col rounded-[16px] transition-all duration-200 ease-in-out shadow-sm hover:shadow-[0_8px_24px_rgba(26,58,82,0.12)] relative overflow-visible z-0 border-[2px] cursor-pointer group',
@@ -481,7 +487,11 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
             onClick={(e) => {
               e.preventDefault()
               e.stopPropagation()
-              setShowDetails(true)
+              if (demand.id) {
+                navigate(`/demanda/${demand.id}`)
+              } else {
+                toast({ title: 'Detalhes indisponíveis', variant: 'destructive' })
+              }
             }}
             aria-label={`Ver Detalhes da demanda ${demand.clientName}`}
           >
@@ -595,7 +605,31 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
       <LostModal
         open={showLostModal}
         onOpenChange={setShowLostModal}
-        onConfirm={(reason, obs) => markDemandLost(demand.id, reason, obs)}
+        onConfirm={async (reason, obs) => {
+          try {
+            const table = demand.type === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
+            const { error } = await supabase
+              .from(table)
+              .update({ status_demanda: 'impossivel' })
+              .eq('id', demand.id)
+
+            if (error) throw error
+
+            markDemandLost(demand.id, reason, obs)
+            toast({
+              title: 'Sucesso',
+              description: 'Demanda marcada como perdida com sucesso.',
+              className: 'bg-[#10B981] text-white border-none',
+            })
+          } catch (err: any) {
+            toast({
+              title: 'Falha ao marcar como perdido',
+              description: err.message,
+              variant: 'destructive',
+            })
+            console.error(err)
+          }
+        }}
       />
     </div>
   )
