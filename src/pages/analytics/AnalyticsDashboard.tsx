@@ -13,15 +13,17 @@ import {
   SheetDescription,
   SheetTrigger,
 } from '@/components/ui/sheet'
-import { enhanceDemands, generateAnalyticsMockDemands } from '@/lib/analytics-utils'
+import { enhanceDemands } from '@/lib/analytics-utils'
 
 import { SummaryCards } from '@/components/analytics/SummaryCards'
 import { NeighborhoodsChart } from '@/components/analytics/NeighborhoodsChart'
 import { TypologyBarChart } from '@/components/analytics/TypologyBarChart'
 import { PriceDonutChart } from '@/components/analytics/PriceDonutChart'
 import { ProfileTable } from '@/components/analytics/ProfileTable'
+import { RolePerformanceChart } from '@/components/analytics/RolePerformanceChart'
 import { StickyFilterBar, FilterDef } from '@/components/StickyFilterBar'
 import { useViewFilters } from '@/hooks/useViewFilters'
+import { supabase } from '@/lib/supabase/client'
 
 const FILTERS: FilterDef[] = [
   {
@@ -46,13 +48,19 @@ const FILTERS: FilterDef[] = [
 ]
 
 export function AnalyticsDashboard() {
-  const { currentUser, demands, logAuthEvent, updateDashboardPrefs } = useAppStore()
+  const { currentUser, logAuthEvent, updateDashboardPrefs } = useAppStore()
 
   const [filters, setFilters] = useViewFilters('analytics_view', {
     tipo: 'Ambos',
-    periodo: 'Mês Atual',
+    periodo: 'Todas',
   })
+
+  const [realDemands, setRealDemands] = useState<any[]>([])
+  const [realImoveis, setRealImoveis] = useState<any[]>([])
+  const [usuarios, setUsuarios] = useState<any[]>([])
+
   const [isLoading, setIsLoading] = useState(false)
+  const [loadingData, setLoadingData] = useState(true)
   const [error, setError] = useState(false)
   const [selectedNeighborhood, setSelectedNeighborhood] = useState<string | null>(null)
 
@@ -62,24 +70,100 @@ export function AnalyticsDashboard() {
     }
   }, [currentUser, logAuthEvent])
 
+  useEffect(() => {
+    const fetchAnalytics = async () => {
+      try {
+        const [{ data: locacao }, { data: vendas }, { data: imoveis }, { data: users }] =
+          await Promise.all([
+            supabase.from('demandas_locacao').select('*'),
+            supabase.from('demandas_vendas').select('*'),
+            supabase.from('imoveis_captados').select('*'),
+            supabase.from('users').select('id, nome, role'),
+          ])
+
+        const mappedLocacao = (locacao || []).map((d) => ({
+          ...d,
+          type: 'Aluguel',
+          clientName: d.nome_cliente || d.cliente_nome || 'Desconhecido',
+          location: d.bairros || d.localizacoes || [],
+          budget: d.valor_maximo || d.orcamento_max || 0,
+          bedrooms: d.dormitorios || d.quartos || 0,
+          parkingSpots: d.vagas_estacionamento || d.vagas || 0,
+          status: d.status_demanda || 'aberta',
+          description: d.observacoes || '',
+          createdAt: d.created_at || new Date().toISOString(),
+        }))
+
+        const mappedVendas = (vendas || []).map((d) => ({
+          ...d,
+          type: 'Venda',
+          clientName: d.nome_cliente || d.cliente_nome || 'Desconhecido',
+          location: d.bairros || d.localizacoes || [],
+          budget: d.valor_maximo || d.orcamento_max || 0,
+          bedrooms: d.dormitorios || d.quartos || 0,
+          parkingSpots: d.vagas_estacionamento || d.vagas || 0,
+          status: d.status_demanda || 'aberta',
+          description: d.necessidades_especificas || '',
+          createdAt: d.created_at || new Date().toISOString(),
+        }))
+
+        setRealDemands([...mappedLocacao, ...mappedVendas])
+        setRealImoveis(imoveis || [])
+        setUsuarios(users || [])
+      } catch (err) {
+        console.error(err)
+        setError(true)
+      } finally {
+        setLoadingData(false)
+      }
+    }
+
+    fetchAnalytics()
+
+    const subLoc = supabase
+      .channel('locacao_an_changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'demandas_locacao' },
+        fetchAnalytics,
+      )
+      .subscribe()
+    const subVen = supabase
+      .channel('vendas_an_changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'demandas_vendas' },
+        fetchAnalytics,
+      )
+      .subscribe()
+    const subImov = supabase
+      .channel('imoveis_an_changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'imoveis_captados' },
+        fetchAnalytics,
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(subLoc)
+      supabase.removeChannel(subVen)
+      supabase.removeChannel(subImov)
+    }
+  }, [])
+
   const enhancedAllDemands = useMemo(() => {
-    // Combine real demands with 200 mock demands for rich analytics display
-    const combined = [...demands, ...generateAnalyticsMockDemands('init')]
-    return enhanceDemands(combined)
-  }, [demands])
+    return enhanceDemands(realDemands)
+  }, [realDemands])
 
   const handleFilterChange = (newF: Record<string, string>) => {
     setIsLoading(true)
     setError(false)
     setFilters(newF)
     setTimeout(() => {
-      if (Math.random() < 0.05) {
-        setError(true)
-      } else {
-        setSelectedNeighborhood(null)
-      }
+      setSelectedNeighborhood(null)
       setIsLoading(false)
-    }, 600)
+    }, 400)
   }
 
   const filteredDemands = useMemo(() => {
@@ -99,12 +183,32 @@ export function AnalyticsDashboard() {
     })
   }, [enhancedAllDemands, filters])
 
+  const filteredImoveis = useMemo(() => {
+    return realImoveis.filter((i) => {
+      const dDate = new Date(i.created_at).getTime()
+      const now = Date.now()
+      if (filters.periodo === 'Hoje' && now - dDate > 24 * 3600000) return false
+      if (filters.periodo === '7 dias' && now - dDate > 7 * 86400000) return false
+      if (filters.periodo === 'Mês Atual') {
+        const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime()
+        if (dDate < monthStart) return false
+      }
+      if (filters.tipo !== 'Ambos') {
+        const type =
+          i.tipo || (i.demanda_locacao_id ? 'Aluguel' : i.demanda_venda_id ? 'Venda' : 'Ambos')
+        if (type !== 'Ambos' && type !== filters.tipo) return false
+      }
+      return true
+    })
+  }, [realImoveis, filters])
+
   if (currentUser?.role !== 'admin' && currentUser?.role !== 'gestor') {
     return <Navigate to="/app" replace />
   }
 
   const defaultPrefs = {
     summary: true,
+    performance: true,
     neighborhoods: true,
     typology: true,
     price: true,
@@ -148,6 +252,13 @@ export function AnalyticsDashboard() {
                 <Switch
                   checked={prefs.summary}
                   onCheckedChange={(v) => handleTogglePref('summary', v)}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label className="text-base font-medium">Gráfico: Performance por Usuário</Label>
+                <Switch
+                  checked={prefs.performance}
+                  onCheckedChange={(v) => handleTogglePref('performance', v)}
                 />
               </div>
               <div className="flex items-center justify-between">
@@ -200,26 +311,34 @@ export function AnalyticsDashboard() {
             Tentar Novamente
           </Button>
         </div>
-      ) : isLoading ? (
+      ) : loadingData || isLoading ? (
         <div className="flex flex-col h-[400px] items-center justify-center bg-white rounded-xl border-[2px] border-[#2E5F8A]/10">
           <Loader2 className="h-10 w-10 animate-spin text-[#1A3A52] mb-4" />
           <p className="text-[#999999] font-bold text-[14px] uppercase tracking-wider">
-            Processando dados...
+            Processando dados REAIS do sistema...
           </p>
         </div>
-      ) : filteredDemands.length === 0 ? (
+      ) : filteredDemands.length === 0 && filteredImoveis.length === 0 ? (
         <div className="flex flex-col h-[400px] items-center justify-center text-center bg-white rounded-xl border-[2px] border-dashed border-[#2E5F8A]/20">
           <div className="w-16 h-16 bg-[#F5F5F5] rounded-full flex items-center justify-center mb-4">
             <Inbox className="h-8 w-8 text-[#999999]" />
           </div>
           <h3 className="text-[18px] font-bold text-[#333333] mb-1">
-            Nenhuma demanda neste período
+            Nenhuma demanda ou imóvel neste período
           </h3>
-          <p className="text-[14px] text-[#999999]">Altere os filtros para ver resultados.</p>
+          <p className="text-[14px] text-[#999999]">Altere os filtros para ver resultados reais.</p>
         </div>
       ) : (
         <div className="space-y-6 animate-fade-in">
-          {prefs.summary && <SummaryCards demands={filteredDemands} />}
+          {prefs.summary && <SummaryCards demands={filteredDemands} imoveis={filteredImoveis} />}
+
+          {prefs.performance && (
+            <RolePerformanceChart
+              demandas={filteredDemands}
+              imoveis={filteredImoveis}
+              usuarios={usuarios}
+            />
+          )}
 
           {(prefs.neighborhoods || prefs.typology) && (
             <div
