@@ -1033,6 +1033,7 @@ export type Database = {
           status: string
         }[]
       }
+      fn_recalcular_pontos_captadores: { Args: never; Returns: Json }
       fn_reset_database: { Args: { p_delete_before?: string }; Returns: Json }
       log_realtime_error: {
         Args: {
@@ -2336,6 +2337,72 @@ export const Constants = {
 //           FOR UPDATE SKIP LOCKED
 //       )
 //       RETURNING wq.id, wq.event_type, wq.payload, wq.status;
+//   END;
+//   $function$
+//   
+// FUNCTION fn_recalcular_pontos_captadores()
+//   CREATE OR REPLACE FUNCTION public.fn_recalcular_pontos_captadores()
+//    RETURNS jsonb
+//    LANGUAGE plpgsql
+//    SECURITY DEFINER
+//   AS $function$
+//   DECLARE
+//       v_is_admin boolean;
+//       v_count int := 0;
+//   BEGIN
+//       SELECT EXISTS (
+//           SELECT 1 FROM public.users 
+//           WHERE id = auth.uid() AND role IN ('admin', 'gestor')
+//       ) INTO v_is_admin;
+//       
+//       IF NOT v_is_admin THEN
+//           RETURN jsonb_build_object('status', 'error', 'message', 'Access denied');
+//       END IF;
+//   
+//       -- We delete all points to recalculate them from scratch
+//       DELETE FROM public.pontuacao_captador;
+//   
+//       -- Recalculate for Locação Demands (+10 points for captures linked to demand)
+//       INSERT INTO public.pontuacao_captador (captador_id, demanda_locacao_id, tipo_pontuacao, pontos)
+//       SELECT DISTINCT COALESCE(user_captador_id, captador_id), demanda_locacao_id, 'captura_com_demanda', 10
+//       FROM public.imoveis_captados
+//       WHERE demanda_locacao_id IS NOT NULL AND COALESCE(user_captador_id, captador_id) IS NOT NULL;
+//   
+//       -- Recalculate for Vendas Demands (+10 points for captures linked to demand)
+//       INSERT INTO public.pontuacao_captador (captador_id, demanda_venda_id, tipo_pontuacao, pontos)
+//       SELECT DISTINCT COALESCE(user_captador_id, captador_id), demanda_venda_id, 'captura_com_demanda', 10
+//       FROM public.imoveis_captados
+//       WHERE demanda_venda_id IS NOT NULL AND COALESCE(user_captador_id, captador_id) IS NOT NULL;
+//   
+//       -- Recalculate for Imóveis Avulsos (+3 points for independent captures)
+//       INSERT INTO public.pontuacao_captador (captador_id, tipo_pontuacao, pontos)
+//       SELECT COALESCE(user_captador_id, captador_id), 'captura_sem_demanda', 3
+//       FROM public.imoveis_captados
+//       WHERE demanda_locacao_id IS NULL AND demanda_venda_id IS NULL AND COALESCE(user_captador_id, captador_id) IS NOT NULL;
+//   
+//       -- Recalculate Ganho for Locação (+30 points for converted business)
+//       INSERT INTO public.pontuacao_captador (captador_id, demanda_locacao_id, tipo_pontuacao, pontos)
+//       SELECT DISTINCT COALESCE(ic.user_captador_id, ic.captador_id), dl.id, 'ganho_confirmado', 30
+//       FROM public.demandas_locacao dl
+//       JOIN public.imoveis_captados ic ON ic.demanda_locacao_id = dl.id
+//       WHERE dl.status_demanda = 'ganho' AND COALESCE(ic.user_captador_id, ic.captador_id) IS NOT NULL;
+//   
+//       -- Recalculate Ganho for Vendas (+30 points for converted business)
+//       INSERT INTO public.pontuacao_captador (captador_id, demanda_venda_id, tipo_pontuacao, pontos)
+//       SELECT DISTINCT COALESCE(ic.user_captador_id, ic.captador_id), dv.id, 'ganho_confirmado', 30
+//       FROM public.demandas_vendas dv
+//       JOIN public.imoveis_captados ic ON ic.demanda_venda_id = dv.id
+//       WHERE dv.status_demanda = 'ganho' AND COALESCE(ic.user_captador_id, ic.captador_id) IS NOT NULL;
+//   
+//       SELECT count(*) INTO v_count FROM public.pontuacao_captador;
+//   
+//       BEGIN
+//           PERFORM public.refresh_admin_dashboard_summary();
+//       EXCEPTION WHEN others THEN
+//           NULL;
+//       END;
+//   
+//       RETURN jsonb_build_object('status', 'success', 'recalculated_points', v_count);
 //   END;
 //   $function$
 //   
