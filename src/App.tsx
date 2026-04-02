@@ -33,6 +33,7 @@ import ResilienceTester from '@/pages/admin/ResilienceTester'
 import FunctionalTester from '@/pages/admin/FunctionalTester'
 import GoLiveTester from '@/pages/admin/GoLiveTester'
 import HealthCheckTester from '@/pages/admin/HealthCheckTester'
+import RegressionTester from '@/pages/admin/RegressionTester'
 import DatabaseReset from '@/pages/admin/DatabaseReset'
 import AdminProperties from '@/pages/admin/AdminProperties'
 import PontuacaoPage from '@/pages/dashboard/PontuacaoPage'
@@ -225,6 +226,7 @@ const AppContent = () => {
             <Route path="functional-tester" element={<FunctionalTester />} />
             <Route path="go-live-tester" element={<GoLiveTester />} />
             <Route path="health-check" element={<HealthCheckTester />} />
+            <Route path="regression-tester" element={<RegressionTester />} />
             <Route path="database-reset" element={<DatabaseReset />} />
             <Route path="admin/properties" element={<AdminProperties />} />
             <Route path="pontuacao" element={<PontuacaoPage />} />
