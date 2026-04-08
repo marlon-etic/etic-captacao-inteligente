@@ -127,26 +127,42 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
     [filteredDemands, selectedDemandId],
   )
 
-  const handleVincular = async () => {
-    if (!imovel || !selectedDemand || isLinking || isSaving) return
+  const handleVincularDemanda = async () => {
+    if (!imovel) return
+
+    if (!selectedDemand) {
+      toast({
+        title: '❌ Selecione uma demanda primeiro',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    if (isLinking || isSaving) return
 
     setIsLinking(true)
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 30000)
 
     try {
       const isLocacao = selectedDemand.tipo === 'Aluguel'
 
-      const response = await vinculacaoService.linkImovelToDemanda({
-        imovelId: imovel.id,
-        demandaId: selectedDemand.id,
-        usuarioId: user?.id || '',
-        isLocacao,
-      })
+      const response = await vinculacaoService.linkImovelToDemanda(
+        {
+          imovelId: imovel.id,
+          demandaId: selectedDemand.id,
+          usuarioId: user?.id || '',
+          isLocacao,
+        },
+        controller.signal,
+      )
+
+      clearTimeout(timeoutId)
 
       if (!response.success) {
         toast({
           title: '❌ Erro ao vincular',
-          description:
-            response.error || 'Não foi possível vincular o imóvel. Verifique suas permissões.',
+          description: response.error || 'Você não tem permissão para vincular este imóvel.',
           variant: 'destructive',
         })
         setIsLinking(false)
@@ -164,12 +180,20 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
         onClose()
         setIsLinking(false)
       }, 2000)
-    } catch (err) {
-      toast({
-        title: '❌ Erro de Sistema',
-        description: 'Erro inesperado ao vincular.',
-        variant: 'destructive',
-      })
+    } catch (err: any) {
+      clearTimeout(timeoutId)
+      if (err.name === 'AbortError') {
+        toast({
+          title: '❌ Requisição expirou. Tente novamente',
+          variant: 'destructive',
+        })
+      } else {
+        toast({
+          title: '❌ Erro ao vincular. Tente novamente',
+          description: err.message || 'Erro inesperado ao vincular.',
+          variant: 'destructive',
+        })
+      }
       setIsLinking(false)
     }
   }
@@ -178,28 +202,34 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
     if (!imovel || isSaving || isLinking) return
 
     setIsSaving(true)
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 30000)
 
     try {
       const tipo = imovel.tipo || (imovel as any).demanda_tipo
 
       if (!tipo) {
-        toast({
-          title: '❌ Erro: Tipo de imóvel não definido. Verifique os dados e tente novamente',
-          variant: 'destructive',
-        })
-        setIsSaving(false)
-        return
+        throw new Error('tipo não definido')
       }
 
       console.log('Salvando imóvel sem vinculação. Tipo:', tipo)
 
-      const { error } = await supabase
+      const query = supabase
         .from('imoveis_captados')
         .update({
           demanda_locacao_id: null,
           demanda_venda_id: null,
+          tipo: tipo,
         })
         .eq('id', imovel.id)
+
+      if (controller.signal) {
+        query.abortSignal(controller.signal)
+      }
+
+      const { error } = await query
+
+      clearTimeout(timeoutId)
 
       if (error) {
         throw new Error('Erro ao salvar. Tente novamente')
@@ -216,12 +246,26 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
         setIsSaving(false)
       }, 2000)
     } catch (err: any) {
+      clearTimeout(timeoutId)
       console.error('Erro ao salvar sem vincular:', err)
-      toast({
-        title: '❌ Erro ao salvar. Tente novamente',
-        description: err.message || 'Requisição expirou. Tente novamente',
-        variant: 'destructive',
-      })
+
+      if (err.name === 'AbortError') {
+        toast({
+          title: '❌ Requisição expirou. Tente novamente',
+          variant: 'destructive',
+        })
+      } else if (err.message === 'tipo não definido') {
+        toast({
+          title: '❌ Erro: Tipo de imóvel não definido. Verifique os dados e tente novamente',
+          variant: 'destructive',
+        })
+      } else {
+        toast({
+          title: '❌ Erro ao salvar. Tente novamente',
+          description: err.message || 'Requisição expirou. Tente novamente',
+          variant: 'destructive',
+        })
+      }
       setIsSaving(false)
     }
   }
@@ -475,7 +519,7 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
 
                   <div className="mt-4 pb-8">
                     <Button
-                      onClick={handleVincular}
+                      onClick={handleVincularDemanda}
                       disabled={isLinking || isSaving}
                       className="w-full h-14 bg-[#10B981] hover:bg-[#059669] text-white font-bold text-[16px] rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition-all"
                     >

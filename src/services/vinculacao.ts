@@ -15,12 +15,10 @@ export interface LinkResponse {
 }
 
 export const vinculacaoService = {
-  async linkImovelToDemanda({
-    imovelId,
-    demandaId,
-    usuarioId,
-    isLocacao,
-  }: LinkParams): Promise<LinkResponse> {
+  async linkImovelToDemanda(
+    { imovelId, demandaId, usuarioId, isLocacao }: LinkParams,
+    signal?: AbortSignal,
+  ): Promise<LinkResponse> {
     try {
       if (!imovelId || !demandaId || !usuarioId) {
         return {
@@ -40,12 +38,18 @@ export const vinculacaoService = {
         etapa_funil: 'capturado',
       }
 
-      const { data, error } = await supabase
+      const query = supabase
         .from('imoveis_captados')
         .update(updateData)
         .eq('id', imovelId)
         .select()
         .single()
+
+      if (signal) {
+        query.abortSignal(signal)
+      }
+
+      const { data, error } = await query
 
       if (error) {
         console.error('Error updating property linkage:', error)
