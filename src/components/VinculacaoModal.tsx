@@ -1,7 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { Search, MapPin, CheckCircle2, Home, Loader2, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
@@ -207,51 +206,44 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
     const timeoutId = setTimeout(() => controller.abort(), 30000)
 
     try {
-      // 1. Tenta extrair o tipo das propriedades conhecidas
-      let tipo = imovel.tipo || (imovel as any).demanda_tipo
+      let safeTipo = ''
 
-      // 2. Se não encontrou, tenta usar um valor padrão baseado no código do imóvel ou fallback seguro
-      if (!tipo) {
-        console.log('[SALVAR] Tipo não encontrado nas propriedades originais. Aplicando fallback.')
-        if (imovel.codigo_imovel) {
-          tipo = imovel.codigo_imovel.toUpperCase().startsWith('L') ? 'Aluguel' : 'Venda'
-        } else {
-          tipo = 'Venda' // Fallback seguro
-        }
+      if (imovel.tipo) {
+        safeTipo = imovel.tipo
+      } else if ((imovel as any).demanda_tipo) {
+        safeTipo = (imovel as any).demanda_tipo
+      } else if (imovel.codigo_imovel && imovel.codigo_imovel.toUpperCase().startsWith('L')) {
+        safeTipo = 'Aluguel'
+      } else {
+        safeTipo = 'Venda' // Fallback seguro
       }
 
-      console.log('[SALVAR] Tipo validado:', tipo)
+      console.log('[SALVAR] Tipo validado e extraído com sucesso:', safeTipo)
 
-      // 3. Validação final rigorosa
-      if (!tipo) {
-        throw new Error('tipo não definido')
+      if (!safeTipo) {
+        throw new Error(
+          'Erro: Tipo de imóvel não pôde ser determinado. Verifique os dados e tente novamente.',
+        )
       }
 
-      console.log('[SALVAR] Enviando requisição UPDATE para Supabase...')
-
-      const query = supabase
+      const { error } = await supabase
         .from('imoveis_captados')
         .update({
           demanda_locacao_id: null,
           demanda_venda_id: null,
-          tipo: tipo,
+          tipo: safeTipo,
         })
         .eq('id', imovel.id)
-
-      if (controller.signal) {
-        query.abortSignal(controller.signal)
-      }
-
-      const { error } = await query
+        .abortSignal(controller.signal)
 
       clearTimeout(timeoutId)
 
       if (error) {
         console.error('[SALVAR] Erro na requisição Supabase:', error)
         if (error.code === '42501') {
-          throw new Error('Permissão negada')
+          throw new Error('Você não tem permissão para salvar este imóvel.')
         }
-        throw new Error('Erro ao salvar. Tente novamente')
+        throw new Error(error.message || 'Erro ao salvar. Tente novamente.')
       }
 
       console.log('[SALVAR] Sucesso ao atualizar imóvel no Supabase')
@@ -275,20 +267,11 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
           title: '❌ Requisição expirou. Tente novamente',
           variant: 'destructive',
         })
-      } else if (err.message === 'tipo não definido') {
-        toast({
-          title: '❌ Erro: Tipo de imóvel não definido. Verifique os dados e tente novamente',
-          variant: 'destructive',
-        })
-      } else if (err.message === 'Permissão negada') {
-        toast({
-          title: '❌ Você não tem permissão para salvar este imóvel',
-          variant: 'destructive',
-        })
       } else {
+        const isUserError = err.message && err.message.includes('Erro:')
         toast({
-          title: '❌ Erro ao salvar. Tente novamente',
-          description: err.message || 'Erro inesperado.',
+          title: isUserError ? err.message : '❌ Erro ao salvar. Tente novamente',
+          description: isUserError ? undefined : err.message || 'Erro inesperado.',
           variant: 'destructive',
         })
       }
@@ -305,7 +288,7 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-[1000px] w-[95vw] max-h-[90vh] h-[90vh] md:h-[85vh] bg-white p-0 gap-0 overflow-hidden rounded-[12px] shadow-2xl flex flex-col">
+      <DialogContent className="max-w-[1000px] w-[95vw] max-h-[85vh] md:max-h-[80vh] h-[85vh] md:h-[80vh] bg-white p-0 gap-0 overflow-hidden rounded-[12px] shadow-2xl flex flex-col [&>button]:hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-3 md:p-4 border-b border-gray-100 bg-white shrink-0 relative z-20 shadow-sm">
           <div className="flex items-center gap-2 text-slate-800">
@@ -314,14 +297,14 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-slate-100 rounded-full transition-colors"
+            className="p-2 hover:bg-slate-100 rounded-full transition-colors flex-shrink-0"
           >
             <X className="w-5 h-5 text-slate-500" />
           </button>
         </div>
 
         {/* Filters */}
-        <div className="grid grid-cols-2 md:flex md:flex-row md:items-end gap-3 md:gap-4 p-3 md:p-4 border-b border-gray-100 bg-white shrink-0 relative z-10 overflow-y-auto max-h-[30vh] md:max-h-none md:overflow-visible">
+        <div className="grid grid-cols-2 md:flex md:flex-row md:items-end gap-3 md:gap-4 p-3 md:p-4 border-b border-gray-100 bg-white shrink-0 relative z-10">
           <div className="flex flex-col gap-1.5 w-full md:flex-1 md:max-w-[200px]">
             <label className="text-[11px] font-bold text-slate-500 uppercase">Tipo</label>
             <select
@@ -379,16 +362,16 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
         </div>
 
         {/* Content Area */}
-        <div className="flex flex-col md:flex-row flex-1 overflow-hidden bg-[#F8FAFC]">
-          {/* Lista de Sugestões */}
-          <div className="w-full md:w-[45%] flex flex-col border-b md:border-b-0 md:border-r border-gray-200 bg-white z-0 flex-1 min-h-0">
-            <div className="p-3 md:p-4 border-b border-gray-100 shrink-0 sticky top-0 bg-white z-10">
+        <div className="flex flex-col md:flex-row flex-1 min-h-0 overflow-hidden bg-[#F8FAFC]">
+          {/* Lista de Sugestões (Left Sidebar) */}
+          <div className="w-full md:w-[45%] flex flex-col border-b md:border-b-0 md:border-r border-gray-200 bg-white flex-1 min-h-0">
+            <div className="p-3 border-b border-gray-100 shrink-0 bg-slate-50">
               <span className="text-[12px] font-bold text-slate-500 uppercase tracking-wider">
                 {filteredDemands.length} Sugestões Encontradas
               </span>
             </div>
 
-            <ScrollArea className="flex-1 p-3 md:p-4 min-h-0">
+            <div className="flex-1 overflow-y-auto p-3 md:p-4">
               {loadingDemands ? (
                 <div className="flex flex-col items-center justify-center py-10 text-slate-400">
                   <Loader2 className="w-8 h-8 animate-spin mb-4" />
@@ -429,12 +412,12 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
 
                         <div className="flex flex-col gap-2 text-[13px] text-slate-600 font-medium">
                           <div className="flex items-center gap-2">
-                            <MapPin className="w-4 h-4 text-slate-400" />
+                            <MapPin className="w-4 h-4 text-slate-400 shrink-0" />
                             <span className="truncate">
                               {d.bairros?.join(', ') || 'Indiferente'}
                             </span>
                           </div>
-                          <div className="flex items-center justify-between">
+                          <div className="flex items-center justify-between mt-1">
                             <span className="font-bold text-[#10B981]">
                               {d.valor_minimo > 0 ? `R$ ${formatPrice(d.valor_minimo)} - ` : ''}
                               Até R$ {formatPrice(d.valor_maximo)}
@@ -447,138 +430,133 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
                   })}
                 </div>
               )}
-            </ScrollArea>
-
-            {/* Salvar Sem Vincular Botão */}
-            <div className="p-3 md:p-4 border-t border-gray-100 shrink-0 bg-white z-10 shadow-[0_-4px_6px_-1px_rgb(0,0,0,0.05)]">
-              <Button
-                variant="outline"
-                className="w-full h-12 font-bold text-slate-600 border-slate-300 hover:bg-slate-50"
-                onClick={handleSalvarSemVincular}
-                disabled={isSaving || isLinking}
-              >
-                {isSaving ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                    Salvando...
-                  </>
-                ) : (
-                  'Salvar Sem Vincular'
-                )}
-              </Button>
             </div>
           </div>
 
-          {/* Área de Preview */}
-          <div className="w-full md:w-[55%] flex flex-col bg-white z-0 flex-1 min-h-0">
-            {selectedDemand ? (
-              <>
-                <ScrollArea className="flex-1 min-h-0">
-                  <div className="p-4 md:p-8 flex flex-col gap-6 animate-fade-in-up">
-                    <h3 className="text-[18px] font-bold text-slate-900">Preview da Demanda</h3>
+          {/* Área de Preview (Right Sidebar) */}
+          <div className="w-full md:w-[55%] flex flex-col bg-white flex-1 min-h-0">
+            <div className="flex-1 overflow-y-auto p-4 md:p-8">
+              {selectedDemand ? (
+                <div className="flex flex-col gap-6 animate-fade-in-up">
+                  <h3 className="text-[18px] font-bold text-slate-900">Preview da Demanda</h3>
 
-                    <div className="grid grid-cols-1 gap-6">
-                      <div className="flex flex-col gap-1">
-                        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                          Cliente
-                        </span>
-                        <span className="text-[16px] font-bold text-slate-900">
-                          {selectedDemand.nome_cliente || 'Não informado'}
-                        </span>
-                      </div>
-
-                      <div className="flex flex-col gap-1">
-                        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                          Tipo
-                        </span>
-                        <div className="flex items-center gap-2 text-[15px] font-medium text-slate-700">
-                          <Home className="w-4 h-4" />
-                          {selectedDemand.tipo}
-                        </div>
-                      </div>
-
-                      <div className="flex flex-col gap-1">
-                        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                          Bairros
-                        </span>
-                        <span className="text-[15px] font-medium text-slate-700">
-                          {selectedDemand.bairros?.join(', ') || 'Indiferente'}
-                        </span>
-                      </div>
-
-                      <div className="flex flex-col gap-1">
-                        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                          Orçamento
-                        </span>
-                        <span className="text-[18px] font-black text-[#10B981]">
-                          {selectedDemand.valor_minimo > 0
-                            ? `R$ ${formatPrice(selectedDemand.valor_minimo)} - `
-                            : ''}
-                          R$ {formatPrice(selectedDemand.valor_maximo)}
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="p-4 rounded-xl bg-slate-50 flex flex-col gap-1 border border-slate-100">
-                          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                            Dormitórios
-                          </span>
-                          <span className="text-[18px] font-bold text-slate-900">
-                            {selectedDemand.dormitorios || 'Indif.'}
-                          </span>
-                        </div>
-                        <div className="p-4 rounded-xl bg-slate-50 flex flex-col gap-1 border border-slate-100">
-                          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                            Vagas
-                          </span>
-                          <span className="text-[18px] font-bold text-slate-900">
-                            {selectedDemand.vagas_estacionamento || 'Indif.'}
-                          </span>
-                        </div>
-                      </div>
-
-                      {(selectedDemand.observacoes || selectedDemand.necessidades_especificas) && (
-                        <div className="p-5 rounded-xl bg-[#ECFDF5] border border-[#A7F3D0] text-[#065F46] text-[14px] leading-relaxed shadow-sm">
-                          {selectedDemand.observacoes || selectedDemand.necessidades_especificas}
-                        </div>
-                      )}
+                  <div className="grid grid-cols-1 gap-6">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                        Cliente
+                      </span>
+                      <span className="text-[16px] font-bold text-slate-900">
+                        {selectedDemand.nome_cliente || 'Não informado'}
+                      </span>
                     </div>
-                  </div>
-                </ScrollArea>
 
-                {/* Botão Vincular Fixo na Base */}
-                <div className="p-3 md:p-4 border-t border-gray-100 shrink-0 bg-white z-10 shadow-[0_-4px_6px_-1px_rgb(0,0,0,0.05)]">
-                  <Button
-                    onClick={handleVincularDemanda}
-                    disabled={isLinking || isSaving}
-                    className="w-full h-14 bg-[#10B981] hover:bg-[#059669] text-white font-bold text-[16px] rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition-all"
-                  >
-                    {isLinking ? (
-                      <>
-                        <Loader2 className="w-6 h-6 animate-spin" />
-                        VINCULANDO...
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle2 className="w-6 h-6" />
-                        VINCULAR A ESTA DEMANDA
-                      </>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                        Tipo
+                      </span>
+                      <div className="flex items-center gap-2 text-[15px] font-medium text-slate-700">
+                        <Home className="w-4 h-4" />
+                        {selectedDemand.tipo}
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                        Bairros
+                      </span>
+                      <span className="text-[15px] font-medium text-slate-700">
+                        {selectedDemand.bairros?.join(', ') || 'Indiferente'}
+                      </span>
+                    </div>
+
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                        Orçamento
+                      </span>
+                      <span className="text-[18px] font-black text-[#10B981]">
+                        {selectedDemand.valor_minimo > 0
+                          ? `R$ ${formatPrice(selectedDemand.valor_minimo)} - `
+                          : ''}
+                        R$ {formatPrice(selectedDemand.valor_maximo)}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="p-4 rounded-xl bg-slate-50 flex flex-col gap-1 border border-slate-100">
+                        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                          Dormitórios
+                        </span>
+                        <span className="text-[18px] font-bold text-slate-900">
+                          {selectedDemand.dormitorios || 'Indif.'}
+                        </span>
+                      </div>
+                      <div className="p-4 rounded-xl bg-slate-50 flex flex-col gap-1 border border-slate-100">
+                        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                          Vagas
+                        </span>
+                        <span className="text-[18px] font-bold text-slate-900">
+                          {selectedDemand.vagas_estacionamento || 'Indif.'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {(selectedDemand.observacoes || selectedDemand.necessidades_especificas) && (
+                      <div className="p-5 rounded-xl bg-[#ECFDF5] border border-[#A7F3D0] text-[#065F46] text-[14px] leading-relaxed shadow-sm">
+                        {selectedDemand.observacoes || selectedDemand.necessidades_especificas}
+                      </div>
                     )}
-                  </Button>
+                  </div>
                 </div>
+              ) : (
+                <div className="h-full flex flex-col items-center justify-center text-slate-400 text-center">
+                  <div className="w-16 h-16 rounded-full bg-slate-50 flex items-center justify-center mb-4">
+                    <Search className="w-8 h-8 opacity-30" />
+                  </div>
+                  <p className="text-[16px] font-medium max-w-[280px]">
+                    Selecione uma demanda na lista para visualizar os detalhes e realizar a
+                    vinculação.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Footer Único Fixo na Base */}
+        <div className="p-3 md:p-4 border-t border-gray-100 shrink-0 bg-white z-20 flex flex-col-reverse sm:flex-row items-center justify-end gap-3 shadow-[0_-4px_6px_-1px_rgb(0,0,0,0.05)]">
+          <Button
+            variant="outline"
+            className="w-full sm:w-auto h-12 font-bold text-slate-600 border-slate-300 hover:bg-slate-50 flex-1 sm:flex-none"
+            onClick={handleSalvarSemVincular}
+            disabled={isSaving || isLinking}
+          >
+            {isSaving ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                Salvando...
               </>
             ) : (
-              <div className="flex-1 flex flex-col items-center justify-center p-8 text-slate-400 text-center">
-                <div className="w-16 h-16 rounded-full bg-slate-50 flex items-center justify-center mb-4">
-                  <Search className="w-8 h-8 opacity-30" />
-                </div>
-                <p className="text-[16px] font-medium max-w-[280px]">
-                  Selecione uma demanda na lista para visualizar os detalhes e realizar a
-                  vinculação.
-                </p>
-              </div>
+              'Salvar Sem Vincular'
             )}
-          </div>
+          </Button>
+
+          <Button
+            onClick={handleVincularDemanda}
+            disabled={isLinking || isSaving || !selectedDemand}
+            className="w-full sm:w-auto h-12 bg-[#10B981] hover:bg-[#059669] text-white font-bold text-[15px] rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition-all flex-1"
+          >
+            {isLinking ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                VINCULANDO...
+              </>
+            ) : (
+              <>
+                <CheckCircle2 className="w-5 h-5 mr-2" />
+                VINCULAR DEMANDA
+              </>
+            )}
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
