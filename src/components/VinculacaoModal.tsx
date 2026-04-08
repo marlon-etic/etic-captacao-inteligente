@@ -6,6 +6,7 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
+  DialogClose,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -189,46 +190,26 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
       const timeoutPromise = new Promise<any>((resolve) => {
         setTimeout(() => {
           resolve({
+            success: false,
             errorType: 'timeout',
             error: 'Timeout! Requisição demorou mais de 30s. Tente novamente',
           })
         }, 30000)
       })
 
-      // Directly update Supabase to guarantee successful mapping
-      const updateData: any = {
-        tipo: isLocacao ? 'Aluguel' : 'Venda',
-      }
-      if (isLocacao) {
-        updateData.demanda_locacao_id = selectedDemand!.id
-      } else {
-        updateData.demanda_venda_id = selectedDemand!.id
-      }
-
-      if (user?.id) {
-        updateData.user_captador_id = user.id
-        updateData.captador_id = user.id
-      }
-
-      const requestPromise = supabase
-        .from('imoveis_captados')
-        .update(updateData)
-        .eq('id', imovel!.id)
-        .then(({ error }) => {
-          if (error) {
-            return {
-              errorType: error.code === '42501' ? 'permission' : 'server',
-              error: error.message,
-            }
-          }
-          return { success: true }
-        })
+      const requestPromise = vinculacaoService.linkImovelToDemanda({
+        imovelId: imovel!.id,
+        demandaId: selectedDemand!.id,
+        usuarioId: user?.id || '',
+        isLocacao,
+        signal,
+      })
 
       const response = await Promise.race([requestPromise, timeoutPromise])
 
       if (signal.aborted) return
 
-      if (response?.error || !response?.success) {
+      if (!response?.success) {
         let finalTitle = '❌ Erro ao vincular'
         let finalDesc = response?.error || 'Tente novamente.'
 
@@ -287,16 +268,15 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
     >
       <DialogContent className="sm:max-w-[850px] w-[95vw] md:w-full bg-white p-0 gap-0 overflow-hidden rounded-[16px] shadow-2xl flex flex-col max-h-[90dvh] z-[1100] transition-opacity duration-300">
         {/* Explicit X button strictly positioned at top-right over everything */}
-        <button
+        <DialogClose
           onClick={() => {
             if (abortControllerRef.current) abortControllerRef.current.abort()
-            onClose()
           }}
           className="absolute right-4 top-4 z-[1200] p-2 bg-white hover:bg-slate-100 rounded-full transition-colors text-slate-500 hover:text-slate-900 shadow-sm border border-slate-200"
           aria-label="Fechar modal"
         >
           <X className="w-5 h-5" />
-        </button>
+        </DialogClose>
 
         <DialogHeader className="p-[24px] border-b border-[#E5E5E5] bg-[#F8FAFC] shrink-0 relative z-20 pr-16">
           <DialogTitle className="text-[20px] font-black text-[#1A3A52]">

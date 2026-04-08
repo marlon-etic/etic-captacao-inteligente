@@ -92,40 +92,39 @@ export const vinculacaoService = {
 
       console.log(`🔵 [VINCULAR] Enviando UPDATE para Supabase... Aguardando resposta`)
 
-      // 4. Duplicate the property to link it to the new demand
-      const { id: _, created_at, updated_at, codigo_imovel, ...imovelData } = existingImovel
-
-      const novoCodigo = codigo_imovel
-        ? `${codigo_imovel}-V${Math.floor(Math.random() * 1000)}`
-        : null
-
-      const newImovel = {
-        ...imovelData,
-        codigo_imovel: novoCodigo,
+      // 4. Update the property to link it to the new demand
+      const updateData: any = {
+        tipo: isLocacao ? 'Aluguel' : 'Venda',
         demanda_locacao_id: isLocacao ? demandaId : null,
         demanda_venda_id: !isLocacao ? demandaId : null,
+        user_captador_id: usuarioId,
+        captador_id: usuarioId,
         status_captacao: 'capturado', // Reset status for the new funnel
         etapa_funil: 'capturado',
       }
 
-      let insertQuery = supabase.from('imoveis_captados').insert(newImovel).select()
-      if (signal) insertQuery = insertQuery.abortSignal(signal as any)
+      let updateQuery = supabase
+        .from('imoveis_captados')
+        .update(updateData)
+        .eq('id', imovelId)
+        .select()
+      if (signal) updateQuery = updateQuery.abortSignal(signal as any)
 
-      const { data: insertedImovel, error: insertError } = await insertQuery.single()
+      const { data: updatedImovel, error: updateError } = await updateQuery.single()
 
-      if (insertError) {
-        console.log(`🔴 [VINCULAR] Erro no INSERT do imóvel vinculado:`, insertError)
-        if (insertError.message?.includes('row-level security')) {
-          console.log(`🔴 [VINCULAR] Erro: new row violates row-level security policy`)
+      if (updateError) {
+        console.log(`🔴 [VINCULAR] Erro no UPDATE do imóvel:`, updateError)
+        if (updateError.message?.includes('row-level security')) {
+          console.log(`🔴 [VINCULAR] Erro: row violates row-level security policy`)
         }
-        if (insertError.code === '23505') {
+        if (updateError.code === '23505') {
           return {
             success: false,
             error: 'Este imóvel já possui um vínculo similar.',
             errorType: 'validation',
           }
         }
-        return { success: false, error: 'Erro ao criar vínculo do imóvel', errorType: 'server' }
+        return { success: false, error: 'Erro ao vincular o imóvel', errorType: 'server' }
       }
 
       // 5. Update demand status to 'atendida' if it's currently open
@@ -158,8 +157,8 @@ export const vinculacaoService = {
         success: true,
         data: {
           demandaId,
-          imovelId: insertedImovel.id,
-          codigo_imovel: insertedImovel.codigo_imovel || undefined,
+          imovelId: updatedImovel.id,
+          codigo_imovel: updatedImovel.codigo_imovel || undefined,
         },
       }
     } catch (err: any) {
