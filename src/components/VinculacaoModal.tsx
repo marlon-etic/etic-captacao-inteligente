@@ -187,6 +187,77 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
     }
   }
 
+  const handleVincularDemanda = async () => {
+    if (!imovel) return
+
+    if (!selectedDemand) {
+      toast({
+        title: '❌ Selecione uma demanda primeiro',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    if (isLinking || isSaving) return
+
+    setIsLinking(true)
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 30000)
+
+    try {
+      const isLocacao = selectedDemand.tipo === 'Aluguel'
+
+      const response = await vinculacaoService.linkImovelToDemanda(
+        {
+          imovelId: imovel.id,
+          demandaId: selectedDemand.id,
+          usuarioId: user?.id || '',
+          isLocacao,
+        },
+        controller.signal,
+      )
+
+      clearTimeout(timeoutId)
+
+      if (!response.success) {
+        toast({
+          title: '❌ Erro ao vincular',
+          description: response.error || 'Você não tem permissão para vincular este imóvel.',
+          variant: 'destructive',
+        })
+        setIsLinking(false)
+        return
+      }
+
+      toast({
+        title: '✓ Imóvel vinculado com sucesso!',
+        description: `O imóvel foi vinculado a ${selectedDemand.nome_cliente}.`,
+        className: 'bg-[#10B981] text-white border-none font-bold',
+      })
+
+      setTimeout(() => {
+        onSuccess?.()
+        onClose()
+        setIsLinking(false)
+      }, 2000)
+    } catch (err: any) {
+      clearTimeout(timeoutId)
+      if (err.name === 'AbortError') {
+        toast({
+          title: '❌ Requisição expirou. Tente novamente',
+          variant: 'destructive',
+        })
+      } else {
+        toast({
+          title: '❌ Erro ao vincular. Tente novamente',
+          description: err.message || 'Erro inesperado ao vincular.',
+          variant: 'destructive',
+        })
+      }
+      setIsLinking(false)
+    }
+  }
+
   const formatPrice = (val: number) => {
     if (!val) return '0'
     if (val >= 1000 && val < 1000000) return `${(val / 1000).toLocaleString('pt-BR')} mil`
