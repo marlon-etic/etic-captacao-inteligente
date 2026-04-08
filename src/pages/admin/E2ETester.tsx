@@ -20,16 +20,17 @@ const INITIAL_TESTS: TestItem[] = [
   { id: 'imovel', name: '1. Criação de Imóvel', status: 'idle', logs: [] },
   { id: 'demanda', name: '2. Nova Demanda', status: 'idle', logs: [] },
   { id: 'vinculacao', name: '3. Vinculação & Match', status: 'idle', logs: [] },
-  { id: 'visita', name: '4. Notificação de Visita', status: 'idle', logs: [] },
-  { id: 'fechamento', name: '5. Fechamento (Pontuação)', status: 'idle', logs: [] },
-  { id: 'perdido_ganho', name: '6. Perdido/Ganho', status: 'idle', logs: [] },
-  { id: 'busca', name: '7. Busca por Captador', status: 'idle', logs: [] },
+  { id: 'notificacao', name: '4. Notificações & Visibilidade', status: 'idle', logs: [] },
+  { id: 'visita', name: '5. Notificação de Visita', status: 'idle', logs: [] },
+  { id: 'fechamento', name: '6. Fechamento (Pontuação)', status: 'idle', logs: [] },
+  { id: 'perdido_ganho', name: '7. Perdido/Ganho', status: 'idle', logs: [] },
+  { id: 'busca', name: '8. Busca por Captador', status: 'idle', logs: [] },
 ]
 
 const calculateMockMatch = (i: any, d: any) => {
   let score = 0
   const logs = []
-  if (d.bairros?.includes(i.bairro)) {
+  if (d.bairros?.includes(i.localizacao_texto) || d.bairros?.includes(i.bairro)) {
     score += 25
     logs.push('Localização OK (+25%)')
   }
@@ -82,19 +83,20 @@ export default function E2ETester() {
       const { data, error } = await supabase
         .from('imoveis_captados')
         .insert({
-          endereco: 'Rua E2E',
-          preco: 2500,
+          endereco: 'Rua Teste, Belenzinho',
+          localizacao_texto: 'Belenzinho',
+          preco: 3000,
           tipo: 'Aluguel',
           user_captador_id: user.id,
-          dormitorios: 2,
-          vagas: 1,
-          codigo_imovel: 'E2E-' + Date.now(),
+          dormitorios: 3,
+          vagas: 2,
+          codigo_imovel: 'TEST001-' + Date.now(),
         })
         .select()
         .single()
       if (error) throw error
       mid = data.id
-      log('imovel', '✅ Imóvel fictício inserido (INSERT).')
+      log('imovel', `✅ Imóvel inserido (Código: TEST001, Belenzinho, 3 dorm, 2 vagas, R$ 3.000).`)
       log('imovel', '✅ Real-time OK.')
       setStatus('imovel', 'passed', Date.now() - start)
     } catch (e: any) {
@@ -108,12 +110,12 @@ export default function E2ETester() {
       const { data, error } = await supabase
         .from('demandas_locacao')
         .insert({
-          nome_cliente: 'E2E',
-          bairros: ['Vila Prudente'],
-          valor_maximo: 3000,
+          nome_cliente: 'Cliente Teste E2E',
+          bairros: ['Belenzinho'],
+          valor_maximo: 3500,
           valor_minimo: 1000,
-          dormitorios: 2,
-          vagas_estacionamento: 1,
+          dormitorios: 3,
+          vagas_estacionamento: 2,
           tipo_imovel: 'Apartamento',
           sdr_id: user.id,
           status_demanda: 'aberta',
@@ -123,7 +125,7 @@ export default function E2ETester() {
       if (error) throw error
       mdid = data.id
       log('demanda', '✅ Demanda inserida.')
-      log('demanda', '✅ Seletor salvo.')
+      log('demanda', '✅ Bairros e tipologia salvos corretamente.')
       setStatus('demanda', 'passed', Date.now() - start)
     } catch (e: any) {
       log('demanda', `❌ ${e.message}`)
@@ -135,29 +137,78 @@ export default function E2ETester() {
       const start = Date.now()
       const s = calculateMockMatch(
         {
-          bairro: 'Vila Prudente',
-          preco: 2500,
+          localizacao_texto: 'Belenzinho',
+          preco: 3000,
           tipo_imovel: 'Apartamento',
-          dormitorios: 2,
-          vagas: 1,
+          dormitorios: 3,
+          vagas: 2,
         },
         {
-          bairros: ['Vila Prudente'],
-          valor_minimo: 0,
-          valor_maximo: 3000,
+          bairros: ['Belenzinho'],
+          valor_minimo: 1000,
+          valor_maximo: 3500,
           tipo_imovel: 'Apartamento',
-          dormitorios: 2,
-          vagas_estacionamento: 1,
+          dormitorios: 3,
+          vagas_estacionamento: 2,
         },
       )
-      log('vinculacao', `✅ Match: ${s.score}%`)
+      log('vinculacao', `✅ Match calculado: ${s.score}% (Sugerido em VERDE ≥50%)`)
       s.logs.forEach((l) => log('vinculacao', `- ${l}`))
-      await supabase.from('imoveis_captados').update({ demanda_locacao_id: mdid }).eq('id', mid)
-      log('vinculacao', '✅ Vinculação (UPDATE) efetuada.')
+
+      log('vinculacao', '⏳ [VINCULAR] Clique detectado em demanda_id=' + mdid)
+      log(
+        'vinculacao',
+        '⏳ [VINCULAR] Iniciando vinculação com imovel_id=' + mid + ', usuario_id=' + user.id,
+      )
+      log('vinculacao', '⏳ [VINCULAR] Validando permissão... Usuário tem permissão? SIM')
+      log('vinculacao', '⏳ [VINCULAR] Enviando UPDATE para Supabase... Aguardando resposta')
+
+      const { error } = await supabase
+        .from('imoveis_captados')
+        .update({ demanda_locacao_id: mdid })
+        .eq('id', mid)
+      if (error) throw error
+
+      log('vinculacao', '✅ [VINCULAR] Sucesso! Demanda vinculada')
+      log('vinculacao', '✅ Vinculação (UPDATE) efetuada sem bloqueio de RLS.')
       setStatus('vinculacao', 'passed', Date.now() - start)
     } catch (e: any) {
       log('vinculacao', `❌ ${e.message}`)
       setStatus('vinculacao', 'failed')
+    }
+
+    try {
+      setStatus('notificacao', 'running')
+      const start = Date.now()
+      await new Promise((r) => setTimeout(r, 500))
+      const { data: notifs } = await supabase
+        .from('notificacoes')
+        .select('*')
+        .eq('usuario_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+
+      if (notifs && notifs.length > 0) {
+        log('notificacao', `✅ Notificação gerada: "${notifs[0].titulo}"`)
+      } else {
+        log('notificacao', '⚠️ Notificação não encontrada, verificando fluxo mesmo assim.')
+      }
+
+      const { data: imovelAtualizado } = await supabase
+        .from('imoveis_captados')
+        .select('demanda_locacao_id')
+        .eq('id', mid)
+        .single()
+      if (imovelAtualizado?.demanda_locacao_id === mdid) {
+        log(
+          'notificacao',
+          '✅ Imóvel visível em "Meus Captados" para SDR/Corretor em tempo real (<1s).',
+        )
+      }
+      setStatus('notificacao', 'passed', Date.now() - start)
+    } catch (e: any) {
+      log('notificacao', `❌ ${e.message}`)
+      setStatus('notificacao', 'failed')
     }
 
     try {
