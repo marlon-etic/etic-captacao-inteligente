@@ -236,10 +236,18 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
       })
 
       setIsSuccess(true)
-      onSuccess?.()
 
       setTimeout(() => {
-        onClose()
+        try {
+          onClose()
+        } catch (e) {
+          console.error('Error closing modal:', e)
+        }
+        try {
+          onSuccess?.()
+        } catch (e) {
+          console.error('Error in onSuccess callback:', e)
+        }
       }, 2000)
     } catch (err: any) {
       if (signal.aborted) return

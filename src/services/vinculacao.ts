@@ -127,32 +127,10 @@ export const vinculacaoService = {
         return { success: false, error: 'Erro ao vincular o imóvel', errorType: 'server' }
       }
 
-      // 5. Update demand status to 'atendida' if it's currently open
-      const table = isLocacao ? 'demandas_locacao' : 'demandas_vendas'
+      // 5. Mantém a demanda 'aberta' em sistema
+      // Não alteramos o status da demanda para permitir múltiplas captações vinculadas até o fechamento.
 
-      let demandQuery = supabase.from(table).select('status_demanda').eq('id', demandaId)
-      if (signal) demandQuery = demandQuery.abortSignal(signal as any)
-
-      const { data: demandData } = await demandQuery.single()
-
-      if (
-        demandData &&
-        demandData.status_demanda !== 'atendida' &&
-        demandData.status_demanda !== 'ganho'
-      ) {
-        let updateQuery = supabase
-          .from(table)
-          .update({ status_demanda: 'atendida' })
-          .eq('id', demandaId)
-        if (signal) updateQuery = updateQuery.abortSignal(signal as any)
-
-        const { error: updateError } = await updateQuery
-        if (updateError && updateError.code !== '42501') {
-          console.error(`🔴 [VINCULAR] Falha ao atualizar o status da demanda:`, updateError)
-        }
-      }
-
-      console.log(`🟢 [VINCULAR] Sucesso! Demanda vinculada`)
+      console.log(`🟢 [VINCULAR] Sucesso! Imóvel vinculado à demanda.`)
       return {
         success: true,
         data: {
