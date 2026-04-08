@@ -1558,6 +1558,9 @@ export const Constants = {
 //     USING: (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND ((users.role)::text = 'captador'::text))))
 //   Policy "Captadores see aberta locacao" (SELECT, PERMISSIVE) roles={public}
 //     USING: (((status_demanda)::text = 'aberta'::text) AND (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND (users.role = 'captador'::user_role)))))
+//   Policy "Captadores update demandas locacao para vinculacao" (UPDATE, PERMISSIVE) roles={authenticated}
+//     USING: (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND (users.role = 'captador'::user_role))))
+//     WITH CHECK: (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND (users.role = 'captador'::user_role))))
 //   Policy "SDR sees own Locacao demands" (SELECT, PERMISSIVE) roles={authenticated}
 //     USING: ((sdr_id = auth.uid()) OR (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND ((users.role)::text = ANY (ARRAY['admin'::text, 'gestor'::text, 'captador'::text]))))))
 //   Policy "SDRs insert locacao" (INSERT, PERMISSIVE) roles={authenticated}
@@ -1580,6 +1583,9 @@ export const Constants = {
 //     USING: (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND ((users.role)::text = 'captador'::text))))
 //   Policy "Captadores see aberta vendas" (SELECT, PERMISSIVE) roles={public}
 //     USING: (((status_demanda)::text = 'aberta'::text) AND (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND (users.role = 'captador'::user_role)))))
+//   Policy "Captadores update demandas vendas para vinculacao" (UPDATE, PERMISSIVE) roles={authenticated}
+//     USING: (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND (users.role = 'captador'::user_role))))
+//     WITH CHECK: (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND (users.role = 'captador'::user_role))))
 //   Policy "Corretores manage own vendas" (ALL, PERMISSIVE) roles={public}
 //     USING: ((corretor_id = auth.uid()) AND (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND (users.role = 'corretor'::user_role)))))
 // Table: grupos_demandas
@@ -1608,12 +1614,12 @@ export const Constants = {
 //   Policy "Captadores update own captures" (UPDATE, PERMISSIVE) roles={authenticated}
 //     USING: ((user_captador_id = auth.uid()) OR (captador_id = auth.uid()))
 //     WITH CHECK: ((user_captador_id = auth.uid()) OR (captador_id = auth.uid()))
-//   Policy "Corretores update captures linked to own vendas demands" (UPDATE, PERMISSIVE) roles={authenticated}
-//     USING: true
-//     WITH CHECK: true
-//   Policy "SDRs update captures linked to own locacao demands" (UPDATE, PERMISSIVE) roles={authenticated}
-//     USING: true
-//     WITH CHECK: true
+//   Policy "Corretores update captures" (UPDATE, PERMISSIVE) roles={authenticated}
+//     USING: (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND (users.role = 'corretor'::user_role))))
+//     WITH CHECK: (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND (users.role = 'corretor'::user_role))))
+//   Policy "SDRs update captures" (UPDATE, PERMISSIVE) roles={authenticated}
+//     USING: (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND (users.role = 'sdr'::user_role))))
+//     WITH CHECK: (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND (users.role = 'sdr'::user_role))))
 // Table: landlord_profiles
 //   Policy "Users can update own landlord profile" (UPDATE, PERMISSIVE) roles={authenticated}
 //     USING: (user_id = auth.uid())
