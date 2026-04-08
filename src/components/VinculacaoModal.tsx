@@ -15,6 +15,8 @@ import { cn } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
 import { supabase } from '@/lib/supabase/client'
 import { calculateMatching, getScoreBadgeColor, getScoreProgressColor } from '@/lib/matching'
+import { vinculacaoService } from '@/services/vinculacao'
+import { useAuth } from '@/hooks/use-auth'
 import { Progress } from '@/components/ui/progress'
 
 export interface VinculacaoImovelData {
@@ -121,6 +123,7 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
       .sort((a, b) => b.score - a.score)
   }, [activeDemands, imovel])
 
+  const { user } = useAuth()
   const selectedDemand = useMemo(() => {
     return scoredDemands.find((d) => d.id === selectedDemandId) || null
   }, [scoredDemands, selectedDemandId])
@@ -154,82 +157,25 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
     // Forçar a renderização do estado de loading antes da requisição pesada para evitar travamento da UI
     await new Promise((resolve) => setTimeout(resolve, 50))
 
-    const executeWithRetryAndTimeout = async (
-      fn: () => Promise<any>,
-      retries = 3,
-      timeoutMs = 30000,
-    ) => {
-      let lastError: any
-      for (let i = 0; i < retries; i++) {
-        try {
-          const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('TIMEOUT')), timeoutMs),
-          )
-          return await Promise.race([fn(), timeoutPromise])
-        } catch (err: any) {
-          lastError = err
-          // Don't retry RLS errors
-          if (err?.code === '42501' || err?.message?.toLowerCase().includes('rls')) throw err
-          // Don't retry unique constraint errors
-          if (err?.code === '23505') throw err
-
-          if (i < retries - 1) {
-            await new Promise((res) => setTimeout(res, 1000 * (i + 1))) // exponential backoff
-          }
-        }
-      }
-      throw lastError
-    }
-
     try {
       const isLocacao =
         selectedDemand.tipo === 'Aluguel' || selectedDemand.tipo_demanda === 'Aluguel'
 
-      await executeWithRetryAndTimeout(async () => {
-        // Buscar imóvel atual
-        const { data: existingImovel, error: fetchError } = await supabase
-          .from('imoveis_captados')
-          .select('*')
-          .eq('id', imovel.id)
-          .single()
-
-        if (fetchError) throw fetchError
-
-        // Multipla vinculação: Sempre duplicar o imóvel mantendo os dados para associar à nova demanda
-        const { id: _, created_at, updated_at, codigo_imovel, ...imovelData } = existingImovel
-
-        const novoCodigo = codigo_imovel
-          ? `${codigo_imovel}-V${Math.floor(Math.random() * 1000)}`
-          : null
-
-        const newImovel = {
-          ...imovelData,
-          codigo_imovel: novoCodigo,
-          demanda_locacao_id: isLocacao ? selectedDemand.id : null,
-          demanda_venda_id: !isLocacao ? selectedDemand.id : null,
-          status_captacao: 'capturado', // Reset status no novo funil
-          etapa_funil: 'capturado',
-        }
-
-        const { error: insertError } = await supabase.from('imoveis_captados').insert(newImovel)
-        if (insertError) throw insertError
-
-        // Atualizar status da demanda para atendida se ainda estiver aberta
-        if (
-          selectedDemand.status_demanda !== 'atendida' &&
-          selectedDemand.status_demanda !== 'ganho'
-        ) {
-          const table = isLocacao ? 'demandas_locacao' : 'demandas_vendas'
-          const { error: updateError } = await supabase
-            .from(table)
-            .update({ status_demanda: 'atendida' })
-            .eq('id', selectedDemand.id)
-          // Se falhar por RLS, ignora, pois a inserção do imóvel (o vínculo real) já foi feita.
-          if (updateError && updateError.code !== '42501') {
-            throw updateError
-          }
-        }
+      const response = await vinculacaoService.linkImovelToDemanda({
+        imovelId: imovel.id,
+        demandaId: selectedDemand.id,
+        usuarioId: user?.id || '',
+        isLocacao,
       })
+
+      if (!response.success) {
+        toast({
+          title: 'Erro na Vinculação',
+          description: response.error || 'Erro ao vincular. Contate o suporte.',
+          variant: 'destructive',
+        })
+        return
+      }
 
       toast({
         title: 'Vinculado com Sucesso',
@@ -240,24 +186,10 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
       onSuccess?.()
       onClose()
     } catch (err: any) {
-      console.error('Erro de vinculação:', err)
-
-      let errorMessage = 'Erro ao vincular. Contate suporte'
-      if (err?.code === '42501' || err?.message?.toLowerCase().includes('rls')) {
-        errorMessage = 'Você não tem permissão para vincular este imóvel'
-      } else if (
-        err?.message === 'TIMEOUT' ||
-        err?.message?.toLowerCase().includes('fetch') ||
-        err?.message?.toLowerCase().includes('network')
-      ) {
-        errorMessage = 'Erro de conexão. Tente novamente'
-      } else if (err?.message) {
-        errorMessage = `Erro ao vincular: ${err.message}`
-      }
-
+      console.error('Erro inexperado:', err)
       toast({
-        title: 'Erro na Vinculação',
-        description: errorMessage,
+        title: 'Erro de Sistema',
+        description: 'Ocorreu um erro inesperado. Contate o suporte.',
         variant: 'destructive',
       })
     } finally {
