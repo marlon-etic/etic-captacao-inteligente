@@ -15,6 +15,7 @@ export interface LinkResponse {
     codigo_imovel?: string
   }
   error?: string
+  errorType?: 'permission' | 'not_found' | 'validation' | 'network' | 'server' | 'unknown'
 }
 
 export const vinculacaoService = {
@@ -26,7 +27,11 @@ export const vinculacaoService = {
   }: LinkParams): Promise<LinkResponse> {
     try {
       if (!imovelId || !demandaId || !usuarioId) {
-        return { success: false, error: 'Dados insuficientes para vinculação' }
+        return {
+          success: false,
+          error: 'Dados insuficientes para vinculação',
+          errorType: 'validation',
+        }
       }
 
       // 1. Fetch user role to check permissions
@@ -37,7 +42,11 @@ export const vinculacaoService = {
         .single()
 
       if (profileError) {
-        return { success: false, error: 'Erro ao buscar perfil do usuário' }
+        return {
+          success: false,
+          error: 'Erro de conexão ou ao buscar perfil do usuário',
+          errorType: 'network',
+        }
       }
 
       const isAdmin = userProfile.role === 'admin' || userProfile.role === 'gestor'
@@ -50,7 +59,7 @@ export const vinculacaoService = {
         .single()
 
       if (fetchError || !existingImovel) {
-        return { success: false, error: 'Imóvel não encontrado' }
+        return { success: false, error: 'Imóvel não encontrado', errorType: 'not_found' }
       }
 
       // 3. Validate permissions: only admin or the property's captor can link it
@@ -58,7 +67,11 @@ export const vinculacaoService = {
         existingImovel.user_captador_id === usuarioId || existingImovel.captador_id === usuarioId
 
       if (!isAdmin && !isCaptador) {
-        return { success: false, error: 'Você não tem permissão para vincular este imóvel' }
+        return {
+          success: false,
+          error: 'Você não tem permissão para vincular este imóvel',
+          errorType: 'permission',
+        }
       }
 
       // 4. Duplicate the property to link it to the new demand
@@ -85,9 +98,13 @@ export const vinculacaoService = {
 
       if (insertError) {
         if (insertError.code === '23505') {
-          return { success: false, error: 'Este imóvel já possui um vínculo similar.' }
+          return {
+            success: false,
+            error: 'Este imóvel já possui um vínculo similar.',
+            errorType: 'validation',
+          }
         }
-        return { success: false, error: 'Erro ao criar vínculo do imóvel' }
+        return { success: false, error: 'Erro ao criar vínculo do imóvel', errorType: 'server' }
       }
 
       // 5. Update demand status to 'atendida' if it's currently open
@@ -124,7 +141,11 @@ export const vinculacaoService = {
       }
     } catch (err: any) {
       console.error('Erro no serviço de vinculação:', err)
-      return { success: false, error: err.message || 'Erro interno ao vincular' }
+      return {
+        success: false,
+        error: err.message || 'Erro interno ao vincular',
+        errorType: 'server',
+      }
     }
   },
 }

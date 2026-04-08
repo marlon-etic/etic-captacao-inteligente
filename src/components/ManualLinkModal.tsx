@@ -96,41 +96,97 @@ export function ManualLinkModal({ isOpen, onClose, property }: ManualLinkModalPr
     try {
       const isLocacao = demand.type === 'Aluguel' || demand.tipo_demanda === 'Aluguel'
 
-      // Find the exact property ID in the database using the code
-      const { data: existingImovel, error: fetchError } = await supabase
-        .from('imoveis_captados')
-        .select('id')
-        .eq('codigo_imovel', property.code)
-        .single()
+      const executeRequest = async () => {
+        // Find the exact property ID in the database using the code
+        const { data: existingImovel, error: fetchError } = await supabase
+          .from('imoveis_captados')
+          .select('id')
+          .eq('codigo_imovel', property.code)
+          .single()
 
-      if (fetchError || !existingImovel) {
-        toast({
-          title: 'Erro',
-          description: 'Imóvel não encontrado na base de dados.',
-          variant: 'destructive',
+        if (fetchError || !existingImovel) {
+          return {
+            success: false,
+            error: 'Imóvel não encontrado na base de dados.',
+            errorType: 'not_found',
+          }
+        }
+
+        return vinculacaoService.linkImovelToDemanda({
+          imovelId: existingImovel.id,
+          demandaId: demand.id,
+          usuarioId: currentUser.id,
+          isLocacao,
         })
-        setLinkingDemandId(null)
-        return
       }
 
-      const response = await vinculacaoService.linkImovelToDemanda({
-        imovelId: existingImovel.id,
-        demandaId: demand.id,
-        usuarioId: currentUser.id,
-        isLocacao,
-      })
+      let response: any = null
+      for (let attempt = 0; attempt <= 3; attempt++) {
+        try {
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('TIMEOUT')), 30000),
+          )
+          response = (await Promise.race([executeRequest(), timeoutPromise])) as any
 
-      if (!response.success) {
+          if (!response.success) {
+            const errorType = response.errorType || 'unknown'
+            if (['permission', 'not_found', 'validation'].includes(errorType)) {
+              break
+            }
+            throw new Error(response.error || 'SERVER_ERROR')
+          }
+          break // Sucesso
+        } catch (err: any) {
+          if (attempt === 3) {
+            response = {
+              success: false,
+              error:
+                err.message === 'TIMEOUT'
+                  ? 'Tempo limite excedido. Verifique sua conexão.'
+                  : 'Erro de conexão ao servidor.',
+              errorType: 'network',
+            }
+            break
+          }
+          const delay = Math.pow(2, attempt) * 1000
+          toast({
+            title: 'Conexão',
+            description: 'Erro de conexão. Tentando novamente...',
+          })
+          await new Promise((r) => setTimeout(r, delay))
+        }
+      }
+
+      if (!response?.success) {
+        const errorMsg = response?.error || 'Erro ao vincular. Contate suporte'
+        const isPerm =
+          response?.errorType === 'permission' || errorMsg.toLowerCase().includes('permissão')
+
+        let finalTitle = 'Erro'
+        let finalDesc = errorMsg
+
+        if (isPerm) {
+          finalTitle = 'Permissão Negada'
+          finalDesc = 'Você não tem permissão para vincular este imóvel'
+        } else if (
+          response?.errorType === 'network' ||
+          response?.errorType === 'server' ||
+          response?.errorType === 'unknown'
+        ) {
+          finalTitle = 'Erro ao vincular'
+          finalDesc = 'Erro ao vincular. Contate suporte (Tente novamente)'
+        }
+
         toast({
-          title: 'Erro na Vinculação',
-          description: response.error || 'Não foi possível concluir a vinculação.',
+          title: finalTitle,
+          description: finalDesc,
           variant: 'destructive',
         })
         return
       }
 
       toast({
-        title: 'Sucesso',
+        title: 'Imóvel vinculado com sucesso!',
         description: `Imóvel vinculado a ${demand.clientName} com sucesso!`,
         className: 'bg-[#4CAF50] text-white',
       })
@@ -140,7 +196,7 @@ export function ManualLinkModal({ isOpen, onClose, property }: ManualLinkModalPr
       console.error('Erro de vinculação:', err)
       toast({
         title: 'Erro de Sistema',
-        description: 'Ocorreu um erro inesperado. Contate o suporte.',
+        description: 'Erro ao vincular. Contate suporte. (Você pode tentar novamente)',
         variant: 'destructive',
       })
     } finally {

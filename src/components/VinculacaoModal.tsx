@@ -161,24 +161,82 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
       const isLocacao =
         selectedDemand.tipo === 'Aluguel' || selectedDemand.tipo_demanda === 'Aluguel'
 
-      const response = await vinculacaoService.linkImovelToDemanda({
-        imovelId: imovel.id,
-        demandaId: selectedDemand.id,
-        usuarioId: user?.id || '',
-        isLocacao,
-      })
+      const executeRequest = async () => {
+        return vinculacaoService.linkImovelToDemanda({
+          imovelId: imovel.id,
+          demandaId: selectedDemand.id,
+          usuarioId: user?.id || '',
+          isLocacao,
+        })
+      }
 
-      if (!response.success) {
+      let response: any = null
+      for (let attempt = 0; attempt <= 3; attempt++) {
+        try {
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('TIMEOUT')), 30000),
+          )
+          response = (await Promise.race([executeRequest(), timeoutPromise])) as any
+
+          if (!response.success) {
+            const errorType = response.errorType || 'unknown'
+            if (['permission', 'not_found', 'validation'].includes(errorType)) {
+              break // Do not retry
+            }
+            throw new Error(response.error || 'SERVER_ERROR')
+          }
+          break // Success
+        } catch (err: any) {
+          if (attempt === 3) {
+            response = {
+              success: false,
+              error:
+                err.message === 'TIMEOUT'
+                  ? 'Tempo limite excedido. Erro de rede.'
+                  : 'Erro de conexão ao servidor.',
+              errorType: 'network',
+            }
+            break
+          }
+          const delay = Math.pow(2, attempt) * 1000
+          toast({
+            title: 'Conexão',
+            description: 'Erro de conexão. Tentando novamente...',
+          })
+          await new Promise((r) => setTimeout(r, delay))
+        }
+      }
+
+      if (!response?.success) {
+        const errorMsg = response?.error || 'Erro ao vincular. Contate suporte'
+        const isPerm =
+          response?.errorType === 'permission' || errorMsg.toLowerCase().includes('permissão')
+
+        let finalTitle = 'Erro'
+        let finalDesc = errorMsg
+
+        if (isPerm) {
+          finalTitle = 'Permissão Negada'
+          finalDesc = 'Você não tem permissão para vincular este imóvel'
+        } else if (
+          response?.errorType === 'network' ||
+          response?.errorType === 'server' ||
+          response?.errorType === 'unknown'
+        ) {
+          finalTitle = 'Erro ao vincular'
+          finalDesc = 'Erro ao vincular. Contate suporte (Tente novamente)'
+        }
+
         toast({
-          title: 'Erro na Vinculação',
-          description: response.error || 'Erro ao vincular. Contate o suporte.',
+          title: finalTitle,
+          description: finalDesc,
           variant: 'destructive',
         })
         return
       }
 
       toast({
-        title: 'Vinculado com Sucesso',
+        title: 'Imóvel vinculado com sucesso!',
         description: `O imóvel ${imovel.codigo_imovel} foi vinculado ao cliente ${selectedDemand.nome_cliente}.`,
         className: 'bg-[#D4EDDA] text-[#155724] border-[#C3E6CB]',
       })
@@ -186,10 +244,10 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
       onSuccess?.()
       onClose()
     } catch (err: any) {
-      console.error('Erro inexperado:', err)
+      console.error('Erro inesperado:', err)
       toast({
         title: 'Erro de Sistema',
-        description: 'Ocorreu um erro inesperado. Contate o suporte.',
+        description: 'Erro ao vincular. Contate suporte. (Você pode tentar novamente)',
         variant: 'destructive',
       })
     } finally {
