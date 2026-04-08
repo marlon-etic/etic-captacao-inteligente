@@ -231,7 +231,6 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
         .update({
           demanda_locacao_id: null,
           demanda_venda_id: null,
-          tipo: safeTipo,
         })
         .eq('id', imovel.id)
         .abortSignal(controller.signal)
@@ -288,7 +287,7 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-[1000px] w-[95vw] max-h-[85vh] md:max-h-[80vh] h-[85vh] md:h-[80vh] bg-white p-0 gap-0 overflow-hidden rounded-[12px] shadow-2xl flex flex-col [&>button]:hidden">
+      <DialogContent className="max-w-[1000px] w-[95vw] max-h-[75vh] md:max-h-[75vh] h-[75vh] md:h-[75vh] bg-white p-0 gap-0 overflow-hidden rounded-[12px] shadow-2xl flex flex-col [&>button]:hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-3 md:p-4 border-b border-gray-100 bg-white shrink-0 relative z-20 shadow-sm">
           <div className="flex items-center gap-2 text-slate-800">
@@ -362,7 +361,7 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
         </div>
 
         {/* Content Area */}
-        <div className="flex flex-col md:flex-row flex-1 min-h-0 overflow-hidden bg-[#F8FAFC]">
+        <div className="flex flex-col md:flex-row flex-1 min-h-0 overflow-y-auto bg-[#F8FAFC]">
           {/* Lista de Sugestões (Left Sidebar) */}
           <div className="w-full md:w-[45%] flex flex-col border-b md:border-b-0 md:border-r border-gray-200 bg-white flex-1 min-h-0">
             <div className="p-3 border-b border-gray-100 shrink-0 bg-slate-50">
