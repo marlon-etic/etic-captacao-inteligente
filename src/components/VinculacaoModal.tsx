@@ -43,6 +43,7 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
   const [loadingDemands, setLoadingDemands] = useState(false)
   const [selectedDemandId, setSelectedDemandId] = useState<string>('')
   const [isLinking, setIsLinking] = useState(false)
+  const [isSuccess, setIsSuccess] = useState(false)
   const abortControllerRef = useRef<AbortController | null>(null)
 
   // Fetch all open demands when modal opens
@@ -106,6 +107,7 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
       fetchDemands()
     } else {
       setActiveDemands([])
+      setIsSuccess(false)
     }
   }, [isOpen, imovel])
 
@@ -139,7 +141,7 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
       console.log(`🔴 [VINCULAR] ERRO: Função linkImovelToDemanda não encontrada`)
     }
 
-    if (!imovel || !selectedDemand || isLinking) {
+    if (!imovel || !selectedDemand || isLinking || isSuccess) {
       if (!imovel || !selectedDemand) {
         console.log(`🔴 [VINCULAR] Botão clicado mas sem imóvel ou demanda selecionada`)
       }
@@ -208,7 +210,7 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
         if (response?.errorType === 'timeout') {
           console.log(`🔴 [VINCULAR] Timeout! Requisição demorou mais de 30s. Tente novamente`)
           toast({
-            title: 'Erro de Conexão',
+            title: '❌ Timeout',
             description: 'Requisição expirou. Tente novamente',
             variant: 'destructive',
           })
@@ -217,20 +219,20 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
 
         console.log(`🔴 [VINCULAR] Erro: ${response?.error || 'Erro desconhecido'}`)
 
-        let finalTitle = 'Erro'
+        let finalTitle = '❌ Erro'
         let finalDesc = response?.error || 'Erro ao vincular. Contate suporte'
 
         if (response?.errorType === 'permission') {
-          finalTitle = 'Permissão Negada'
+          finalTitle = '❌ Permissão Negada'
           finalDesc = 'Você não tem permissão para vincular este imóvel'
         } else if (response?.errorType === 'not_found') {
-          finalTitle = 'Não Encontrado'
+          finalTitle = '❌ Não Encontrado'
           finalDesc = 'Imóvel ou demanda não encontrado. Recarregue a página'
         } else if (response?.errorType === 'server') {
-          finalTitle = 'Erro no Servidor'
+          finalTitle = '❌ Erro no Servidor'
           finalDesc = 'Erro no servidor. Tente novamente em alguns segundos'
         } else if (response?.errorType === 'network') {
-          finalTitle = 'Erro de Rede'
+          finalTitle = '❌ Erro de Rede'
           finalDesc = 'Erro de conexão. Tente novamente'
         }
 
@@ -243,17 +245,21 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
       }
 
       toast({
-        title: 'Demanda vinculada com sucesso!',
+        title: '✓ Imóvel vinculado com sucesso!',
         description: `O imóvel ${imovel?.codigo_imovel} foi vinculado ao cliente ${selectedDemand?.nome_cliente}.`,
         className: 'bg-[#10B981] text-white border-none',
       })
 
+      setIsSuccess(true)
       onSuccess?.()
-      onClose()
+
+      setTimeout(() => {
+        onClose()
+      }, 2000)
     } catch (err: any) {
       console.log(`🔴 [VINCULAR] Erro desconhecido:`, err)
       toast({
-        title: 'Erro de Sistema',
+        title: '❌ Erro de Sistema',
         description: 'Erro ao vincular. Contate suporte',
         variant: 'destructive',
       })
@@ -264,8 +270,21 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[850px] w-[95vw] md:w-full bg-white p-0 gap-0 overflow-hidden rounded-[16px] shadow-2xl flex flex-col max-h-[90dvh] z-[1100]">
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) {
+          if (abortControllerRef.current) {
+            abortControllerRef.current.abort()
+          }
+          onClose()
+        }
+      }}
+    >
+      <DialogContent
+        className="sm:max-w-[850px] w-[95vw] md:w-full bg-white p-0 gap-0 overflow-hidden rounded-[16px] shadow-2xl flex flex-col max-h-[90dvh] z-[1100]"
+        onInteractOutside={(e) => e.preventDefault()}
+      >
         <DialogHeader className="p-[24px] border-b border-[#E5E5E5] bg-[#F8FAFC] shrink-0 relative z-20">
           <DialogTitle className="text-[20px] font-black text-[#1A3A52]">
             Vincular Imóvel {imovel?.codigo_imovel} a uma Demanda
@@ -530,6 +549,7 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
           )}
           <Button
             variant="outline"
+            disabled={isLinking || isSuccess}
             onClick={(e) => {
               e.preventDefault()
               e.stopPropagation()
@@ -540,7 +560,7 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
             Cancelar
           </Button>
           <Button
-            disabled={!selectedDemand || selectedDemand.score < 50 || isLinking}
+            disabled={!selectedDemand || selectedDemand.score < 50 || isLinking || isSuccess}
             onClick={handleVincularDemanda}
             title={
               selectedDemand && selectedDemand.score < 50
@@ -549,15 +569,22 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
             }
             className={cn(
               'font-bold transition-all shadow-sm min-w-[160px] pointer-events-auto disabled:opacity-50 disabled:cursor-not-allowed',
-              selectedDemand && selectedDemand.score >= 50
-                ? 'bg-[#1A3A52] hover:bg-[#112839] text-white'
-                : 'bg-gray-400 text-white cursor-not-allowed',
+              isSuccess
+                ? 'bg-[#10B981] hover:bg-[#059669] text-white'
+                : selectedDemand && selectedDemand.score >= 50
+                  ? 'bg-[#1A3A52] hover:bg-[#112839] text-white'
+                  : 'bg-gray-400 text-white cursor-not-allowed',
             )}
           >
             {isLinking ? (
               <span className="flex items-center gap-2">
                 <Loader2 className="w-4 h-4 animate-spin" />
                 Vinculando...
+              </span>
+            ) : isSuccess ? (
+              <span className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4" />
+                Sucesso!
               </span>
             ) : (
               'VINCULAR A ESTA DEMANDA'
