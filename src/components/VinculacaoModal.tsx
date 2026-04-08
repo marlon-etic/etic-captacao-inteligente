@@ -126,77 +126,6 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
     [filteredDemands, selectedDemandId],
   )
 
-  const handleVincularDemanda = async () => {
-    if (!imovel) return
-
-    if (!selectedDemand) {
-      toast({
-        title: '❌ Selecione uma demanda primeiro',
-        variant: 'destructive',
-      })
-      return
-    }
-
-    if (isLinking || isSaving) return
-
-    setIsLinking(true)
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 30000)
-
-    try {
-      const isLocacao = selectedDemand.tipo === 'Aluguel'
-
-      const response = await vinculacaoService.linkImovelToDemanda(
-        {
-          imovelId: imovel.id,
-          demandaId: selectedDemand.id,
-          usuarioId: user?.id || '',
-          isLocacao,
-        },
-        controller.signal,
-      )
-
-      clearTimeout(timeoutId)
-
-      if (!response.success) {
-        toast({
-          title: '❌ Erro ao vincular',
-          description: response.error || 'Você não tem permissão para vincular este imóvel.',
-          variant: 'destructive',
-        })
-        setIsLinking(false)
-        return
-      }
-
-      toast({
-        title: '✓ Imóvel vinculado com sucesso!',
-        description: `O imóvel foi vinculado a ${selectedDemand.nome_cliente}.`,
-        className: 'bg-[#10B981] text-white border-none font-bold',
-      })
-
-      setTimeout(() => {
-        onSuccess?.()
-        onClose()
-        setIsLinking(false)
-      }, 2000)
-    } catch (err: any) {
-      clearTimeout(timeoutId)
-      if (err.name === 'AbortError') {
-        toast({
-          title: '❌ Requisição expirou. Tente novamente',
-          variant: 'destructive',
-        })
-      } else {
-        toast({
-          title: '❌ Erro ao vincular. Tente novamente',
-          description: err.message || 'Erro inesperado ao vincular.',
-          variant: 'destructive',
-        })
-      }
-      setIsLinking(false)
-    }
-  }
-
   const handleSalvarSemVincular = async () => {
     if (!imovel || isSaving || isLinking) return
 
@@ -206,26 +135,6 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
     const timeoutId = setTimeout(() => controller.abort(), 30000)
 
     try {
-      let safeTipo = ''
-
-      if (imovel.tipo) {
-        safeTipo = imovel.tipo
-      } else if ((imovel as any).demanda_tipo) {
-        safeTipo = (imovel as any).demanda_tipo
-      } else if (imovel.codigo_imovel && imovel.codigo_imovel.toUpperCase().startsWith('L')) {
-        safeTipo = 'Aluguel'
-      } else {
-        safeTipo = 'Venda' // Fallback seguro
-      }
-
-      console.log('[SALVAR] Tipo validado e extraído com sucesso:', safeTipo)
-
-      if (!safeTipo) {
-        throw new Error(
-          'Erro: Tipo de imóvel não pôde ser determinado. Verifique os dados e tente novamente.',
-        )
-      }
-
       const { error } = await supabase
         .from('imoveis_captados')
         .update({
