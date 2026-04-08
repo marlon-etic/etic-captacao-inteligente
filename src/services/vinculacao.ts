@@ -28,6 +28,8 @@ export const vinculacaoService = {
         }
       }
 
+      // Explicitly define strictly the columns we want to update.
+      // We do not pass dynamic fields that might throw undefined exceptions.
       const updateData = {
         demanda_locacao_id: isLocacao ? demandaId : null,
         demanda_venda_id: !isLocacao ? demandaId : null,
