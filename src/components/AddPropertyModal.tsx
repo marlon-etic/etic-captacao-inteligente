@@ -114,6 +114,10 @@ export function AddPropertyModal({ isOpen, onClose, onSuccess }: Props) {
         demanda_locacao_id: type === 'Aluguel' ? demandId : null,
         demanda_venda_id: type === 'Venda' ? demandId : null,
         localizacao_texto: extraInfo,
+        dormitorios: bedrooms !== '' ? Number(bedrooms) : 0,
+        vagas: parking !== '' ? Number(parking) : 0,
+        observacoes: notes,
+        tipo,
       }
 
       const { error } = await supabase.from('imoveis_captados').insert(payload)

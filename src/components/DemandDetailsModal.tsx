@@ -154,19 +154,19 @@ export function DemandDetailsModal({
                 <div className="flex flex-col gap-0.5">
                   <span className="text-[12px] text-[#666666] font-medium">Dormitórios</span>
                   <span className="text-[16px] text-[#1A3A52] font-bold">
-                    {demand.bedrooms || 'Indiferente'}
+                    {demand.bedrooms ?? 'Indiferente'}
                   </span>
                 </div>
                 <div className="flex flex-col gap-0.5">
                   <span className="text-[12px] text-[#666666] font-medium">Banheiros</span>
                   <span className="text-[16px] text-[#1A3A52] font-bold">
-                    {demand.bathrooms || 'Indiferente'}
+                    {demand.bathrooms ?? 'Indiferente'}
                   </span>
                 </div>
                 <div className="flex flex-col gap-0.5">
                   <span className="text-[12px] text-[#666666] font-medium">Vagas</span>
                   <span className="text-[16px] text-[#1A3A52] font-bold">
-                    {demand.parkingSpots || 'Indiferente'}
+                    {demand.parkingSpots ?? 'Indiferente'}
                   </span>
                 </div>
                 <div className="flex flex-col gap-0.5">

@@ -185,7 +185,7 @@ export function ImovelDetailsSheet({ imovel, onClose, onVincular }: ImovelDetail
                     <Bed className="w-5 h-5 text-[#3B82F6]" />
                     <div className="flex flex-col">
                       <span className="font-black text-[16px] text-[#1A3A52] leading-none">
-                        {imovel.dormitorios}
+                        {imovel.dormitorios ?? 0}
                       </span>
                       <span className="text-[#666666] text-[11px] font-bold uppercase">
                         Dormitórios
@@ -196,7 +196,7 @@ export function ImovelDetailsSheet({ imovel, onClose, onVincular }: ImovelDetail
                     <Car className="w-5 h-5 text-[#3B82F6]" />
                     <div className="flex flex-col">
                       <span className="font-black text-[16px] text-[#1A3A52] leading-none">
-                        {imovel.vagas}
+                        {imovel.vagas ?? 0}
                       </span>
                       <span className="text-[#666666] text-[11px] font-bold uppercase">Vagas</span>
                     </div>

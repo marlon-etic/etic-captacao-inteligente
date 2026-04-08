@@ -185,8 +185,16 @@ export function NewDemandModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
               bairros: values.location,
               valor_minimo: values.minBudget,
               valor_maximo: values.maxBudget,
-              dormitorios: values.bedrooms,
-              vagas_estacionamento: values.parkingSpots,
+              dormitorios:
+                values.bedrooms !== undefined && values.bedrooms !== null && values.bedrooms !== ''
+                  ? Number(values.bedrooms)
+                  : 0,
+              vagas_estacionamento:
+                values.parkingSpots !== undefined &&
+                values.parkingSpots !== null &&
+                values.parkingSpots !== ''
+                  ? Number(values.parkingSpots)
+                  : 0,
               nivel_urgencia: values.timeframe,
               observacoes: values.description || null,
               status_demanda: 'aberta',
@@ -212,8 +220,16 @@ export function NewDemandModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
               bairros: values.location,
               valor_minimo: values.minBudget,
               valor_maximo: values.maxBudget,
-              dormitorios: values.bedrooms,
-              vagas_estacionamento: values.parkingSpots,
+              dormitorios:
+                values.bedrooms !== undefined && values.bedrooms !== null && values.bedrooms !== ''
+                  ? Number(values.bedrooms)
+                  : 0,
+              vagas_estacionamento:
+                values.parkingSpots !== undefined &&
+                values.parkingSpots !== null &&
+                values.parkingSpots !== ''
+                  ? Number(values.parkingSpots)
+                  : 0,
               nivel_urgencia: values.timeframe,
               necessidades_especificas: values.description || null,
               status_demanda: 'aberta',
@@ -243,8 +259,16 @@ export function NewDemandModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
         minBudget: values.minBudget,
         maxBudget: values.maxBudget,
         budget: values.maxBudget,
-        bedrooms: values.bedrooms,
-        parkingSpots: values.parkingSpots,
+        bedrooms:
+          values.bedrooms !== undefined && values.bedrooms !== null && values.bedrooms !== ''
+            ? Number(values.bedrooms)
+            : 0,
+        parkingSpots:
+          values.parkingSpots !== undefined &&
+          values.parkingSpots !== null &&
+          values.parkingSpots !== ''
+            ? Number(values.parkingSpots)
+            : 0,
         timeframe: values.timeframe,
         description: values.description || 'Nova demanda via modal rápido',
       })

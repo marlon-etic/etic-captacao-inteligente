@@ -211,8 +211,9 @@ export function CapturedPropertyCard({
           💰 Valor: R$ {formatPrice(property.value)}
         </p>
         <p className="text-[13px] text-[#666666] font-medium bg-[#F5F5F5] p-2 rounded-[8px] border border-[#E5E5E5] mt-1">
-          🏠 Perfil: {property.bedrooms || 0} dorm, {property.bathrooms || 0} banh,{' '}
-          {property.parkingSpots || 0} vagas
+          🏠 Perfil: {property.dormitorios ?? property.bedrooms ?? 0} dorm,{' '}
+          {property.banheiros ?? property.bathrooms ?? 0} banh,{' '}
+          {property.vagas ?? property.parkingSpots ?? 0} vagas
         </p>
         {demand && (
           <p className="text-[12px] text-[#666666] mt-1">

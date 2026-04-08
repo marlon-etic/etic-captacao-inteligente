@@ -107,10 +107,18 @@ export function ModalDemandaVenda({ isOpen, onClose }: { isOpen: boolean; onClos
         bairros: values.bairros,
         valor_minimo: values.valor_minimo ? Number(values.valor_minimo) : null,
         valor_maximo: values.valor_maximo ? Number(values.valor_maximo) : null,
-        dormitorios: values.dormitorios ? Number(values.dormitorios) : null,
-        vagas_estacionamento: values.vagas_estacionamento
-          ? Number(values.vagas_estacionamento)
-          : null,
+        dormitorios:
+          values.dormitorios !== undefined &&
+          values.dormitorios !== null &&
+          values.dormitorios !== ''
+            ? Number(values.dormitorios)
+            : 0,
+        vagas_estacionamento:
+          values.vagas_estacionamento !== undefined &&
+          values.vagas_estacionamento !== null &&
+          values.vagas_estacionamento !== ''
+            ? Number(values.vagas_estacionamento)
+            : 0,
         nivel_urgencia: values.nivel_urgencia,
         necessidades_especificas: values.necessidades_especificas || null,
       })
@@ -126,8 +134,18 @@ export function ModalDemandaVenda({ isOpen, onClose }: { isOpen: boolean; onClos
         location: values.bairros,
         minBudget: Number(values.valor_minimo || 0),
         maxBudget: Number(values.valor_maximo || 0),
-        bedrooms: Number(values.dormitorios || 0),
-        parkingSpots: Number(values.vagas_estacionamento || 0),
+        bedrooms:
+          values.dormitorios !== undefined &&
+          values.dormitorios !== null &&
+          values.dormitorios !== ''
+            ? Number(values.dormitorios)
+            : 0,
+        parkingSpots:
+          values.vagas_estacionamento !== undefined &&
+          values.vagas_estacionamento !== null &&
+          values.vagas_estacionamento !== ''
+            ? Number(values.vagas_estacionamento)
+            : 0,
         timeframe: values.nivel_urgencia,
         description: values.necessidades_especificas || '',
       })

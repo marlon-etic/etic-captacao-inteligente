@@ -449,7 +449,7 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
             />
             <InfoItem
               label="Perfil"
-              value={`${demand.bedrooms || 0} dorm, ${demand.bathrooms || 0} banh, ${demand.parkingSpots || 0} vagas`}
+              value={`${demand.bedrooms ?? 0} dorm, ${demand.bathrooms ?? 0} banh, ${demand.parkingSpots ?? 0} vagas`}
             />
             <InfoItem label="Solicitado por" value={creatorName} />
           </div>

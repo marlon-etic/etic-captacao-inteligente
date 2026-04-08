@@ -130,11 +130,11 @@ export function PropertyDetailsModal({ property, onClose }: Props) {
           <div className="grid grid-cols-3 gap-3 border-y border-gray-100 py-5 pointer-events-none">
             <div className="flex flex-col items-center justify-center p-3 bg-white border border-gray-100 rounded-xl shadow-sm">
               <p className="text-[10px] text-gray-500 font-bold uppercase mb-1">Dormitórios</p>
-              <p className="text-2xl font-black text-[#1A3A52]">{property.dormitorios || 0}</p>
+              <p className="text-2xl font-black text-[#1A3A52]">{property.dormitorios ?? 0}</p>
             </div>
             <div className="flex flex-col items-center justify-center p-3 bg-white border border-gray-100 rounded-xl shadow-sm">
               <p className="text-[10px] text-gray-500 font-bold uppercase mb-1">Vagas</p>
-              <p className="text-2xl font-black text-[#1A3A52]">{property.vagas || 0}</p>
+              <p className="text-2xl font-black text-[#1A3A52]">{property.vagas ?? 0}</p>
             </div>
             <div className="flex flex-col items-center justify-center p-3 bg-white border border-gray-100 rounded-xl shadow-sm text-center">
               <p className="text-[10px] text-gray-500 font-bold uppercase mb-1">Captador</p>

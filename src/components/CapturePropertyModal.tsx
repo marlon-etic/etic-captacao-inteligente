@@ -81,8 +81,8 @@ export function CapturePropertyModal({ demand, isOpen, onClose, onSuccess }: Pro
         demanda_venda_id: demand.tipo === 'Venda' ? demand.id : null,
         tipo: demand.tipo === 'Aluguel' ? 'Aluguel' : 'Venda',
         localizacao_texto: extraInfo,
-        dormitorios: bedrooms ? Number(bedrooms) : null,
-        vagas: parking ? Number(parking) : null,
+        dormitorios: bedrooms !== '' ? Number(bedrooms) : 0,
+        vagas: parking !== '' ? Number(parking) : 0,
         observacoes: notes,
         etapa_funil: 'capturado',
       }
