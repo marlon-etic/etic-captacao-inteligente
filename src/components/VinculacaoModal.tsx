@@ -129,27 +129,27 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
     return scoredDemands.find((d) => d.id === selectedDemandId) || null
   }, [scoredDemands, selectedDemandId])
 
-  const handleVincular = async (e?: React.MouseEvent) => {
-    const ts = () => new Date().toISOString()
-
-    if (!vinculacaoService || !vinculacaoService.linkImovelToDemanda) {
-      console.log(`[${ts()}] 🔴 [VINCULAR] ERRO: Função linkImovelToDemanda não encontrada`)
-    }
-
+  const handleVincularDemanda = (e?: React.MouseEvent) => {
     if (e) {
       e.preventDefault()
       e.stopPropagation()
     }
 
-    if (!imovel || !selectedDemand) {
-      console.log(`[${ts()}] 🔴 [VINCULAR] Botão clicado mas sem imóvel ou demanda selecionada`)
+    if (!vinculacaoService || !vinculacaoService.linkImovelToDemanda) {
+      console.log(`🔴 [VINCULAR] ERRO: Função linkImovelToDemanda não encontrada`)
+    }
+
+    if (!imovel || !selectedDemand || isLinking) {
+      if (!imovel || !selectedDemand) {
+        console.log(`🔴 [VINCULAR] Botão clicado mas sem imóvel ou demanda selecionada`)
+      }
       return
     }
 
-    console.log(`[${ts()}] 🔵 [VINCULAR] Clique detectado em demanda_id=${selectedDemand.id}`)
-
     // Dupla proteção: early return se o score for < 50
     if (selectedDemand.score < 50) return
+
+    console.log(`🔵 [VINCULAR] Clique detectado em demanda_id=${selectedDemand.id}`)
 
     // Evitar duplicidade de vínculo
     if (
@@ -167,100 +167,71 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
 
     setIsLinking(true)
 
+    // Dar tempo para a interface renderizar o estado "Vinculando..." antes de disparar a requisição
+    setTimeout(() => {
+      executarVinculacao()
+    }, 50)
+  }
+
+  const executarVinculacao = async () => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort()
     }
     abortControllerRef.current = new AbortController()
     const signal = abortControllerRef.current.signal
 
-    // Forçar a renderização do estado de loading antes da requisição pesada para evitar travamento da UI
-    await new Promise((resolve) => setTimeout(resolve, 50))
-
     try {
       const isLocacao =
-        selectedDemand.tipo === 'Aluguel' || selectedDemand.tipo_demanda === 'Aluguel'
+        selectedDemand?.tipo === 'Aluguel' || selectedDemand?.tipo_demanda === 'Aluguel'
 
-      const executeRequest = async () => {
-        // Criar timeout de 30s manual pois Promise.race pode ter vazamentos
-        const timeoutId = setTimeout(() => {
-          console.log(
-            `[${ts()}] 🔴 [VINCULAR] Timeout! Requisição demorou mais de 30s. Abortando...`,
-          )
-          abortControllerRef.current?.abort()
-        }, 30000)
-
-        const res = await vinculacaoService.linkImovelToDemanda({
-          imovelId: imovel.id,
-          demandaId: selectedDemand.id,
-          usuarioId: user?.id || '',
-          isLocacao,
-          signal,
-        })
-
-        clearTimeout(timeoutId)
-        return res
-      }
-
-      let response: any = null
-      for (let attempt = 0; attempt <= 3; attempt++) {
-        try {
-          response = await executeRequest()
-
-          if (!response.success) {
-            const errorType = response.errorType || 'unknown'
-            if (['permission', 'not_found', 'validation', 'timeout'].includes(errorType)) {
-              break // Do not retry
-            }
-            if (attempt < 3) throw new Error(response.error || 'SERVER_ERROR')
-          }
-          break // Success or non-retriable error
-        } catch (err: any) {
-          if (err.name === 'AbortError') {
-            response = {
-              success: false,
-              error: 'Timeout na requisição',
-              errorType: 'timeout',
-            }
-            break
-          }
-          if (attempt === 3) {
-            response = {
-              success: false,
-              error: 'Erro de conexão ao servidor.',
-              errorType: 'network',
-            }
-            break
-          }
-          const delay = Math.pow(2, attempt) * 1000
-          toast({
-            title: 'Conexão',
-            description: 'Erro de conexão. Tentando novamente...',
+      const timeoutPromise = new Promise<any>((resolve) => {
+        setTimeout(() => {
+          resolve({
+            success: false,
+            errorType: 'timeout',
+            error: 'Timeout! Requisição demorou mais de 30s. Tente novamente',
           })
-          await new Promise((r) => setTimeout(r, delay))
-        }
-      }
+        }, 30000)
+      })
+
+      const requestPromise = vinculacaoService.linkImovelToDemanda({
+        imovelId: imovel!.id,
+        demandaId: selectedDemand!.id,
+        usuarioId: user?.id || '',
+        isLocacao,
+        signal,
+      })
+
+      const response = await Promise.race([requestPromise, timeoutPromise])
 
       if (!response?.success) {
-        const errorType = response?.errorType || 'unknown'
-        console.log(
-          `[${ts()}] 🔴 [VINCULAR] Erro: ${response?.error || 'Desconhecido'} (Tipo: ${errorType})`,
-        )
+        if (response?.errorType === 'timeout') {
+          console.log(`🔴 [VINCULAR] Timeout! Requisição demorou mais de 30s. Tente novamente`)
+          toast({
+            title: 'Erro de Conexão',
+            description: 'Requisição expirou. Tente novamente',
+            variant: 'destructive',
+          })
+          return
+        }
+
+        console.log(`🔴 [VINCULAR] Erro: ${response?.error || 'Erro desconhecido'}`)
 
         let finalTitle = 'Erro'
         let finalDesc = response?.error || 'Erro ao vincular. Contate suporte'
 
-        if (errorType === 'permission') {
+        if (response?.errorType === 'permission') {
           finalTitle = 'Permissão Negada'
-          finalDesc = '🔴 Você não tem permissão para vincular este imóvel. Contate o administrador'
-        } else if (errorType === 'not_found') {
+          finalDesc = 'Você não tem permissão para vincular este imóvel'
+        } else if (response?.errorType === 'not_found') {
           finalTitle = 'Não Encontrado'
-          finalDesc = '🔴 Imóvel ou demanda não encontrado. Recarregue a página'
-        } else if (errorType === 'server') {
+          finalDesc = 'Imóvel ou demanda não encontrado. Recarregue a página'
+        } else if (response?.errorType === 'server') {
           finalTitle = 'Erro no Servidor'
-          finalDesc = '🔴 Erro no servidor. Tente novamente em alguns segundos'
-        } else if (errorType === 'timeout' || errorType === 'network') {
+          finalDesc = 'Erro no servidor. Tente novamente em alguns segundos'
+        } else if (response?.errorType === 'network') {
           finalTitle = 'Erro de Rede'
-          finalDesc = '🔴 Conexão perdida. Verifique sua internet e tente novamente'
+          finalDesc = 'Erro de conexão. Tente novamente'
         }
 
         toast({
@@ -271,21 +242,19 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
         return
       }
 
-      console.log(`[${ts()}] 🟢 [VINCULAR] Sucesso! Demanda vinculada`)
-
       toast({
-        title: 'Imóvel vinculado com sucesso!',
-        description: `O imóvel ${imovel.codigo_imovel} foi vinculado ao cliente ${selectedDemand.nome_cliente}.`,
-        className: 'bg-[#D4EDDA] text-[#155724] border-[#C3E6CB]',
+        title: 'Demanda vinculada com sucesso!',
+        description: `O imóvel ${imovel?.codigo_imovel} foi vinculado ao cliente ${selectedDemand?.nome_cliente}.`,
+        className: 'bg-[#10B981] text-white border-none',
       })
 
       onSuccess?.()
       onClose()
     } catch (err: any) {
-      console.error(`[${ts()}] 🔴 [VINCULAR] Erro desconhecido:`, err)
+      console.log(`🔴 [VINCULAR] Erro desconhecido:`, err)
       toast({
         title: 'Erro de Sistema',
-        description: '🔴 Erro no servidor. Tente novamente em alguns segundos',
+        description: 'Erro ao vincular. Contate suporte',
         variant: 'destructive',
       })
     } finally {
@@ -572,7 +541,7 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
           </Button>
           <Button
             disabled={!selectedDemand || selectedDemand.score < 50 || isLinking}
-            onClick={handleVincular}
+            onClick={handleVincularDemanda}
             title={
               selectedDemand && selectedDemand.score < 50
                 ? 'Match insuficiente para vinculação (Mínimo 50%)'
@@ -591,7 +560,7 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
                 Vinculando...
               </span>
             ) : (
-              'CONFIRMAR E VINCULAR'
+              'VINCULAR A ESTA DEMANDA'
             )}
           </Button>
         </DialogFooter>
