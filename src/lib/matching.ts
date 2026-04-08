@@ -34,7 +34,7 @@ export function calculateMatching(
 
   let localizacaoScore = 0
   if (!cliente.bairros || cliente.bairros.length === 0) {
-    localizacaoScore = 0
+    localizacaoScore = 100
   } else if (imovel.endereco) {
     const imovelBairro = imovel.endereco.toLowerCase()
     const hasMatch = cliente.bairros.some(
@@ -49,32 +49,41 @@ export function calculateMatching(
   const minVal = cliente.valor_minimo || 0
   const maxVal = cliente.valor_maximo || 0
 
-  if (preco > 0) {
-    let media = 0
-    if (minVal > 0 && maxVal > 0) {
-      media = (minVal + maxVal) / 2
-    } else if (maxVal > 0) {
-      media = maxVal
-    }
+  if (minVal === 0 && maxVal === 0) {
+    valorScore = 100 // Indiferente
+  } else if (preco > 0) {
+    // Se o preço está dentro da faixa exata
+    if ((minVal === 0 || preco >= minVal) && (maxVal === 0 || preco <= maxVal)) {
+      valorScore = 100
+    } else {
+      let media = 0
+      if (minVal > 0 && maxVal > 0) {
+        media = (minVal + maxVal) / 2
+      } else if (maxVal > 0) {
+        media = maxVal
+      } else if (minVal > 0) {
+        media = minVal
+      }
 
-    if (media > 0) {
-      const tolerancia = media * 0.2
-      const minAccept = media - tolerancia
-      const maxAccept = media + tolerancia
+      // Tolerância de 20% da média
+      const tolerancia = media > 0 ? media * 0.2 : 0
 
-      if (preco >= minAccept && preco <= maxAccept) {
-        valorScore = 100
+      let diferenca = 0
+      if (minVal > 0 && preco < minVal) {
+        diferenca = minVal - preco
+      } else if (maxVal > 0 && preco > maxVal) {
+        diferenca = preco - maxVal
+      }
+
+      if (diferenca >= tolerancia || tolerancia === 0) {
+        valorScore = 0
       } else {
-        const diferenca = preco < minAccept ? minAccept - preco : preco - maxAccept
-        // Reduz proporcionalmente se fora da faixa
-        // Se a diferença for maior ou igual a tolerância, o score cai para 0%
-        if (diferenca >= tolerancia) {
-          valorScore = 0
-        } else {
-          valorScore = 100 - (diferenca / tolerancia) * 100
-        }
+        valorScore = 100 - (diferenca / tolerancia) * 100
       }
     }
+  } else {
+    // Imóvel sem preço e cliente tem exigência de valor
+    valorScore = 0
   }
 
   let dormitoriosScore = 0
@@ -103,10 +112,12 @@ export function calculateMatching(
     urgenciaMultiplier = 0.5
   }
 
+  // Pesos equalitários: 25% para cada um dos 4 critérios principais (Total 100%)
   const baseScore =
-    localizacaoScore * 0.25 + valorScore * 0.25 + dormitoriosScore * 0.125 + vagasScore * 0.125
+    localizacaoScore * 0.25 + valorScore * 0.25 + dormitoriosScore * 0.25 + vagasScore * 0.25
 
-  const scoreFinal = Math.min(Math.round(baseScore * urgenciaMultiplier), 100)
+  // Removido o multiplicador de urgência do cálculo base para não distorcer a matemática do match
+  const scoreFinal = Math.min(Math.round(baseScore), 100)
 
   return {
     score: scoreFinal,
