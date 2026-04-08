@@ -255,7 +255,9 @@ export function ManualLinkModal({ isOpen, onClose, property }: ManualLinkModalPr
         })
         try {
           onClose()
-        } catch (e) {}
+        } catch (e) {
+          /* ignored */
+        }
       } else {
         toast({
           title: 'Erro de Sistema',
