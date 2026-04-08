@@ -5,25 +5,13 @@ export interface LinkParams {
   demandaId: string
   usuarioId: string
   isLocacao: boolean
-  signal?: AbortSignal
 }
 
 export interface LinkResponse {
   success: boolean
-  data?: {
-    demandaId: string
-    imovelId: string
-    codigo_imovel?: string
-  }
+  data?: any
   error?: string
-  errorType?:
-    | 'permission'
-    | 'not_found'
-    | 'validation'
-    | 'network'
-    | 'server'
-    | 'unknown'
-    | 'timeout'
+  errorType?: 'validation' | 'permission' | 'server'
 }
 
 export const vinculacaoService = {
@@ -32,15 +20,9 @@ export const vinculacaoService = {
     demandaId,
     usuarioId,
     isLocacao,
-    signal,
   }: LinkParams): Promise<LinkResponse> {
-    console.log(
-      `🔵 [VINCULAR] Iniciando vinculação com imovel_id=${imovelId}, demanda_id=${demandaId}, usuario_id=${usuarioId}`,
-    )
-
     try {
       if (!imovelId || !demandaId || !usuarioId) {
-        console.log(`🔴 [VINCULAR] Erro: Dados insuficientes para vinculação`)
         return {
           success: false,
           error: 'Dados insuficientes para vinculação',
@@ -48,103 +30,45 @@ export const vinculacaoService = {
         }
       }
 
-      // 1. Fetch user role to check permissions
-      let profileQuery = supabase.from('users').select('role').eq('id', usuarioId)
-      if (signal) profileQuery = profileQuery.abortSignal(signal as any)
-
-      const { data: userProfile, error: profileError } = await profileQuery.single()
-
-      if (profileError) {
-        console.log(`🔴 [VINCULAR] Erro ao buscar perfil do usuário:`, profileError)
-        return { success: false, error: 'Erro ao buscar perfil do usuário', errorType: 'network' }
-      }
-
-      const isAdmin = userProfile.role === 'admin' || userProfile.role === 'gestor'
-
-      // 2. Fetch the property to be linked
-      let fetchImovelQuery = supabase.from('imoveis_captados').select('*').eq('id', imovelId)
-      if (signal) fetchImovelQuery = fetchImovelQuery.abortSignal(signal as any)
-
-      const { data: existingImovel, error: fetchError } = await fetchImovelQuery.single()
-
-      if (fetchError || !existingImovel) {
-        console.log(`🔴 [VINCULAR] Erro: Imóvel não encontrado`)
-        return { success: false, error: 'Imóvel não encontrado', errorType: 'not_found' }
-      }
-
-      // 3. Validate permissions: only admin or the property's captor can link it
-      const isCaptador =
-        existingImovel.user_captador_id === usuarioId || existingImovel.captador_id === usuarioId
-      const temPermissao = isAdmin || isCaptador
-
-      console.log(
-        `🔵 [VINCULAR] Validando permissão... Usuário tem permissão? ${temPermissao ? 'SIM' : 'NÃO'}`,
-      )
-
-      if (!temPermissao) {
-        console.log(`🔴 [VINCULAR] Você não tem permissão para vincular este imóvel.`)
-        return {
-          success: false,
-          error: 'Você não tem permissão para vincular este imóvel',
-          errorType: 'permission',
-        }
-      }
-
-      console.log(`🔵 [VINCULAR] Enviando UPDATE para Supabase... Aguardando resposta`)
-
-      // 4. Update the property to link it to the new demand
-      const updateData: any = {
+      const updateData = {
         tipo: isLocacao ? 'Aluguel' : 'Venda',
         demanda_locacao_id: isLocacao ? demandaId : null,
         demanda_venda_id: !isLocacao ? demandaId : null,
         user_captador_id: usuarioId,
         captador_id: usuarioId,
-        status_captacao: 'capturado', // Reset status for the new funnel
+        status_captacao: 'capturado',
         etapa_funil: 'capturado',
       }
 
-      let updateQuery = supabase
+      const { data, error } = await supabase
         .from('imoveis_captados')
         .update(updateData)
         .eq('id', imovelId)
         .select()
-      if (signal) updateQuery = updateQuery.abortSignal(signal as any)
+        .single()
 
-      const { data: updatedImovel, error: updateError } = await updateQuery.single()
-
-      if (updateError) {
-        console.log(`🔴 [VINCULAR] Erro no UPDATE do imóvel:`, updateError)
-        if (updateError.message?.includes('row-level security')) {
-          console.log(`🔴 [VINCULAR] Erro: row violates row-level security policy`)
-        }
-        if (updateError.code === '23505') {
+      if (error) {
+        console.error('Error updating property linkage:', error)
+        if (error.code === '23505') {
           return {
             success: false,
-            error: 'Este imóvel já possui um vínculo similar.',
+            error: 'Este imóvel já possui um vínculo ativo similar.',
             errorType: 'validation',
           }
         }
-        return { success: false, error: 'Erro ao vincular o imóvel', errorType: 'server' }
+        return {
+          success: false,
+          error: 'Você não tem permissão para vincular ou o imóvel não foi encontrado.',
+          errorType: 'permission',
+        }
       }
 
-      // 5. Mantém a demanda 'aberta' em sistema
-      // Não alteramos o status da demanda para permitir múltiplas captações vinculadas até o fechamento.
-
-      console.log(`🟢 [VINCULAR] Sucesso! Imóvel vinculado à demanda.`)
       return {
         success: true,
-        data: {
-          demandaId,
-          imovelId: updatedImovel.id,
-          codigo_imovel: updatedImovel.codigo_imovel || undefined,
-        },
+        data,
       }
     } catch (err: any) {
-      if (err.name === 'AbortError') {
-        console.log(`🔴 [VINCULAR] Timeout! Requisição demorou mais de 30s. Tente novamente`)
-        return { success: false, error: 'Timeout na requisição', errorType: 'timeout' }
-      }
-      console.error(`🔴 [VINCULAR] Erro desconhecido:`, err)
+      console.error('Catch error linking property:', err)
       return {
         success: false,
         error: err.message || 'Erro interno ao vincular',
