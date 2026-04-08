@@ -202,17 +202,32 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
     if (!imovel || isSaving || isLinking) return
 
     setIsSaving(true)
+    console.log('[SALVAR] Iniciando salvamento sem vinculação para o imóvel:', imovel.id)
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), 30000)
 
     try {
-      const tipo = imovel.tipo || (imovel as any).demanda_tipo
+      // 1. Tenta extrair o tipo das propriedades conhecidas
+      let tipo = imovel.tipo || (imovel as any).demanda_tipo
 
+      // 2. Se não encontrou, tenta usar um valor padrão baseado no código do imóvel ou fallback seguro
+      if (!tipo) {
+        console.log('[SALVAR] Tipo não encontrado nas propriedades originais. Aplicando fallback.')
+        if (imovel.codigo_imovel) {
+          tipo = imovel.codigo_imovel.toUpperCase().startsWith('L') ? 'Aluguel' : 'Venda'
+        } else {
+          tipo = 'Venda' // Fallback seguro
+        }
+      }
+
+      console.log('[SALVAR] Tipo validado:', tipo)
+
+      // 3. Validação final rigorosa
       if (!tipo) {
         throw new Error('tipo não definido')
       }
 
-      console.log('Salvando imóvel sem vinculação. Tipo:', tipo)
+      console.log('[SALVAR] Enviando requisição UPDATE para Supabase...')
 
       const query = supabase
         .from('imoveis_captados')
@@ -232,8 +247,14 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
       clearTimeout(timeoutId)
 
       if (error) {
+        console.error('[SALVAR] Erro na requisição Supabase:', error)
+        if (error.code === '42501') {
+          throw new Error('Permissão negada')
+        }
         throw new Error('Erro ao salvar. Tente novamente')
       }
+
+      console.log('[SALVAR] Sucesso ao atualizar imóvel no Supabase')
 
       toast({
         title: '✓ Imóvel salvo sem vinculação!',
@@ -247,7 +268,7 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
       }, 2000)
     } catch (err: any) {
       clearTimeout(timeoutId)
-      console.error('Erro ao salvar sem vincular:', err)
+      console.error('[SALVAR] Exceção capturada no try-catch:', err)
 
       if (err.name === 'AbortError') {
         toast({
@@ -259,10 +280,15 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
           title: '❌ Erro: Tipo de imóvel não definido. Verifique os dados e tente novamente',
           variant: 'destructive',
         })
+      } else if (err.message === 'Permissão negada') {
+        toast({
+          title: '❌ Você não tem permissão para salvar este imóvel',
+          variant: 'destructive',
+        })
       } else {
         toast({
           title: '❌ Erro ao salvar. Tente novamente',
-          description: err.message || 'Requisição expirou. Tente novamente',
+          description: err.message || 'Erro inesperado.',
           variant: 'destructive',
         })
       }
