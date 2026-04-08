@@ -279,9 +279,9 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-[1000px] w-[95vw] h-[85vh] bg-white p-0 gap-0 overflow-hidden rounded-[12px] shadow-2xl flex flex-col">
+      <DialogContent className="max-w-[1000px] w-[95vw] max-h-[90vh] h-[90vh] md:h-[85vh] bg-white p-0 gap-0 overflow-hidden rounded-[12px] shadow-2xl flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-100 bg-white shrink-0 relative z-10">
+        <div className="flex items-center justify-between p-3 md:p-4 border-b border-gray-100 bg-white shrink-0 relative z-20 shadow-sm">
           <div className="flex items-center gap-2 text-slate-800">
             <Search className="w-5 h-5 text-slate-500" />
             <h2 className="text-[18px] font-bold">Encontrar Demanda Compatível</h2>
@@ -295,8 +295,8 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
         </div>
 
         {/* Filters */}
-        <div className="flex items-end gap-4 p-4 border-b border-gray-100 bg-white shrink-0 relative z-10">
-          <div className="flex flex-col gap-1.5 flex-1 max-w-[200px]">
+        <div className="grid grid-cols-2 md:flex md:flex-row md:items-end gap-3 md:gap-4 p-3 md:p-4 border-b border-gray-100 bg-white shrink-0 relative z-10 overflow-y-auto max-h-[30vh] md:max-h-none md:overflow-visible">
+          <div className="flex flex-col gap-1.5 w-full md:flex-1 md:max-w-[200px]">
             <label className="text-[11px] font-bold text-slate-500 uppercase">Tipo</label>
             <select
               value={filterTipo}
@@ -309,7 +309,7 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
             </select>
           </div>
 
-          <div className="flex flex-col gap-1.5 flex-1">
+          <div className="flex flex-col gap-1.5 w-full md:flex-1">
             <label className="text-[11px] font-bold text-slate-500 uppercase">Bairro</label>
             <input
               type="text"
@@ -320,7 +320,7 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
             />
           </div>
 
-          <div className="flex flex-col gap-1.5 flex-1 max-w-[200px]">
+          <div className="flex flex-col gap-1.5 w-full md:flex-1 md:max-w-[200px]">
             <label className="text-[11px] font-bold text-slate-500 uppercase">
               Dormitórios (Máx)
             </label>
@@ -337,7 +337,7 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
             </select>
           </div>
 
-          <div className="flex flex-col gap-1.5 flex-1 max-w-[200px]">
+          <div className="flex flex-col gap-1.5 w-full md:flex-1 md:max-w-[200px]">
             <label className="text-[11px] font-bold text-slate-500 uppercase">Vagas (Máx)</label>
             <select
               value={filterVagas}
@@ -353,16 +353,16 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
         </div>
 
         {/* Content Area */}
-        <div className="flex flex-1 overflow-hidden bg-[#F8FAFC]">
+        <div className="flex flex-col md:flex-row flex-1 overflow-hidden bg-[#F8FAFC]">
           {/* Lista de Sugestões */}
-          <div className="w-[45%] flex flex-col border-r border-gray-200 bg-white z-0">
-            <div className="p-4 border-b border-gray-100 shrink-0 sticky top-0 bg-white z-10">
+          <div className="w-full md:w-[45%] flex flex-col border-b md:border-b-0 md:border-r border-gray-200 bg-white z-0 flex-1 min-h-0">
+            <div className="p-3 md:p-4 border-b border-gray-100 shrink-0 sticky top-0 bg-white z-10">
               <span className="text-[12px] font-bold text-slate-500 uppercase tracking-wider">
                 {filteredDemands.length} Sugestões Encontradas
               </span>
             </div>
 
-            <ScrollArea className="flex-1 p-4">
+            <ScrollArea className="flex-1 p-3 md:p-4 min-h-0">
               {loadingDemands ? (
                 <div className="flex flex-col items-center justify-center py-10 text-slate-400">
                   <Loader2 className="w-8 h-8 animate-spin mb-4" />
@@ -424,7 +424,7 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
             </ScrollArea>
 
             {/* Salvar Sem Vincular Botão */}
-            <div className="p-4 border-t border-gray-100 shrink-0 bg-white">
+            <div className="p-3 md:p-4 border-t border-gray-100 shrink-0 bg-white z-10 shadow-[0_-4px_6px_-1px_rgb(0,0,0,0.05)]">
               <Button
                 variant="outline"
                 className="w-full h-12 font-bold text-slate-600 border-slate-300 hover:bg-slate-50"
@@ -444,100 +444,103 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
           </div>
 
           {/* Área de Preview */}
-          <div className="w-[55%] flex flex-col bg-white z-0">
+          <div className="w-full md:w-[55%] flex flex-col bg-white z-0 flex-1 min-h-0">
             {selectedDemand ? (
-              <ScrollArea className="flex-1">
-                <div className="p-8 flex flex-col gap-6 animate-fade-in-up">
-                  <h3 className="text-[18px] font-bold text-slate-900">Preview da Demanda</h3>
+              <>
+                <ScrollArea className="flex-1 min-h-0">
+                  <div className="p-4 md:p-8 flex flex-col gap-6 animate-fade-in-up">
+                    <h3 className="text-[18px] font-bold text-slate-900">Preview da Demanda</h3>
 
-                  <div className="grid grid-cols-1 gap-6">
-                    <div className="flex flex-col gap-1">
-                      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                        Cliente
-                      </span>
-                      <span className="text-[16px] font-bold text-slate-900">
-                        {selectedDemand.nome_cliente || 'Não informado'}
-                      </span>
-                    </div>
-
-                    <div className="flex flex-col gap-1">
-                      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                        Tipo
-                      </span>
-                      <div className="flex items-center gap-2 text-[15px] font-medium text-slate-700">
-                        <Home className="w-4 h-4" />
-                        {selectedDemand.tipo}
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col gap-1">
-                      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                        Bairros
-                      </span>
-                      <span className="text-[15px] font-medium text-slate-700">
-                        {selectedDemand.bairros?.join(', ') || 'Indiferente'}
-                      </span>
-                    </div>
-
-                    <div className="flex flex-col gap-1">
-                      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                        Orçamento
-                      </span>
-                      <span className="text-[18px] font-black text-[#10B981]">
-                        {selectedDemand.valor_minimo > 0
-                          ? `R$ ${formatPrice(selectedDemand.valor_minimo)} - `
-                          : ''}
-                        R$ {formatPrice(selectedDemand.valor_maximo)}
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="p-4 rounded-xl bg-slate-50 flex flex-col gap-1 border border-slate-100">
+                    <div className="grid grid-cols-1 gap-6">
+                      <div className="flex flex-col gap-1">
                         <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                          Dormitórios
+                          Cliente
                         </span>
-                        <span className="text-[18px] font-bold text-slate-900">
-                          {selectedDemand.dormitorios || 'Indif.'}
+                        <span className="text-[16px] font-bold text-slate-900">
+                          {selectedDemand.nome_cliente || 'Não informado'}
                         </span>
                       </div>
-                      <div className="p-4 rounded-xl bg-slate-50 flex flex-col gap-1 border border-slate-100">
+
+                      <div className="flex flex-col gap-1">
                         <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                          Vagas
+                          Tipo
                         </span>
-                        <span className="text-[18px] font-bold text-slate-900">
-                          {selectedDemand.vagas_estacionamento || 'Indif.'}
+                        <div className="flex items-center gap-2 text-[15px] font-medium text-slate-700">
+                          <Home className="w-4 h-4" />
+                          {selectedDemand.tipo}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                          Bairros
+                        </span>
+                        <span className="text-[15px] font-medium text-slate-700">
+                          {selectedDemand.bairros?.join(', ') || 'Indiferente'}
                         </span>
                       </div>
-                    </div>
 
-                    {(selectedDemand.observacoes || selectedDemand.necessidades_especificas) && (
-                      <div className="p-5 rounded-xl bg-[#ECFDF5] border border-[#A7F3D0] text-[#065F46] text-[14px] leading-relaxed shadow-sm">
-                        {selectedDemand.observacoes || selectedDemand.necessidades_especificas}
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                          Orçamento
+                        </span>
+                        <span className="text-[18px] font-black text-[#10B981]">
+                          {selectedDemand.valor_minimo > 0
+                            ? `R$ ${formatPrice(selectedDemand.valor_minimo)} - `
+                            : ''}
+                          R$ {formatPrice(selectedDemand.valor_maximo)}
+                        </span>
                       </div>
-                    )}
-                  </div>
 
-                  <div className="mt-4 pb-8">
-                    <Button
-                      onClick={handleVincularDemanda}
-                      disabled={isLinking || isSaving}
-                      className="w-full h-14 bg-[#10B981] hover:bg-[#059669] text-white font-bold text-[16px] rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition-all"
-                    >
-                      {isLinking ? (
-                        <>
-                          <Loader2 className="w-6 h-6 animate-spin" />
-                          VINCULANDO...
-                        </>
-                      ) : (
-                        <>
-                          <CheckCircle2 className="w-6 h-6" />
-                          VINCULAR A ESTA DEMANDA
-                        </>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="p-4 rounded-xl bg-slate-50 flex flex-col gap-1 border border-slate-100">
+                          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                            Dormitórios
+                          </span>
+                          <span className="text-[18px] font-bold text-slate-900">
+                            {selectedDemand.dormitorios || 'Indif.'}
+                          </span>
+                        </div>
+                        <div className="p-4 rounded-xl bg-slate-50 flex flex-col gap-1 border border-slate-100">
+                          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                            Vagas
+                          </span>
+                          <span className="text-[18px] font-bold text-slate-900">
+                            {selectedDemand.vagas_estacionamento || 'Indif.'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {(selectedDemand.observacoes || selectedDemand.necessidades_especificas) && (
+                        <div className="p-5 rounded-xl bg-[#ECFDF5] border border-[#A7F3D0] text-[#065F46] text-[14px] leading-relaxed shadow-sm">
+                          {selectedDemand.observacoes || selectedDemand.necessidades_especificas}
+                        </div>
                       )}
-                    </Button>
+                    </div>
                   </div>
+                </ScrollArea>
+
+                {/* Botão Vincular Fixo na Base */}
+                <div className="p-3 md:p-4 border-t border-gray-100 shrink-0 bg-white z-10 shadow-[0_-4px_6px_-1px_rgb(0,0,0,0.05)]">
+                  <Button
+                    onClick={handleVincularDemanda}
+                    disabled={isLinking || isSaving}
+                    className="w-full h-14 bg-[#10B981] hover:bg-[#059669] text-white font-bold text-[16px] rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition-all"
+                  >
+                    {isLinking ? (
+                      <>
+                        <Loader2 className="w-6 h-6 animate-spin" />
+                        VINCULANDO...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="w-6 h-6" />
+                        VINCULAR A ESTA DEMANDA
+                      </>
+                    )}
+                  </Button>
                 </div>
-              </ScrollArea>
+              </>
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center p-8 text-slate-400 text-center">
                 <div className="w-16 h-16 rounded-full bg-slate-50 flex items-center justify-center mb-4">
