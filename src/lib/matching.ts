@@ -29,13 +29,17 @@ export function calculateMatching(
   imovel: ImovelForMatching,
   cliente: ClienteForMatching,
 ): MatchingResult {
+  if (!imovel) imovel = {}
+  if (!cliente) cliente = {}
+
   let localizacaoScore = 0
   if (!cliente.bairros || cliente.bairros.length === 0) {
     localizacaoScore = 0
   } else if (imovel.endereco) {
     const imovelBairro = imovel.endereco.toLowerCase()
     const hasMatch = cliente.bairros.some(
-      (b) => imovelBairro.includes(b.toLowerCase()) || b.toLowerCase().includes(imovelBairro),
+      (b) =>
+        b && (imovelBairro.includes(b.toLowerCase()) || b.toLowerCase().includes(imovelBairro)),
     )
     if (hasMatch) localizacaoScore = 100
   }
@@ -119,11 +123,13 @@ export function calculateMatching(
 export function getScoreBadgeColor(score: number): string {
   if (score >= 80) return 'bg-[#10B981] hover:bg-[#059669] text-white'
   if (score >= 60) return 'bg-[#F59E0B] hover:bg-[#D97706] text-white'
-  return 'bg-[#EF4444] hover:bg-[#DC2626] text-white'
+  if (score >= 40) return 'bg-[#EF4444] hover:bg-[#DC2626] text-white'
+  return 'bg-[#94A3B8] hover:bg-[#64748B] text-white'
 }
 
 export function getScoreProgressColor(score: number): string {
   if (score >= 80) return 'bg-[#10B981]'
   if (score >= 60) return 'bg-[#F59E0B]'
-  return 'bg-[#EF4444]'
+  if (score >= 40) return 'bg-[#EF4444]'
+  return 'bg-[#94A3B8]'
 }

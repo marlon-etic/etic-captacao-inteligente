@@ -54,29 +54,23 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
           let locacao: any[] = []
           let vendas: any[] = []
 
-          if (!imovel.tipo || imovel.tipo === 'Ambos' || imovel.tipo === 'Aluguel') {
-            const { data } = await supabase
-              .from('demandas_locacao')
-              .select(
-                'id, nome_cliente, bairros, valor_maximo, valor_minimo, dormitorios, vagas_estacionamento, status_demanda, imoveis_captados(*)',
-              )
-              .eq('status_demanda', 'aberta')
-              .not('sdr_id', 'is', null)
+          const { data: dataLocacao } = await supabase
+            .from('demandas_locacao')
+            .select(
+              'id, nome_cliente, bairros, valor_maximo, valor_minimo, dormitorios, vagas_estacionamento, status_demanda, imoveis_captados(*)',
+            )
+            .eq('status_demanda', 'aberta')
 
-            if (data) locacao = data.map((d) => ({ ...d, tipo: 'Aluguel' }))
-          }
+          if (dataLocacao) locacao = dataLocacao.map((d) => ({ ...d, tipo: 'Aluguel' }))
 
-          if (!imovel.tipo || imovel.tipo === 'Ambos' || imovel.tipo === 'Venda') {
-            const { data } = await supabase
-              .from('demandas_vendas')
-              .select(
-                'id, nome_cliente, bairros, valor_maximo, valor_minimo, dormitorios, vagas_estacionamento, status_demanda, imoveis_captados(*)',
-              )
-              .eq('status_demanda', 'aberta')
-              .not('corretor_id', 'is', null)
+          const { data: dataVendas } = await supabase
+            .from('demandas_vendas')
+            .select(
+              'id, nome_cliente, bairros, valor_maximo, valor_minimo, dormitorios, vagas_estacionamento, status_demanda, imoveis_captados(*)',
+            )
+            .eq('status_demanda', 'aberta')
 
-            if (data) vendas = data.map((d) => ({ ...d, tipo: 'Venda' }))
-          }
+          if (dataVendas) vendas = dataVendas.map((d) => ({ ...d, tipo: 'Venda' }))
 
           setActiveDemands([...locacao, ...vendas])
         } catch (err) {
@@ -104,7 +98,6 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
           details: match.details,
         }
       })
-      .filter((d) => d.score >= 60)
       .sort((a, b) => b.score - a.score)
   }, [activeDemands, imovel])
 
@@ -447,6 +440,11 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
         </div>
 
         <DialogFooter className="p-[20px] border-t border-[#E5E5E5] bg-[#F8FAFC] flex gap-3 justify-end items-center shrink-0 mt-auto sticky bottom-0 z-50 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] pointer-events-auto">
+          {selectedDemand && selectedDemand.score < 60 && (
+            <span className="text-[12px] font-bold text-[#EF4444] mr-auto hidden sm:inline-block">
+              Match insuficiente para vinculação (Mínimo 60%)
+            </span>
+          )}
           <Button
             variant="outline"
             onClick={(e) => {
@@ -459,15 +457,20 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
             Cancelar
           </Button>
           <Button
-            disabled={!selectedDemand || isLinking}
+            disabled={!selectedDemand || selectedDemand.score < 60 || isLinking}
             onClick={handleVincular}
             isLoading={isLinking}
             loadingText="Vinculando..."
+            title={
+              selectedDemand && selectedDemand.score < 60
+                ? 'Match insuficiente para vinculação (Mínimo 60%)'
+                : undefined
+            }
             className={cn(
               'font-bold transition-all shadow-sm min-w-[160px] pointer-events-auto',
-              selectedDemand
+              selectedDemand && selectedDemand.score >= 60
                 ? 'bg-[#1A3A52] hover:bg-[#112839] text-white'
-                : 'bg-[#E5E5E5] text-[#999999]',
+                : 'bg-[#E5E5E5] text-[#999999] cursor-not-allowed opacity-70',
             )}
           >
             CONFIRMAR E VINCULAR
