@@ -35,6 +35,7 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
   const [loadingDemands, setLoadingDemands] = useState(false)
   const [selectedDemandId, setSelectedDemandId] = useState<string>('')
   const [isLinking, setIsLinking] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
 
   // Filtros
   const [filterTipo, setFilterTipo] = useState<string>('Todos')
@@ -127,7 +128,7 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
   )
 
   const handleVincular = async () => {
-    if (!imovel || !selectedDemand || isLinking) return
+    if (!imovel || !selectedDemand || isLinking || isSaving) return
 
     setIsLinking(true)
 
@@ -158,16 +159,70 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
         className: 'bg-[#10B981] text-white border-none font-bold',
       })
 
-      onSuccess?.()
-      onClose()
+      setTimeout(() => {
+        onSuccess?.()
+        onClose()
+        setIsLinking(false)
+      }, 2000)
     } catch (err) {
       toast({
         title: '❌ Erro de Sistema',
         description: 'Erro inesperado ao vincular.',
         variant: 'destructive',
       })
-    } finally {
       setIsLinking(false)
+    }
+  }
+
+  const handleSalvarSemVincular = async () => {
+    if (!imovel || isSaving || isLinking) return
+
+    setIsSaving(true)
+
+    try {
+      const tipo = imovel.tipo || (imovel as any).demanda_tipo
+
+      if (!tipo) {
+        toast({
+          title: '❌ Erro: Tipo de imóvel não definido. Verifique os dados e tente novamente',
+          variant: 'destructive',
+        })
+        setIsSaving(false)
+        return
+      }
+
+      console.log('Salvando imóvel sem vinculação. Tipo:', tipo)
+
+      const { error } = await supabase
+        .from('imoveis_captados')
+        .update({
+          demanda_locacao_id: null,
+          demanda_venda_id: null,
+        })
+        .eq('id', imovel.id)
+
+      if (error) {
+        throw new Error('Erro ao salvar. Tente novamente')
+      }
+
+      toast({
+        title: '✓ Imóvel salvo sem vinculação!',
+        className: 'bg-[#10B981] text-white border-none font-bold',
+      })
+
+      setTimeout(() => {
+        onSuccess?.()
+        onClose()
+        setIsSaving(false)
+      }, 2000)
+    } catch (err: any) {
+      console.error('Erro ao salvar sem vincular:', err)
+      toast({
+        title: '❌ Erro ao salvar. Tente novamente',
+        description: err.message || 'Requisição expirou. Tente novamente',
+        variant: 'destructive',
+      })
+      setIsSaving(false)
     }
   }
 
@@ -323,6 +378,25 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
                 </div>
               )}
             </ScrollArea>
+
+            {/* Salvar Sem Vincular Botão */}
+            <div className="p-4 border-t border-gray-100 shrink-0 bg-white">
+              <Button
+                variant="outline"
+                className="w-full h-12 font-bold text-slate-600 border-slate-300 hover:bg-slate-50"
+                onClick={handleSalvarSemVincular}
+                disabled={isSaving || isLinking}
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                    Salvando...
+                  </>
+                ) : (
+                  'Salvar Sem Vincular'
+                )}
+              </Button>
+            </div>
           </div>
 
           {/* Área de Preview */}
@@ -402,7 +476,7 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
                   <div className="mt-4 pb-8">
                     <Button
                       onClick={handleVincular}
-                      disabled={isLinking}
+                      disabled={isLinking || isSaving}
                       className="w-full h-14 bg-[#10B981] hover:bg-[#059669] text-white font-bold text-[16px] rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition-all"
                     >
                       {isLinking ? (
