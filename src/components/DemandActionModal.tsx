@@ -74,6 +74,9 @@ const REASONS = [
   'Outro',
 ]
 
+import { useState } from 'react'
+import { Loader2 } from 'lucide-react'
+
 function EncontreiForm({
   onSubmit,
   onClose,
@@ -85,6 +88,7 @@ function EncontreiForm({
 }) {
   const { submitDemandResponse } = useAppStore()
   const { toast } = useToast()
+  const [isLoading, setIsLoading] = useState(false)
 
   const form = useForm({
     resolver: zodResolver(encontreiSchema),
@@ -101,7 +105,10 @@ function EncontreiForm({
 
   const selectedNeighborhood = form.watch('neighborhood')
 
-  const handleFormSubmit = (data: any) => {
+  const handleFormSubmit = async (data: any) => {
+    setIsLoading(true)
+    await new Promise((resolve) => setTimeout(resolve, 50))
+
     const finalNeighborhood =
       data.neighborhood === 'OUTROS' ? data.neighborhoodOther.trim() : data.neighborhood
     const bairro_tipo = data.neighborhood === 'OUTROS' ? 'outro' : 'listado'
@@ -113,6 +120,7 @@ function EncontreiForm({
     }
 
     const res = submitDemandResponse(demandId, 'encontrei', payload)
+    setIsLoading(false)
     if (!res.success) {
       toast({ title: 'Atenção', description: res.message, variant: 'destructive' })
       return
@@ -233,11 +241,22 @@ function EncontreiForm({
           )}
         />
         <div className="flex justify-end gap-2 pt-2">
-          <Button type="button" variant="outline" onClick={onClose}>
+          <Button type="button" variant="outline" onClick={onClose} disabled={isLoading}>
             Cancelar
           </Button>
-          <Button type="submit" className="bg-[#4CAF50] hover:bg-[#388E3C] text-white font-bold">
-            Registrar Imóvel
+          <Button
+            type="submit"
+            className="bg-[#4CAF50] hover:bg-[#388E3C] text-white font-bold"
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <span className="flex items-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Registrando...
+              </span>
+            ) : (
+              'Registrar Imóvel'
+            )}
           </Button>
         </div>
       </form>
@@ -256,14 +275,19 @@ function NaoEncontreiForm({
 }) {
   const { submitDemandResponse } = useAppStore()
   const { toast } = useToast()
+  const [isLoading, setIsLoading] = useState(false)
 
   const form = useForm({
     resolver: zodResolver(naoEncontreiSchema),
     defaultValues: { reason: '', continueSearch: true },
   })
 
-  const handleFormSubmit = (data: any) => {
+  const handleFormSubmit = async (data: any) => {
+    setIsLoading(true)
+    await new Promise((resolve) => setTimeout(resolve, 50))
+
     const res = submitDemandResponse(demandId, 'nao_encontrei', data)
+    setIsLoading(false)
     if (!res.success) {
       toast({ title: 'Atenção', description: res.message, variant: 'destructive' })
       return
@@ -320,11 +344,18 @@ function NaoEncontreiForm({
           )}
         />
         <div className="flex justify-end gap-2 pt-4">
-          <Button type="button" variant="outline" onClick={onClose}>
+          <Button type="button" variant="outline" onClick={onClose} disabled={isLoading}>
             Cancelar
           </Button>
-          <Button type="submit" variant="destructive">
-            Confirmar
+          <Button type="submit" variant="destructive" disabled={isLoading}>
+            {isLoading ? (
+              <span className="flex items-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Confirmando...
+              </span>
+            ) : (
+              'Confirmar'
+            )}
           </Button>
         </div>
       </form>

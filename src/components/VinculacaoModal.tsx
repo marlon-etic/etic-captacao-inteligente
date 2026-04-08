@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { CheckCircle2, XCircle, Search } from 'lucide-react'
+import { CheckCircle2, XCircle, Search, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
 import { supabase } from '@/lib/supabase/client'
@@ -150,6 +150,9 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
     }
 
     setIsLinking(true)
+
+    // Forçar a renderização do estado de loading antes da requisição pesada para evitar travamento da UI
+    await new Promise((resolve) => setTimeout(resolve, 50))
 
     const executeWithRetryAndTimeout = async (
       fn: () => Promise<any>,
@@ -555,7 +558,7 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
           >
             {isLinking ? (
               <span className="flex items-center gap-2">
-                <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                <Loader2 className="w-4 h-4 animate-spin" />
                 Vinculando...
               </span>
             ) : (

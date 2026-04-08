@@ -10,7 +10,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Search, Home, DollarSign, MapPin } from 'lucide-react'
+import { Search, Home, DollarSign, MapPin, Loader2 } from 'lucide-react'
 import { CapturedProperty, Demand } from '@/types'
 import useAppStore from '@/stores/useAppStore'
 import { useToast } from '@/hooks/use-toast'
@@ -88,6 +88,9 @@ export function ManualLinkModal({ isOpen, onClose, property }: ManualLinkModalPr
     if (demand.score < 50) return // dupla proteção
 
     setLinkingDemandId(demand.id)
+
+    // Forçar a renderização do estado de loading antes da requisição pesada para evitar travamento da UI
+    await new Promise((resolve) => setTimeout(resolve, 50))
 
     const executeWithRetryAndTimeout = async (
       fn: () => Promise<any>,
@@ -296,7 +299,7 @@ export function ManualLinkModal({ isOpen, onClose, property }: ManualLinkModalPr
                   >
                     {linkingDemandId === d.id ? (
                       <span className="flex items-center justify-center gap-2">
-                        <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                        <Loader2 className="w-5 h-5 animate-spin" />
                         Vinculando...
                       </span>
                     ) : (
