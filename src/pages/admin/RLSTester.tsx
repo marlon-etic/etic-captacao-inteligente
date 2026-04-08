@@ -52,7 +52,7 @@ const INITIAL_TESTS: TestStep[] = [
   {
     id: 'cap-3',
     role: 'Captador',
-    name: 'Captador consegue editar demanda de SDR A?',
+    name: 'Captador consegue editar demanda de SDR A? (Vinculação)',
     status: 'idle',
   },
   {
@@ -261,12 +261,15 @@ export default function RLSTester() {
       updateTest('cap-3', { status: 'running' })
       const { data: capUpdLA } = await cap.client
         .from('demandas_locacao')
-        .update({ status_demanda: 'fechado' })
+        .update({ status_demanda: 'atendida' })
         .eq('id', demLocA)
         .select()
-      if (!capUpdLA || capUpdLA.length === 0)
-        updateTest('cap-3', { status: 'passed', message: '❌ NÃO (Correto, apenas leitura)' })
-      else throw new Error('Falha Crítica: Captador conseguiu editar demanda')
+      if (capUpdLA && capUpdLA.length > 0)
+        updateTest('cap-3', { status: 'passed', message: '✅ SIM (Autorizado para vinculação)' })
+      else
+        throw new Error(
+          'Falha Crítica: Captador NÃO conseguiu editar demanda (RLS bloqueando vinculação)',
+        )
 
       updateTest('cap-4', { status: 'running' })
       const { data: capDelVB } = await cap.client
@@ -275,7 +278,7 @@ export default function RLSTester() {
         .eq('id', demVenB)
         .select()
       if (!capDelVB || capDelVB.length === 0)
-        updateTest('cap-4', { status: 'passed', message: '❌ NÃO (Correto, apenas leitura)' })
+        updateTest('cap-4', { status: 'passed', message: '❌ NÃO (Correto, não pode deletar)' })
       else throw new Error('Falha Crítica: Captador conseguiu deletar demanda')
 
       // 4. Admin Tests
