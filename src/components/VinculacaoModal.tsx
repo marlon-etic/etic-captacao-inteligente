@@ -130,17 +130,23 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
   }, [scoredDemands, selectedDemandId])
 
   const handleVincular = async (e?: React.MouseEvent) => {
+    const ts = () => new Date().toISOString()
+
+    if (!vinculacaoService || !vinculacaoService.linkImovelToDemanda) {
+      console.log(`[${ts()}] 🔴 [VINCULAR] ERRO: Função linkImovelToDemanda não encontrada`)
+    }
+
     if (e) {
       e.preventDefault()
       e.stopPropagation()
     }
 
     if (!imovel || !selectedDemand) {
-      console.log('🔴 [VINCULAR] Botão clicado mas sem imóvel ou demanda selecionada')
+      console.log(`[${ts()}] 🔴 [VINCULAR] Botão clicado mas sem imóvel ou demanda selecionada`)
       return
     }
 
-    console.log(`🔵 [VINCULAR] Clique detectado em demanda_id=${selectedDemand.id}`)
+    console.log(`[${ts()}] 🔵 [VINCULAR] Clique detectado em demanda_id=${selectedDemand.id}`)
 
     // Dupla proteção: early return se o score for < 50
     if (selectedDemand.score < 50) return
@@ -177,6 +183,9 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
       const executeRequest = async () => {
         // Criar timeout de 30s manual pois Promise.race pode ter vazamentos
         const timeoutId = setTimeout(() => {
+          console.log(
+            `[${ts()}] 🔴 [VINCULAR] Timeout! Requisição demorou mais de 30s. Abortando...`,
+          )
           abortControllerRef.current?.abort()
         }, 30000)
 
@@ -233,6 +242,9 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
 
       if (!response?.success) {
         const errorType = response?.errorType || 'unknown'
+        console.log(
+          `[${ts()}] 🔴 [VINCULAR] Erro: ${response?.error || 'Desconhecido'} (Tipo: ${errorType})`,
+        )
 
         let finalTitle = 'Erro'
         let finalDesc = response?.error || 'Erro ao vincular. Contate suporte'
@@ -259,6 +271,8 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
         return
       }
 
+      console.log(`[${ts()}] 🟢 [VINCULAR] Sucesso! Demanda vinculada`)
+
       toast({
         title: 'Imóvel vinculado com sucesso!',
         description: `O imóvel ${imovel.codigo_imovel} foi vinculado ao cliente ${selectedDemand.nome_cliente}.`,
@@ -268,7 +282,7 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
       onSuccess?.()
       onClose()
     } catch (err: any) {
-      console.error('🔴 [VINCULAR] Erro inesperado:', err)
+      console.error(`[${ts()}] 🔴 [VINCULAR] Erro desconhecido:`, err)
       toast({
         title: 'Erro de Sistema',
         description: '🔴 Erro no servidor. Tente novamente em alguns segundos',

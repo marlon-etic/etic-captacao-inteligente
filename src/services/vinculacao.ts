@@ -34,12 +34,13 @@ export const vinculacaoService = {
     isLocacao,
     signal,
   }: LinkParams): Promise<LinkResponse> {
+    const ts = () => new Date().toISOString()
     console.log(
-      `🔵 [VINCULAR] Iniciando vinculação com imovel_id=${imovelId}, demanda_id=${demandaId}, usuario_id=${usuarioId}`,
+      `[${ts()}] 🔵 [VINCULAR] Iniciando vinculação com imovel_id=${imovelId}, demanda_id=${demandaId}, usuario_id=${usuarioId}`,
     )
     try {
       if (!imovelId || !demandaId || !usuarioId) {
-        console.log(`🔴 [VINCULAR] Erro: Dados insuficientes para vinculação`)
+        console.log(`[${ts()}] 🔴 [VINCULAR] Erro: Dados insuficientes para vinculação`)
         return {
           success: false,
           error: 'Dados insuficientes para vinculação',
@@ -47,7 +48,7 @@ export const vinculacaoService = {
         }
       }
 
-      console.log(`🔵 [VINCULAR] Validando permissão... Buscando perfil do usuário`)
+      console.log(`[${ts()}] 🔵 [VINCULAR] Validando permissão... Buscando perfil do usuário`)
       // 1. Fetch user role to check permissions
       let profileQuery = supabase.from('users').select('role').eq('id', usuarioId)
       if (signal) profileQuery = profileQuery.abortSignal(signal as any)
@@ -55,7 +56,7 @@ export const vinculacaoService = {
       const { data: userProfile, error: profileError } = await profileQuery.single()
 
       if (profileError) {
-        console.log(`🔴 [VINCULAR] Erro ao buscar perfil do usuário:`, profileError)
+        console.log(`[${ts()}] 🔴 [VINCULAR] Erro ao buscar perfil do usuário:`, profileError)
         return {
           success: false,
           error: 'Erro de conexão ou ao buscar perfil do usuário',
@@ -64,9 +65,9 @@ export const vinculacaoService = {
       }
 
       const isAdmin = userProfile.role === 'admin' || userProfile.role === 'gestor'
-      console.log(`🔵 [VINCULAR] Usuário é admin/gestor? ${isAdmin ? 'SIM' : 'NÃO'}`)
+      console.log(`[${ts()}] 🔵 [VINCULAR] Usuário é admin/gestor? ${isAdmin ? 'SIM' : 'NÃO'}`)
 
-      console.log(`🔵 [VINCULAR] Buscando imóvel a ser vinculado...`)
+      console.log(`[${ts()}] 🔵 [VINCULAR] Buscando imóvel a ser vinculado...`)
       // 2. Fetch the property to be linked
       let fetchImovelQuery = supabase.from('imoveis_captados').select('*').eq('id', imovelId)
       if (signal) fetchImovelQuery = fetchImovelQuery.abortSignal(signal as any)
@@ -74,7 +75,7 @@ export const vinculacaoService = {
       const { data: existingImovel, error: fetchError } = await fetchImovelQuery.single()
 
       if (fetchError || !existingImovel) {
-        console.log(`🔴 [VINCULAR] Erro: Imóvel não encontrado`)
+        console.log(`[${ts()}] 🔴 [VINCULAR] Erro: Imóvel não encontrado`)
         return { success: false, error: 'Imóvel não encontrado', errorType: 'not_found' }
       }
 
@@ -82,9 +83,15 @@ export const vinculacaoService = {
       const isCaptador =
         existingImovel.user_captador_id === usuarioId || existingImovel.captador_id === usuarioId
 
-      console.log(`🔵 [VINCULAR] Usuário é o captador do imóvel? ${isCaptador ? 'SIM' : 'NÃO'}`)
+      console.log(
+        `[${ts()}] 🔵 [VINCULAR] Usuário é o captador do imóvel? ${isCaptador ? 'SIM' : 'NÃO'}`,
+      )
+      console.log(
+        `[${ts()}] 🔵 [VINCULAR] Validando permissão... Usuário tem permissão? ${isAdmin || isCaptador ? 'SIM' : 'NÃO'}`,
+      )
+
       if (!isAdmin && !isCaptador) {
-        console.log(`🔴 [VINCULAR] Você não tem permissão para vincular este imóvel.`)
+        console.log(`[${ts()}] 🔴 [VINCULAR] Você não tem permissão para vincular este imóvel.`)
         return {
           success: false,
           error: 'Você não tem permissão para vincular este imóvel',
@@ -92,9 +99,7 @@ export const vinculacaoService = {
         }
       }
 
-      console.log(
-        `🔵 [VINCULAR] Enviando UPDATE (INSERT duplicado) para Supabase... Aguardando resposta`,
-      )
+      console.log(`[${ts()}] 🔵 [VINCULAR] Enviando UPDATE para Supabase... Aguardando resposta`)
       // 4. Duplicate the property to link it to the new demand
       const { id: _, created_at, updated_at, codigo_imovel, ...imovelData } = existingImovel
 
@@ -117,7 +122,10 @@ export const vinculacaoService = {
       const { data: insertedImovel, error: insertError } = await insertQuery.single()
 
       if (insertError) {
-        console.log(`🔴 [VINCULAR] Erro no INSERT do imóvel vinculado:`, insertError)
+        console.log(`[${ts()}] 🔴 [VINCULAR] Erro no INSERT do imóvel vinculado:`, insertError)
+        if (insertError.message?.includes('row-level security')) {
+          console.log(`[${ts()}] 🔴 [VINCULAR] Erro: new row violates row-level security policy`)
+        }
         if (insertError.code === '23505') {
           return {
             success: false,
@@ -129,7 +137,7 @@ export const vinculacaoService = {
       }
 
       console.log(
-        `🔵 [VINCULAR] Imóvel vinculado com novo ID: ${insertedImovel.id}. Atualizando status da demanda...`,
+        `[${ts()}] 🔵 [VINCULAR] Imóvel vinculado com novo ID: ${insertedImovel.id}. Atualizando status da demanda...`,
       )
       // 5. Update demand status to 'atendida' if it's currently open
       const table = isLocacao ? 'demandas_locacao' : 'demandas_vendas'
@@ -153,11 +161,14 @@ export const vinculacaoService = {
         const { error: updateError } = await updateQuery
 
         if (updateError && updateError.code !== '42501') {
-          console.error('🔴 [VINCULAR] Falha ao atualizar o status da demanda:', updateError)
+          console.error(
+            `[${ts()}] 🔴 [VINCULAR] Falha ao atualizar o status da demanda:`,
+            updateError,
+          )
         }
       }
 
-      console.log(`🟢 [VINCULAR] Sucesso! Demanda vinculada`)
+      console.log(`[${ts()}] 🟢 [VINCULAR] Sucesso! Demanda vinculada`)
       return {
         success: true,
         data: {
@@ -167,15 +178,18 @@ export const vinculacaoService = {
         },
       }
     } catch (err: any) {
+      const ts = () => new Date().toISOString()
       if (err.name === 'AbortError') {
-        console.log(`🔴 [VINCULAR] Timeout! Requisição demorou mais de 30s.`)
+        console.log(
+          `[${ts()}] 🔴 [VINCULAR] Timeout! Requisição demorou mais de 30s. Tente novamente`,
+        )
         return {
           success: false,
           error: 'Timeout na requisição',
           errorType: 'timeout',
         }
       }
-      console.error('🔴 [VINCULAR] Erro no serviço de vinculação:', err)
+      console.error(`[${ts()}] 🔴 [VINCULAR] Erro desconhecido:`, err)
       return {
         success: false,
         error: err.message || 'Erro interno ao vincular',
