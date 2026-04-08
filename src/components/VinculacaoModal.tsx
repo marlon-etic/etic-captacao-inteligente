@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { CheckCircle2, XCircle, Search, Loader2 } from 'lucide-react'
+import { CheckCircle2, XCircle, Search, Loader2, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
 import { supabase } from '@/lib/supabase/client'
@@ -189,51 +189,55 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
       const timeoutPromise = new Promise<any>((resolve) => {
         setTimeout(() => {
           resolve({
-            success: false,
             errorType: 'timeout',
             error: 'Timeout! Requisição demorou mais de 30s. Tente novamente',
           })
         }, 30000)
       })
 
-      const requestPromise = vinculacaoService.linkImovelToDemanda({
-        imovelId: imovel!.id,
-        demandaId: selectedDemand!.id,
-        usuarioId: user?.id || '',
-        isLocacao,
-        signal,
-      })
+      // Directly update Supabase to guarantee successful mapping
+      const updateData: any = {
+        tipo: isLocacao ? 'Aluguel' : 'Venda',
+      }
+      if (isLocacao) {
+        updateData.demanda_locacao_id = selectedDemand!.id
+      } else {
+        updateData.demanda_venda_id = selectedDemand!.id
+      }
+
+      if (user?.id) {
+        updateData.user_captador_id = user.id
+        updateData.captador_id = user.id
+      }
+
+      const requestPromise = supabase
+        .from('imoveis_captados')
+        .update(updateData)
+        .eq('id', imovel!.id)
+        .then(({ error }) => {
+          if (error) {
+            return {
+              errorType: error.code === '42501' ? 'permission' : 'server',
+              error: error.message,
+            }
+          }
+          return { success: true }
+        })
 
       const response = await Promise.race([requestPromise, timeoutPromise])
 
-      if (!response?.success) {
+      if (signal.aborted) return
+
+      if (response?.error || !response?.success) {
+        let finalTitle = '❌ Erro ao vincular'
+        let finalDesc = response?.error || 'Tente novamente.'
+
         if (response?.errorType === 'timeout') {
-          console.log(`🔴 [VINCULAR] Timeout! Requisição demorou mais de 30s. Tente novamente`)
-          toast({
-            title: '❌ Timeout',
-            description: 'Requisição expirou. Tente novamente',
-            variant: 'destructive',
-          })
-          return
-        }
-
-        console.log(`🔴 [VINCULAR] Erro: ${response?.error || 'Erro desconhecido'}`)
-
-        let finalTitle = '❌ Erro'
-        let finalDesc = response?.error || 'Erro ao vincular. Contate suporte'
-
-        if (response?.errorType === 'permission') {
+          finalTitle = '❌ Timeout'
+          finalDesc = 'Requisição expirou. Tente novamente'
+        } else if (response?.errorType === 'permission' || response?.error?.includes('RLS')) {
           finalTitle = '❌ Permissão Negada'
           finalDesc = 'Você não tem permissão para vincular este imóvel'
-        } else if (response?.errorType === 'not_found') {
-          finalTitle = '❌ Não Encontrado'
-          finalDesc = 'Imóvel ou demanda não encontrado. Recarregue a página'
-        } else if (response?.errorType === 'server') {
-          finalTitle = '❌ Erro no Servidor'
-          finalDesc = 'Erro no servidor. Tente novamente em alguns segundos'
-        } else if (response?.errorType === 'network') {
-          finalTitle = '❌ Erro de Rede'
-          finalDesc = 'Erro de conexão. Tente novamente'
         }
 
         toast({
@@ -247,7 +251,7 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
       toast({
         title: '✓ Imóvel vinculado com sucesso!',
         description: `O imóvel ${imovel?.codigo_imovel} foi vinculado ao cliente ${selectedDemand?.nome_cliente}.`,
-        className: 'bg-[#10B981] text-white border-none',
+        className: 'bg-[#10B981] text-white border-none font-bold',
       })
 
       setIsSuccess(true)
@@ -257,10 +261,10 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
         onClose()
       }, 2000)
     } catch (err: any) {
-      console.log(`🔴 [VINCULAR] Erro desconhecido:`, err)
+      if (signal.aborted) return
       toast({
         title: '❌ Erro de Sistema',
-        description: 'Erro ao vincular. Contate suporte',
+        description: 'Erro inesperado ao vincular.',
         variant: 'destructive',
       })
     } finally {
@@ -281,11 +285,20 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
         }
       }}
     >
-      <DialogContent
-        className="sm:max-w-[850px] w-[95vw] md:w-full bg-white p-0 gap-0 overflow-hidden rounded-[16px] shadow-2xl flex flex-col max-h-[90dvh] z-[1100]"
-        onInteractOutside={(e) => e.preventDefault()}
-      >
-        <DialogHeader className="p-[24px] border-b border-[#E5E5E5] bg-[#F8FAFC] shrink-0 relative z-20">
+      <DialogContent className="sm:max-w-[850px] w-[95vw] md:w-full bg-white p-0 gap-0 overflow-hidden rounded-[16px] shadow-2xl flex flex-col max-h-[90dvh] z-[1100] transition-opacity duration-300">
+        {/* Explicit X button strictly positioned at top-right over everything */}
+        <button
+          onClick={() => {
+            if (abortControllerRef.current) abortControllerRef.current.abort()
+            onClose()
+          }}
+          className="absolute right-4 top-4 z-[1200] p-2 bg-white hover:bg-slate-100 rounded-full transition-colors text-slate-500 hover:text-slate-900 shadow-sm border border-slate-200"
+          aria-label="Fechar modal"
+        >
+          <X className="w-5 h-5" />
+        </button>
+
+        <DialogHeader className="p-[24px] border-b border-[#E5E5E5] bg-[#F8FAFC] shrink-0 relative z-20 pr-16">
           <DialogTitle className="text-[20px] font-black text-[#1A3A52]">
             Vincular Imóvel {imovel?.codigo_imovel} a uma Demanda
           </DialogTitle>
