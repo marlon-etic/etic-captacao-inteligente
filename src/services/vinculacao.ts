@@ -29,7 +29,6 @@ export const vinculacaoService = {
       }
 
       const updateData = {
-        tipo: isLocacao ? 'Aluguel' : 'Venda',
         demanda_locacao_id: isLocacao ? demandaId : null,
         demanda_venda_id: !isLocacao ? demandaId : null,
         user_captador_id: usuarioId,
@@ -38,7 +37,7 @@ export const vinculacaoService = {
         etapa_funil: 'capturado',
       }
 
-      const query = supabase
+      let query = supabase
         .from('imoveis_captados')
         .update(updateData)
         .eq('id', imovelId)
@@ -46,7 +45,7 @@ export const vinculacaoService = {
         .single()
 
       if (signal) {
-        query.abortSignal(signal)
+        query = query.abortSignal(signal) as any
       }
 
       const { data, error } = await query

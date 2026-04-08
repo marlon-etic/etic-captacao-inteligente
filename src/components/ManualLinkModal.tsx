@@ -145,13 +145,15 @@ export function ManualLinkModal({ isOpen, onClose, property }: ManualLinkModalPr
           abortControllerRef.current?.abort()
         }, 30000)
 
-        const res = await vinculacaoService.linkImovelToDemanda({
-          imovelId: existingImovel.id,
-          demandaId: demand.id,
-          usuarioId: currentUser.id,
-          isLocacao,
+        const res = await vinculacaoService.linkImovelToDemanda(
+          {
+            imovelId: existingImovel.id,
+            demandaId: demand.id,
+            usuarioId: currentUser.id,
+            isLocacao,
+          },
           signal,
-        })
+        )
 
         clearTimeout(timeoutId)
         return res

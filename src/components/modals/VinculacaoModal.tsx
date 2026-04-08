@@ -39,7 +39,6 @@ export function VinculacaoModal({
     if (isOpen) {
       fetchDemandas()
     } else {
-      // Limpa os estados ao fechar o modal
       setDemandas([])
       setLinkingId(null)
       setSaving(false)
@@ -71,7 +70,6 @@ export function VinculacaoModal({
     if (!imovel) return 0
     let score = 0
 
-    // Bairro match
     if (demanda.bairros && imovel.bairro) {
       const matchBairro = demanda.bairros.some(
         (b: string) => b.toLowerCase() === imovel.bairro?.toLowerCase(),
@@ -79,13 +77,11 @@ export function VinculacaoModal({
       if (matchBairro) score += 40
     }
 
-    // Valor match
     if (imovel.valor && demanda.valor_maximo) {
       if (imovel.valor <= demanda.valor_maximo) score += 30
       else if (imovel.valor <= demanda.valor_maximo * 1.1) score += 15
     }
 
-    // Dormitorios match
     if (imovel.dormitorios && demanda.dormitorios) {
       if (imovel.dormitorios >= demanda.dormitorios) score += 30
     }
@@ -95,14 +91,11 @@ export function VinculacaoModal({
 
   const handleSalvarSemVincular = async () => {
     try {
-      // Validação robusta de dependências
       if (!imovelId) throw new Error('ID do imóvel não fornecido.')
       if (!user?.id) throw new Error('Usuário não autenticado.')
 
       setSaving(true)
 
-      // Update estruturado com colunas exatas que existem no banco
-      // Removida qualquer referência a 'tipo' ou 'safeTipo'
       const updateData = {
         status_captacao: 'capturado',
         etapa_funil: 'capturado',
@@ -123,7 +116,6 @@ export function VinculacaoModal({
 
       if (onSuccess) onSuccess()
 
-      // Fechamento automático em 2s
       setTimeout(() => {
         onClose()
         setSaving(false)
@@ -131,13 +123,13 @@ export function VinculacaoModal({
     } catch (err: any) {
       console.error('Erro ao salvar imóvel:', err)
       toast.error(err.message || 'Erro ao salvar imóvel')
+    } finally {
       setSaving(false)
     }
   }
 
   const handleVincularDemanda = async (demanda: any) => {
     try {
-      // Validação robusta de dependências
       if (!imovelId) throw new Error('ID do imóvel não fornecido.')
       if (!demanda?.id) throw new Error('ID da demanda inválido.')
       if (!user?.id) throw new Error('Usuário não autenticado.')
@@ -159,7 +151,6 @@ export function VinculacaoModal({
 
       if (onSuccess) onSuccess()
 
-      // Fechamento automático em 2s
       setTimeout(() => {
         onClose()
         setLinkingId(null)
@@ -171,17 +162,12 @@ export function VinculacaoModal({
     }
   }
 
-  // Ordena demandas por match score
   const sortedDemandas = [...demandas].sort(
     (a, b) => calculateMatching(b, imovelData) - calculateMatching(a, imovelData),
   )
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      {/*
-        Ajuste fino de altura máxima para 70vh, garantindo visibilidade total na viewport 
-        e uso de overflow-hidden no contêiner principal para isolar o scroll interno.
-      */}
       <DialogContent className="max-w-3xl max-h-[70vh] md:max-h-[70vh] h-[70vh] md:h-[70vh] flex flex-col p-0 gap-0 overflow-hidden">
         <DialogHeader className="p-4 border-b shrink-0 bg-background relative z-10">
           <DialogTitle className="text-xl">Vincular Imóvel a Demanda</DialogTitle>
@@ -190,7 +176,6 @@ export function VinculacaoModal({
           </DialogDescription>
         </DialogHeader>
 
-        {/* Div de conteúdo com scroll y */}
         <div className="flex-1 overflow-y-auto p-2 md:p-3 bg-muted/30">
           {loading ? (
             <div className="flex flex-col items-center justify-center h-full">
