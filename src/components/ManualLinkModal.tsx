@@ -24,10 +24,13 @@ interface ManualLinkModalProps {
   property: CapturedProperty | null
 }
 
+import { supabase } from '@/lib/supabase/client'
+
 export function ManualLinkModal({ isOpen, onClose, property }: ManualLinkModalProps) {
-  const { demands, currentUser, linkLoosePropertyToDemand } = useAppStore()
+  const { demands, currentUser } = useAppStore()
   const { toast } = useToast()
   const [searchTerm, setSearchTerm] = useState('')
+  const [linkingDemandId, setLinkingDemandId] = useState<string | null>(null)
 
   const compatibleDemands = useMemo(() => {
     if (!property || !currentUser) return []
@@ -60,10 +63,15 @@ export function ManualLinkModal({ isOpen, onClose, property }: ManualLinkModalPr
       })
       .filter((d) => {
         if (d.createdBy !== currentUser.id) return false
-        if (['Perdida', 'Impossível', 'Negócio', 'Arquivado'].includes(d.status)) return false
+        if (
+          ['Perdida', 'Impossível', 'Negócio', 'Arquivado', 'Perdida_baixa', 'Concluida'].some(
+            (s) => d.status.toLowerCase() === s.toLowerCase(),
+          )
+        )
+          return false
         if (property.propertyType && d.type && property.propertyType !== d.type) return false
 
-        return d.score >= 60
+        return true
       })
       .sort((a, b) => b.score - a.score)
   }, [demands, currentUser, property])
@@ -75,10 +83,82 @@ export function ManualLinkModal({ isOpen, onClose, property }: ManualLinkModalPr
     )
   }, [compatibleDemands, searchTerm])
 
-  const handleLink = (demand: Demand) => {
+  const handleLink = async (demand: Demand) => {
     if (!property) return
-    const res = linkLoosePropertyToDemand(property.code, demand.id)
-    if (res.success) {
+    if (demand.score < 50) return // dupla proteção
+
+    setLinkingDemandId(demand.id)
+
+    const executeWithRetryAndTimeout = async (
+      fn: () => Promise<any>,
+      retries = 3,
+      timeoutMs = 30000,
+    ) => {
+      let lastError: any
+      for (let i = 0; i < retries; i++) {
+        try {
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('TIMEOUT')), timeoutMs),
+          )
+          return await Promise.race([fn(), timeoutPromise])
+        } catch (err: any) {
+          lastError = err
+          // Don't retry RLS errors
+          if (err?.code === '42501' || err?.message?.toLowerCase().includes('rls')) throw err
+          // Don't retry unique constraint errors
+          if (err?.code === '23505') throw err
+          if (i < retries - 1) {
+            await new Promise((res) => setTimeout(res, 1000 * (i + 1)))
+          }
+        }
+      }
+      throw lastError
+    }
+
+    try {
+      await executeWithRetryAndTimeout(async () => {
+        const isLocacao = demand.type === 'Aluguel' || demand.tipo_demanda === 'Aluguel'
+
+        // Buscar imóvel existente no Supabase
+        const { data: existingImovel, error: fetchError } = await supabase
+          .from('imoveis_captados')
+          .select('*')
+          .eq('codigo_imovel', property.code)
+          .single()
+
+        if (fetchError) throw fetchError
+
+        const { id: _, created_at, updated_at, codigo_imovel, ...imovelData } = existingImovel
+
+        const novoCodigo = codigo_imovel
+          ? `${codigo_imovel}-V${Math.floor(Math.random() * 1000)}`
+          : null
+
+        const newImovel = {
+          ...imovelData,
+          codigo_imovel: novoCodigo,
+          demanda_locacao_id: isLocacao ? demand.id : null,
+          demanda_venda_id: !isLocacao ? demand.id : null,
+          status_captacao: 'capturado',
+          etapa_funil: 'capturado',
+        }
+
+        const { error: insertError } = await supabase.from('imoveis_captados').insert(newImovel)
+        if (insertError) throw insertError
+
+        if (demand.status !== 'Atendida' && demand.status !== 'Ganho') {
+          const table = isLocacao ? 'demandas_locacao' : 'demandas_vendas'
+          const { error: updateError } = await supabase
+            .from(table)
+            .update({ status_demanda: 'atendida' })
+            .eq('id', demand.id)
+          // Se falhar por RLS, ignora
+          if (updateError && updateError.code !== '42501') {
+            throw updateError
+          }
+        }
+      })
+
       toast({
         title: 'Sucesso',
         description: `Imóvel vinculado a ${demand.clientName} com sucesso!`,
@@ -86,12 +166,28 @@ export function ManualLinkModal({ isOpen, onClose, property }: ManualLinkModalPr
       })
       onClose()
       setSearchTerm('')
-    } else {
+    } catch (err: any) {
+      console.error('Erro de vinculação:', err)
+      let errorMessage = 'Erro ao vincular. Contate suporte'
+      if (err?.code === '42501' || err?.message?.toLowerCase().includes('rls')) {
+        errorMessage = 'Você não tem permissão para vincular este imóvel'
+      } else if (
+        err?.message === 'TIMEOUT' ||
+        err?.message?.toLowerCase().includes('fetch') ||
+        err?.message?.toLowerCase().includes('network')
+      ) {
+        errorMessage = 'Erro de conexão. Tente novamente'
+      } else if (err?.message) {
+        errorMessage = `Erro ao vincular: ${err.message}`
+      }
+
       toast({
-        title: 'Erro',
-        description: res.message,
+        title: 'Erro na Vinculação',
+        description: errorMessage,
         variant: 'destructive',
       })
+    } finally {
+      setLinkingDemandId(null)
     }
   }
 
@@ -182,10 +278,30 @@ export function ManualLinkModal({ isOpen, onClose, property }: ManualLinkModalPr
                   </div>
 
                   <Button
-                    className="w-full bg-[#4CAF50] hover:bg-[#388E3C] text-white font-bold h-[48px] mt-2"
-                    onClick={() => handleLink(d)}
+                    disabled={linkingDemandId !== null || d.score < 50}
+                    className={cn(
+                      'w-full font-bold h-[48px] mt-2 transition-colors',
+                      d.score >= 50 && linkingDemandId === null
+                        ? 'bg-[#4CAF50] hover:bg-[#388E3C] text-white'
+                        : 'bg-gray-400 text-white cursor-not-allowed',
+                    )}
+                    onClick={() => {
+                      if (d.score >= 50 && linkingDemandId === null) {
+                        handleLink(d)
+                      }
+                    }}
+                    title={
+                      d.score < 50 ? 'Match insuficiente para vinculação (Mínimo 50%)' : undefined
+                    }
                   >
-                    ✅ VINCULAR A {d.clientName.toUpperCase()}
+                    {linkingDemandId === d.id ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                        Vinculando...
+                      </span>
+                    ) : (
+                      `✅ VINCULAR A ${d.clientName.toUpperCase()}`
+                    )}
                   </Button>
                 </div>
               ))}

@@ -55,12 +55,11 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
           let vendas: any[] = []
 
           const excludedStatuses = [
-            'atendida',
-            'ganho',
             'impossivel',
             'perdida_baixa',
             'perdida',
             'concluida',
+            'localmente_perdida',
           ]
 
           const { data: dataLocacao } = await supabase
@@ -137,7 +136,11 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
     if (selectedDemand.score < 50) return
 
     // Evitar duplicidade de vínculo
-    if (selectedDemand.imoveis_captados?.some((i: any) => i.id === imovel.id)) {
+    if (
+      selectedDemand.imoveis_captados?.some(
+        (i: any) => i.id === imovel.id || i.codigo_imovel === imovel.codigo_imovel,
+      )
+    ) {
       toast({
         title: 'Aviso',
         description: 'Este imóvel já está vinculado a este cliente.',
@@ -147,42 +150,83 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
     }
 
     setIsLinking(true)
+
+    const executeWithRetryAndTimeout = async (
+      fn: () => Promise<any>,
+      retries = 3,
+      timeoutMs = 30000,
+    ) => {
+      let lastError: any
+      for (let i = 0; i < retries; i++) {
+        try {
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('TIMEOUT')), timeoutMs),
+          )
+          return await Promise.race([fn(), timeoutPromise])
+        } catch (err: any) {
+          lastError = err
+          // Don't retry RLS errors
+          if (err?.code === '42501' || err?.message?.toLowerCase().includes('rls')) throw err
+          // Don't retry unique constraint errors
+          if (err?.code === '23505') throw err
+
+          if (i < retries - 1) {
+            await new Promise((res) => setTimeout(res, 1000 * (i + 1))) // exponential backoff
+          }
+        }
+      }
+      throw lastError
+    }
+
     try {
       const isLocacao =
         selectedDemand.tipo === 'Aluguel' || selectedDemand.tipo_demanda === 'Aluguel'
 
-      // Buscar imóvel atual
-      const { data: existingImovel, error: fetchError } = await supabase
-        .from('imoveis_captados')
-        .select('*')
-        .eq('id', imovel.id)
-        .single()
+      await executeWithRetryAndTimeout(async () => {
+        // Buscar imóvel atual
+        const { data: existingImovel, error: fetchError } = await supabase
+          .from('imoveis_captados')
+          .select('*')
+          .eq('id', imovel.id)
+          .single()
 
-      if (fetchError) throw fetchError
+        if (fetchError) throw fetchError
 
-      // Multipla vinculação: Sempre duplicar o imóvel mantendo os dados para associar à nova demanda,
-      // preservando o original (seja genérico "disponível" ou já de outra demanda).
-      const { id: _, created_at, updated_at, codigo_imovel, ...imovelData } = existingImovel
+        // Multipla vinculação: Sempre duplicar o imóvel mantendo os dados para associar à nova demanda
+        const { id: _, created_at, updated_at, codigo_imovel, ...imovelData } = existingImovel
 
-      const novoCodigo = codigo_imovel
-        ? `${codigo_imovel}-V${Math.floor(Math.random() * 1000)}`
-        : null
+        const novoCodigo = codigo_imovel
+          ? `${codigo_imovel}-V${Math.floor(Math.random() * 1000)}`
+          : null
 
-      const newImovel = {
-        ...imovelData,
-        codigo_imovel: novoCodigo,
-        demanda_locacao_id: isLocacao ? selectedDemand.id : null,
-        demanda_venda_id: !isLocacao ? selectedDemand.id : null,
-        status_captacao: 'capturado', // Reset status in the new funnel
-        etapa_funil: 'capturado',
-      }
+        const newImovel = {
+          ...imovelData,
+          codigo_imovel: novoCodigo,
+          demanda_locacao_id: isLocacao ? selectedDemand.id : null,
+          demanda_venda_id: !isLocacao ? selectedDemand.id : null,
+          status_captacao: 'capturado', // Reset status no novo funil
+          etapa_funil: 'capturado',
+        }
 
-      const { error: insertError } = await supabase.from('imoveis_captados').insert(newImovel)
-      if (insertError) throw insertError
+        const { error: insertError } = await supabase.from('imoveis_captados').insert(newImovel)
+        if (insertError) throw insertError
 
-      // Atualizar status da demanda para atendida
-      const table = isLocacao ? 'demandas_locacao' : 'demandas_vendas'
-      await supabase.from(table).update({ status_demanda: 'atendida' }).eq('id', selectedDemand.id)
+        // Atualizar status da demanda para atendida se ainda estiver aberta
+        if (
+          selectedDemand.status_demanda !== 'atendida' &&
+          selectedDemand.status_demanda !== 'ganho'
+        ) {
+          const table = isLocacao ? 'demandas_locacao' : 'demandas_vendas'
+          const { error: updateError } = await supabase
+            .from(table)
+            .update({ status_demanda: 'atendida' })
+            .eq('id', selectedDemand.id)
+          // Se falhar por RLS, ignora, pois a inserção do imóvel (o vínculo real) já foi feita.
+          if (updateError && updateError.code !== '42501') {
+            throw updateError
+          }
+        }
+      })
 
       toast({
         title: 'Vinculado com Sucesso',
@@ -193,10 +237,24 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
       onSuccess?.()
       onClose()
     } catch (err: any) {
-      console.error(err)
+      console.error('Erro de vinculação:', err)
+
+      let errorMessage = 'Erro ao vincular. Contate suporte'
+      if (err?.code === '42501' || err?.message?.toLowerCase().includes('rls')) {
+        errorMessage = 'Você não tem permissão para vincular este imóvel'
+      } else if (
+        err?.message === 'TIMEOUT' ||
+        err?.message?.toLowerCase().includes('fetch') ||
+        err?.message?.toLowerCase().includes('network')
+      ) {
+        errorMessage = 'Erro de conexão. Tente novamente'
+      } else if (err?.message) {
+        errorMessage = `Erro ao vincular: ${err.message}`
+      }
+
       toast({
-        title: 'Erro ao vincular',
-        description: 'Erro ao vincular demanda. Tente novamente.',
+        title: 'Erro na Vinculação',
+        description: errorMessage,
         variant: 'destructive',
       })
     } finally {
@@ -483,8 +541,6 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
           <Button
             disabled={!selectedDemand || selectedDemand.score < 50 || isLinking}
             onClick={handleVincular}
-            isLoading={isLinking}
-            loadingText="Vinculando..."
             title={
               selectedDemand && selectedDemand.score < 50
                 ? 'Match insuficiente para vinculação (Mínimo 50%)'
@@ -497,7 +553,14 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
                 : 'bg-gray-400 text-white cursor-not-allowed',
             )}
           >
-            CONFIRMAR E VINCULAR
+            {isLinking ? (
+              <span className="flex items-center gap-2">
+                <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                Vinculando...
+              </span>
+            ) : (
+              'CONFIRMAR E VINCULAR'
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>
