@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -43,6 +43,7 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
   const [loadingDemands, setLoadingDemands] = useState(false)
   const [selectedDemandId, setSelectedDemandId] = useState<string>('')
   const [isLinking, setIsLinking] = useState(false)
+  const abortControllerRef = useRef<AbortController | null>(null)
 
   // Fetch all open demands when modal opens
   useEffect(() => {
@@ -133,7 +134,13 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
       e.preventDefault()
       e.stopPropagation()
     }
-    if (!imovel || !selectedDemand) return
+
+    if (!imovel || !selectedDemand) {
+      console.log('🔴 [VINCULAR] Botão clicado mas sem imóvel ou demanda selecionada')
+      return
+    }
+
+    console.log(`🔵 [VINCULAR] Clique detectado em demanda_id=${selectedDemand.id}`)
 
     // Dupla proteção: early return se o score for < 50
     if (selectedDemand.score < 50) return
@@ -154,6 +161,12 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
 
     setIsLinking(true)
 
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+    }
+    abortControllerRef.current = new AbortController()
+    const signal = abortControllerRef.current.signal
+
     // Forçar a renderização do estado de loading antes da requisição pesada para evitar travamento da UI
     await new Promise((resolve) => setTimeout(resolve, 50))
 
@@ -162,38 +175,49 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
         selectedDemand.tipo === 'Aluguel' || selectedDemand.tipo_demanda === 'Aluguel'
 
       const executeRequest = async () => {
-        return vinculacaoService.linkImovelToDemanda({
+        // Criar timeout de 30s manual pois Promise.race pode ter vazamentos
+        const timeoutId = setTimeout(() => {
+          abortControllerRef.current?.abort()
+        }, 30000)
+
+        const res = await vinculacaoService.linkImovelToDemanda({
           imovelId: imovel.id,
           demandaId: selectedDemand.id,
           usuarioId: user?.id || '',
           isLocacao,
+          signal,
         })
+
+        clearTimeout(timeoutId)
+        return res
       }
 
       let response: any = null
       for (let attempt = 0; attempt <= 3; attempt++) {
         try {
-          const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('TIMEOUT')), 30000),
-          )
-          response = (await Promise.race([executeRequest(), timeoutPromise])) as any
+          response = await executeRequest()
 
           if (!response.success) {
             const errorType = response.errorType || 'unknown'
-            if (['permission', 'not_found', 'validation'].includes(errorType)) {
+            if (['permission', 'not_found', 'validation', 'timeout'].includes(errorType)) {
               break // Do not retry
             }
-            throw new Error(response.error || 'SERVER_ERROR')
+            if (attempt < 3) throw new Error(response.error || 'SERVER_ERROR')
           }
-          break // Success
+          break // Success or non-retriable error
         } catch (err: any) {
+          if (err.name === 'AbortError') {
+            response = {
+              success: false,
+              error: 'Timeout na requisição',
+              errorType: 'timeout',
+            }
+            break
+          }
           if (attempt === 3) {
             response = {
               success: false,
-              error:
-                err.message === 'TIMEOUT'
-                  ? 'Tempo limite excedido. Erro de rede.'
-                  : 'Erro de conexão ao servidor.',
+              error: 'Erro de conexão ao servidor.',
               errorType: 'network',
             }
             break
@@ -208,23 +232,23 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
       }
 
       if (!response?.success) {
-        const errorMsg = response?.error || 'Erro ao vincular. Contate suporte'
-        const isPerm =
-          response?.errorType === 'permission' || errorMsg.toLowerCase().includes('permissão')
+        const errorType = response?.errorType || 'unknown'
 
         let finalTitle = 'Erro'
-        let finalDesc = errorMsg
+        let finalDesc = response?.error || 'Erro ao vincular. Contate suporte'
 
-        if (isPerm) {
+        if (errorType === 'permission') {
           finalTitle = 'Permissão Negada'
-          finalDesc = 'Você não tem permissão para vincular este imóvel'
-        } else if (
-          response?.errorType === 'network' ||
-          response?.errorType === 'server' ||
-          response?.errorType === 'unknown'
-        ) {
-          finalTitle = 'Erro ao vincular'
-          finalDesc = 'Erro ao vincular. Contate suporte (Tente novamente)'
+          finalDesc = '🔴 Você não tem permissão para vincular este imóvel. Contate o administrador'
+        } else if (errorType === 'not_found') {
+          finalTitle = 'Não Encontrado'
+          finalDesc = '🔴 Imóvel ou demanda não encontrado. Recarregue a página'
+        } else if (errorType === 'server') {
+          finalTitle = 'Erro no Servidor'
+          finalDesc = '🔴 Erro no servidor. Tente novamente em alguns segundos'
+        } else if (errorType === 'timeout' || errorType === 'network') {
+          finalTitle = 'Erro de Rede'
+          finalDesc = '🔴 Conexão perdida. Verifique sua internet e tente novamente'
         }
 
         toast({
@@ -244,14 +268,15 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
       onSuccess?.()
       onClose()
     } catch (err: any) {
-      console.error('Erro inesperado:', err)
+      console.error('🔴 [VINCULAR] Erro inesperado:', err)
       toast({
         title: 'Erro de Sistema',
-        description: 'Erro ao vincular. Contate suporte. (Você pode tentar novamente)',
+        description: '🔴 Erro no servidor. Tente novamente em alguns segundos',
         variant: 'destructive',
       })
     } finally {
       setIsLinking(false)
+      abortControllerRef.current = null
     }
   }
 

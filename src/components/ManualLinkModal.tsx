@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -32,6 +32,7 @@ export function ManualLinkModal({ isOpen, onClose, property }: ManualLinkModalPr
   const { toast } = useToast()
   const [searchTerm, setSearchTerm] = useState('')
   const [linkingDemandId, setLinkingDemandId] = useState<string | null>(null)
+  const abortControllerRef = useRef<AbortController | null>(null)
 
   const compatibleDemands = useMemo(() => {
     if (!property || !currentUser) return []
@@ -85,10 +86,21 @@ export function ManualLinkModal({ isOpen, onClose, property }: ManualLinkModalPr
   }, [compatibleDemands, searchTerm])
 
   const handleLink = async (demand: Demand) => {
-    if (!property) return
+    if (!property) {
+      console.log('🔴 [VINCULAR] Botão clicado mas sem imóvel')
+      return
+    }
+
+    console.log(`🔵 [VINCULAR] Clique detectado em demanda_id=${demand.id}`)
     if (demand.score < 50) return // dupla proteção
 
     setLinkingDemandId(demand.id)
+
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+    }
+    abortControllerRef.current = new AbortController()
+    const signal = abortControllerRef.current.signal
 
     // Forçar a renderização do estado de loading antes da requisição pesada para evitar travamento da UI
     await new Promise((resolve) => setTimeout(resolve, 50))
@@ -97,14 +109,18 @@ export function ManualLinkModal({ isOpen, onClose, property }: ManualLinkModalPr
       const isLocacao = demand.type === 'Aluguel' || demand.tipo_demanda === 'Aluguel'
 
       const executeRequest = async () => {
+        console.log(`🔵 [VINCULAR] Buscando ID real do imóvel com código ${property.code}`)
         // Find the exact property ID in the database using the code
-        const { data: existingImovel, error: fetchError } = await supabase
+        let fetchImovelQuery = supabase
           .from('imoveis_captados')
           .select('id')
           .eq('codigo_imovel', property.code)
-          .single()
+        if (signal) fetchImovelQuery = fetchImovelQuery.abortSignal(signal as any)
+
+        const { data: existingImovel, error: fetchError } = await fetchImovelQuery.single()
 
         if (fetchError || !existingImovel) {
+          console.log(`🔴 [VINCULAR] Imóvel não encontrado na base: ${fetchError?.message}`)
           return {
             success: false,
             error: 'Imóvel não encontrado na base de dados.',
@@ -112,38 +128,48 @@ export function ManualLinkModal({ isOpen, onClose, property }: ManualLinkModalPr
           }
         }
 
-        return vinculacaoService.linkImovelToDemanda({
+        const timeoutId = setTimeout(() => {
+          abortControllerRef.current?.abort()
+        }, 30000)
+
+        const res = await vinculacaoService.linkImovelToDemanda({
           imovelId: existingImovel.id,
           demandaId: demand.id,
           usuarioId: currentUser.id,
           isLocacao,
+          signal,
         })
+
+        clearTimeout(timeoutId)
+        return res
       }
 
       let response: any = null
       for (let attempt = 0; attempt <= 3; attempt++) {
         try {
-          const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('TIMEOUT')), 30000),
-          )
-          response = (await Promise.race([executeRequest(), timeoutPromise])) as any
+          response = await executeRequest()
 
           if (!response.success) {
             const errorType = response.errorType || 'unknown'
-            if (['permission', 'not_found', 'validation'].includes(errorType)) {
+            if (['permission', 'not_found', 'validation', 'timeout'].includes(errorType)) {
               break
             }
-            throw new Error(response.error || 'SERVER_ERROR')
+            if (attempt < 3) throw new Error(response.error || 'SERVER_ERROR')
           }
           break // Sucesso
         } catch (err: any) {
+          if (err.name === 'AbortError') {
+            response = {
+              success: false,
+              error: 'Timeout na requisição',
+              errorType: 'timeout',
+            }
+            break
+          }
           if (attempt === 3) {
             response = {
               success: false,
-              error:
-                err.message === 'TIMEOUT'
-                  ? 'Tempo limite excedido. Verifique sua conexão.'
-                  : 'Erro de conexão ao servidor.',
+              error: 'Erro de conexão ao servidor.',
               errorType: 'network',
             }
             break
@@ -158,23 +184,23 @@ export function ManualLinkModal({ isOpen, onClose, property }: ManualLinkModalPr
       }
 
       if (!response?.success) {
-        const errorMsg = response?.error || 'Erro ao vincular. Contate suporte'
-        const isPerm =
-          response?.errorType === 'permission' || errorMsg.toLowerCase().includes('permissão')
+        const errorType = response?.errorType || 'unknown'
 
         let finalTitle = 'Erro'
-        let finalDesc = errorMsg
+        let finalDesc = response?.error || 'Erro ao vincular. Contate suporte'
 
-        if (isPerm) {
+        if (errorType === 'permission') {
           finalTitle = 'Permissão Negada'
-          finalDesc = 'Você não tem permissão para vincular este imóvel'
-        } else if (
-          response?.errorType === 'network' ||
-          response?.errorType === 'server' ||
-          response?.errorType === 'unknown'
-        ) {
-          finalTitle = 'Erro ao vincular'
-          finalDesc = 'Erro ao vincular. Contate suporte (Tente novamente)'
+          finalDesc = '🔴 Você não tem permissão para vincular este imóvel. Contate o administrador'
+        } else if (errorType === 'not_found') {
+          finalTitle = 'Não Encontrado'
+          finalDesc = '🔴 Imóvel ou demanda não encontrado. Recarregue a página'
+        } else if (errorType === 'server') {
+          finalTitle = 'Erro no Servidor'
+          finalDesc = '🔴 Erro no servidor. Tente novamente em alguns segundos'
+        } else if (errorType === 'timeout' || errorType === 'network') {
+          finalTitle = 'Erro de Rede'
+          finalDesc = '🔴 Conexão perdida. Verifique sua internet e tente novamente'
         }
 
         toast({
@@ -193,14 +219,15 @@ export function ManualLinkModal({ isOpen, onClose, property }: ManualLinkModalPr
       onClose()
       setSearchTerm('')
     } catch (err: any) {
-      console.error('Erro de vinculação:', err)
+      console.error('🔴 [VINCULAR] Erro de vinculação:', err)
       toast({
         title: 'Erro de Sistema',
-        description: 'Erro ao vincular. Contate suporte. (Você pode tentar novamente)',
+        description: '🔴 Erro no servidor. Tente novamente em alguns segundos',
         variant: 'destructive',
       })
     } finally {
       setLinkingDemandId(null)
+      abortControllerRef.current = null
     }
   }
 
