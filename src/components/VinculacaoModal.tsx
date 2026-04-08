@@ -54,23 +54,44 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
           let locacao: any[] = []
           let vendas: any[] = []
 
+          const excludedStatuses = [
+            'atendida',
+            'ganho',
+            'impossivel',
+            'perdida_baixa',
+            'perdida',
+            'concluida',
+          ]
+
           const { data: dataLocacao } = await supabase
             .from('demandas_locacao')
             .select(
               'id, nome_cliente, bairros, valor_maximo, valor_minimo, dormitorios, vagas_estacionamento, status_demanda, imoveis_captados(*)',
             )
-            .eq('status_demanda', 'aberta')
 
-          if (dataLocacao) locacao = dataLocacao.map((d) => ({ ...d, tipo: 'Aluguel' }))
+          if (dataLocacao) {
+            locacao = dataLocacao
+              .filter(
+                (d) =>
+                  !d.status_demanda || !excludedStatuses.includes(d.status_demanda.toLowerCase()),
+              )
+              .map((d) => ({ ...d, tipo: 'Aluguel' }))
+          }
 
           const { data: dataVendas } = await supabase
             .from('demandas_vendas')
             .select(
               'id, nome_cliente, bairros, valor_maximo, valor_minimo, dormitorios, vagas_estacionamento, status_demanda, imoveis_captados(*)',
             )
-            .eq('status_demanda', 'aberta')
 
-          if (dataVendas) vendas = dataVendas.map((d) => ({ ...d, tipo: 'Venda' }))
+          if (dataVendas) {
+            vendas = dataVendas
+              .filter(
+                (d) =>
+                  !d.status_demanda || !excludedStatuses.includes(d.status_demanda.toLowerCase()),
+              )
+              .map((d) => ({ ...d, tipo: 'Venda' }))
+          }
 
           setActiveDemands([...locacao, ...vendas])
         } catch (err) {
@@ -111,6 +132,9 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
       e.stopPropagation()
     }
     if (!imovel || !selectedDemand) return
+
+    // Dupla proteção: early return se o score for < 50
+    if (selectedDemand.score < 50) return
 
     // Evitar duplicidade de vínculo
     if (selectedDemand.imoveis_captados?.some((i: any) => i.id === imovel.id)) {
@@ -204,7 +228,7 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
               {loadingDemands ? (
                 <div className="p-8 text-center text-[#999999] text-[14px] flex flex-col items-center">
                   <div className="w-8 h-8 border-4 border-[#1A3A52]/20 border-t-[#1A3A52] rounded-full animate-spin mb-3"></div>
-                  Buscando demandas abertas...
+                  Buscando demandas ativas...
                 </div>
               ) : scoredDemands.length > 0 ? (
                 <div className="flex flex-col p-3 gap-2">
@@ -440,9 +464,9 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
         </div>
 
         <DialogFooter className="p-[20px] border-t border-[#E5E5E5] bg-[#F8FAFC] flex gap-3 justify-end items-center shrink-0 mt-auto sticky bottom-0 z-50 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] pointer-events-auto">
-          {selectedDemand && selectedDemand.score < 60 && (
+          {selectedDemand && selectedDemand.score < 50 && (
             <span className="text-[12px] font-bold text-[#EF4444] mr-auto hidden sm:inline-block">
-              Match insuficiente para vinculação (Mínimo 60%)
+              Match insuficiente para vinculação (Mínimo 50%)
             </span>
           )}
           <Button
@@ -457,20 +481,20 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
             Cancelar
           </Button>
           <Button
-            disabled={!selectedDemand || selectedDemand.score < 60 || isLinking}
+            disabled={!selectedDemand || selectedDemand.score < 50 || isLinking}
             onClick={handleVincular}
             isLoading={isLinking}
             loadingText="Vinculando..."
             title={
-              selectedDemand && selectedDemand.score < 60
-                ? 'Match insuficiente para vinculação (Mínimo 60%)'
+              selectedDemand && selectedDemand.score < 50
+                ? 'Match insuficiente para vinculação (Mínimo 50%)'
                 : undefined
             }
             className={cn(
-              'font-bold transition-all shadow-sm min-w-[160px] pointer-events-auto',
-              selectedDemand && selectedDemand.score >= 60
+              'font-bold transition-all shadow-sm min-w-[160px] pointer-events-auto disabled:opacity-50 disabled:cursor-not-allowed',
+              selectedDemand && selectedDemand.score >= 50
                 ? 'bg-[#1A3A52] hover:bg-[#112839] text-white'
-                : 'bg-[#E5E5E5] text-[#999999] cursor-not-allowed opacity-70',
+                : 'bg-gray-400 text-white cursor-not-allowed',
             )}
           >
             CONFIRMAR E VINCULAR
