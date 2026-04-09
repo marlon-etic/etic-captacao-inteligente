@@ -31,12 +31,22 @@ export function calculateMatching(
   imovel: ImovelForMatching,
   cliente: ClienteForMatching,
 ): MatchingResult {
-  if (!imovel) imovel = {}
-  if (!cliente) cliente = {}
+  // ✅ VALIDAÇÃO SEGURA - GARANTIR QUE NUNCA SERÁ UNDEFINED
+  if (!imovel) {
+    imovel = { tipo: 'Ambos' }
+  }
+  if (!cliente) {
+    cliente = { tipo: 'Ambos' }
+  }
 
-  // Tratamento seguro para propriedades opcionais
-  const imovelTipo = imovel.tipo || 'Ambos'
-  const clienteTipo = cliente.tipo || 'Ambos'
+  // ✅ NORMALIZAR TIPO ANTES DE QUALQUER USO
+  const imovelTipo = (imovel.tipo || 'Ambos').toString().trim()
+  const clienteTipo = (cliente.tipo || 'Ambos').toString().trim()
+
+  console.log('[MATCHING] Calculando com tipos normalizados:', {
+    imovelTipo,
+    clienteTipo,
+  })
 
   let localizacaoScore = 0
   if (!cliente.bairros || cliente.bairros.length === 0) {
@@ -56,9 +66,8 @@ export function calculateMatching(
   const maxVal = cliente.valor_maximo || 0
 
   if (minVal === 0 && maxVal === 0) {
-    valorScore = 100 // Indiferente
+    valorScore = 100
   } else if (preco > 0) {
-    // Se o preço está dentro da faixa exata
     if ((minVal === 0 || preco >= minVal) && (maxVal === 0 || preco <= maxVal)) {
       valorScore = 100
     } else {
@@ -71,7 +80,6 @@ export function calculateMatching(
         media = minVal
       }
 
-      // Tolerância de 20% da média
       const tolerancia = media > 0 ? media * 0.2 : 0
 
       let diferenca = 0
@@ -88,7 +96,6 @@ export function calculateMatching(
       }
     }
   } else {
-    // Imóvel sem preço e cliente tem exigência de valor
     valorScore = 0
   }
 
@@ -118,11 +125,9 @@ export function calculateMatching(
     urgenciaMultiplier = 0.5
   }
 
-  // Pesos equalitários: 25% para cada um dos 4 critérios principais (Total 100%)
   const baseScore =
     localizacaoScore * 0.25 + valorScore * 0.25 + dormitoriosScore * 0.25 + vagasScore * 0.25
 
-  // Removido o multiplicador de urgência do cálculo base para não distorcer a matemática do match
   const scoreFinal = Math.min(Math.round(baseScore), 100)
 
   return {
