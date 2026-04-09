@@ -26,6 +26,35 @@ interface Props {
   onSuccess?: () => void
 }
 
+// ✅ FUNÇÃO DE NORMALIZAÇÃO - SAFETY WRAPPER
+function normalizeImovel(imovel: VinculacaoImovelData | null): VinculacaoImovelData {
+  if (!imovel) {
+    return {
+      id: '',
+      codigo_imovel: '',
+      endereco: '',
+      preco: 0,
+      dormitorios: 0,
+      vagas: 0,
+      tipo: 'Venda', // Fallback padrão
+    }
+  }
+
+  // Garantir que tipo sempre tem um valor válido
+  const tipoNormalizado = imovel.tipo && imovel.tipo.trim() ? imovel.tipo : 'Venda'
+
+  console.log('[NORMALIZE] Imóvel normalizado:', {
+    id: imovel.id,
+    tipo_original: imovel.tipo,
+    tipo_normalizado: tipoNormalizado,
+  })
+
+  return {
+    ...imovel,
+    tipo: tipoNormalizado,
+  }
+}
+
 export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
   const { toast } = useToast()
   const { user } = useAuth()
@@ -42,11 +71,20 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
   const [filterDorms, setFilterDorms] = useState<string>('Todos')
   const [filterVagas, setFilterVagas] = useState<string>('Todos')
 
+  // ✅ NORMALIZAR IMOVEL AQUI
+  const imovelNormalizado = useMemo(() => {
+    return normalizeImovel(imovel)
+  }, [imovel])
+
   useEffect(() => {
-    if (isOpen && imovel) {
+    if (isOpen && imovelNormalizado) {
       setSelectedDemandId('')
       setFilterTipo(
-        imovel.tipo === 'Venda' ? 'Venda' : imovel.tipo === 'Aluguel' ? 'Aluguel' : 'Todos',
+        imovelNormalizado.tipo === 'Venda'
+          ? 'Venda'
+          : imovelNormalizado.tipo === 'Aluguel'
+            ? 'Aluguel'
+            : 'Todos',
       )
 
       const fetchDemands = async () => {
@@ -98,14 +136,29 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
       setActiveDemands([])
       setFilterBairro('')
     }
-  }, [isOpen, imovel])
+  }, [isOpen, imovelNormalizado])
 
+  // ✅ USAR IMOVEL NORMALIZADO AQUI
   const scoredDemands = useMemo(() => {
-    if (!imovel) return []
+    if (!imovelNormalizado || !imovelNormalizado.id) return []
+
+    console.log('[SCORING] Calculando matching com imovel:', {
+      id: imovelNormalizado.id,
+      tipo: imovelNormalizado.tipo,
+    })
+
     return activeDemands
-      .map((d) => ({ ...d, score: calculateMatching(imovel, d).score }))
+      .map((d) => {
+        try {
+          const matchResult = calculateMatching(imovelNormalizado, d)
+          return { ...d, score: matchResult.score }
+        } catch (err) {
+          console.error('[SCORING] Erro ao calcular matching:', err)
+          return { ...d, score: 0 }
+        }
+      })
       .sort((a, b) => b.score - a.score)
-  }, [activeDemands, imovel])
+  }, [activeDemands, imovelNormalizado])
 
   const filteredDemands = useMemo(() => {
     return scoredDemands.filter((d) => {
@@ -127,10 +180,10 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
   )
 
   const handleSalvarSemVincular = async () => {
-    if (!imovel || isSaving || isLinking) return
+    if (!imovelNormalizado || !imovelNormalizado.id || isSaving || isLinking) return
 
     setIsSaving(true)
-    console.log('[SALVAR] Iniciando salvamento sem vinculação para o imóvel:', imovel.id)
+    console.log('[SALVAR] Iniciando salvamento sem vinculação para o imóvel:', imovelNormalizado.id)
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), 30000)
 
@@ -141,7 +194,7 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
           demanda_locacao_id: null,
           demanda_venda_id: null,
         })
-        .eq('id', imovel.id)
+        .eq('id', imovelNormalizado.id)
         .abortSignal(controller.signal)
 
       clearTimeout(timeoutId)
@@ -188,7 +241,7 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
   }
 
   const handleVincularDemanda = async () => {
-    if (!imovel) return
+    if (!imovelNormalizado || !imovelNormalizado.id) return
 
     if (!selectedDemand) {
       toast({
@@ -207,9 +260,15 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
     try {
       const isLocacao = selectedDemand.tipo === 'Aluguel'
 
+      console.log('[VINCULAR] Iniciando vinculação:', {
+        imovelId: imovelNormalizado.id,
+        demandaId: selectedDemand.id,
+        isLocacao,
+      })
+
       const response = await vinculacaoService.linkImovelToDemanda(
         {
-          imovelId: imovel.id,
+          imovelId: imovelNormalizado.id,
           demandaId: selectedDemand.id,
           usuarioId: user?.id || '',
           isLocacao,
@@ -229,6 +288,8 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
         return
       }
 
+      console.log('[VINCULAR] Sucesso ao vincular imóvel')
+
       toast({
         title: '✓ Imóvel vinculado com sucesso!',
         description: `O imóvel foi vinculado a ${selectedDemand.nome_cliente}.`,
@@ -242,6 +303,8 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
       }, 2000)
     } catch (err: any) {
       clearTimeout(timeoutId)
+      console.error('[VINCULAR] Exceção capturada:', err)
+
       if (err.name === 'AbortError') {
         toast({
           title: '❌ Requisição expirou. Tente novamente',
