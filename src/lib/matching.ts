@@ -3,6 +3,7 @@ export interface ImovelForMatching {
   preco?: number
   dormitorios?: number
   vagas?: number
+  tipo?: 'Venda' | 'Aluguel' | 'Ambos' | string // ✅ ADICIONADO
 }
 
 export interface ClienteForMatching {
@@ -12,6 +13,7 @@ export interface ClienteForMatching {
   dormitorios?: number
   vagas_estacionamento?: number
   nivel_urgencia?: string
+  tipo?: 'Venda' | 'Aluguel' | 'Ambos' | string // ✅ ADICIONADO (opcional)
 }
 
 export interface MatchingResult {
