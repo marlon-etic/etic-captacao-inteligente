@@ -201,13 +201,7 @@ export function VinculacaoModal({
       }, 2000)
     } catch (err: any) {
       console.error('Erro ao salvar imóvel:', err)
-      const errMsg = err?.message || ''
-      if (errMsg.includes('is not defined') || errMsg.includes('tipo')) {
-        toast.success('Imóvel salvo no banco com sucesso (erro visual ignorado).')
-        setTimeout(() => onClose(), 2000)
-      } else {
-        toast.error(errMsg || 'Erro ao salvar imóvel')
-      }
+      toast.error(err?.message || 'Erro ao salvar imóvel')
     } finally {
       setSaving(false)
     }
@@ -253,13 +247,7 @@ export function VinculacaoModal({
       }, 2000)
     } catch (err: any) {
       console.error('Erro ao vincular:', err)
-      const errMsg = err?.message || ''
-      if (errMsg.includes('is not defined') || errMsg.includes('tipo')) {
-        toast.success('Imóvel vinculado no banco com sucesso (erro visual ignorado).')
-        setTimeout(() => onClose(), 2000)
-      } else {
-        toast.error(errMsg || 'Erro ao vincular demanda')
-      }
+      toast.error(err?.message || 'Erro ao vincular demanda')
       setLinkingId(null)
     }
   }

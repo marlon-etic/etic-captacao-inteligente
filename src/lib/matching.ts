@@ -3,7 +3,7 @@ export interface ImovelForMatching {
   preco?: number
   dormitorios?: number
   vagas?: number
-  tipo?: 'Venda' | 'Aluguel' | 'Ambos' | string // ✅ ADICIONADO
+  tipo?: 'Venda' | 'Aluguel' | 'Ambos' | string
 }
 
 export interface ClienteForMatching {
@@ -13,7 +13,7 @@ export interface ClienteForMatching {
   dormitorios?: number
   vagas_estacionamento?: number
   nivel_urgencia?: string
-  tipo?: 'Venda' | 'Aluguel' | 'Ambos' | string // ✅ ADICIONADO (opcional)
+  tipo?: 'Venda' | 'Aluguel' | 'Ambos' | string
 }
 
 export interface MatchingResult {
@@ -33,6 +33,10 @@ export function calculateMatching(
 ): MatchingResult {
   if (!imovel) imovel = {}
   if (!cliente) cliente = {}
+
+  // Tratamento seguro para propriedades opcionais
+  const imovelTipo = imovel.tipo || 'Ambos'
+  const clienteTipo = cliente.tipo || 'Ambos'
 
   let localizacaoScore = 0
   if (!cliente.bairros || cliente.bairros.length === 0) {
