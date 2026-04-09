@@ -114,41 +114,30 @@ export function VinculacaoModal({
     return score
   }
 
-  const ensureSafeImovelData = (data: any) => {
-    if (!data) data = {}
-    const safeData = { ...data }
+  const normalizeImovel = (data: any) => {
+    if (!data) return { tipo: 'Venda' }
+    const normalized = { ...data }
 
     // Validação defensiva e fallback para 'tipo'
-    if (!safeData.tipo) {
-      console.log('[DEBUG] imovelData.tipo ausente ou inválido. Aplicando fallback para "Venda".', {
-        originalData: data,
-      })
-      safeData.tipo = 'Venda'
+    if (!normalized.tipo) {
+      console.log(
+        '[DEBUG] imovelData.tipo ausente ou inválido. Aplicando fallback para "Venda" na normalização.',
+        {
+          originalData: data,
+        },
+      )
+      normalized.tipo = 'Venda'
     } else {
-      console.log('[DEBUG] imovelData.tipo já possui valor válido:', safeData.tipo)
+      console.log('[DEBUG] imovelData.tipo já possui valor válido:', normalized.tipo)
     }
 
-    // Tratamento de erro específico se tipo for undefined após validação
-    if (typeof safeData.tipo === 'undefined') {
-      throw new Error('Erro crítico: "tipo" is undefined após a validação defensiva.')
-    }
-
-    return safeData
+    return normalized
   }
 
-  const safeImovelData = useMemo(() => ensureSafeImovelData(imovelData), [imovelData])
+  const safeImovelData = useMemo(() => normalizeImovel(imovelData), [imovelData])
 
   const scoredDemandas = useMemo(() => {
     return [...demandas].sort((a, b) => {
-      // Validar tipo ANTES de chamar calculateMatching() no useMemo
-      if (typeof safeImovelData.tipo === 'undefined') {
-        console.error(
-          '[DEBUG] Tipo indefinido antes de calculateMatching() no sort',
-          safeImovelData,
-        )
-        safeImovelData.tipo = 'Venda'
-      }
-
       return calculateMatching(b, safeImovelData) - calculateMatching(a, safeImovelData)
     })
   }, [demandas, safeImovelData])
@@ -364,15 +353,6 @@ export function VinculacaoModal({
             <div className="flex flex-col gap-3">
               {filteredDemands.map((demanda) => {
                 const isLinking = linkingId === demanda.id
-
-                // Validar tipo ANTES de chamar calculateMatching() no render
-                if (typeof safeImovelData.tipo === 'undefined') {
-                  console.error(
-                    '[DEBUG] Tipo indefinido antes de calculateMatching() no render',
-                    safeImovelData,
-                  )
-                  safeImovelData.tipo = 'Venda'
-                }
 
                 const matchScore = calculateMatching(demanda, safeImovelData)
 
