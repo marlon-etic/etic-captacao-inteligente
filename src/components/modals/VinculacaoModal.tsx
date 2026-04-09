@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -7,475 +7,433 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { useToast } from '@/components/ui/use-toast'
+import { Loader2, CheckCircle2 } from 'lucide-react'
+import { calculateMatching, getScoreBadgeColor } from '@/lib/matching'
+import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/use-auth'
-import { toast } from 'sonner'
-import { vinculacaoService } from '@/services/vinculacao'
-import { Loader2, Building2, MapPin, DollarSign, Home, Car } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { vinculacaoService } from '@/services/vinculacaoService'
 
-interface VinculacaoModalProps {
+export interface VinculacaoModalProps {
   isOpen: boolean
   onClose: () => void
-  imovelId: string
-  imovelData?: any
+  imovelData: any
   onSuccess?: () => void
 }
 
-export function VinculacaoModal({
-  isOpen,
-  onClose,
-  imovelId,
-  imovelData,
-  onSuccess,
-}: VinculacaoModalProps) {
+export function VinculacaoModal({ isOpen, onClose, imovelData, onSuccess }: VinculacaoModalProps) {
   const { user } = useAuth()
-  const [demandas, setDemandas] = useState<any[]>([])
-  const [loading, setLoading] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [linkingId, setLinkingId] = useState<string | null>(null)
+  const { toast } = useToast()
 
-  const [filterTipo, setFilterTipo] = useState<string>('Todos')
-  const [filterBairro, setFilterBairro] = useState<string>('')
-  const [filterDorms, setFilterDorms] = useState<string>('Todos')
-  const [filterVagas, setFilterVagas] = useState<string>('Todos')
+  const [selectedDemand, setSelectedDemand] = useState<any>(null)
+  const [isLinking, setIsLinking] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [demands, setDemands] = useState<any[]>([])
+  const [loadingDemands, setLoadingDemands] = useState(false)
+
+  const [showLowScoreWarning, setShowLowScoreWarning] = useState(false)
+  const [confirmLowScore, setConfirmLowScore] = useState(false)
+
+  const imovelNormalizado = useMemo(() => {
+    if (!imovelData) return { tipo: 'Venda' }
+    return {
+      ...imovelData,
+      tipo: imovelData.tipo || 'Venda',
+    }
+  }, [imovelData])
 
   useEffect(() => {
-    if (isOpen) {
-      fetchDemandas()
+    if (isOpen && imovelNormalizado) {
+      fetchDemands()
     } else {
-      setDemandas([])
-      setLinkingId(null)
-      setSaving(false)
-      setFilterTipo('Todos')
-      setFilterBairro('')
-      setFilterDorms('Todos')
-      setFilterVagas('Todos')
+      setSelectedDemand(null)
+      setShowLowScoreWarning(false)
+      setConfirmLowScore(false)
     }
-  }, [isOpen])
+  }, [isOpen, imovelNormalizado])
 
-  const fetchDemandas = async () => {
+  const fetchDemands = async () => {
+    setLoadingDemands(true)
     try {
-      setLoading(true)
-      const [locacaoRes, vendasRes] = await Promise.all([
-        supabase.from('demandas_locacao').select('*').eq('status_demanda', 'aberta'),
-        supabase.from('demandas_vendas').select('*').eq('status_demanda', 'aberta'),
-      ])
+      const isLocacao = imovelNormalizado.tipo === 'Aluguel'
+      const table = isLocacao ? 'demandas_locacao' : 'demandas_vendas'
 
-      const locacaoData = (locacaoRes.data || []).map((d) => ({
-        ...d,
-        isLocacao: true,
-        tipo: d.tipo_imovel || 'Não informado',
-      }))
-      const vendasData = (vendasRes.data || []).map((d) => ({
-        ...d,
-        isLocacao: false,
-        tipo: d.tipo_imovel || 'Não informado',
-      }))
+      const { data, error } = await supabase
+        .from(table)
+        .select('*')
+        .in('status_demanda', ['aberta', 'atendida'])
+        .order('created_at', { ascending: false })
+        .limit(50)
 
-      const allDemandas = [...locacaoData, ...vendasData]
-      setDemandas(allDemandas)
-    } catch (err: any) {
-      console.error('Erro ao buscar demandas:', err)
-      toast.error('Erro ao carregar demandas disponíveis')
+      if (!error && data) {
+        setDemands(data)
+      }
+    } catch (err) {
+      console.error(err)
     } finally {
-      setLoading(false)
+      setLoadingDemands(false)
     }
   }
 
-  const calculateMatching = (demanda: any, imovel: any) => {
-    if (!imovel) return 0
-    let score = 0
+  const scoredDemands = useMemo(() => {
+    if (!demands.length) return []
 
-    if (demanda.bairros && imovel.bairro) {
-      const matchBairro = demanda.bairros.some(
-        (b: string) => b.toLowerCase() === imovel.bairro?.toLowerCase(),
-      )
-      if (matchBairro) score += 40
+    return demands
+      .map((demand) => {
+        const match = calculateMatching(imovelNormalizado as any, demand as any)
+        return {
+          ...demand,
+          matchScore: match.score,
+          matchDetails: match.details,
+        }
+      })
+      .sort((a, b) => b.matchScore - a.matchScore)
+  }, [demands, imovelNormalizado])
+
+  const handleVincularDemanda = async (forceLink = false) => {
+    if (!imovelNormalizado || !imovelNormalizado.id) return
+
+    if (!selectedDemand) {
+      toast({
+        title: '❌ Selecione uma demanda primeiro',
+        variant: 'destructive',
+      })
+      return
     }
 
-    if (imovel.valor && demanda.valor_maximo) {
-      if (imovel.valor <= demanda.valor_maximo) score += 30
-      else if (imovel.valor <= demanda.valor_maximo * 1.1) score += 15
-    }
+    // ✅ VALIDAR SCORE ANTES DE VINCULAR
+    const matchResult = calculateMatching(imovelNormalizado as any, selectedDemand as any)
+    const scorePercentual = matchResult.score
 
-    if (imovel.dormitorios && demanda.dormitorios) {
-      if (imovel.dormitorios >= demanda.dormitorios) score += 30
-    }
-
-    return score
-  }
-
-  const normalizeImovel = (data: any) => {
-    if (!data) return { tipo: 'Venda' }
-    const normalized = { ...data }
-
-    // Validação defensiva e fallback para 'tipo'
-    if (!normalized.tipo) {
-      console.log(
-        '[DEBUG] imovelData.tipo ausente ou inválido. Aplicando fallback para "Venda" na normalização.',
-        {
-          originalData: data,
-        },
-      )
-      normalized.tipo = 'Venda'
-    } else {
-      console.log('[DEBUG] imovelData.tipo já possui valor válido:', normalized.tipo)
-    }
-
-    return normalized
-  }
-
-  const safeImovelData = useMemo(() => normalizeImovel(imovelData), [imovelData])
-
-  const scoredDemandas = useMemo(() => {
-    return [...demandas].sort((a, b) => {
-      return calculateMatching(b, safeImovelData) - calculateMatching(a, safeImovelData)
+    console.log('[VINCULAR] Score de matching:', {
+      score: scorePercentual,
+      demanda: selectedDemand.nome_cliente || selectedDemand.cliente_nome,
+      imovel: imovelNormalizado.id,
     })
-  }, [demandas, safeImovelData])
 
-  const filteredDemands = useMemo(() => {
-    return scoredDemandas.filter((d) => {
-      // Tipo - com validação segura
-      if (filterTipo !== 'Todos') {
-        if (!d.tipo || d.tipo !== filterTipo) return false
-      }
-
-      // Bairro
-      if (
-        filterBairro &&
-        !d.bairros?.some((b: string) => b.toLowerCase().includes(filterBairro.toLowerCase()))
-      ) {
-        return false
-      }
-
-      // Dormitórios - converte "Todos" para null para pular validação
-      if (filterDorms !== 'Todos') {
-        const domsValue = parseInt(filterDorms)
-        if (isNaN(domsValue) || !d.dormitorios || d.dormitorios > domsValue) {
-          return false
-        }
-      }
-
-      // Vagas - mesma lógica
-      if (filterVagas !== 'Todos') {
-        const vagasValue = parseInt(filterVagas)
-        if (isNaN(vagasValue) || !d.vagas_estacionamento || d.vagas_estacionamento > vagasValue) {
-          return false
-        }
-      }
-
-      return true
-    })
-  }, [scoredDemandas, filterTipo, filterBairro, filterDorms, filterVagas])
-
-  const handleSalvarSemVincular = async () => {
-    try {
-      if (!imovelId) throw new Error('ID do imóvel não fornecido.')
-      if (!user?.id) throw new Error('Usuário não autenticado.')
-
-      setSaving(true)
-
-      const updateData = {
-        status_captacao: 'capturado',
-        etapa_funil: 'capturado',
-        demanda_locacao_id: null,
-        demanda_venda_id: null,
-        user_captador_id: user.id,
-        captador_id: user.id,
-      }
-
-      const { error } = await supabase
-        .from('imoveis_captados')
-        .update(updateData)
-        .eq('id', imovelId)
-
-      if (error) throw error
-
-      toast.success('Imóvel salvo com sucesso!')
-
-      try {
-        if (onSuccess) {
-          const result = onSuccess()
-          if (result instanceof Promise) await result
-        }
-      } catch (onSuccessErr) {
-        console.warn('Erro isolado no onSuccess (ignorado para não travar fluxo):', onSuccessErr)
-      }
-
-      setTimeout(() => {
-        try {
-          onClose()
-        } catch (e) {
-          console.warn('Erro isolado no onClose:', e)
-        }
-        setSaving(false)
-      }, 2000)
-    } catch (err: any) {
-      console.error('Erro ao salvar imóvel:', err)
-      toast.error(err?.message || 'Erro ao salvar imóvel')
-    } finally {
-      setSaving(false)
+    // ✅ BLOQUEAR VINCULAÇÃO SE SCORE < 50% E NÃO CONFIRMADO
+    if (scorePercentual < 50 && !confirmLowScore && !forceLink) {
+      setShowLowScoreWarning(true)
+      console.log('[VINCULAR] Score baixo - mostrando aviso:', scorePercentual)
+      return
     }
-  }
 
-  const handleVincularDemanda = async (demanda: any) => {
+    // ✅ RESETAR AVISO APÓS CONFIRMAÇÃO
+    setShowLowScoreWarning(false)
+    setConfirmLowScore(false)
+
+    if (isLinking || isSaving) return
+
+    setIsLinking(true)
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 30000)
+
     try {
-      if (!imovelId) throw new Error('ID do imóvel não fornecido.')
-      if (!demanda?.id) throw new Error('ID da demanda inválido.')
-      if (!user?.id) throw new Error('Usuário não autenticado.')
+      const isLocacao =
+        selectedDemand.tipo_demanda === 'Aluguel' || imovelNormalizado.tipo === 'Aluguel'
 
-      setLinkingId(demanda.id)
-
-      const response = await vinculacaoService.linkImovelToDemanda({
-        imovelId,
-        demandaId: demanda.id,
-        usuarioId: user.id,
-        isLocacao: demanda.isLocacao,
+      console.log('[VINCULAR] Iniciando vinculação:', {
+        imovelId: imovelNormalizado.id,
+        demandaId: selectedDemand.id,
+        isLocacao,
+        score: scorePercentual,
       })
 
+      const response = await vinculacaoService.linkImovelToDemanda(
+        {
+          imovelId: imovelNormalizado.id,
+          demandaId: selectedDemand.id,
+          usuarioId: user?.id || '',
+          isLocacao,
+        },
+        controller.signal,
+      )
+
+      clearTimeout(timeoutId)
+
       if (!response.success) {
-        throw new Error(response.error || 'Erro interno ao vincular')
+        toast({
+          title: '❌ Erro ao vincular',
+          description: response.error || 'Você não tem permissão para vincular este imóvel.',
+          variant: 'destructive',
+        })
+        setIsLinking(false)
+        return
       }
 
-      toast.success('Imóvel vinculado com sucesso!')
+      console.log('[VINCULAR] Sucesso ao vincular imóvel com score:', scorePercentual)
 
-      try {
-        if (onSuccess) {
-          const result = onSuccess()
-          if (result instanceof Promise) await result
-        }
-      } catch (onSuccessErr) {
-        console.warn('Erro isolado no onSuccess (ignorado para não travar fluxo):', onSuccessErr)
-      }
+      toast({
+        title: '✓ Imóvel vinculado com sucesso!',
+        description: `Match: ${scorePercentual}% | ${selectedDemand.nome_cliente || selectedDemand.cliente_nome}`,
+        className: 'bg-[#10B981] text-white border-none font-bold',
+      })
 
       setTimeout(() => {
-        try {
-          onClose()
-        } catch (e) {
-          console.warn('Erro isolado no onClose:', e)
-        }
-        setLinkingId(null)
+        onSuccess?.()
+        onClose()
+        setIsLinking(false)
       }, 2000)
     } catch (err: any) {
-      console.error('Erro ao vincular:', err)
-      toast.error(err?.message || 'Erro ao vincular demanda')
-      setLinkingId(null)
+      clearTimeout(timeoutId)
+      console.error('[VINCULAR] Exceção capturada:', err)
+
+      if (err.name === 'AbortError') {
+        toast({
+          title: '❌ Requisição expirou. Tente novamente',
+          variant: 'destructive',
+        })
+      } else {
+        toast({
+          title: '❌ Erro ao vincular. Tente novamente',
+          description: err.message || 'Erro inesperado ao vincular.',
+          variant: 'destructive',
+        })
+      }
+      setIsLinking(false)
     }
+  }
+
+  const handleSalvarSemVincular = async () => {
+    setIsSaving(true)
+    setTimeout(() => {
+      toast({
+        title: '✓ Imóvel salvo sem vinculação!',
+        className: 'bg-[#10B981] text-white border-none font-bold',
+      })
+      onSuccess?.()
+      onClose()
+      setIsSaving(false)
+    }, 500)
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-4xl max-h-[85vh] md:max-h-[85vh] h-[85vh] md:h-[85vh] flex flex-col p-0 gap-0 overflow-hidden">
-        <DialogHeader className="p-4 border-b shrink-0 bg-background relative z-10">
-          <DialogTitle className="text-xl">Vincular Imóvel a Demanda</DialogTitle>
-          <DialogDescription className="mt-1">
-            Selecione uma demanda na lista abaixo ou salve o imóvel como avulso.
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+        <DialogContent className="max-w-[700px] max-h-[90vh] overflow-y-auto bg-white rounded-xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-slate-800">
+              Vincular a uma Demanda
+            </DialogTitle>
+            <DialogDescription>
+              Selecione uma demanda compatível para este imóvel.
+            </DialogDescription>
+          </DialogHeader>
 
-        <div className="px-4 py-3 border-b bg-muted/10 grid grid-cols-1 sm:grid-cols-4 gap-3 shrink-0">
-          <div>
-            <Select value={filterTipo} onValueChange={setFilterTipo}>
-              <SelectTrigger className="h-9 text-sm bg-background">
-                <SelectValue placeholder="Tipo" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Todos">Todos os Tipos</SelectItem>
-                <SelectItem value="Casa">Casa</SelectItem>
-                <SelectItem value="Apartamento">Apartamento</SelectItem>
-                <SelectItem value="Terreno">Terreno</SelectItem>
-                <SelectItem value="Galpão">Galpão</SelectItem>
-                <SelectItem value="Comercial">Comercial</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Input
-              placeholder="Filtrar por bairro..."
-              value={filterBairro}
-              onChange={(e) => setFilterBairro(e.target.value)}
-              className="h-9 text-sm bg-background"
-            />
-          </div>
-          <div>
-            <Select value={filterDorms} onValueChange={setFilterDorms}>
-              <SelectTrigger className="h-9 text-sm bg-background">
-                <SelectValue placeholder="Dormitórios" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Todos">Dorms: Todos</SelectItem>
-                <SelectItem value="1">Até 1 dorm.</SelectItem>
-                <SelectItem value="2">Até 2 dorms.</SelectItem>
-                <SelectItem value="3">Até 3 dorms.</SelectItem>
-                <SelectItem value="4">Até 4+ dorms.</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Select value={filterVagas} onValueChange={setFilterVagas}>
-              <SelectTrigger className="h-9 text-sm bg-background">
-                <SelectValue placeholder="Vagas" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Todos">Vagas: Todas</SelectItem>
-                <SelectItem value="1">Até 1 vaga</SelectItem>
-                <SelectItem value="2">Até 2 vagas</SelectItem>
-                <SelectItem value="3">Até 3+ vagas</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-4 bg-muted/30">
-          {loading ? (
-            <div className="flex flex-col items-center justify-center h-full">
-              <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
-              <p className="text-muted-foreground text-sm animate-pulse">Buscando demandas...</p>
-            </div>
-          ) : filteredDemands.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-6 text-center">
-              <Building2 className="w-16 h-16 mb-4 opacity-20" />
-              <p className="font-medium text-lg text-foreground mb-1">Nenhuma demanda encontrada</p>
-              <p className="text-sm max-w-md">
-                Não encontramos demandas que correspondam aos filtros selecionados.
-              </p>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-3">
-              {filteredDemands.map((demanda) => {
-                const isLinking = linkingId === demanda.id
-
-                const matchScore = calculateMatching(demanda, safeImovelData)
-
-                return (
+          <div className="flex flex-col gap-4 py-4">
+            {loadingDemands ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
+              </div>
+            ) : scoredDemands.length === 0 ? (
+              <div className="text-center py-8 text-slate-500">
+                Nenhuma demanda compatível encontrada.
+              </div>
+            ) : (
+              <div className="grid gap-3 max-h-[400px] overflow-y-auto pr-2">
+                {scoredDemands.map((demand) => (
                   <div
-                    key={demanda.id}
-                    className="border rounded-lg p-4 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between bg-card hover:bg-accent/50 hover:shadow-sm transition-all duration-200"
+                    key={demand.id}
+                    onClick={() => setSelectedDemand(demand)}
+                    className={cn(
+                      'p-4 border rounded-xl cursor-pointer transition-all',
+                      selectedDemand?.id === demand.id
+                        ? 'border-emerald-500 bg-emerald-50/50 ring-1 ring-emerald-500'
+                        : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50',
+                    )}
                   >
-                    <div className="space-y-2 flex-1 w-full">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span
-                          className={cn(
-                            'text-xs px-2.5 py-0.5 rounded-full font-semibold border',
-                            demanda.isLocacao
-                              ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800'
-                              : 'bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-300 dark:border-green-800',
-                          )}
-                        >
-                          {demanda.isLocacao ? 'Locação' : 'Venda'}
-                        </span>
-                        <span className="text-xs px-2.5 py-0.5 rounded-full font-medium border bg-muted text-muted-foreground">
-                          {demanda.tipo}
-                        </span>
-                        <h4 className="font-semibold text-base line-clamp-1 ml-1">
-                          {demanda.nome_cliente ||
-                            demanda.cliente_nome ||
-                            'Cliente não identificado'}
-                        </h4>
-                        {matchScore > 0 && (
-                          <span className="text-[10px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full font-bold ml-auto sm:ml-0">
-                            {matchScore}% Match
-                          </span>
+                    <div className="flex justify-between items-start mb-2">
+                      <h4 className="font-bold text-slate-800">
+                        {demand.nome_cliente || demand.cliente_nome || 'Cliente sem nome'}
+                      </h4>
+                      <span
+                        className={cn(
+                          'px-2 py-1 text-xs font-bold rounded-full',
+                          getScoreBadgeColor(demand.matchScore),
                         )}
-                      </div>
-
-                      <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-muted-foreground mt-1">
-                        {demanda.bairros && demanda.bairros.length > 0 && (
-                          <div className="flex items-center gap-1.5">
-                            <MapPin className="w-4 h-4 text-primary/60" />
-                            <span
-                              className="line-clamp-1 max-w-[200px]"
-                              title={demanda.bairros.join(', ')}
-                            >
-                              {demanda.bairros.join(', ')}
-                            </span>
-                          </div>
-                        )}
-                        <div className="flex items-center gap-1.5">
-                          <DollarSign className="w-4 h-4 text-primary/60" />
-                          <span className="font-medium text-foreground/80">
-                            Até R$ {(demanda.valor_maximo || 0).toLocaleString('pt-BR')}
-                          </span>
-                        </div>
-                        {demanda.dormitorios > 0 && (
-                          <div className="flex items-center gap-1.5">
-                            <Home className="w-4 h-4 text-primary/60" />
-                            <span>{demanda.dormitorios} dorm.</span>
-                          </div>
-                        )}
-                        {demanda.vagas_estacionamento > 0 && (
-                          <div className="flex items-center gap-1.5">
-                            <Car className="w-4 h-4 text-primary/60" />
-                            <span>{demanda.vagas_estacionamento} vagas</span>
-                          </div>
-                        )}
-                      </div>
+                      >
+                        {demand.matchScore}% Match
+                      </span>
                     </div>
-
-                    <Button
-                      onClick={() => handleVincularDemanda(demanda)}
-                      disabled={saving || linkingId !== null}
-                      className={cn(
-                        'w-full sm:w-auto shrink-0 transition-all shadow-sm',
-                        isLinking && 'bg-primary/80',
-                      )}
-                    >
-                      {isLinking ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Vinculando...
-                        </>
-                      ) : (
-                        'VINCULAR'
-                      )}
-                    </Button>
+                    <div className="text-sm text-slate-600">
+                      <p>Orçamento: R$ {demand.valor_maximo}</p>
+                      <p>Bairros: {demand.bairros?.join(', ') || 'Qualquer'}</p>
+                    </div>
                   </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
+                ))}
+              </div>
+            )}
+          </div>
 
-        <div className="p-4 border-t bg-card shrink-0 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-10 relative">
-          <p className="text-xs text-muted-foreground text-center sm:text-left">
-            Ao salvar sem vincular, o imóvel ficará disponível no banco geral.
-          </p>
-          <div className="flex w-full sm:w-auto items-center justify-end gap-3">
+          <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
             <Button
               variant="outline"
-              onClick={onClose}
-              disabled={saving || linkingId !== null}
-              className="flex-1 sm:flex-none"
-            >
-              Cancelar
-            </Button>
-            <Button
-              variant="default"
               onClick={handleSalvarSemVincular}
-              disabled={saving || linkingId !== null}
-              className="flex-1 sm:flex-none font-semibold"
+              disabled={isLinking || isSaving}
+              className="flex-1 h-12 font-bold text-slate-600"
             >
-              {saving ? (
+              {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : 'SALVAR SEM VINCULAR'}
+            </Button>
+
+            <Button
+              onClick={() => handleVincularDemanda(false)}
+              disabled={isLinking || isSaving || !selectedDemand}
+              className="w-full sm:w-auto h-12 bg-[#10B981] hover:bg-[#059669] text-white font-bold text-[15px] rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition-all flex-1"
+            >
+              {isLinking ? (
                 <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Salvando...
+                  <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                  VINCULANDO...
+                </>
+              ) : selectedDemand ? (
+                <>
+                  <CheckCircle2 className="w-5 h-5 mr-2" />
+                  VINCULAR (
+                  {calculateMatching(imovelNormalizado as any, selectedDemand as any).score}%)
                 </>
               ) : (
-                'Salvar Sem Vincular'
+                <>
+                  <CheckCircle2 className="w-5 h-5 mr-2" />
+                  VINCULAR DEMANDA
+                </>
               )}
             </Button>
           </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+
+      {/* ✅ AVISO DE SCORE BAIXO */}
+      {showLowScoreWarning && selectedDemand && (
+        <Dialog open={showLowScoreWarning} onOpenChange={setShowLowScoreWarning}>
+          <DialogContent className="max-w-[400px] bg-white rounded-[12px] shadow-2xl z-[60]">
+            {(() => {
+              const scorePercentual = calculateMatching(
+                imovelNormalizado as any,
+                selectedDemand as any,
+              ).score
+              const isVeryLow = scorePercentual < 40
+
+              return (
+                <div className="flex flex-col gap-4">
+                  {/* Header */}
+                  <div
+                    className={cn(
+                      'p-4 rounded-lg flex items-center gap-3',
+                      isVeryLow
+                        ? 'bg-red-50 border border-red-200'
+                        : 'bg-yellow-50 border border-yellow-200',
+                    )}
+                  >
+                    <div
+                      className={cn(
+                        'w-12 h-12 rounded-full flex items-center justify-center text-xl',
+                        isVeryLow ? 'bg-red-100' : 'bg-yellow-100',
+                      )}
+                    >
+                      {isVeryLow ? '⚠️' : '⚡'}
+                    </div>
+                    <div>
+                      <h3
+                        className={cn(
+                          'font-bold text-[16px]',
+                          isVeryLow ? 'text-red-900' : 'text-yellow-900',
+                        )}
+                      >
+                        {isVeryLow ? 'Match Muito Baixo' : 'Match Baixo'}
+                      </h3>
+                      <p
+                        className={cn(
+                          'text-[14px]',
+                          isVeryLow ? 'text-red-700' : 'text-yellow-700',
+                        )}
+                      >
+                        {scorePercentual}% de compatibilidade
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Mensagem */}
+                  <div className="flex flex-col gap-2">
+                    <p className="text-[14px] text-slate-700 font-medium">
+                      {isVeryLow
+                        ? 'Este imóvel tem muito pouca compatibilidade com a demanda. Tem certeza que deseja vincular?'
+                        : 'Este imóvel tem compatibilidade baixa com a demanda. Deseja continuar?'}
+                    </p>
+                    <div className="p-3 bg-slate-50 rounded-lg text-[12px] text-slate-600">
+                      <p>
+                        <strong>Demanda:</strong>{' '}
+                        {selectedDemand.nome_cliente || selectedDemand.cliente_nome}
+                      </p>
+                      <p>
+                        <strong>Score:</strong> {scorePercentual}%
+                      </p>
+                      <p>
+                        <strong>Recomendação:</strong>{' '}
+                        {scorePercentual >= 50 ? '✅ Viável' : '⚠️ Risco'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Botões */}
+                  <div className="flex gap-3">
+                    <Button
+                      variant="outline"
+                      className="flex-1 h-10 font-bold text-slate-600 border-slate-300 hover:bg-slate-50"
+                      onClick={() => {
+                        setShowLowScoreWarning(false)
+                        setConfirmLowScore(false)
+                      }}
+                    >
+                      Cancelar
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        if (isVeryLow && !confirmLowScore) {
+                          // Para scores < 40%, pedir confirmação dupla
+                          setConfirmLowScore(true)
+                        } else {
+                          // Para scores 40-49%, vincular direto
+                          handleVincularDemanda(true)
+                        }
+                      }}
+                      className={cn(
+                        'flex-1 h-10 text-white font-bold rounded-xl',
+                        isVeryLow && confirmLowScore
+                          ? 'bg-red-600 hover:bg-red-700'
+                          : 'bg-orange-500 hover:bg-orange-600',
+                      )}
+                    >
+                      {isVeryLow && confirmLowScore
+                        ? 'Sim, Vincular Mesmo Assim'
+                        : isVeryLow
+                          ? 'Confirmar Mesmo Assim'
+                          : 'Vincular'}
+                    </Button>
+                  </div>
+
+                  {/* Confirmação Dupla para Scores < 40% */}
+                  {isVeryLow && confirmLowScore && (
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-lg animate-in fade-in zoom-in duration-200">
+                      <p className="text-[12px] text-red-900 font-bold mb-2">
+                        ⚠️ Tem certeza? Esta é uma ação de risco.
+                      </p>
+                      <Button
+                        onClick={() => {
+                          handleVincularDemanda(true)
+                        }}
+                        className="w-full h-10 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg"
+                      >
+                        Sim, Vincular Definitivamente
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
+          </DialogContent>
+        </Dialog>
+      )}
+    </>
   )
 }

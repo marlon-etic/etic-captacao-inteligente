@@ -3,7 +3,6 @@ export interface ImovelForMatching {
   preco?: number
   dormitorios?: number
   vagas?: number
-  tipo?: 'Venda' | 'Aluguel' | 'Ambos' | string
 }
 
 export interface ClienteForMatching {
@@ -12,8 +11,6 @@ export interface ClienteForMatching {
   valor_maximo?: number
   dormitorios?: number
   vagas_estacionamento?: number
-  nivel_urgencia?: string
-  tipo?: 'Venda' | 'Aluguel' | 'Ambos' | string
 }
 
 export interface MatchingResult {
@@ -23,7 +20,6 @@ export interface MatchingResult {
     valorScore: number
     dormitoriosScore: number
     vagasScore: number
-    urgenciaMultiplier: number
   }
 }
 
@@ -31,22 +27,18 @@ export function calculateMatching(
   imovel: ImovelForMatching,
   cliente: ClienteForMatching,
 ): MatchingResult {
-  // ✅ VALIDAÇÃO SEGURA - GARANTIR QUE NUNCA SERÁ UNDEFINED
   if (!imovel) {
-    imovel = { tipo: 'Ambos' }
+    imovel = { endereco: '', preco: 0, dormitorios: 0, vagas: 0 }
   }
   if (!cliente) {
-    cliente = { tipo: 'Ambos' }
+    cliente = {
+      bairros: [],
+      valor_minimo: 0,
+      valor_maximo: 0,
+      dormitorios: 0,
+      vagas_estacionamento: 0,
+    }
   }
-
-  // ✅ NORMALIZAR TIPO ANTES DE QUALQUER USO
-  const imovelTipo = (imovel.tipo || 'Ambos').toString().trim()
-  const clienteTipo = (cliente.tipo || 'Ambos').toString().trim()
-
-  console.log('[MATCHING] Calculando com tipos normalizados:', {
-    imovelTipo,
-    clienteTipo,
-  })
 
   let localizacaoScore = 0
   if (!cliente.bairros || cliente.bairros.length === 0) {
@@ -57,8 +49,16 @@ export function calculateMatching(
       (b) =>
         b && (imovelBairro.includes(b.toLowerCase()) || b.toLowerCase().includes(imovelBairro)),
     )
-    if (hasMatch) localizacaoScore = 100
+    localizacaoScore = hasMatch ? 100 : 0
+  } else {
+    localizacaoScore = 0
   }
+
+  console.log('[MATCHING] Localização:', {
+    imovelBairro: imovel.endereco,
+    clienteBairros: cliente.bairros,
+    score: localizacaoScore,
+  })
 
   let valorScore = 0
   const preco = imovel.preco || 0
@@ -92,43 +92,72 @@ export function calculateMatching(
       if (diferenca >= tolerancia || tolerancia === 0) {
         valorScore = 0
       } else {
-        valorScore = 100 - (diferenca / tolerancia) * 100
+        valorScore = Math.max(0, 100 - (diferenca / tolerancia) * 100)
       }
     }
   } else {
     valorScore = 0
   }
 
+  console.log('[MATCHING] Valor:', {
+    imovelPreco: preco,
+    clienteMin: minVal,
+    clienteMax: maxVal,
+    score: valorScore,
+  })
+
   let dormitoriosScore = 0
   const imovelDorms = imovel.dormitorios || 0
   const cliDorms = cliente.dormitorios || 0
+
   if (cliDorms === 0) {
     dormitoriosScore = 100
   } else if (imovelDorms >= cliDorms) {
     dormitoriosScore = 100
+  } else if (imovelDorms > 0) {
+    dormitoriosScore = Math.max(0, (imovelDorms / cliDorms) * 100)
+  } else {
+    dormitoriosScore = 0
   }
+
+  console.log('[MATCHING] Dormitórios:', {
+    imovelDorms,
+    clienteDorms: cliDorms,
+    score: dormitoriosScore,
+  })
 
   let vagasScore = 0
   const imovelVagas = imovel.vagas || 0
   const cliVagas = cliente.vagas_estacionamento || 0
+
   if (cliVagas === 0) {
     vagasScore = 100
   } else if (imovelVagas >= cliVagas) {
     vagasScore = 100
+  } else if (imovelVagas > 0) {
+    vagasScore = Math.max(0, (imovelVagas / cliVagas) * 100)
+  } else {
+    vagasScore = 0
   }
 
-  let urgenciaMultiplier = 1.0
-  const urg = (cliente.nivel_urgencia || '').toLowerCase()
-  if (urg.includes('alta') || urg.includes('urgente')) {
-    urgenciaMultiplier = 1.5
-  } else if (urg.includes('baixa')) {
-    urgenciaMultiplier = 0.5
-  }
+  console.log('[MATCHING] Vagas:', {
+    imovelVagas,
+    clienteVagas: cliVagas,
+    score: vagasScore,
+  })
 
   const baseScore =
     localizacaoScore * 0.25 + valorScore * 0.25 + dormitoriosScore * 0.25 + vagasScore * 0.25
 
-  const scoreFinal = Math.min(Math.round(baseScore), 100)
+  const scoreFinal = Math.min(Math.max(Math.round(baseScore), 0), 100)
+
+  console.log('[MATCHING] Score Final:', {
+    localizacao: localizacaoScore,
+    valor: valorScore,
+    dormitorios: dormitoriosScore,
+    vagas: vagasScore,
+    scoreFinal,
+  })
 
   return {
     score: scoreFinal,
@@ -137,7 +166,6 @@ export function calculateMatching(
       valorScore,
       dormitoriosScore,
       vagasScore,
-      urgenciaMultiplier,
     },
   }
 }
