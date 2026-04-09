@@ -33,7 +33,6 @@ import ResilienceTester from '@/pages/admin/ResilienceTester'
 import FunctionalTester from '@/pages/admin/FunctionalTester'
 import GoLiveTester from '@/pages/admin/GoLiveTester'
 import HealthCheckTester from '@/pages/admin/HealthCheckTester'
-import RegressionTester from '@/pages/admin/RegressionTester'
 import DatabaseReset from '@/pages/admin/DatabaseReset'
 import AdminProperties from '@/pages/admin/AdminProperties'
 import PontuacaoPage from '@/pages/dashboard/PontuacaoPage'
@@ -129,6 +128,28 @@ const LandlordProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ child
   return <>{children}</>
 }
 
+const AdminRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user, loading } = useAuth()
+
+  if (loading) {
+    return (
+      <div className="flex h-full min-h-[50vh] items-center justify-center">
+        <LoadingSpinner />
+      </div>
+    )
+  }
+
+  const role = user?.user_metadata?.role || user?.app_metadata?.role
+  const isOwner =
+    user?.email === 'marlonjmoro@hotmail.com' || user?.email === 'marlon@eticimoveis.com.br'
+
+  if (!user || (role !== 'admin' && role !== 'gestor' && !isOwner)) {
+    return <Navigate to="/app" replace />
+  }
+
+  return <>{children}</>
+}
+
 const AppContent = () => {
   React.useEffect(() => {
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
@@ -196,7 +217,6 @@ const AppContent = () => {
 
           {/* Redirects for common root routes to avoid 404s */}
           <Route path="/demandas" element={<Navigate to="/app/demandas" replace />} />
-          <Route path="/demanda/:id" element={<Navigate to="/app/demandas" replace />} />
           <Route path="/perfil" element={<Navigate to="/app/perfil" replace />} />
           <Route path="/notificacoes" element={<Navigate to="/app/notificacoes" replace />} />
           <Route path="/ajuda" element={<Navigate to="/app/ajuda" replace />} />
@@ -208,7 +228,6 @@ const AppContent = () => {
           <Route path="/app" element={<Layout />}>
             <Route index element={<DashboardRedirect />} />
             <Route path="demandas" element={<Demandas />} />
-            <Route path="demanda/:id" element={<Demandas />} />
             <Route path="nova-demanda" element={<NovaDemanda />} />
             <Route path="ranking" element={<Ranking />} />
             <Route path="perfil" element={<Perfil />} />
@@ -217,20 +236,110 @@ const AppContent = () => {
             <Route path="gestor-dashboard" element={<GestorDashboard />} />
             <Route path="analytics" element={<AnalyticsDashboard />} />
             <Route path="performance" element={<PerformanceDashboard />} />
-            <Route path="usuarios" element={<Usuarios />} />
-            <Route path="auditoria" element={<Auditoria />} />
-            <Route path="rls-tester" element={<RLSTester />} />
-            <Route path="e2e-tester" element={<E2ETester />} />
-            <Route path="performance-tester" element={<PerformanceTester />} />
-            <Route path="realtime-tester" element={<RealtimeTester />} />
-            <Route path="integration-tester" element={<IntegrationTester />} />
-            <Route path="resilience-tester" element={<ResilienceTester />} />
-            <Route path="functional-tester" element={<FunctionalTester />} />
-            <Route path="go-live-tester" element={<GoLiveTester />} />
-            <Route path="health-check" element={<HealthCheckTester />} />
-            <Route path="regression-tester" element={<RegressionTester />} />
-            <Route path="database-reset" element={<DatabaseReset />} />
-            <Route path="admin/properties" element={<AdminProperties />} />
+            <Route
+              path="usuarios"
+              element={
+                <AdminRoute>
+                  <Usuarios />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="auditoria"
+              element={
+                <AdminRoute>
+                  <Auditoria />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="rls-tester"
+              element={
+                <AdminRoute>
+                  <RLSTester />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="e2e-tester"
+              element={
+                <AdminRoute>
+                  <E2ETester />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="performance-tester"
+              element={
+                <AdminRoute>
+                  <PerformanceTester />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="realtime-tester"
+              element={
+                <AdminRoute>
+                  <RealtimeTester />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="integration-tester"
+              element={
+                <AdminRoute>
+                  <IntegrationTester />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="resilience-tester"
+              element={
+                <AdminRoute>
+                  <ResilienceTester />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="functional-tester"
+              element={
+                <AdminRoute>
+                  <FunctionalTester />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="go-live-tester"
+              element={
+                <AdminRoute>
+                  <GoLiveTester />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="health-check"
+              element={
+                <AdminRoute>
+                  <HealthCheckTester />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="database-reset"
+              element={
+                <AdminRoute>
+                  <DatabaseReset />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="admin/properties"
+              element={
+                <AdminRoute>
+                  <AdminProperties />
+                </AdminRoute>
+              }
+            />
             <Route path="pontuacao" element={<PontuacaoPage />} />
             <Route path="historico" element={<HistoricoPage />} />
             <Route path="perdidos" element={<PerdidosPage />} />
