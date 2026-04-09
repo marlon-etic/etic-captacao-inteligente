@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -7,11 +7,19 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { supabase } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/use-auth'
 import { toast } from 'sonner'
 import { vinculacaoService } from '@/services/vinculacao'
-import { Loader2, Building2, MapPin, DollarSign, Home } from 'lucide-react'
+import { Loader2, Building2, MapPin, DollarSign, Home, Car } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface VinculacaoModalProps {
@@ -35,6 +43,11 @@ export function VinculacaoModal({
   const [saving, setSaving] = useState(false)
   const [linkingId, setLinkingId] = useState<string | null>(null)
 
+  const [filterTipo, setFilterTipo] = useState<string>('Todos')
+  const [filterBairro, setFilterBairro] = useState<string>('')
+  const [filterDorms, setFilterDorms] = useState<string>('Todos')
+  const [filterVagas, setFilterVagas] = useState<string>('Todos')
+
   useEffect(() => {
     if (isOpen) {
       fetchDemandas()
@@ -42,6 +55,10 @@ export function VinculacaoModal({
       setDemandas([])
       setLinkingId(null)
       setSaving(false)
+      setFilterTipo('Todos')
+      setFilterBairro('')
+      setFilterDorms('Todos')
+      setFilterVagas('Todos')
     }
   }, [isOpen])
 
@@ -53,8 +70,16 @@ export function VinculacaoModal({
         supabase.from('demandas_vendas').select('*').eq('status_demanda', 'aberta'),
       ])
 
-      const locacaoData = (locacaoRes.data || []).map((d) => ({ ...d, isLocacao: true }))
-      const vendasData = (vendasRes.data || []).map((d) => ({ ...d, isLocacao: false }))
+      const locacaoData = (locacaoRes.data || []).map((d) => ({
+        ...d,
+        isLocacao: true,
+        tipo: d.tipo_imovel || 'Não informado',
+      }))
+      const vendasData = (vendasRes.data || []).map((d) => ({
+        ...d,
+        isLocacao: false,
+        tipo: d.tipo_imovel || 'Não informado',
+      }))
 
       const allDemandas = [...locacaoData, ...vendasData]
       setDemandas(allDemandas)
@@ -88,6 +113,49 @@ export function VinculacaoModal({
 
     return score
   }
+
+  const safeImovelData = useMemo(() => imovelData || {}, [imovelData])
+
+  const scoredDemandas = useMemo(() => {
+    return [...demandas].sort(
+      (a, b) => calculateMatching(b, safeImovelData) - calculateMatching(a, safeImovelData),
+    )
+  }, [demandas, safeImovelData])
+
+  const filteredDemands = useMemo(() => {
+    return scoredDemandas.filter((d) => {
+      // Tipo - com validação segura
+      if (filterTipo !== 'Todos') {
+        if (!d.tipo || d.tipo !== filterTipo) return false
+      }
+
+      // Bairro
+      if (
+        filterBairro &&
+        !d.bairros?.some((b: string) => b.toLowerCase().includes(filterBairro.toLowerCase()))
+      ) {
+        return false
+      }
+
+      // Dormitórios - converte "Todos" para null para pular validação
+      if (filterDorms !== 'Todos') {
+        const domsValue = parseInt(filterDorms)
+        if (isNaN(domsValue) || !d.dormitorios || d.dormitorios > domsValue) {
+          return false
+        }
+      }
+
+      // Vagas - mesma lógica
+      if (filterVagas !== 'Todos') {
+        const vagasValue = parseInt(filterVagas)
+        if (isNaN(vagasValue) || !d.vagas_estacionamento || d.vagas_estacionamento > vagasValue) {
+          return false
+        }
+      }
+
+      return true
+    })
+  }, [scoredDemandas, filterTipo, filterBairro, filterDorms, filterVagas])
 
   const handleSalvarSemVincular = async () => {
     try {
@@ -196,39 +264,86 @@ export function VinculacaoModal({
     }
   }
 
-  const safeImovelData = imovelData || {}
-  const sortedDemandas = [...demandas].sort(
-    (a, b) => calculateMatching(b, safeImovelData) - calculateMatching(a, safeImovelData),
-  )
-
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-3xl max-h-[70vh] md:max-h-[70vh] h-[70vh] md:h-[70vh] flex flex-col p-0 gap-0 overflow-hidden">
+      <DialogContent className="max-w-4xl max-h-[85vh] md:max-h-[85vh] h-[85vh] md:h-[85vh] flex flex-col p-0 gap-0 overflow-hidden">
         <DialogHeader className="p-4 border-b shrink-0 bg-background relative z-10">
           <DialogTitle className="text-xl">Vincular Imóvel a Demanda</DialogTitle>
           <DialogDescription className="mt-1">
-            Selecione uma demanda ou salve o imóvel como avulso.
+            Selecione uma demanda na lista abaixo ou salve o imóvel como avulso.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto p-2 md:p-3 bg-muted/30">
+        <div className="px-4 py-3 border-b bg-muted/10 grid grid-cols-1 sm:grid-cols-4 gap-3 shrink-0">
+          <div>
+            <Select value={filterTipo} onValueChange={setFilterTipo}>
+              <SelectTrigger className="h-9 text-sm bg-background">
+                <SelectValue placeholder="Tipo" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Todos">Todos os Tipos</SelectItem>
+                <SelectItem value="Casa">Casa</SelectItem>
+                <SelectItem value="Apartamento">Apartamento</SelectItem>
+                <SelectItem value="Terreno">Terreno</SelectItem>
+                <SelectItem value="Galpão">Galpão</SelectItem>
+                <SelectItem value="Comercial">Comercial</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Input
+              placeholder="Filtrar por bairro..."
+              value={filterBairro}
+              onChange={(e) => setFilterBairro(e.target.value)}
+              className="h-9 text-sm bg-background"
+            />
+          </div>
+          <div>
+            <Select value={filterDorms} onValueChange={setFilterDorms}>
+              <SelectTrigger className="h-9 text-sm bg-background">
+                <SelectValue placeholder="Dormitórios" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Todos">Dorms: Todos</SelectItem>
+                <SelectItem value="1">Até 1 dorm.</SelectItem>
+                <SelectItem value="2">Até 2 dorms.</SelectItem>
+                <SelectItem value="3">Até 3 dorms.</SelectItem>
+                <SelectItem value="4">Até 4+ dorms.</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Select value={filterVagas} onValueChange={setFilterVagas}>
+              <SelectTrigger className="h-9 text-sm bg-background">
+                <SelectValue placeholder="Vagas" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Todos">Vagas: Todas</SelectItem>
+                <SelectItem value="1">Até 1 vaga</SelectItem>
+                <SelectItem value="2">Até 2 vagas</SelectItem>
+                <SelectItem value="3">Até 3+ vagas</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4 bg-muted/30">
           {loading ? (
             <div className="flex flex-col items-center justify-center h-full">
               <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
               <p className="text-muted-foreground text-sm animate-pulse">Buscando demandas...</p>
             </div>
-          ) : sortedDemandas.length === 0 ? (
+          ) : filteredDemands.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-6 text-center">
               <Building2 className="w-16 h-16 mb-4 opacity-20" />
-              <p className="font-medium text-lg text-foreground mb-1">Nenhuma demanda disponível</p>
+              <p className="font-medium text-lg text-foreground mb-1">Nenhuma demanda encontrada</p>
               <p className="text-sm max-w-md">
-                Não encontramos demandas em aberto no momento. Você ainda pode salvar o imóvel como
-                avulso.
+                Não encontramos demandas que correspondam aos filtros selecionados.
               </p>
             </div>
           ) : (
-            <div className="flex flex-col gap-2 md:gap-3">
-              {sortedDemandas.map((demanda) => {
+            <div className="flex flex-col gap-3">
+              {filteredDemands.map((demanda) => {
                 const isLinking = linkingId === demanda.id
                 const matchScore = calculateMatching(demanda, safeImovelData)
 
@@ -249,7 +364,10 @@ export function VinculacaoModal({
                         >
                           {demanda.isLocacao ? 'Locação' : 'Venda'}
                         </span>
-                        <h4 className="font-semibold text-base line-clamp-1">
+                        <span className="text-xs px-2.5 py-0.5 rounded-full font-medium border bg-muted text-muted-foreground">
+                          {demanda.tipo}
+                        </span>
+                        <h4 className="font-semibold text-base line-clamp-1 ml-1">
                           {demanda.nome_cliente ||
                             demanda.cliente_nome ||
                             'Cliente não identificado'}
@@ -261,11 +379,14 @@ export function VinculacaoModal({
                         )}
                       </div>
 
-                      <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-muted-foreground">
+                      <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-muted-foreground mt-1">
                         {demanda.bairros && demanda.bairros.length > 0 && (
                           <div className="flex items-center gap-1.5">
                             <MapPin className="w-4 h-4 text-primary/60" />
-                            <span className="line-clamp-1 max-w-[200px]">
+                            <span
+                              className="line-clamp-1 max-w-[200px]"
+                              title={demanda.bairros.join(', ')}
+                            >
                               {demanda.bairros.join(', ')}
                             </span>
                           </div>
@@ -280,6 +401,12 @@ export function VinculacaoModal({
                           <div className="flex items-center gap-1.5">
                             <Home className="w-4 h-4 text-primary/60" />
                             <span>{demanda.dormitorios} dorm.</span>
+                          </div>
+                        )}
+                        {demanda.vagas_estacionamento > 0 && (
+                          <div className="flex items-center gap-1.5">
+                            <Car className="w-4 h-4 text-primary/60" />
+                            <span>{demanda.vagas_estacionamento} vagas</span>
                           </div>
                         )}
                       </div>
@@ -299,7 +426,7 @@ export function VinculacaoModal({
                           Vinculando...
                         </>
                       ) : (
-                        'VINCULAR DEMANDA'
+                        'VINCULAR'
                       )}
                     </Button>
                   </div>
