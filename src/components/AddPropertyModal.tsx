@@ -71,11 +71,51 @@ export function AddPropertyModal({ isOpen, onClose, onSuccess }: Props) {
   const validateStep1 = () => {
     const newErrors: Record<string, string> = {}
     if (!code) newErrors.code = 'Código é obrigatório'
-    if (!address) newErrors.address = 'Bairro é obrigatório'
-    if (!price || Number(price) <= 0) newErrors.price = 'Preço deve ser maior que zero'
+
+    const bairrosArray: string[] = address
+      ? address
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : []
+    if (!address || !Array.isArray(bairrosArray) || bairrosArray.length === 0) {
+      newErrors.address = 'Bairro é obrigatório (deve ser um array de strings)'
+    }
+
+    const parsedPrice = parseFloat(price)
+    if (!price || isNaN(parsedPrice) || parsedPrice <= 0) {
+      newErrors.price = 'Preço deve ser maior que zero'
+    }
+
+    if (bedrooms.trim() !== '') {
+      if (!/^\d+$/.test(bedrooms.trim())) {
+        newErrors.bedrooms = 'Apenas números permitidos'
+      } else {
+        const parsedBedrooms = parseInt(bedrooms, 10)
+        if (isNaN(parsedBedrooms) || parsedBedrooms < 0) {
+          newErrors.bedrooms = 'Valor inválido'
+        }
+      }
+    }
+
+    if (parking.trim() !== '') {
+      if (!/^\d+$/.test(parking.trim())) {
+        newErrors.parking = 'Apenas números permitidos'
+      } else {
+        const parsedParking = parseInt(parking, 10)
+        if (isNaN(parsedParking) || parsedParking < 0) {
+          newErrors.parking = 'Valor inválido'
+        }
+      }
+    }
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors)
+      toast({
+        title: '❌ Erro de validação',
+        description: 'Verifique os campos destacados antes de prosseguir.',
+        variant: 'destructive',
+      })
       return false
     }
     setErrors({})
@@ -102,23 +142,39 @@ export function AddPropertyModal({ isOpen, onClose, onSuccess }: Props) {
     setIsSubmitting(true)
 
     try {
-      const extraInfo = `Dorms: ${bedrooms || 'Indif'}, Vagas: ${parking || 'Indif'}. Obs: ${notes || '-'}`
+      const parsedBedrooms = bedrooms.trim() !== '' ? parseInt(bedrooms, 10) : 0
+      const parsedParking = parking.trim() !== '' ? parseInt(parking, 10) : 0
+      const parsedPrice = parseFloat(price)
+
+      const extraInfo = `Dorms: ${parsedBedrooms}, Vagas: ${parsedParking}. Obs: ${notes || '-'}`
+
+      const bairrosArray: string[] = address
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
+      const enderecoValue = bairrosArray.length > 0 ? bairrosArray.join(', ') : address
 
       const payload = {
         codigo_imovel: code.toUpperCase(),
-        endereco: address,
-        preco: Number(price),
+        endereco: enderecoValue,
+        preco: parsedPrice,
         status_captacao: 'pendente',
         user_captador_id: currentUser?.id,
         captador_id: currentUser?.id,
         demanda_locacao_id: type === 'Aluguel' ? demandId : null,
         demanda_venda_id: type === 'Venda' ? demandId : null,
         localizacao_texto: extraInfo,
-        dormitorios: bedrooms !== '' ? Number(bedrooms) : 0,
-        vagas: parking !== '' ? Number(parking) : 0,
+        dormitorios: parsedBedrooms,
+        vagas: parsedParking,
         observacoes: notes,
         tipo,
       }
+
+      console.log('[AddProperty] Tipos de dados processados:', {
+        dormitorios: { value: payload.dormitorios, type: typeof payload.dormitorios },
+        vagas: { value: payload.vagas, type: typeof payload.vagas },
+        endereco: { value: bairrosArray, type: 'Array<string>' },
+      })
 
       const { error } = await supabase.from('imoveis_captados').insert(payload)
 
@@ -154,9 +210,9 @@ export function AddPropertyModal({ isOpen, onClose, onSuccess }: Props) {
 
   const propertyDataForSelector = {
     neighborhood: address,
-    price: Number(price) || undefined,
-    bedrooms: Number(bedrooms) || undefined,
-    parking: Number(parking) || undefined,
+    price: parseFloat(price) || undefined,
+    bedrooms: bedrooms.trim() !== '' ? parseInt(bedrooms, 10) : 0,
+    parking: parking.trim() !== '' ? parseInt(parking, 10) : 0,
     type,
   }
 
@@ -257,21 +313,35 @@ export function AddPropertyModal({ isOpen, onClose, onSuccess }: Props) {
                   <div>
                     <Label className="font-bold text-[#333333] mb-1.5 block">Dormitórios</Label>
                     <Input
-                      type="number"
+                      type="text"
                       value={bedrooms}
-                      onChange={(e) => setBedrooms(e.target.value)}
-                      placeholder="Opcional"
+                      onChange={(e) => {
+                        setBedrooms(e.target.value)
+                        setErrors((prev) => ({ ...prev, bedrooms: '' }))
+                      }}
+                      placeholder="Ex: 2"
+                      className={errors.bedrooms ? 'border-red-500 ring-red-500' : ''}
                     />
+                    {errors.bedrooms && (
+                      <p className="text-red-500 text-xs mt-1 font-medium">{errors.bedrooms}</p>
+                    )}
                   </div>
 
                   <div>
                     <Label className="font-bold text-[#333333] mb-1.5 block">Vagas</Label>
                     <Input
-                      type="number"
+                      type="text"
                       value={parking}
-                      onChange={(e) => setParking(e.target.value)}
-                      placeholder="Opcional"
+                      onChange={(e) => {
+                        setParking(e.target.value)
+                        setErrors((prev) => ({ ...prev, parking: '' }))
+                      }}
+                      placeholder="Ex: 1"
+                      className={errors.parking ? 'border-red-500 ring-red-500' : ''}
                     />
+                    {errors.parking && (
+                      <p className="text-red-500 text-xs mt-1 font-medium">{errors.parking}</p>
+                    )}
                   </div>
 
                   <div className="md:col-span-2">
