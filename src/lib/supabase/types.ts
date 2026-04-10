@@ -106,6 +106,7 @@ export type Database = {
           status_demanda: string | null
           telefone: string | null
           tenant_score: number | null
+          tipo: string | null
           tipo_demanda: string | null
           tipo_imovel: string | null
           updated_at: string | null
@@ -138,6 +139,7 @@ export type Database = {
           status_demanda?: string | null
           telefone?: string | null
           tenant_score?: number | null
+          tipo?: string | null
           tipo_demanda?: string | null
           tipo_imovel?: string | null
           updated_at?: string | null
@@ -170,6 +172,7 @@ export type Database = {
           status_demanda?: string | null
           telefone?: string | null
           tenant_score?: number | null
+          tipo?: string | null
           tipo_demanda?: string | null
           tipo_imovel?: string | null
           updated_at?: string | null
@@ -225,6 +228,7 @@ export type Database = {
           quartos: number | null
           status_demanda: string | null
           telefone: string | null
+          tipo: string | null
           tipo_imovel: string | null
           updated_at: string | null
           urgencia: string | null
@@ -254,6 +258,7 @@ export type Database = {
           quartos?: number | null
           status_demanda?: string | null
           telefone?: string | null
+          tipo?: string | null
           tipo_imovel?: string | null
           updated_at?: string | null
           urgencia?: string | null
@@ -283,6 +288,7 @@ export type Database = {
           quartos?: number | null
           status_demanda?: string | null
           telefone?: string | null
+          tipo?: string | null
           tipo_imovel?: string | null
           updated_at?: string | null
           urgencia?: string | null
@@ -1257,6 +1263,7 @@ export const Constants = {
 //   vinculacao_captador_id: uuid (nullable)
 //   captadores_busca: jsonb (nullable, default: '[]'::jsonb)
 //   tipo_imovel: text (nullable, default: 'Casa'::text)
+//   tipo: text (nullable, default: 'Locação'::text)
 // Table: demandas_vendas
 //   id: uuid (not null, default: gen_random_uuid())
 //   cliente_nome: character varying (nullable)
@@ -1285,6 +1292,7 @@ export const Constants = {
 //   grupo_id: uuid (nullable)
 //   vinculacao_captador_id: uuid (nullable)
 //   captadores_busca: jsonb (nullable, default: '[]'::jsonb)
+//   tipo: text (nullable, default: 'Venda'::text)
 // Table: grupos_demandas
 //   id: uuid (not null, default: gen_random_uuid())
 //   bairro: text (not null)
@@ -2490,16 +2498,24 @@ export const Constants = {
 //    SECURITY DEFINER
 //   AS $function$
 //   BEGIN
-//     -- Automatically infer type based on linked demand
-//     IF NEW.demanda_locacao_id IS NOT NULL THEN
-//       NEW.tipo := 'Aluguel';
-//     ELSIF NEW.demanda_venda_id IS NOT NULL THEN
+//     -- If tipo is 'Ambos', preserve it. Otherwise, infer based on linked demand if applicable.
+//     IF NEW.tipo = 'Ambos' THEN
+//       -- Keep it as Ambos
+//       NULL;
+//     ELSIF NEW.demanda_locacao_id IS NOT NULL AND (NEW.tipo IS NULL OR NEW.tipo != 'Locação') THEN
+//       NEW.tipo := 'Locação';
+//     ELSIF NEW.demanda_venda_id IS NOT NULL AND (NEW.tipo IS NULL OR NEW.tipo != 'Venda') THEN
 //       NEW.tipo := 'Venda';
 //     END IF;
 //   
 //     -- Ensure it's not null if missing (default to Venda if solto and no type specified)
 //     IF NEW.tipo IS NULL THEN
 //       NEW.tipo := 'Venda';
+//     END IF;
+//   
+//     -- Normalize Aluguel to Locação just in case
+//     IF NEW.tipo = 'Aluguel' THEN
+//       NEW.tipo := 'Locação';
 //     END IF;
 //   
 //     RETURN NEW;
