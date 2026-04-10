@@ -1,16 +1,16 @@
 export interface ImovelForMatching {
-  endereco?: string
-  preco?: number
-  dormitorios?: number
-  vagas?: number
+  endereco?: string | string[]
+  preco?: number | string
+  dormitorios?: number | string
+  vagas?: number | string
 }
 
 export interface ClienteForMatching {
   bairros?: string[]
-  valor_minimo?: number
-  valor_maximo?: number
-  dormitorios?: number
-  vagas_estacionamento?: number
+  valor_minimo?: number | string
+  valor_maximo?: number | string
+  dormitorios?: number | string
+  vagas_estacionamento?: number | string
 }
 
 export interface MatchingResult {
@@ -40,30 +40,63 @@ export function calculateMatching(
     }
   }
 
+  // --- CONVERSÃO SEGURA DE TIPOS ---
+  const rawImovelDorms = imovel.dormitorios
+  const rawCliDorms = cliente.dormitorios
+  const rawImovelVagas = imovel.vagas
+  const rawCliVagas = cliente.vagas_estacionamento
+  const rawPreco = imovel.preco
+  const rawMinVal = cliente.valor_minimo
+  const rawMaxVal = cliente.valor_maximo
+  const rawEndereco = imovel.endereco
+
+  const imovelDorms = parseInt(String(rawImovelDorms || '0'), 10) || 0
+  const cliDorms = parseInt(String(rawCliDorms || '0'), 10) || 0
+  const imovelVagas = parseInt(String(rawImovelVagas || '0'), 10) || 0
+  const cliVagas = parseInt(String(rawCliVagas || '0'), 10) || 0
+
+  const preco = Number(rawPreco) || 0
+  const minVal = Number(rawMinVal) || 0
+  const maxVal = Number(rawMaxVal) || 0
+
+  console.log('[MATCHING DEBUG] Tipos convertidos:', {
+    dormitorios: { original: rawImovelDorms, convertido: imovelDorms, cliente: cliDorms },
+    vagas: { original: rawImovelVagas, convertido: imovelVagas, cliente: cliVagas },
+    preco: { original: rawPreco, convertido: preco, min: minVal, max: maxVal },
+    endereco: { original: rawEndereco, isArray: Array.isArray(rawEndereco) },
+  })
+
+  // --- LOCALIZAÇÃO ---
   let localizacaoScore = 0
+  let imovelEnderecos: string[] = []
+
+  if (Array.isArray(rawEndereco)) {
+    imovelEnderecos = rawEndereco.map((e) => String(e).toLowerCase())
+  } else if (rawEndereco) {
+    imovelEnderecos = [String(rawEndereco).toLowerCase()]
+  }
+
   if (!cliente.bairros || cliente.bairros.length === 0) {
     localizacaoScore = 100
-  } else if (imovel.endereco) {
-    const imovelBairro = imovel.endereco.toLowerCase()
-    const hasMatch = cliente.bairros.some(
-      (b) =>
-        b && (imovelBairro.includes(b.toLowerCase()) || b.toLowerCase().includes(imovelBairro)),
-    )
+  } else if (imovelEnderecos.length > 0) {
+    const hasMatch = cliente.bairros.some((b) => {
+      if (!b) return false
+      const bLower = String(b).toLowerCase()
+      return imovelEnderecos.some((end) => end.includes(bLower) || bLower.includes(end))
+    })
     localizacaoScore = hasMatch ? 100 : 0
   } else {
     localizacaoScore = 0
   }
 
   console.log('[MATCHING] Localização:', {
-    imovelBairro: imovel.endereco,
+    imovelEnderecos,
     clienteBairros: cliente.bairros,
     score: localizacaoScore,
   })
 
+  // --- VALOR ---
   let valorScore = 0
-  const preco = imovel.preco || 0
-  const minVal = cliente.valor_minimo || 0
-  const maxVal = cliente.valor_maximo || 0
 
   if (minVal === 0 && maxVal === 0) {
     valorScore = 100
@@ -106,9 +139,8 @@ export function calculateMatching(
     score: valorScore,
   })
 
+  // --- DORMITÓRIOS ---
   let dormitoriosScore = 0
-  const imovelDorms = imovel.dormitorios || 0
-  const cliDorms = cliente.dormitorios || 0
 
   if (cliDorms === 0) {
     dormitoriosScore = 100
@@ -126,9 +158,8 @@ export function calculateMatching(
     score: dormitoriosScore,
   })
 
+  // --- VAGAS ---
   let vagasScore = 0
-  const imovelVagas = imovel.vagas || 0
-  const cliVagas = cliente.vagas_estacionamento || 0
 
   if (cliVagas === 0) {
     vagasScore = 100
@@ -146,6 +177,7 @@ export function calculateMatching(
     score: vagasScore,
   })
 
+  // --- SCORE FINAL ---
   const baseScore =
     localizacaoScore * 0.25 + valorScore * 0.25 + dormitoriosScore * 0.25 + vagasScore * 0.25
 
