@@ -113,6 +113,8 @@ export function CapturePropertyModal({ demand, isOpen, onClose, onSuccess }: Pro
       const extraInfo = `Dorms: ${parsedBedrooms}, Vagas: ${parsedParking}. Obs: ${notes || '-'}`
       const enderecoValue = bairrosArray.length > 0 ? bairrosArray.join(', ') : address
 
+      const isLocacao = 'sdr_id' in demand || 'renda_mensal_estimada' in demand
+
       const payload = {
         codigo_imovel: code.toUpperCase(),
         endereco: enderecoValue,
@@ -120,9 +122,8 @@ export function CapturePropertyModal({ demand, isOpen, onClose, onSuccess }: Pro
         status_captacao: 'pendente',
         user_captador_id: currentUser?.id,
         captador_id: currentUser?.id,
-        demanda_locacao_id: demand.tipo === 'Aluguel' ? demand.id : null,
-        demanda_venda_id: demand.tipo === 'Venda' ? demand.id : null,
-        tipo: demand.tipo === 'Aluguel' ? 'Aluguel' : 'Venda',
+        demanda_locacao_id: isLocacao ? demand.id : null,
+        demanda_venda_id: !isLocacao ? demand.id : null,
         localizacao_texto: extraInfo,
         dormitorios: parsedBedrooms,
         vagas: parsedParking,

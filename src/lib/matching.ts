@@ -66,7 +66,7 @@ export function calculateMatching(
     endereco: { original: rawEndereco, isArray: Array.isArray(rawEndereco) },
   })
 
-  // --- LOCALIZAÇÃO ---
+  // --- CRITÉRIO 1: LOCALIZAÇÃO (25%) ---
   let localizacaoScore = 0
   let imovelEnderecos: string[] = []
 
@@ -95,7 +95,7 @@ export function calculateMatching(
     score: localizacaoScore,
   })
 
-  // --- VALOR ---
+  // --- CRITÉRIO 2: VALOR (25%) ---
   let valorScore = 0
 
   if (minVal === 0 && maxVal === 0) {
@@ -139,7 +139,7 @@ export function calculateMatching(
     score: valorScore,
   })
 
-  // --- DORMITÓRIOS ---
+  // --- CRITÉRIO 3: DORMITÓRIOS (25%) ---
   let dormitoriosScore = 0
 
   if (cliDorms === 0) {
@@ -158,7 +158,7 @@ export function calculateMatching(
     score: dormitoriosScore,
   })
 
-  // --- VAGAS ---
+  // --- CRITÉRIO 4: VAGAS (25%) ---
   let vagasScore = 0
 
   if (cliVagas === 0) {
@@ -177,13 +177,13 @@ export function calculateMatching(
     score: vagasScore,
   })
 
-  // --- SCORE FINAL ---
+  // --- SCORE FINAL (SEM TIPO) ---
   const baseScore =
     localizacaoScore * 0.25 + valorScore * 0.25 + dormitoriosScore * 0.25 + vagasScore * 0.25
 
   const scoreFinal = Math.min(Math.max(Math.round(baseScore), 0), 100)
 
-  console.log('[MATCHING] Score Final:', {
+  console.log('[MATCHING] Score Final (SEM TIPO):', {
     localizacao: localizacaoScore,
     valor: valorScore,
     dormitorios: dormitoriosScore,

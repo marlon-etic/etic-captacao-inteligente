@@ -10,13 +10,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
 import useAppStore from '@/stores/useAppStore'
 import { supabase } from '@/lib/supabase/client'
@@ -45,7 +38,6 @@ export function AddPropertyModal({ isOpen, onClose, onSuccess }: Props) {
   const [bedrooms, setBedrooms] = useState('')
   const [parking, setParking] = useState('')
   const [notes, setNotes] = useState('')
-  const [type, setType] = useState<'Venda' | 'Aluguel'>('Venda')
 
   // Linking Data
   const [demandId, setDemandId] = useState<string | null>(null)
@@ -62,7 +54,6 @@ export function AddPropertyModal({ isOpen, onClose, onSuccess }: Props) {
       setBedrooms('')
       setParking('')
       setNotes('')
-      setType('Venda')
       setDemandId(null)
       setErrors({})
     }
@@ -154,20 +145,40 @@ export function AddPropertyModal({ isOpen, onClose, onSuccess }: Props) {
         .filter(Boolean)
       const enderecoValue = bairrosArray.length > 0 ? bairrosArray.join(', ') : address
 
-      const payload = {
+      const payload: any = {
         codigo_imovel: code.toUpperCase(),
         endereco: enderecoValue,
         preco: parsedPrice,
         status_captacao: 'pendente',
         user_captador_id: currentUser?.id,
         captador_id: currentUser?.id,
-        demanda_locacao_id: type === 'Aluguel' ? demandId : null,
-        demanda_venda_id: type === 'Venda' ? demandId : null,
+        demanda_locacao_id: null,
+        demanda_venda_id: null,
         localizacao_texto: extraInfo,
         dormitorios: parsedBedrooms,
         vagas: parsedParking,
         observacoes: notes,
-        tipo,
+      }
+
+      if (demandId) {
+        // Encontrar a qual tabela a demanda pertence já que removemos "tipo"
+        const { data: locData } = await supabase
+          .from('demandas_locacao')
+          .select('id')
+          .eq('id', demandId)
+          .maybeSingle()
+        if (locData) {
+          payload.demanda_locacao_id = demandId
+        } else {
+          const { data: venData } = await supabase
+            .from('demandas_vendas')
+            .select('id')
+            .eq('id', demandId)
+            .maybeSingle()
+          if (venData) {
+            payload.demanda_venda_id = demandId
+          }
+        }
       }
 
       console.log('[AddProperty] Tipos de dados processados:', {
@@ -213,7 +224,6 @@ export function AddPropertyModal({ isOpen, onClose, onSuccess }: Props) {
     price: parseFloat(price) || undefined,
     bedrooms: bedrooms.trim() !== '' ? parseInt(bedrooms, 10) : 0,
     parking: parking.trim() !== '' ? parseInt(parking, 10) : 0,
-    type,
   }
 
   return (
@@ -241,21 +251,7 @@ export function AddPropertyModal({ isOpen, onClose, onSuccess }: Props) {
           <>
             <ScrollArea className="flex-1 p-4 md:p-6 bg-white max-h-[70vh]">
               <div className="space-y-4">
-                {' '}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="md:col-span-2">
-                    <Label className="font-bold text-[#333333] mb-1.5 block">Finalidade</Label>
-                    <Select value={type} onValueChange={(v: any) => setType(v)}>
-                      <SelectTrigger className="min-h-[48px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Venda">Venda</SelectItem>
-                        <SelectItem value="Aluguel">Aluguel</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
                   <div>
                     <Label className="font-bold text-[#333333] mb-1.5 block">
                       Código do Imóvel <span className="text-red-500">*</span>

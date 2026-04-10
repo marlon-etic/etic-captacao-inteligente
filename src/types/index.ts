@@ -128,7 +128,6 @@ export interface CapturedProperty {
   propostaStatus?: 'em análise' | 'aceita' | 'recusada'
   fechamentoDate?: string
   fechamentoValue?: number
-  fechamentoType?: 'Venda' | 'Aluguel'
   fechamentoObs?: string
   history?: PropertyAction[]
   numero_imovel_para_demanda?: number
@@ -141,8 +140,6 @@ export interface CapturedProperty {
   data_vinculacao_manual?: string
   captador_id?: string
   captador_name?: string
-  propertyType?: 'Venda' | 'Aluguel'
-  tipo?: string
   bedrooms?: number
   bathrooms?: number
   parkingSpots?: number
@@ -170,7 +167,6 @@ export interface Demand {
   description: string
   timeframe: string
   similarProfilesCount?: number
-  type: 'Venda' | 'Aluguel'
   status: DemandStatus
   createdBy: string
   assignedTo?: string
@@ -268,7 +264,6 @@ export interface GroupComment {
 export interface InactiveGroup {
   id: string
   location: string[]
-  type: string
   bedrooms: number
   bathrooms: number
   parkingSpots: number

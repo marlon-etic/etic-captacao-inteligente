@@ -36,39 +36,43 @@ export function VinculacaoModal({ isOpen, onClose, imovelData, onSuccess }: Vinc
   const [confirmLowScore, setConfirmLowScore] = useState(false)
 
   const imovelNormalizado = useMemo(() => {
-    if (!imovelData) return { tipo: 'Venda' }
-    return {
-      ...imovelData,
-      tipo: imovelData.tipo || 'Venda',
-    }
+    if (!imovelData) return {}
+    return { ...imovelData }
   }, [imovelData])
 
   useEffect(() => {
-    if (isOpen && imovelNormalizado) {
+    if (isOpen && imovelData) {
       fetchDemands()
     } else {
       setSelectedDemand(null)
       setShowLowScoreWarning(false)
       setConfirmLowScore(false)
     }
-  }, [isOpen, imovelNormalizado])
+  }, [isOpen, imovelData])
 
   const fetchDemands = async () => {
     setLoadingDemands(true)
     try {
-      const isLocacao = imovelNormalizado.tipo === 'Aluguel'
-      const table = isLocacao ? 'demandas_locacao' : 'demandas_vendas'
+      const [locacaoRes, vendasRes] = await Promise.all([
+        supabase
+          .from('demandas_locacao')
+          .select('*')
+          .in('status_demanda', ['aberta', 'atendida'])
+          .order('created_at', { ascending: false })
+          .limit(50),
+        supabase
+          .from('demandas_vendas')
+          .select('*')
+          .in('status_demanda', ['aberta', 'atendida'])
+          .order('created_at', { ascending: false })
+          .limit(50),
+      ])
 
-      const { data, error } = await supabase
-        .from(table)
-        .select('*')
-        .in('status_demanda', ['aberta', 'atendida'])
-        .order('created_at', { ascending: false })
-        .limit(50)
-
-      if (!error && data) {
-        setDemands(data)
-      }
+      const combined = [
+        ...(locacaoRes.data || []).map((d) => ({ ...d, _table: 'demandas_locacao' })),
+        ...(vendasRes.data || []).map((d) => ({ ...d, _table: 'demandas_vendas' })),
+      ]
+      setDemands(combined)
     } catch (err) {
       console.error(err)
     } finally {
@@ -130,8 +134,7 @@ export function VinculacaoModal({ isOpen, onClose, imovelData, onSuccess }: Vinc
     const timeoutId = setTimeout(() => controller.abort(), 30000)
 
     try {
-      const isLocacao =
-        selectedDemand.tipo_demanda === 'Aluguel' || imovelNormalizado.tipo === 'Aluguel'
+      const isLocacao = selectedDemand._table === 'demandas_locacao'
 
       console.log('[VINCULAR] Iniciando vinculação:', {
         imovelId: imovelNormalizado.id,
