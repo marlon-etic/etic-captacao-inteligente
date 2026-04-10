@@ -71,6 +71,7 @@ export function ModalDemandaVenda({ isOpen, onClose }: { isOpen: boolean; onClos
   const { toast } = useToast()
   const { addDemand } = useAppStore()
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [tipoDemanda, setTipoDemanda] = useState('Venda')
 
   const { isKeyboardOpen, viewportHeight, keyboardHeight } = useKeyboard()
   const isMobile = useIsMobile()
@@ -98,33 +99,68 @@ export function ModalDemandaVenda({ isOpen, onClose }: { isOpen: boolean; onClos
   }, [isOpen, form])
 
   const onSubmit = async (values: FormValues) => {
+    if (!tipoDemanda) {
+      toast({
+        title: '❌ Tipo de demanda é obrigatório',
+        variant: 'destructive',
+      })
+      return
+    }
+
     setIsSubmitting(true)
     try {
-      const result = await insertDemandaVenda({
-        nome_cliente: values.nome_cliente,
-        telefone: values.telefone || null,
-        tipo_imovel: values.tipo_imovel,
-        bairros: values.bairros,
-        valor_minimo: values.valor_minimo ? Number(values.valor_minimo) : null,
-        valor_maximo: values.valor_maximo ? Number(values.valor_maximo) : null,
-        dormitorios:
-          values.dormitorios !== undefined &&
-          values.dormitorios !== null &&
-          values.dormitorios !== ''
-            ? Number(values.dormitorios)
-            : 0,
-        vagas_estacionamento:
-          values.vagas_estacionamento !== undefined &&
-          values.vagas_estacionamento !== null &&
-          values.vagas_estacionamento !== ''
-            ? Number(values.vagas_estacionamento)
-            : 0,
-        nivel_urgencia: values.nivel_urgencia,
-        necessidades_especificas: values.necessidades_especificas || null,
-      })
+      let result
+      if (tipoDemanda === 'Locação') {
+        const { data, error } = await supabase
+          .from('demandas_locacao')
+          .insert({
+            nome_cliente: values.nome_cliente,
+            telefone: values.telefone || null,
+            bairros: values.bairros,
+            valor_minimo: values.valor_minimo ? Number(values.valor_minimo) : null,
+            valor_maximo: values.valor_maximo ? Number(values.valor_maximo) : null,
+            dormitorios: values.dormitorios ? Number(values.dormitorios) : 0,
+            vagas_estacionamento: values.vagas_estacionamento
+              ? Number(values.vagas_estacionamento)
+              : 0,
+            nivel_urgencia: values.nivel_urgencia,
+            observacoes: values.necessidades_especificas || null,
+            status_demanda: 'aberta',
+            tipo: 'Locação',
+            tipo_demanda: 'Locação',
+          })
+          .select('*')
+          .single()
+        if (error) throw error
+        result = data
+      } else {
+        result = await insertDemandaVenda({
+          nome_cliente: values.nome_cliente,
+          telefone: values.telefone || null,
+          tipo_imovel: values.tipo_imovel,
+          bairros: values.bairros,
+          valor_minimo: values.valor_minimo ? Number(values.valor_minimo) : null,
+          valor_maximo: values.valor_maximo ? Number(values.valor_maximo) : null,
+          dormitorios:
+            values.dormitorios !== undefined &&
+            values.dormitorios !== null &&
+            values.dormitorios !== ''
+              ? Number(values.dormitorios)
+              : 0,
+          vagas_estacionamento:
+            values.vagas_estacionamento !== undefined &&
+            values.vagas_estacionamento !== null &&
+            values.vagas_estacionamento !== ''
+              ? Number(values.vagas_estacionamento)
+              : 0,
+          nivel_urgencia: values.nivel_urgencia,
+          necessidades_especificas: values.necessidades_especificas || null,
+          tipo: 'Venda',
+        } as any)
+      }
 
       window.dispatchEvent(
-        new CustomEvent('demanda-created', { detail: { tipo: 'Venda', data: result } }),
+        new CustomEvent('demanda-created', { detail: { tipo: tipoDemanda, data: result } }),
       )
 
       addDemand({
@@ -201,6 +237,18 @@ export function ModalDemandaVenda({ isOpen, onClose }: { isOpen: boolean; onClos
           <Form {...form}>
             <form id="venda-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1.5 md:col-span-2 mb-2">
+                  <label className="text-[14px] font-bold text-gray-800">Tipo de Demanda *</label>
+                  <select
+                    value={tipoDemanda}
+                    onChange={(e) => setTipoDemanda(e.target.value)}
+                    className="w-full h-12 px-3 rounded-lg border border-gray-300 bg-white text-[14px] outline-none focus:ring-1 focus:ring-emerald-500"
+                    required
+                  >
+                    <option value="Venda">Venda</option>
+                    <option value="Locação">Locação</option>
+                  </select>
+                </div>
                 <FormField
                   control={form.control}
                   name="nome_cliente"

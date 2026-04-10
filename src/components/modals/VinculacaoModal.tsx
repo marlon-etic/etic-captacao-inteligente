@@ -69,8 +69,16 @@ export function VinculacaoModal({ isOpen, onClose, imovelData, onSuccess }: Vinc
       ])
 
       const combined = [
-        ...(locacaoRes.data || []).map((d) => ({ ...d, _table: 'demandas_locacao' })),
-        ...(vendasRes.data || []).map((d) => ({ ...d, _table: 'demandas_vendas' })),
+        ...(locacaoRes.data || []).map((d) => ({
+          ...d,
+          _table: 'demandas_locacao',
+          tipo: d.tipo || 'Locação',
+        })),
+        ...(vendasRes.data || []).map((d) => ({
+          ...d,
+          _table: 'demandas_vendas',
+          tipo: d.tipo || 'Venda',
+        })),
       ]
       setDemands(combined)
     } catch (err) {
@@ -85,6 +93,24 @@ export function VinculacaoModal({ isOpen, onClose, imovelData, onSuccess }: Vinc
 
     return demands
       .map((demand) => {
+        const imovelTipo = imovelNormalizado.tipo || 'Venda'
+        const demandaTipo = demand.tipo || 'Venda'
+
+        const tiposCompativeis = imovelTipo === 'Ambos' || imovelTipo === demandaTipo
+
+        if (!tiposCompativeis) {
+          return {
+            ...demand,
+            matchScore: 0,
+            matchDetails: {
+              localizacaoScore: 0,
+              valorScore: 0,
+              dormitoriosScore: 0,
+              vagasScore: 0,
+            },
+          }
+        }
+
         const match = calculateMatching(imovelNormalizado as any, demand as any)
         return {
           ...demand,
@@ -92,6 +118,7 @@ export function VinculacaoModal({ isOpen, onClose, imovelData, onSuccess }: Vinc
           matchDetails: match.details,
         }
       })
+      .filter((d) => d.matchScore > 0)
       .sort((a, b) => b.matchScore - a.matchScore)
   }, [demands, imovelNormalizado])
 

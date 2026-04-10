@@ -151,6 +151,7 @@ export interface CapturedProperty {
   dormitorios?: number
   vagas?: number
   observacoes?: string
+  tipo?: string
 }
 
 export interface Demand {
@@ -197,6 +198,7 @@ export interface Demand {
   perdida_por_tipo?: string
   grupo_id?: string
   posicao_no_grupo?: number
+  tipo?: string
 }
 
 export interface WebhookEvent {

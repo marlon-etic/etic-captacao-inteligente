@@ -50,7 +50,7 @@ const formSchema = z
       .email('Email inválido. Use formato: exemplo@email.com')
       .optional()
       .or(z.literal('')),
-    tipo_demanda: z.enum(['Venda', 'Aluguel']).default('Aluguel'),
+    tipo_demanda: z.enum(['Venda', 'Locação']).default('Locação'),
     bairros: z
       .array(z.string())
       .min(1, 'Selecione pelo menos um bairro')
@@ -116,7 +116,7 @@ export function ModalDemandaLocacao({ isOpen, onClose }: Props) {
       nome_cliente: '',
       telefone: '',
       email: '',
-      tipo_demanda: 'Aluguel',
+      tipo_demanda: 'Locação',
       bairros: [],
       valor_minimo: 0 as any,
       valor_maximo: 0 as any,
@@ -147,37 +147,52 @@ export function ModalDemandaLocacao({ isOpen, onClose }: Props) {
       const { data: authData } = await supabase.auth.getUser()
       if (!authData.user) throw new Error('Usuário não autenticado')
 
-      const { data, error } = await supabase
-        .from('demandas_locacao')
-        .insert({
-          ...values,
-          telefone: values.telefone || null,
-          email: values.email || null,
-          observacoes: values.observacoes || null,
-          status_demanda: 'aberta',
-          sdr_id: authData.user.id,
-        })
-        .select('*')
-        .single()
+      const isVenda = values.tipo_demanda === 'Venda'
+      const tableName = isVenda ? 'demandas_vendas' : 'demandas_locacao'
+
+      const payload: any = {
+        nome_cliente: values.nome_cliente,
+        telefone: values.telefone || null,
+        email: values.email || null,
+        bairros: values.bairros,
+        valor_minimo: values.valor_minimo,
+        valor_maximo: values.valor_maximo,
+        dormitorios: values.dormitorios,
+        vagas_estacionamento: values.vagas_estacionamento,
+        nivel_urgencia: values.nivel_urgencia,
+        status_demanda: 'aberta',
+        tipo: values.tipo_demanda,
+      }
+
+      if (isVenda) {
+        payload.corretor_id = authData.user.id
+        payload.necessidades_especificas = values.observacoes || null
+      } else {
+        payload.sdr_id = authData.user.id
+        payload.observacoes = values.observacoes || null
+        payload.tipo_demanda = 'Locação'
+      }
+
+      const { data, error } = await supabase.from(tableName).insert(payload).select('*').single()
 
       if (error) {
-        console.error('[Supabase RLS Error] Falha ao inserir demanda de locação:', error)
+        console.error(`[Supabase RLS Error] Falha ao inserir demanda de ${tableName}:`, error)
         throw error
       }
 
       if (import.meta.env.DEV) {
-        console.log('✅ Policy INSERT SDR ativa: Demanda registrada com sucesso!', data?.id)
+        console.log(`✅ Demanda registrada com sucesso em ${tableName}!`, data?.id)
       }
 
       window.dispatchEvent(
-        new CustomEvent('demanda-created', { detail: { tipo: 'Aluguel', data } }),
+        new CustomEvent('demanda-created', { detail: { tipo: values.tipo_demanda, data } }),
       )
 
       addDemand({
         clientName: values.nome_cliente,
         phone: values.telefone || undefined,
         email: values.email || undefined,
-        type: 'Aluguel',
+        type: values.tipo_demanda as any,
         location: values.bairros,
         minBudget: Number(values.valor_minimo),
         maxBudget: Number(values.valor_maximo),
@@ -314,17 +329,17 @@ export function ModalDemandaLocacao({ isOpen, onClose }: Props) {
                           <div
                             className={cn(
                               'flex-1 flex items-center px-4 rounded-lg border',
-                              field.value === 'Aluguel'
+                              field.value === 'Locação'
                                 ? 'border-[#1A3A52] bg-[#E8F0F8]'
                                 : 'border-gray-300 bg-white',
                             )}
                           >
-                            <RadioGroupItem value="Aluguel" id="t-aluguel" />
+                            <RadioGroupItem value="Locação" id="t-locacao" />
                             <Label
-                              htmlFor="t-aluguel"
+                              htmlFor="t-locacao"
                               className="ml-2 cursor-pointer flex-1 py-3 font-semibold"
                             >
-                              Aluguel
+                              Locação
                             </Label>
                           </div>
                         </RadioGroup>

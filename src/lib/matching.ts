@@ -3,6 +3,7 @@ export interface ImovelForMatching {
   preco?: number | string
   dormitorios?: number | string
   vagas?: number | string
+  tipo?: string
 }
 
 export interface ClienteForMatching {
@@ -11,6 +12,7 @@ export interface ClienteForMatching {
   valor_maximo?: number | string
   dormitorios?: number | string
   vagas_estacionamento?: number | string
+  tipo?: string
 }
 
 export interface MatchingResult {
@@ -28,7 +30,7 @@ export function calculateMatching(
   cliente: ClienteForMatching,
 ): MatchingResult {
   if (!imovel) {
-    imovel = { endereco: '', preco: 0, dormitorios: 0, vagas: 0 }
+    imovel = { endereco: '', preco: 0, dormitorios: 0, vagas: 0, tipo: 'Venda' }
   }
   if (!cliente) {
     cliente = {
@@ -37,6 +39,41 @@ export function calculateMatching(
       valor_maximo: 0,
       dormitorios: 0,
       vagas_estacionamento: 0,
+      tipo: 'Locação',
+    }
+  }
+
+  const normalizeTipo = (t?: string) => {
+    if (!t) return ''
+    const lower = t.toLowerCase()
+    if (lower === 'aluguel' || lower === 'locacao' || lower === 'locação') return 'Locação'
+    if (lower === 'venda') return 'Venda'
+    if (lower === 'ambos') return 'Ambos'
+    return 'Venda'
+  }
+
+  const imovelTipo = normalizeTipo(imovel.tipo) || 'Venda'
+  const clienteTipo = normalizeTipo(cliente.tipo) || 'Locação'
+
+  const tiposCompativeis = imovelTipo === 'Ambos' || imovelTipo === clienteTipo
+
+  console.log('[MATCHING] Validação de Tipo:', {
+    imovelTipoOriginal: imovel.tipo,
+    clienteTipoOriginal: cliente.tipo,
+    imovelTipo,
+    clienteTipo,
+    tiposCompativeis,
+  })
+
+  if (!tiposCompativeis) {
+    return {
+      score: 0,
+      details: {
+        localizacaoScore: 0,
+        valorScore: 0,
+        dormitoriosScore: 0,
+        vagasScore: 0,
+      },
     }
   }
 

@@ -35,6 +35,7 @@ export function CapturePropertyModal({ demand, isOpen, onClose, onSuccess }: Pro
   const [price, setPrice] = useState('')
   const [bedrooms, setBedrooms] = useState('')
   const [parking, setParking] = useState('')
+  const [tipo, setTipo] = useState('')
   const [notes, setNotes] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -42,6 +43,13 @@ export function CapturePropertyModal({ demand, isOpen, onClose, onSuccess }: Pro
   useEffect(() => {
     if (isOpen && demand) {
       setCode(`IMV-${Math.floor(Math.random() * 10000)}`)
+      const isLocacao =
+        'sdr_id' in demand ||
+        'renda_mensal_estimada' in demand ||
+        demand.tipo_demanda === 'Aluguel' ||
+        demand.tipo_demanda === 'Locação' ||
+        (demand as any).tipo === 'Locação'
+      setTipo(isLocacao ? 'Locação' : 'Venda')
       setAddress(demand.bairros?.[0] || '')
       setPrice(demand.valor_maximo?.toString() || '')
       setBedrooms(demand.dormitorios?.toString() || '')
@@ -56,6 +64,7 @@ export function CapturePropertyModal({ demand, isOpen, onClose, onSuccess }: Pro
   const handleSubmit = async () => {
     const newErrors: Record<string, string> = {}
     if (!code) newErrors.code = 'Código é obrigatório'
+    if (!tipo) newErrors.tipo = 'Tipo de imóvel é obrigatório'
 
     const bairrosArray: string[] = address
       ? address
@@ -127,6 +136,7 @@ export function CapturePropertyModal({ demand, isOpen, onClose, onSuccess }: Pro
         localizacao_texto: extraInfo,
         dormitorios: parsedBedrooms,
         vagas: parsedParking,
+        tipo: tipo,
         observacoes: notes,
         etapa_funil: 'capturado',
       }
@@ -225,6 +235,32 @@ export function CapturePropertyModal({ demand, isOpen, onClose, onSuccess }: Pro
                 />
                 {errors.price && (
                   <p className="text-red-500 text-xs mt-1 font-medium">{errors.price}</p>
+                )}
+              </div>
+
+              <div className="md:col-span-2">
+                <Label className="font-bold text-[#333333] mb-1.5 block">
+                  Tipo de Imóvel <span className="text-red-500">*</span>
+                </Label>
+                <select
+                  value={tipo}
+                  onChange={(e) => {
+                    setTipo(e.target.value)
+                    setErrors((prev) => ({ ...prev, tipo: '' }))
+                  }}
+                  className={`w-full h-10 px-3 rounded-lg border bg-white text-[14px] outline-none transition-colors ${
+                    errors.tipo
+                      ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500'
+                      : 'border-slate-300 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500'
+                  }`}
+                >
+                  <option value="">Selecione o tipo</option>
+                  <option value="Venda">Venda</option>
+                  <option value="Locação">Locação</option>
+                  <option value="Ambos">Venda e Locação (Ambos)</option>
+                </select>
+                {errors.tipo && (
+                  <p className="text-red-500 text-xs mt-1 font-medium">{errors.tipo}</p>
                 )}
               </div>
 
