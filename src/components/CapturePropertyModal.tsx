@@ -62,9 +62,18 @@ export function CapturePropertyModal({ demand, isOpen, onClose, onSuccess }: Pro
   if (!demand) return null
 
   const handleSubmit = async () => {
+    if (!tipo) {
+      toast({
+        title: '❌ Tipo de imóvel é obrigatório',
+        description: 'Selecione se o imóvel é para Venda, Locação ou Ambos',
+        variant: 'destructive',
+      })
+      setErrors((prev) => ({ ...prev, tipo: 'Tipo de imóvel é obrigatório' }))
+      return
+    }
+
     const newErrors: Record<string, string> = {}
     if (!code) newErrors.code = 'Código é obrigatório'
-    if (!tipo) newErrors.tipo = 'Tipo de imóvel é obrigatório'
 
     const bairrosArray: string[] = address
       ? address
@@ -240,32 +249,6 @@ export function CapturePropertyModal({ demand, isOpen, onClose, onSuccess }: Pro
 
               <div className="md:col-span-2">
                 <Label className="font-bold text-[#333333] mb-1.5 block">
-                  Tipo de Imóvel <span className="text-red-500">*</span>
-                </Label>
-                <select
-                  value={tipo}
-                  onChange={(e) => {
-                    setTipo(e.target.value)
-                    setErrors((prev) => ({ ...prev, tipo: '' }))
-                  }}
-                  className={`w-full h-10 px-3 rounded-lg border bg-white text-[14px] outline-none transition-colors ${
-                    errors.tipo
-                      ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500'
-                      : 'border-slate-300 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500'
-                  }`}
-                >
-                  <option value="">Selecione o tipo</option>
-                  <option value="Venda">Venda</option>
-                  <option value="Locação">Locação</option>
-                  <option value="Ambos">Venda e Locação (Ambos)</option>
-                </select>
-                {errors.tipo && (
-                  <p className="text-red-500 text-xs mt-1 font-medium">{errors.tipo}</p>
-                )}
-              </div>
-
-              <div className="md:col-span-2">
-                <Label className="font-bold text-[#333333] mb-1.5 block">
                   Bairro <span className="text-red-500">*</span>
                 </Label>
                 <BairroCombobox
@@ -278,6 +261,33 @@ export function CapturePropertyModal({ demand, isOpen, onClose, onSuccess }: Pro
                 />
                 {errors.address && (
                   <p className="text-red-500 text-xs mt-1 font-medium">{errors.address}</p>
+                )}
+              </div>
+
+              <div className="md:col-span-2 flex flex-col gap-1.5">
+                <label className="text-[11px] font-bold text-slate-500 uppercase">
+                  Tipo de Imóvel *
+                </label>
+                <select
+                  value={tipo}
+                  onChange={(e) => {
+                    setTipo(e.target.value)
+                    setErrors((prev) => ({ ...prev, tipo: '' }))
+                  }}
+                  className={`w-full h-10 px-3 rounded-lg border bg-white text-[14px] outline-none transition-colors ${
+                    errors.tipo
+                      ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500'
+                      : 'border-slate-300 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500'
+                  }`}
+                  required
+                >
+                  <option value="">Selecione o tipo</option>
+                  <option value="Venda">Venda</option>
+                  <option value="Locação">Locação</option>
+                  <option value="Ambos">Venda e Locação</option>
+                </select>
+                {errors.tipo && (
+                  <p className="text-red-500 text-xs mt-1 font-medium">{errors.tipo}</p>
                 )}
               </div>
 
