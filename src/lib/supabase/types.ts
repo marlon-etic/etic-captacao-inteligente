@@ -395,7 +395,9 @@ export type Database = {
           observacoes: string | null
           preco: number | null
           status_captacao: string | null
+          status_revisao: string | null
           tipo: string | null
+          tipo_imovel: string | null
           updated_at: string | null
           user_captador_id: string | null
           vagas: number | null
@@ -420,7 +422,9 @@ export type Database = {
           observacoes?: string | null
           preco?: number | null
           status_captacao?: string | null
+          status_revisao?: string | null
           tipo?: string | null
+          tipo_imovel?: string | null
           updated_at?: string | null
           user_captador_id?: string | null
           vagas?: number | null
@@ -445,7 +449,9 @@ export type Database = {
           observacoes?: string | null
           preco?: number | null
           status_captacao?: string | null
+          status_revisao?: string | null
           tipo?: string | null
+          tipo_imovel?: string | null
           updated_at?: string | null
           user_captador_id?: string | null
           vagas?: number | null
@@ -1335,6 +1341,8 @@ export const Constants = {
 //   observacoes: text (nullable)
 //   landlord_id: uuid (nullable)
 //   tipo: text (nullable, default: 'Ambos'::text)
+//   tipo_imovel: text (nullable, default: 'Apartamento'::text)
+//   status_revisao: text (nullable, default: 'ok'::text)
 // Table: landlord_profiles
 //   id: uuid (not null, default: gen_random_uuid())
 //   user_id: uuid (not null)
@@ -1493,6 +1501,8 @@ export const Constants = {
 //   PRIMARY KEY imoveis_captados_pkey: PRIMARY KEY (id)
 //   CHECK imoveis_captados_preco_check: CHECK ((preco > (0)::numeric))
 //   CHECK imoveis_captados_status_captacao_check: CHECK (((status_captacao)::text = ANY ((ARRAY['pendente'::character varying, 'capturado'::character varying, 'visitado'::character varying, 'fechado'::character varying, 'perdido'::character varying])::text[])))
+//   CHECK imoveis_captados_status_revisao_check: CHECK ((status_revisao = ANY (ARRAY['ok'::text, 'revisar_preco'::text, 'revisar_dados'::text])))
+//   CHECK imoveis_captados_tipo_imovel_check: CHECK ((tipo_imovel = ANY (ARRAY['Apartamento'::text, 'Casa/Sobrado'::text, 'Prédio Comercial'::text, 'Sala Comercial'::text, 'Galpão'::text])))
 //   FOREIGN KEY imoveis_captados_user_captador_id_fkey: FOREIGN KEY (user_captador_id) REFERENCES users(id) ON DELETE SET NULL
 // Table: landlord_profiles
 //   PRIMARY KEY landlord_profiles_pkey: PRIMARY KEY (id)
