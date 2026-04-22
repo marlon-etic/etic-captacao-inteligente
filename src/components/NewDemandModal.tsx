@@ -20,7 +20,7 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { useNavigate } from 'react-router-dom'
-import { cn } from '@/lib/utils'
+import { cn, convertTiposToString } from '@/lib/utils'
 import { useKeyboard } from '@/hooks/use-keyboard'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { supabase } from '@/lib/supabase/client'
@@ -183,7 +183,7 @@ export function NewDemandModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
               nome_cliente: values.clientName,
               telefone: formattedPhone,
               email: values.clientEmail || null,
-              tipo_imovel: values.tipo_imovel,
+              tipo_imovel: convertTiposToString(values.tipo_imovel),
               bairros: values.location,
               valor_minimo: values.minBudget,
               valor_maximo: values.maxBudget,
@@ -219,7 +219,7 @@ export function NewDemandModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
               nome_cliente: values.clientName,
               telefone: formattedPhone,
               email: values.clientEmail || null,
-              tipo_imovel: values.tipo_imovel,
+              tipo_imovel: convertTiposToString(values.tipo_imovel),
               bairros: values.location,
               valor_minimo: values.minBudget,
               valor_maximo: values.maxBudget,

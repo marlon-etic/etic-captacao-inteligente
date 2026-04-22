@@ -31,6 +31,7 @@ import { useKeyboard } from '@/hooks/use-keyboard'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { LocationSelector } from '@/components/LocationSelector'
 import useAppStore from '@/stores/useAppStore'
+import { convertTiposToString } from '@/lib/utils'
 
 const formSchema = z
   .object({
@@ -156,7 +157,7 @@ export function ModalDemandaLocacao({ isOpen, onClose }: Props) {
         nome_cliente: values.nome_cliente,
         telefone: values.telefone || null,
         email: values.email || null,
-        tipo_imovel: values.tipo_imovel,
+        tipo_imovel: convertTiposToString(values.tipo_imovel),
         bairros: values.bairros,
         valor_minimo: values.valor_minimo,
         valor_maximo: values.valor_maximo,

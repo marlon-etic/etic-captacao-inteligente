@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/use-toast'
 import { Loader2, CheckCircle2 } from 'lucide-react'
 import { calculateMatching, getScoreBadgeColor } from '@/lib/matching'
-import { cn } from '@/lib/utils'
+import { cn, convertTiposToArray } from '@/lib/utils'
 import { supabase } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/use-auth'
 import { vinculacaoService } from '@/services/vinculacaoService'
@@ -73,13 +73,13 @@ export function VinculacaoModal({ isOpen, onClose, imovelData, onSuccess }: Vinc
           ...d,
           _table: 'demandas_locacao',
           tipo: d.tipo || 'Locação',
-          tipo_imovel: d.tipo_imovel || ['Apartamento'],
+          tipo_imovel: convertTiposToArray(d.tipo_imovel) || ['Apartamento'],
         })),
         ...(vendasRes.data || []).map((d) => ({
           ...d,
           _table: 'demandas_vendas',
           tipo: d.tipo || 'Venda',
-          tipo_imovel: d.tipo_imovel || ['Apartamento'],
+          tipo_imovel: convertTiposToArray(d.tipo_imovel) || ['Apartamento'],
         })),
       ]
       setDemands(combined)

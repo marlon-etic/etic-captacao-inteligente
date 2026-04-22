@@ -29,6 +29,8 @@ import { useKeyboard } from '@/hooks/use-keyboard'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { LocationSelector } from '@/components/LocationSelector'
 import useAppStore from '@/stores/useAppStore'
+import { convertTiposToString } from '@/lib/utils'
+import { supabase } from '@/lib/supabase/client'
 
 function FormSummary({
   control,
@@ -116,6 +118,7 @@ export function ModalDemandaVenda({ isOpen, onClose }: { isOpen: boolean; onClos
           .insert({
             nome_cliente: values.nome_cliente,
             telefone: values.telefone || null,
+            tipo_imovel: convertTiposToString(values.tipo_imovel),
             bairros: values.bairros,
             valor_minimo: values.valor_minimo ? Number(values.valor_minimo) : null,
             valor_maximo: values.valor_maximo ? Number(values.valor_maximo) : null,
@@ -137,7 +140,7 @@ export function ModalDemandaVenda({ isOpen, onClose }: { isOpen: boolean; onClos
         result = await insertDemandaVenda({
           nome_cliente: values.nome_cliente,
           telefone: values.telefone || null,
-          tipo_imovel: values.tipo_imovel,
+          tipo_imovel: convertTiposToString(values.tipo_imovel),
           bairros: values.bairros,
           valor_minimo: values.valor_minimo ? Number(values.valor_minimo) : null,
           valor_maximo: values.valor_maximo ? Number(values.valor_maximo) : null,

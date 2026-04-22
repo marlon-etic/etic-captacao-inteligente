@@ -60,19 +60,22 @@ export function validateTipologiaCompatibility(
 ): boolean {
   const imovelNormalizado = normalizeTipologia(imovelTipologia)
 
-  const demandasNormalizadas = Array.isArray(demandaTipologias)
-    ? demandaTipologias.map((t) => normalizeTipologia(t))
-    : demandaTipologias
-      ? [normalizeTipologia(demandaTipologias)]
-      : ['Apartamento']
+  let demandasArray: string[] = []
+  if (typeof demandaTipologias === 'string') {
+    demandasArray = demandaTipologias.split(',').map((t) => normalizeTipologia(t.trim()))
+  } else if (Array.isArray(demandaTipologias)) {
+    demandasArray = demandaTipologias.map((t) => normalizeTipologia(t))
+  } else {
+    demandasArray = ['Apartamento']
+  }
 
-  const isCompativel = demandasNormalizadas.includes(imovelNormalizado)
+  const isCompativel = demandasArray.includes(imovelNormalizado)
 
-  console.log('[MATCHING] Validação de Tipologia (Normalizada):', {
+  console.log('[MATCHING] Validação de Tipologia (String Delimitada):', {
     imovelOriginal: imovelTipologia,
     imovelNormalizado,
     demandasOriginais: demandaTipologias,
-    demandasNormalizadas,
+    demandasArray,
     isCompativel,
   })
 
