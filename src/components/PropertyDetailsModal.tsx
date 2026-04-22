@@ -58,6 +58,17 @@ export function PropertyDetailsModal({ property, onClose }: Props) {
         </DialogHeader>
 
         <div className="p-5 space-y-6 max-h-[75vh] overflow-y-auto relative z-0">
+          {/* Image Gallery */}
+          {property.fotos && property.fotos.length > 0 && (
+            <div className="imagem-container mb-2">
+              {property.fotos.map((foto: string, index: number) => (
+                <div key={index} className="imagem-item">
+                  <img src={foto} alt={`Foto ${index + 1}`} />
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Header Stats */}
           <div className="grid grid-cols-2 gap-4 pointer-events-none">
             <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-100 shadow-sm">

@@ -27,23 +27,52 @@ export interface MatchingResult {
   }
 }
 
-// ✅ VALIDAÇÃO DE COMPATIBILIDADE DE TIPOLOGIA
+// ✅ NORMALIZAR TIPOLOGIA (Casa/Sobrado = Casa)
+export function normalizeTipologia(tipologia: string | undefined): string {
+  if (!tipologia) return 'Apartamento'
+
+  const normalized = tipologia.toLowerCase().trim()
+
+  if (normalized === 'casa/sobrado' || normalized === 'casa' || normalized === 'sobrado') {
+    return 'Casa'
+  }
+  if (
+    normalized.includes('prédio') ||
+    normalized.includes('predios') ||
+    normalized.includes('predio')
+  ) {
+    return 'Prédio Comercial'
+  }
+  if (normalized.includes('sala')) {
+    return 'Sala Comercial'
+  }
+  if (normalized.includes('galpão') || normalized.includes('galpao')) {
+    return 'Galpão'
+  }
+
+  return 'Apartamento'
+}
+
+// ✅ VALIDAÇÃO DE COMPATIBILIDADE DE TIPOLOGIA COM NORMALIZAÇÃO
 export function validateTipologiaCompatibility(
   imovelTipologia: string | undefined,
   demandaTipologias: string[] | string | undefined,
 ): boolean {
-  const imovel = imovelTipologia || 'Apartamento'
-  const demandas = Array.isArray(demandaTipologias)
-    ? demandaTipologias
+  const imovelNormalizado = normalizeTipologia(imovelTipologia)
+
+  const demandasNormalizadas = Array.isArray(demandaTipologias)
+    ? demandaTipologias.map((t) => normalizeTipologia(t))
     : demandaTipologias
-      ? [demandaTipologias]
+      ? [normalizeTipologia(demandaTipologias)]
       : ['Apartamento']
 
-  const isCompativel = demandas.includes(imovel)
+  const isCompativel = demandasNormalizadas.includes(imovelNormalizado)
 
-  console.log('[MATCHING] Validação de Tipologia:', {
-    imovel,
-    demandas,
+  console.log('[MATCHING] Validação de Tipologia (Normalizada):', {
+    imovelOriginal: imovelTipologia,
+    imovelNormalizado,
+    demandasOriginais: demandaTipologias,
+    demandasNormalizadas,
     isCompativel,
   })
 
@@ -76,14 +105,14 @@ export function calculateMatching(
     }
   }
 
-  // ✅ VALIDAÇÃO DE TIPOLOGIA ANTES DE CALCULAR SCORE
+  // ✅ VALIDAÇÃO DE TIPOLOGIA COM NORMALIZAÇÃO ANTES DE CALCULAR SCORE
   const tipologiaCompativel = validateTipologiaCompatibility(
     imovel.tipo_imovel,
     cliente.tipo_imovel,
   )
 
   if (!tipologiaCompativel) {
-    console.log('[MATCHING] Tipologias incompatíveis - Score 0%')
+    console.log('[MATCHING] Tipologias incompatíveis (após normalização) - Score 0%')
     return {
       score: 0,
       details: {

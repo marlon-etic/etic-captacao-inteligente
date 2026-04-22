@@ -5,7 +5,7 @@ export const formSchema = z
     nome_cliente: z.string().min(1, 'Nome do cliente é obrigatório').max(100),
     telefone: z
       .string()
-      .regex(/^\(\d{2}\) 9\d{4}-\d{4}$/, 'Telefone inválido. Use formato: (XX) 9XXXX-XXXX')
+      .regex(/^\+?[0-9\s\-()]{8,}$/, 'Telefone inválido. Use um formato válido.')
       .optional()
       .or(z.literal('')),
     tipo_imovel: z.array(z.string()).min(1, 'Selecione pelo menos um tipo de imóvel'),

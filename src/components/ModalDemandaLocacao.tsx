@@ -42,8 +42,8 @@ const formSchema = z
       .string()
       .optional()
       .refine(
-        (val) => !val || /^\(\d{2}\) 9\d{4}-\d{4}$/.test(val),
-        'Telefone inválido. Use formato: (XX) 9XXXX-XXXX',
+        (val) => !val || /^\+?[0-9\s\-()]{8,}$/.test(val),
+        'Telefone inválido. Use um formato válido.',
       ),
     email: z
       .string()

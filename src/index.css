@@ -105,6 +105,56 @@
   }
 }
 
+@layer components {
+  /* ✅ CONTAINER DE IMAGENS - RESPONSIVO */
+  .imagem-container {
+    @apply flex flex-wrap w-full max-w-full overflow-hidden;
+  }
+
+  /* ✅ IMAGEM INDIVIDUAL */
+  .imagem-item {
+    @apply flex-1 min-w-[200px] max-w-full overflow-hidden rounded-lg bg-gray-100;
+    aspect-ratio: 16 / 9;
+  }
+
+  .imagem-item img {
+    @apply w-full h-full object-cover block;
+  }
+
+  /* ✅ DESKTOP (> 1024px) */
+  @media (min-width: 1024px) {
+    .imagem-container {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
+    }
+    .imagem-item {
+      min-width: unset;
+    }
+  }
+
+  /* ✅ TABLET (768px - 1023px) */
+  @media (min-width: 768px) and (max-width: 1023px) {
+    .imagem-container {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1rem;
+    }
+  }
+
+  /* ✅ MOBILE (< 768px) */
+  @media (max-width: 767px) {
+    .imagem-container {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 0.75rem;
+    }
+    .imagem-item {
+      min-width: 100%;
+    }
+  }
+}
+
 @layer utilities {
   .animate-fade-in {
     animation: fade-in 0.2s ease-in-out;
