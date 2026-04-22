@@ -1469,7 +1469,7 @@ export const Constants = {
 //   PRIMARY KEY demandas_locacao_pkey: PRIMARY KEY (id)
 //   FOREIGN KEY demandas_locacao_sdr_id_fkey: FOREIGN KEY (sdr_id) REFERENCES users(id) ON DELETE SET NULL
 //   CHECK demandas_locacao_status_demanda_check: CHECK (((status_demanda)::text = ANY ((ARRAY['aberta'::character varying, 'atendida'::character varying, 'impossivel'::character varying, 'sem_resposta_24h'::character varying, 'ganho'::character varying])::text[])))
-//   CHECK demandas_locacao_telefone_check: CHECK (((telefone IS NULL) OR (((telefone)::text ~ '^\([0-9]{2}\) 9[0-9]{4}-[0-9]{4}'::text) AND (length((telefone)::text) = 15))))
+//   CHECK demandas_locacao_telefone_check: CHECK (((telefone IS NULL) OR ((telefone)::text = ''::text) OR (length(regexp_replace((telefone)::text, '[^0-9]'::text, ''::text, 'g'::text)) >= 8)))
 //   CHECK demandas_locacao_tipo_imovel_check: CHECK ((tipo_imovel = ANY (ARRAY['Casa'::text, 'Apartamento'::text, 'Terreno'::text, 'Galpão'::text, 'Comercial'::text])))
 //   CHECK demandas_locacao_vagas_estacionamento_check: CHECK (((vagas_estacionamento >= 0) AND (vagas_estacionamento <= 10)))
 //   FOREIGN KEY demandas_locacao_vinculacao_captador_id_fkey: FOREIGN KEY (vinculacao_captador_id) REFERENCES auth.users(id) ON DELETE SET NULL
@@ -1484,8 +1484,7 @@ export const Constants = {
 //   CHECK demandas_vendas_nivel_urgencia_check: CHECK (((nivel_urgencia)::text = ANY ((ARRAY['Baixa'::character varying, 'Média'::character varying, 'Alta'::character varying, 'Urgente'::character varying, 'Até 15 dias'::character varying, 'Até 30 dias'::character varying, 'Até 90 dias ou +'::character varying])::text[])))
 //   PRIMARY KEY demandas_vendas_pkey: PRIMARY KEY (id)
 //   CHECK demandas_vendas_status_demanda_check: CHECK (((status_demanda)::text = ANY ((ARRAY['aberta'::character varying, 'atendida'::character varying, 'impossivel'::character varying, 'sem_resposta_24h'::character varying, 'ganho'::character varying])::text[])))
-//   CHECK demandas_vendas_telefone_check: CHECK (((telefone)::text ~ '^\([0-9]{2}\) 9[0-9]{4}-[0-9]{4}
-::text))
+//   CHECK demandas_vendas_telefone_check: CHECK (((telefone IS NULL) OR ((telefone)::text = ''::text) OR (length(regexp_replace((telefone)::text, '[^0-9]'::text, ''::text, 'g'::text)) >= 8)))
 //   CHECK demandas_vendas_tipo_imovel_check: CHECK (((tipo_imovel)::text = ANY ((ARRAY['Casa'::character varying, 'Apartamento'::character varying, 'Terreno'::character varying, 'Galpão'::character varying, 'Comercial'::character varying])::text[])))
 //   CHECK demandas_vendas_vagas_estacionamento_check: CHECK (((vagas_estacionamento >= 0) AND (vagas_estacionamento <= 10)))
 //   FOREIGN KEY demandas_vendas_vinculacao_captador_id_fkey: FOREIGN KEY (vinculacao_captador_id) REFERENCES auth.users(id) ON DELETE SET NULL
@@ -1579,6 +1578,12 @@ export const Constants = {
 //   Policy "Captadores update demandas locacao para vinculacao" (UPDATE, PERMISSIVE) roles={authenticated}
 //     USING: (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND (users.role = 'captador'::user_role))))
 //     WITH CHECK: (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND (users.role = 'captador'::user_role))))
+//   Policy "SDR can create own locacao" (INSERT, PERMISSIVE) roles={authenticated}
+//     WITH CHECK: (((auth.jwt() ->> 'role'::text) ~~* 'sdr'::text) OR (((auth.jwt() -> 'user_metadata'::text) ->> 'role'::text) ~~* 'sdr'::text) OR (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND ((users.role)::text ~~* 'sdr'::text)))))
+//   Policy "SDR can see own locacao" (SELECT, PERMISSIVE) roles={authenticated}
+//     USING: (((auth.jwt() ->> 'role'::text) ~~* 'sdr'::text) OR (((auth.jwt() -> 'user_metadata'::text) ->> 'role'::text) ~~* 'sdr'::text) OR (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND ((users.role)::text ~~* 'sdr'::text)))))
+//   Policy "SDR can update own locacao" (UPDATE, PERMISSIVE) roles={authenticated}
+//     USING: (((auth.jwt() ->> 'role'::text) ~~* 'sdr'::text) OR (((auth.jwt() -> 'user_metadata'::text) ->> 'role'::text) ~~* 'sdr'::text) OR (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND ((users.role)::text ~~* 'sdr'::text)))))
 //   Policy "SDR sees own Locacao demands" (SELECT, PERMISSIVE) roles={authenticated}
 //     USING: ((sdr_id = auth.uid()) OR (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND ((users.role)::text = ANY (ARRAY['admin'::text, 'gestor'::text, 'captador'::text]))))))
 //   Policy "SDRs insert locacao" (INSERT, PERMISSIVE) roles={authenticated}
@@ -1606,6 +1611,12 @@ export const Constants = {
 //     WITH CHECK: (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND (users.role = 'captador'::user_role))))
 //   Policy "Corretores manage own vendas" (ALL, PERMISSIVE) roles={public}
 //     USING: ((corretor_id = auth.uid()) AND (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND (users.role = 'corretor'::user_role)))))
+//   Policy "SDR can create own vendas" (INSERT, PERMISSIVE) roles={authenticated}
+//     WITH CHECK: (((auth.jwt() ->> 'role'::text) ~~* 'sdr'::text) OR (((auth.jwt() -> 'user_metadata'::text) ->> 'role'::text) ~~* 'sdr'::text) OR (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND ((users.role)::text ~~* 'sdr'::text)))))
+//   Policy "SDR can see own vendas" (SELECT, PERMISSIVE) roles={authenticated}
+//     USING: (((auth.jwt() ->> 'role'::text) ~~* 'sdr'::text) OR (((auth.jwt() -> 'user_metadata'::text) ->> 'role'::text) ~~* 'sdr'::text) OR (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND ((users.role)::text ~~* 'sdr'::text)))))
+//   Policy "SDR can update own vendas" (UPDATE, PERMISSIVE) roles={authenticated}
+//     USING: (((auth.jwt() ->> 'role'::text) ~~* 'sdr'::text) OR (((auth.jwt() -> 'user_metadata'::text) ->> 'role'::text) ~~* 'sdr'::text) OR (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND ((users.role)::text ~~* 'sdr'::text)))))
 // Table: grupos_demandas
 //   Policy "Authenticated users can delete grupos_demandas" (DELETE, PERMISSIVE) roles={authenticated}
 //     USING: true
