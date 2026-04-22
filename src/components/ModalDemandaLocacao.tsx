@@ -51,6 +51,7 @@ const formSchema = z
       .optional()
       .or(z.literal('')),
     tipo_demanda: z.enum(['Venda', 'Locação']).default('Locação'),
+    tipo_imovel: z.array(z.string()).min(1, 'Selecione pelo menos um tipo de imóvel'),
     bairros: z
       .array(z.string())
       .min(1, 'Selecione pelo menos um bairro')
@@ -117,6 +118,7 @@ export function ModalDemandaLocacao({ isOpen, onClose }: Props) {
       telefone: '',
       email: '',
       tipo_demanda: 'Locação',
+      tipo_imovel: ['Apartamento'],
       bairros: [],
       valor_minimo: 0 as any,
       valor_maximo: 0 as any,
@@ -154,6 +156,7 @@ export function ModalDemandaLocacao({ isOpen, onClose }: Props) {
         nome_cliente: values.nome_cliente,
         telefone: values.telefone || null,
         email: values.email || null,
+        tipo_imovel: values.tipo_imovel,
         bairros: values.bairros,
         valor_minimo: values.valor_minimo,
         valor_maximo: values.valor_maximo,
@@ -303,7 +306,7 @@ export function ModalDemandaLocacao({ isOpen, onClose }: Props) {
                   name="tipo_demanda"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-gray-800 font-bold">Tipo</FormLabel>
+                      <FormLabel className="text-gray-800 font-bold">Transação *</FormLabel>
                       <FormControl>
                         <RadioGroup
                           onValueChange={field.onChange}
@@ -350,10 +353,52 @@ export function ModalDemandaLocacao({ isOpen, onClose }: Props) {
                 />
                 <FormField
                   control={form.control}
+                  name="tipo_imovel"
+                  render={({ field }) => (
+                    <FormItem className="md:col-span-2">
+                      <FormLabel className="text-gray-800 font-bold">
+                        Tipo de Imóvel (Múltipla Seleção) *
+                      </FormLabel>
+                      <FormControl>
+                        <div className="flex flex-wrap gap-3">
+                          {[
+                            'Apartamento',
+                            'Casa/Sobrado',
+                            'Prédio Comercial',
+                            'Sala Comercial',
+                            'Galpão',
+                          ].map((tipo) => (
+                            <label
+                              key={tipo}
+                              className="flex items-center gap-2 cursor-pointer bg-white border border-gray-200 px-3 py-2 rounded-lg hover:bg-gray-50"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={field.value?.includes(tipo) || false}
+                                onChange={(e) => {
+                                  const current = field.value || []
+                                  const updated = e.target.checked
+                                    ? [...current, tipo]
+                                    : current.filter((t: string) => t !== tipo)
+                                  field.onChange(updated)
+                                }}
+                                className="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500"
+                              />
+                              <span className="text-[14px] text-gray-700 font-medium">{tipo}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
                   name="bairros"
                   render={({ field }) => (
                     <FormItem className="md:col-span-2">
-                      <FormLabel className="text-gray-800 font-bold">Bairros</FormLabel>
+                      <FormLabel className="text-gray-800 font-bold">Bairros *</FormLabel>
                       <FormControl>
                         <LocationSelector
                           value={field.value}

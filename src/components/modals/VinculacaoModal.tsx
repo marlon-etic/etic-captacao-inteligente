@@ -73,11 +73,13 @@ export function VinculacaoModal({ isOpen, onClose, imovelData, onSuccess }: Vinc
           ...d,
           _table: 'demandas_locacao',
           tipo: d.tipo || 'Locação',
+          tipo_imovel: d.tipo_imovel || ['Apartamento'],
         })),
         ...(vendasRes.data || []).map((d) => ({
           ...d,
           _table: 'demandas_vendas',
           tipo: d.tipo || 'Venda',
+          tipo_imovel: d.tipo_imovel || ['Apartamento'],
         })),
       ]
       setDemands(combined)

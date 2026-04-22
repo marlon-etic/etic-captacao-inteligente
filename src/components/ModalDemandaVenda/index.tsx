@@ -78,7 +78,7 @@ export function ModalDemandaVenda({ isOpen, onClose }: { isOpen: boolean; onClos
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: { nivel_urgencia: 'Média', bairros: [] },
+    defaultValues: { nivel_urgencia: 'Média', bairros: [], tipo_imovel: ['Apartamento'] },
   })
 
   const values = useWatch({ control: form.control })
@@ -86,7 +86,7 @@ export function ModalDemandaVenda({ isOpen, onClose }: { isOpen: boolean; onClos
     let filled = 0
     const total = 6
     if (values.nome_cliente) filled++
-    if (values.tipo_imovel) filled++
+    if (values.tipo_imovel && values.tipo_imovel.length > 0) filled++
     if (values.bairros && values.bairros.length > 0) filled++
     if (values.valor_minimo || values.valor_maximo) filled++
     if (values.dormitorios) filled++
@@ -294,20 +294,40 @@ export function ModalDemandaVenda({ isOpen, onClose }: { isOpen: boolean; onClos
                   control={form.control}
                   name="tipo_imovel"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-gray-800 font-bold">Tipo de Imóvel *</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger className="bg-white border-gray-300 min-h-[48px]">
-                            <SelectValue placeholder="Selecione" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent className="z-[1050]">
-                          <SelectItem value="Casa">Casa</SelectItem>
-                          <SelectItem value="Apartamento">Apartamento</SelectItem>
-                          <SelectItem value="Terreno">Terreno</SelectItem>
-                        </SelectContent>
-                      </Select>
+                    <FormItem className="md:col-span-2">
+                      <FormLabel className="text-gray-800 font-bold">
+                        Tipo de Imóvel (Múltipla Seleção) *
+                      </FormLabel>
+                      <FormControl>
+                        <div className="flex flex-wrap gap-3">
+                          {[
+                            'Apartamento',
+                            'Casa/Sobrado',
+                            'Prédio Comercial',
+                            'Sala Comercial',
+                            'Galpão',
+                          ].map((tipo) => (
+                            <label
+                              key={tipo}
+                              className="flex items-center gap-2 cursor-pointer bg-white border border-gray-200 px-3 py-2 rounded-lg hover:bg-gray-50"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={field.value?.includes(tipo) || false}
+                                onChange={(e) => {
+                                  const current = field.value || []
+                                  const updated = e.target.checked
+                                    ? [...current, tipo]
+                                    : current.filter((t: string) => t !== tipo)
+                                  field.onChange(updated)
+                                }}
+                                className="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500"
+                              />
+                              <span className="text-[14px] text-gray-700 font-medium">{tipo}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}

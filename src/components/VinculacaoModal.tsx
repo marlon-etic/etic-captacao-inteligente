@@ -17,6 +17,7 @@ export interface VinculacaoImovelData {
   dormitorios?: number
   vagas?: number
   tipo?: 'Venda' | 'Aluguel' | 'Ambos' | string
+  tipo_imovel?: string
 }
 
 interface Props {
@@ -42,16 +43,20 @@ function normalizeImovel(imovel: VinculacaoImovelData | null): VinculacaoImovelD
 
   // Garantir que tipo sempre tem um valor válido
   const tipoNormalizado = imovel.tipo && imovel.tipo.trim() ? imovel.tipo : 'Venda'
+  const tipoImovelNormalizado =
+    imovel.tipo_imovel && imovel.tipo_imovel.trim() ? imovel.tipo_imovel : 'Apartamento'
 
   console.log('[NORMALIZE] Imóvel normalizado:', {
     id: imovel.id,
     tipo_original: imovel.tipo,
     tipo_normalizado: tipoNormalizado,
+    tipo_imovel: tipoImovelNormalizado,
   })
 
   return {
     ...imovel,
     tipo: tipoNormalizado,
+    tipo_imovel: tipoImovelNormalizado,
   }
 }
 
@@ -101,7 +106,7 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
           const { data: dataLocacao } = await supabase
             .from('demandas_locacao')
             .select(
-              'id, nome_cliente, bairros, valor_maximo, valor_minimo, dormitorios, vagas_estacionamento, status_demanda, observacoes, imoveis_captados(id)',
+              'id, nome_cliente, bairros, valor_maximo, valor_minimo, dormitorios, vagas_estacionamento, status_demanda, observacoes, tipo_imovel, imoveis_captados(id)',
             )
 
           const locacao = (dataLocacao || [])
@@ -109,12 +114,16 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
               (d) =>
                 !d.status_demanda || !excludedStatuses.includes(d.status_demanda.toLowerCase()),
             )
-            .map((d) => ({ ...d, tipo: 'Aluguel' }))
+            .map((d) => ({
+              ...d,
+              tipo: 'Aluguel',
+              tipo_imovel: d.tipo_imovel || ['Apartamento'],
+            }))
 
           const { data: dataVendas } = await supabase
             .from('demandas_vendas')
             .select(
-              'id, nome_cliente, bairros, valor_maximo, valor_minimo, dormitorios, vagas_estacionamento, status_demanda, necessidades_especificas, imoveis_captados(id)',
+              'id, nome_cliente, bairros, valor_maximo, valor_minimo, dormitorios, vagas_estacionamento, status_demanda, necessidades_especificas, tipo_imovel, imoveis_captados(id)',
             )
 
           const vendas = (dataVendas || [])
@@ -122,7 +131,11 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
               (d) =>
                 !d.status_demanda || !excludedStatuses.includes(d.status_demanda.toLowerCase()),
             )
-            .map((d) => ({ ...d, tipo: 'Venda' }))
+            .map((d) => ({
+              ...d,
+              tipo: 'Venda',
+              tipo_imovel: d.tipo_imovel || ['Apartamento'],
+            }))
 
           setActiveDemands([...locacao, ...vendas])
         } catch (err) {

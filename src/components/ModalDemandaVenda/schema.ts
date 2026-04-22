@@ -8,9 +8,7 @@ export const formSchema = z
       .regex(/^\(\d{2}\) 9\d{4}-\d{4}$/, 'Telefone inválido. Use formato: (XX) 9XXXX-XXXX')
       .optional()
       .or(z.literal('')),
-    tipo_imovel: z.enum(['Casa', 'Apartamento', 'Terreno'], {
-      required_error: 'Selecione o tipo de imóvel',
-    }),
+    tipo_imovel: z.array(z.string()).min(1, 'Selecione pelo menos um tipo de imóvel'),
     bairros: z
       .array(z.string())
       .min(1, 'Selecione pelo menos um bairro')

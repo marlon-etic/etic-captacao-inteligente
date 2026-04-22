@@ -37,6 +37,8 @@ export function AddPropertyModal({ isOpen, onClose, onSuccess }: Props) {
   const [price, setPrice] = useState('')
   const [bedrooms, setBedrooms] = useState('')
   const [parking, setParking] = useState('')
+  const [tipo, setTipo] = useState('')
+  const [tipo_imovel, setTipoImovel] = useState('Apartamento')
   const [notes, setNotes] = useState('')
 
   // Linking Data
@@ -53,6 +55,8 @@ export function AddPropertyModal({ isOpen, onClose, onSuccess }: Props) {
       setPrice('')
       setBedrooms('')
       setParking('')
+      setTipo('')
+      setTipoImovel('Apartamento')
       setNotes('')
       setDemandId(null)
       setErrors({})
@@ -98,6 +102,13 @@ export function AddPropertyModal({ isOpen, onClose, onSuccess }: Props) {
           newErrors.parking = 'Valor inválido'
         }
       }
+    }
+
+    if (!tipo) {
+      newErrors.tipo = 'Tipo de transação é obrigatório'
+    }
+    if (!tipo_imovel) {
+      newErrors.tipo_imovel = 'Tipo de imóvel é obrigatório'
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -157,6 +168,8 @@ export function AddPropertyModal({ isOpen, onClose, onSuccess }: Props) {
         localizacao_texto: extraInfo,
         dormitorios: parsedBedrooms,
         vagas: parsedParking,
+        tipo: tipo,
+        tipo_imovel: tipo_imovel,
         observacoes: notes,
       }
 
@@ -303,6 +316,62 @@ export function AddPropertyModal({ isOpen, onClose, onSuccess }: Props) {
                     />
                     {errors.address && (
                       <p className="text-red-500 text-xs mt-1 font-medium">{errors.address}</p>
+                    )}
+                  </div>
+
+                  <div className="flex flex-col gap-1.5 md:col-span-1">
+                    <label className="text-[11px] font-bold text-slate-500 uppercase">
+                      Transação *
+                    </label>
+                    <select
+                      value={tipo}
+                      onChange={(e) => {
+                        setTipo(e.target.value)
+                        setErrors((prev) => ({ ...prev, tipo: '' }))
+                      }}
+                      className={`w-full h-10 px-3 rounded-lg border bg-white text-[14px] outline-none transition-colors ${
+                        errors.tipo
+                          ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500'
+                          : 'border-slate-300 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500'
+                      }`}
+                      required
+                    >
+                      <option value="">Selecione...</option>
+                      <option value="Venda">Venda</option>
+                      <option value="Locação">Locação</option>
+                      <option value="Ambos">Venda e Locação</option>
+                    </select>
+                    {errors.tipo && (
+                      <p className="text-red-500 text-xs mt-1 font-medium">{errors.tipo}</p>
+                    )}
+                  </div>
+
+                  <div className="flex flex-col gap-1.5 md:col-span-1">
+                    <label className="text-[11px] font-bold text-slate-500 uppercase">
+                      Tipo de Imóvel *
+                    </label>
+                    <select
+                      value={tipo_imovel}
+                      onChange={(e) => {
+                        setTipoImovel(e.target.value)
+                        setErrors((prev) => ({ ...prev, tipo_imovel: '' }))
+                      }}
+                      className={`w-full h-10 px-3 rounded-lg border bg-white text-[14px] outline-none transition-colors ${
+                        errors.tipo_imovel
+                          ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500'
+                          : 'border-slate-300 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500'
+                      }`}
+                      required
+                    >
+                      <option value="">Selecione o tipo</option>
+                      <option value="Apartamento">Apartamento</option>
+                      <option value="Casa/Sobrado">Casa/Sobrado</option>
+                      <option value="Prédio Comercial">Prédio Comercial</option>
+                      <option value="Sala Comercial">Sala Comercial</option>
+                      <option value="Galpão">Galpão</option>
+                    </select>
+                    {errors.tipo_imovel && (
+                      <p className="text-red-500 text-xs mt-1 font-medium">{errors.tipo_imovel}</p>
                     )}
                   </div>
 

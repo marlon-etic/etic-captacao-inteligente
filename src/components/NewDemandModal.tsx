@@ -46,6 +46,7 @@ export const formSchema = z
       .optional()
       .or(z.literal('')),
     type: z.enum(['Venda', 'Aluguel']),
+    tipo_imovel: z.array(z.string()).min(1, 'Selecione pelo menos um tipo de imóvel'),
     location: z.array(z.string()).min(1, 'Selecione pelo menos um bairro'),
     minBudget: z.coerce.number({ invalid_type_error: 'Obrigatório' }).positive('Maior que zero'),
     maxBudget: z.coerce.number({ invalid_type_error: 'Obrigatório' }).positive('Maior que zero'),
@@ -145,6 +146,7 @@ export function NewDemandModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
       clientPhone: '',
       clientEmail: '',
       type: currentUser?.role === 'corretor' ? 'Venda' : 'Aluguel',
+      tipo_imovel: ['Apartamento'],
       location: [],
       minBudget: '' as any,
       maxBudget: '' as any,
@@ -182,6 +184,7 @@ export function NewDemandModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
               nome_cliente: values.clientName,
               telefone: formattedPhone,
               email: values.clientEmail || null,
+              tipo_imovel: values.tipo_imovel,
               bairros: values.location,
               valor_minimo: values.minBudget,
               valor_maximo: values.maxBudget,
@@ -217,6 +220,7 @@ export function NewDemandModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
               nome_cliente: values.clientName,
               telefone: formattedPhone,
               email: values.clientEmail || null,
+              tipo_imovel: values.tipo_imovel,
               bairros: values.location,
               valor_minimo: values.minBudget,
               valor_maximo: values.maxBudget,
@@ -233,7 +237,6 @@ export function NewDemandModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
               nivel_urgencia: values.timeframe,
               necessidades_especificas: values.description || null,
               status_demanda: 'aberta',
-              tipo_imovel: 'Casa', // default
               corretor_id: authData.user.id,
             })
             .select('*')
@@ -386,7 +389,7 @@ export function NewDemandModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
                     render={({ field, fieldState }) => (
                       <FormItem className="space-y-0">
                         <FormLabel className="flex items-center h-[20px] mb-[4px] text-[14px] text-[#333333] font-semibold">
-                          Tipo
+                          Transação *
                         </FormLabel>
                         <FormControl>
                           <RadioGroup
@@ -436,11 +439,55 @@ export function NewDemandModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
                   />
                   <FormField
                     control={form.control}
+                    name="tipo_imovel"
+                    render={({ field, fieldState }) => (
+                      <FormItem className="space-y-0 md:col-span-2">
+                        <FormLabel className="flex items-center h-[20px] mb-[4px] text-[14px] text-[#333333] font-semibold">
+                          Tipo de Imóvel (Múltipla Seleção) *
+                        </FormLabel>
+                        <FormControl>
+                          <div className="flex flex-wrap gap-3">
+                            {[
+                              'Apartamento',
+                              'Casa/Sobrado',
+                              'Prédio Comercial',
+                              'Sala Comercial',
+                              'Galpão',
+                            ].map((tipo) => (
+                              <label
+                                key={tipo}
+                                className="flex items-center gap-2 cursor-pointer bg-white border border-[#E0E0E0] px-3 py-2 rounded-[8px] hover:border-[#1A3A52] transition-colors"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={field.value?.includes(tipo) || false}
+                                  onChange={(e) => {
+                                    const current = field.value || []
+                                    const updated = e.target.checked
+                                      ? [...current, tipo]
+                                      : current.filter((t: string) => t !== tipo)
+                                    field.onChange(updated)
+                                  }}
+                                  className="w-4 h-4 text-[#10B981] rounded border-[#E0E0E0] focus:ring-[#10B981]"
+                                />
+                                <span className="text-[14px] font-medium text-[#333333]">
+                                  {tipo}
+                                </span>
+                              </label>
+                            ))}
+                          </div>
+                        </FormControl>
+                        <FormMessage className="min-h-[16px] mt-1" />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
                     name="location"
                     render={({ field, fieldState }) => (
                       <FormItem className="space-y-0">
                         <FormLabel className="flex items-center h-[20px] mb-[4px] text-[14px] text-[#333333] font-semibold">
-                          Bairros
+                          Bairros *
                         </FormLabel>
                         <FormControl>
                           <LocationSelector

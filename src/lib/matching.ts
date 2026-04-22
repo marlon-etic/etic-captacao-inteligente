@@ -4,6 +4,7 @@ export interface ImovelForMatching {
   dormitorios?: number | string
   vagas?: number | string
   tipo?: string
+  tipo_imovel?: string
 }
 
 export interface ClienteForMatching {
@@ -13,6 +14,7 @@ export interface ClienteForMatching {
   dormitorios?: number | string
   vagas_estacionamento?: number | string
   tipo?: string
+  tipo_imovel?: string[] | string
 }
 
 export interface MatchingResult {
@@ -25,12 +27,42 @@ export interface MatchingResult {
   }
 }
 
+// ✅ VALIDAÇÃO DE COMPATIBILIDADE DE TIPOLOGIA
+export function validateTipologiaCompatibility(
+  imovelTipologia: string | undefined,
+  demandaTipologias: string[] | string | undefined,
+): boolean {
+  const imovel = imovelTipologia || 'Apartamento'
+  const demandas = Array.isArray(demandaTipologias)
+    ? demandaTipologias
+    : demandaTipologias
+      ? [demandaTipologias]
+      : ['Apartamento']
+
+  const isCompativel = demandas.includes(imovel)
+
+  console.log('[MATCHING] Validação de Tipologia:', {
+    imovel,
+    demandas,
+    isCompativel,
+  })
+
+  return isCompativel
+}
+
 export function calculateMatching(
   imovel: ImovelForMatching,
   cliente: ClienteForMatching,
 ): MatchingResult {
   if (!imovel) {
-    imovel = { endereco: '', preco: 0, dormitorios: 0, vagas: 0, tipo: 'Venda' }
+    imovel = {
+      endereco: '',
+      preco: 0,
+      dormitorios: 0,
+      vagas: 0,
+      tipo: 'Venda',
+      tipo_imovel: 'Apartamento',
+    }
   }
   if (!cliente) {
     cliente = {
@@ -40,6 +72,26 @@ export function calculateMatching(
       dormitorios: 0,
       vagas_estacionamento: 0,
       tipo: 'Locação',
+      tipo_imovel: ['Apartamento'],
+    }
+  }
+
+  // ✅ VALIDAÇÃO DE TIPOLOGIA ANTES DE CALCULAR SCORE
+  const tipologiaCompativel = validateTipologiaCompatibility(
+    imovel.tipo_imovel,
+    cliente.tipo_imovel,
+  )
+
+  if (!tipologiaCompativel) {
+    console.log('[MATCHING] Tipologias incompatíveis - Score 0%')
+    return {
+      score: 0,
+      details: {
+        localizacaoScore: 0,
+        valorScore: 0,
+        dormitoriosScore: 0,
+        vagasScore: 0,
+      },
     }
   }
 
