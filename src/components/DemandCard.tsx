@@ -34,11 +34,11 @@ interface DemandCardProps {
 }
 
 const InfoItem = ({ label, value }: { label: string; value: React.ReactNode }) => (
-  <div className="flex flex-col gap-[4px] pointer-events-none">
-    <span className="text-[12px] text-[#999999] font-bold uppercase tracking-wider leading-tight">
+  <div className="flex flex-col gap-[4px] pointer-events-none min-w-0">
+    <span className="text-[12px] text-[#999999] font-bold uppercase tracking-wider leading-tight truncate">
       {label}
     </span>
-    <span className="text-[14px] font-bold text-[#333333] break-words whitespace-normal leading-tight">
+    <span className="text-[14px] font-bold text-[#333333] break-words whitespace-normal leading-tight line-clamp-2">
       {value}
     </span>
   </div>
@@ -301,7 +301,7 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
             headerBg,
           )}
         >
-          <span className="text-[12px] text-[#6B7280] font-sans font-bold bg-white px-2.5 py-1.5 rounded-[6px] border border-[#E5E5E5] shadow-sm flex items-center gap-1.5 pointer-events-auto">
+          <span className="text-[12px] text-[#6B7280] font-sans font-bold bg-white px-2.5 py-1.5 rounded-[6px] border border-[#E5E5E5] shadow-sm flex items-center gap-1.5 pointer-events-auto shrink-0 mr-2">
             📅 {creationDateStr}
           </span>
 
@@ -412,7 +412,7 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
         {/* Conteúdo central */}
         <div className="p-4 flex flex-col gap-[12px] flex-1 relative z-0 pointer-events-none">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
-            <h3 className="text-[20px] font-black text-[#1A3A52] break-words whitespace-normal leading-tight group-hover:text-[#2E5F8A] transition-colors pr-2">
+            <h3 className="text-[18px] sm:text-[20px] font-black text-[#1A3A52] break-words whitespace-normal leading-tight group-hover:text-[#2E5F8A] transition-colors pr-2 line-clamp-2 min-w-0">
               {demand.clientName}
             </h3>
             {isPending && !isLost && (
@@ -442,7 +442,14 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
           )}
 
           <div className="grid grid-cols-1 min-[480px]:grid-cols-2 gap-3 mt-2 bg-[#F8FAFC] p-3 rounded-[12px] border border-[#E5E5E5]">
-            <InfoItem label="Localização" value={demand.location} />
+            <InfoItem
+              label="Localização"
+              value={
+                <span className="line-clamp-2" title={demand.location}>
+                  {demand.location}
+                </span>
+              }
+            />
             <InfoItem
               label="Orçamento"
               value={`R$ ${formatPrice(demand.minBudget)} - R$ ${formatPrice(demand.maxBudget)}`}
@@ -481,7 +488,7 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
         >
           <Button
             className={cn(
-              'h-11 min-h-[44px] flex-1 font-bold text-[13px] relative z-10 transition-all duration-150 ease-in-out active:shadow-inner w-full lg:w-auto',
+              'h-11 min-h-[44px] flex-1 font-bold text-[13px] relative z-10 transition-all duration-150 ease-in-out active:shadow-inner w-full lg:w-auto whitespace-nowrap',
               btnSoft,
             )}
             onClick={(e) => {
@@ -504,7 +511,7 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
                 <>
                   <Button
                     className={cn(
-                      'h-11 min-h-[44px] flex-1 font-bold text-[13px] px-2 shadow-sm transition-all duration-150 ease-in-out hover:scale-[1.02] active:shadow-inner relative z-10 w-full lg:w-auto',
+                      'h-11 min-h-[44px] flex-1 font-bold text-[13px] px-2 shadow-sm transition-all duration-150 ease-in-out hover:scale-[1.02] active:shadow-inner relative z-10 w-full lg:w-auto whitespace-nowrap',
                       btnSolid,
                     )}
                     onClick={(e) => {
@@ -518,7 +525,7 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
                     ✅ Encontrei
                   </Button>
                   <Button
-                    className="h-11 min-h-[44px] flex-1 font-bold text-[13px] px-2 shadow-sm transition-all duration-150 ease-in-out hover:scale-[1.02] active:shadow-inner bg-[#EF4444] hover:bg-[#DC2626] text-white border-none relative z-10 w-full lg:w-auto"
+                    className="h-11 min-h-[44px] flex-1 font-bold text-[13px] px-2 shadow-sm transition-all duration-150 ease-in-out hover:scale-[1.02] active:shadow-inner bg-[#EF4444] hover:bg-[#DC2626] text-white border-none relative z-10 w-full lg:w-auto whitespace-nowrap"
                     onClick={(e) => {
                       e.preventDefault()
                       e.stopPropagation()
@@ -544,7 +551,7 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
               )}
               {isPending && !isLost && (prazoDb?.prorrogacoes_usadas || 0) < 3 && (
                 <Button
-                  className="h-11 min-h-[44px] flex-1 font-bold text-[13px] px-2 shadow-sm transition-all duration-150 ease-in-out hover:scale-[1.02] active:shadow-inner bg-[#3B82F6] hover:bg-[#2563EB] text-white border-none relative z-10 w-full lg:w-auto"
+                  className="h-11 min-h-[44px] flex-1 font-bold text-[13px] px-2 shadow-sm transition-all duration-150 ease-in-out hover:scale-[1.02] active:shadow-inner bg-[#3B82F6] hover:bg-[#2563EB] text-white border-none relative z-10 w-full lg:w-auto whitespace-nowrap"
                   onClick={handleProrrogar}
                   disabled={isExtending}
                   aria-label={`Prorrogar Prazo da demanda ${demand.clientName}`}

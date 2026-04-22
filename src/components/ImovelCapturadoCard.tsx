@@ -38,7 +38,7 @@ export function ImovelCapturadoCard({
     <div className="bg-white p-3 md:p-4 rounded-[10px] border border-[#E5E5E5] shadow-sm flex flex-col sm:flex-row gap-3 items-start sm:items-center hover:border-[#1A3A52]/30 transition-colors">
       <div className="flex-1 min-w-0 flex flex-col gap-2">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="font-black text-[#1A3A52] text-[15px] truncate">
+          <span className="font-black text-[#1A3A52] text-[15px] truncate max-w-[200px]">
             {property.codigo_imovel || 'Sem código'}
           </span>
           <Badge

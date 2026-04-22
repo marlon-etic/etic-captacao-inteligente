@@ -243,8 +243,8 @@ export function VinculacaoModal({ isOpen, onClose, imovelData, onSuccess }: Vinc
   return (
     <>
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-        <DialogContent className="max-w-[700px] max-h-[90vh] overflow-y-auto bg-white rounded-xl">
-          <DialogHeader>
+        <DialogContent className="max-w-[700px] w-[95vw] max-h-[90dvh] p-0 flex flex-col overflow-hidden bg-white rounded-xl">
+          <DialogHeader className="p-4 md:p-6 border-b shrink-0 bg-white">
             <DialogTitle className="text-xl font-bold text-slate-800">
               Vincular a uma Demanda
             </DialogTitle>
@@ -253,7 +253,7 @@ export function VinculacaoModal({ isOpen, onClose, imovelData, onSuccess }: Vinc
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex flex-col gap-4 py-4">
+          <div className="flex-1 overflow-y-auto p-4 md:p-6 flex flex-col gap-4">
             {loadingDemands ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
@@ -263,7 +263,7 @@ export function VinculacaoModal({ isOpen, onClose, imovelData, onSuccess }: Vinc
                 Nenhuma demanda compatível encontrada.
               </div>
             ) : (
-              <div className="grid gap-3 max-h-[400px] overflow-y-auto pr-2">
+              <div className="grid gap-3">
                 {scoredDemands.map((demand) => (
                   <div
                     key={demand.id}
@@ -298,7 +298,7 @@ export function VinculacaoModal({ isOpen, onClose, imovelData, onSuccess }: Vinc
             )}
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
+          <div className="p-4 md:p-6 border-t bg-white shrink-0 flex flex-col sm:flex-row gap-3 pb-safe-offset-4">
             <Button
               variant="outline"
               onClick={handleSalvarSemVincular}
@@ -311,7 +311,7 @@ export function VinculacaoModal({ isOpen, onClose, imovelData, onSuccess }: Vinc
             <Button
               onClick={() => handleVincularDemanda(false)}
               disabled={isLinking || isSaving || !selectedDemand}
-              className="w-full sm:w-auto h-12 bg-[#10B981] hover:bg-[#059669] text-white font-bold text-[15px] rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition-all flex-1"
+              className="w-full sm:w-auto h-12 bg-[#10B981] hover:bg-[#059669] text-white font-bold text-[14px] md:text-[15px] rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition-all flex-1 whitespace-nowrap px-2"
             >
               {isLinking ? (
                 <>

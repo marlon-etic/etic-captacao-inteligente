@@ -109,10 +109,10 @@ export function LoosePropertyCard({
           />
           {/* Header absoluto sobre a imagem com pointer-events-auto */}
           <div className="absolute top-3 left-3 right-3 flex justify-between items-start pointer-events-auto z-10">
-            <Badge className="font-sans font-bold bg-white/90 text-[#333333] border border-[#E5E5E5] shadow-sm backdrop-blur-md px-2.5 py-1">
+            <Badge className="font-sans font-bold bg-white/90 text-[#333333] border border-[#E5E5E5] shadow-sm backdrop-blur-md px-2.5 py-1 shrink-0 max-w-[50%] truncate">
               📅 {captureDateStr}
             </Badge>
-            <Badge className="font-bold shadow-sm bg-[#10B981] text-white border-none px-2.5 py-1 uppercase tracking-wide">
+            <Badge className="font-bold shadow-sm bg-[#10B981] text-white border-none px-2.5 py-1 uppercase tracking-wide shrink-0">
               🔓 DISPONÍVEL
             </Badge>
           </div>
@@ -154,7 +154,7 @@ export function LoosePropertyCard({
                 {property.code || 'N/A'}
               </a>
             </div>
-            <span className="font-black text-[#10B981] whitespace-nowrap text-[18px] tracking-tight">
+            <span className="font-black text-[#10B981] whitespace-nowrap text-[16px] sm:text-[18px] tracking-tight">
               {new Intl.NumberFormat('pt-BR', {
                 style: 'currency',
                 currency: 'BRL',

@@ -20,7 +20,7 @@ import { SupabaseDemand } from '@/hooks/use-supabase-demands'
 import { LocationSelector } from '@/components/LocationSelector'
 import { UrgencySelector } from '@/components/UrgencySelector'
 import { Check } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn, convertTiposToArray, convertTiposToString } from '@/lib/utils'
 import { useIsMobile } from '@/hooks/use-mobile'
 
 const formSchema = z
@@ -28,6 +28,7 @@ const formSchema = z
     nome_cliente: z.string().min(1, 'Obrigatório'),
     telefone: z.string().optional(),
     email: z.string().email('Email inválido').optional().or(z.literal('')),
+    tipo_imovel: z.array(z.string()).min(1, 'Selecione pelo menos um tipo de imóvel'),
     bairros: z
       .array(z.string())
       .min(1, 'Selecione pelo menos um bairro')
@@ -63,6 +64,7 @@ export function EditDemandModal({
       nome_cliente: '',
       telefone: '',
       email: '',
+      tipo_imovel: ['Apartamento'],
       bairros: [],
       valor_minimo: 0,
       valor_maximo: 0,
@@ -79,6 +81,7 @@ export function EditDemandModal({
         nome_cliente: demand.nome_cliente,
         telefone: demand.telefone || '',
         email: demand.email || '',
+        tipo_imovel: convertTiposToArray(demand.tipo_imovel) || ['Apartamento'],
         bairros: demand.bairros,
         valor_minimo: demand.valor_minimo,
         valor_maximo: demand.valor_maximo,
@@ -100,6 +103,7 @@ export function EditDemandModal({
         nome_cliente: values.nome_cliente,
         telefone: values.telefone || null,
         email: values.email || null,
+        tipo_imovel: convertTiposToString(values.tipo_imovel),
         bairros: values.bairros,
         valor_minimo: values.valor_minimo,
         valor_maximo: values.valor_maximo,
@@ -142,10 +146,10 @@ export function EditDemandModal({
     <Dialog open={isOpen} onOpenChange={(o) => !o && !isSubmitting && onClose()}>
       <DialogContent
         className={cn(
-          'sm:max-w-[700px] p-0 flex flex-col gap-0 shadow-2xl bg-[#F9FAFB]',
+          'sm:max-w-[700px] w-[95vw] p-0 flex flex-col gap-0 shadow-2xl bg-[#F9FAFB]',
           isMobile
             ? '!fixed !inset-0 !w-full !max-w-none rounded-none'
-            : 'max-h-[90vh] overflow-hidden',
+            : 'max-h-[90dvh] overflow-hidden',
         )}
       >
         <DialogHeader className="p-4 md:p-6 border-b shrink-0 bg-white sticky top-0 z-10 text-left mt-[4px]">
@@ -194,6 +198,49 @@ export function EditDemandModal({
                       <FormLabel className="font-bold text-gray-800">Email</FormLabel>
                       <FormControl>
                         <Input type="email" {...field} className="bg-white" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="tipo_imovel"
+                  render={({ field }) => (
+                    <FormItem className="md:col-span-2">
+                      <FormLabel className="font-bold text-gray-800">
+                        Tipo de Imóvel (Múltipla Seleção) *
+                      </FormLabel>
+                      <FormControl>
+                        <div className="flex flex-wrap gap-3">
+                          {[
+                            'Apartamento',
+                            'Casa',
+                            'Casa/Sobrado',
+                            'Prédio Comercial',
+                            'Sala Comercial',
+                            'Galpão',
+                          ].map((tipo) => (
+                            <label
+                              key={tipo}
+                              className="flex items-center gap-2 cursor-pointer bg-white border border-gray-200 px-3 py-2 rounded-lg hover:bg-gray-50"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={field.value?.includes(tipo) || false}
+                                onChange={(e) => {
+                                  const current = field.value || []
+                                  const updated = e.target.checked
+                                    ? [...current, tipo]
+                                    : current.filter((t: string) => t !== tipo)
+                                  field.onChange(updated)
+                                }}
+                                className="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500"
+                              />
+                              <span className="text-[14px] text-gray-700 font-medium">{tipo}</span>
+                            </label>
+                          ))}
+                        </div>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -302,7 +349,7 @@ export function EditDemandModal({
 
         <div
           className={cn(
-            'bg-white border-t p-4 flex justify-end gap-3 shrink-0',
+            'bg-white border-t p-4 flex justify-end gap-3 shrink-0 pb-safe-offset-4',
             isMobile && 'flex-row',
           )}
         >
@@ -320,11 +367,12 @@ export function EditDemandModal({
             form="edit-demand-form"
             disabled={isSubmitting}
             className={cn(
-              'bg-[#10B981] hover:bg-[#059669] text-white font-bold min-h-[48px]',
+              'bg-[#10B981] hover:bg-[#059669] text-white font-bold min-h-[48px] whitespace-nowrap',
               isMobile && 'flex-1',
             )}
           >
-            <Check className="mr-2 h-5 w-5" /> {isSubmitting ? 'Salvando...' : 'Salvar Alterações'}
+            <Check className="mr-2 h-5 w-5 shrink-0" />{' '}
+            <span className="truncate">{isSubmitting ? 'Salvando...' : 'Salvar Alterações'}</span>
           </Button>
         </div>
       </DialogContent>

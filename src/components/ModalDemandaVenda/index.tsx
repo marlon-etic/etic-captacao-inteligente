@@ -207,10 +207,10 @@ export function ModalDemandaVenda({ isOpen, onClose }: { isOpen: boolean; onClos
     <Dialog open={isOpen} onOpenChange={(o) => !o && !isSubmitting && onClose()}>
       <DialogContent
         className={cn(
-          'sm:max-w-[700px] flex flex-col gap-0 p-0 overflow-hidden shadow-2xl z-[1010]',
+          'sm:max-w-[700px] w-[95vw] flex flex-col gap-0 p-0 overflow-hidden shadow-2xl z-[1010]',
           isMobile
             ? '!fixed !left-0 !right-0 !bottom-0 !top-auto !translate-x-0 !translate-y-0 !w-full !max-w-none rounded-t-xl rounded-b-none border-x-0 border-b-0'
-            : 'max-h-[90vh]',
+            : 'max-h-[90dvh]',
         )}
         style={{
           height: isMobile ? (viewportHeight ? `${viewportHeight}px` : '100dvh') : undefined,
@@ -474,7 +474,7 @@ export function ModalDemandaVenda({ isOpen, onClose }: { isOpen: boolean; onClos
 
         <div
           className={cn(
-            'bg-white border-t border-[#E0E0E0] p-3 md:p-4 flex gap-3 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] z-[1050]',
+            'bg-white border-t border-[#E0E0E0] p-3 md:p-4 flex gap-3 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] z-[1050] pb-safe-offset-4 md:pb-4',
             isMobile ? 'fixed left-0 right-0' : 'shrink-0 flex-col md:flex-row md:justify-end',
             isMobile && isKeyboardOpen ? 'flex-row' : '',
           )}

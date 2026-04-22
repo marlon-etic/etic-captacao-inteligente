@@ -225,10 +225,10 @@ export function ModalDemandaLocacao({ isOpen, onClose }: Props) {
     <Dialog open={isOpen} onOpenChange={(open) => !open && !isSubmitting && onClose()}>
       <DialogContent
         className={cn(
-          'max-w-3xl flex flex-col gap-0 p-0 bg-[#F9FAFB] border-none overflow-hidden shadow-2xl z-[1010]',
+          'max-w-3xl w-[95vw] flex flex-col gap-0 p-0 bg-[#F9FAFB] border-none overflow-hidden shadow-2xl z-[1010]',
           isMobile
             ? '!fixed !left-0 !right-0 !top-0 !bottom-auto !translate-x-0 !translate-y-0 !w-full !max-w-none rounded-none'
-            : 'max-h-[90vh] rounded-xl',
+            : 'max-h-[90dvh] rounded-xl',
         )}
         style={{
           height: isMobile ? (viewportHeight ? `${viewportHeight}px` : '100dvh') : undefined,
@@ -530,7 +530,7 @@ export function ModalDemandaLocacao({ isOpen, onClose }: Props) {
 
         <div
           className={cn(
-            'bg-white border-t border-[#E0E0E0] p-3 md:p-4 flex gap-3 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] z-[1050] shrink-0',
+            'bg-white border-t border-[#E0E0E0] p-3 md:p-4 flex gap-3 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] z-[1050] shrink-0 pb-safe-offset-4 md:pb-4',
             isMobile && isKeyboardOpen ? 'flex-row' : 'flex-col md:flex-row md:justify-end',
           )}
         >

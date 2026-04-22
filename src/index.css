@@ -85,6 +85,19 @@
   }
 
   /* Utilities for iOS safe area support */
+
+  /* Prevent overflowing text globally */
+  p,
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  span,
+  div {
+    overflow-wrap: break-word;
+  }
   .pb-safe {
     padding-bottom: env(safe-area-inset-bottom);
   }
@@ -106,6 +119,70 @@
 }
 
 @layer components {
+  /* ✅ RESPONSIVE COMPONENTS FROM SPEC */
+  .modal-vincular {
+    @apply w-full max-w-[95vw] max-h-[95dvh] flex flex-col overflow-y-auto overflow-x-hidden;
+  }
+  .modal-vincular-header {
+    @apply shrink-0 p-6 border-b border-gray-200;
+  }
+  .modal-vincular-content {
+    @apply flex-1 overflow-y-auto p-6;
+  }
+  .modal-vincular-footer {
+    @apply shrink-0 p-6 border-t border-gray-200 flex gap-4 justify-end;
+  }
+  .btn-vincular {
+    @apply px-6 py-3 bg-emerald-500 text-white border-none rounded-lg text-sm font-semibold cursor-pointer whitespace-nowrap shrink-0;
+  }
+  .form-container {
+    @apply flex flex-col gap-6 p-8;
+  }
+  .form-field {
+    @apply flex flex-col gap-2;
+  }
+  .form-grid-2 {
+    @apply grid grid-cols-1 md:grid-cols-2 gap-6;
+  }
+  .card-responsive {
+    @apply flex flex-col gap-4 p-6 border border-slate-200 rounded-xl bg-white overflow-hidden;
+  }
+  .card-title-responsive {
+    @apply text-base font-semibold text-slate-800 break-words;
+    overflow-wrap: break-word;
+  }
+  .card-text-responsive {
+    @apply text-sm text-slate-500 break-words line-clamp-2 overflow-hidden text-ellipsis;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+  }
+  .cards-grid {
+    @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 w-full max-w-full;
+  }
+
+  @media (max-width: 768px) {
+    .modal-vincular {
+      @apply max-w-[100vw] max-h-[100dvh] rounded-none;
+    }
+    .modal-vincular-header,
+    .modal-vincular-content,
+    .modal-vincular-footer {
+      @apply p-4;
+    }
+    .modal-vincular-footer {
+      @apply flex-col;
+    }
+    .btn-vincular {
+      @apply w-full;
+    }
+    .form-container {
+      @apply p-4 gap-4;
+    }
+    .card-responsive {
+      @apply p-4;
+    }
+  }
+
   /* ✅ CONTAINER DE IMAGENS - RESPONSIVO */
   .imagem-container {
     @apply flex flex-wrap w-full max-w-full overflow-hidden;

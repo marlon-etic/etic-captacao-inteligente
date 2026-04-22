@@ -329,7 +329,7 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
               : 'border-[#E5E5E5]/50 bg-[#F5F5F5]/50',
           )}
         >
-          <span className="text-[12px] text-[#4B5563] font-sans font-bold bg-white px-2.5 py-1 rounded-[6px] border border-[#E5E5E5] shadow-sm flex items-center gap-1.5 pointer-events-auto">
+          <span className="text-[12px] text-[#4B5563] font-sans font-bold bg-white px-2.5 py-1 rounded-[6px] border border-[#E5E5E5] shadow-sm flex items-center gap-1.5 pointer-events-auto shrink-0 mr-2">
             📅 {new Date(demand.created_at).toLocaleDateString('pt-BR')}
           </span>
           <div className="flex items-center gap-2 flex-wrap pr-8 pointer-events-auto">
@@ -418,7 +418,7 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
 
         <div className="p-4 flex flex-col gap-3 flex-1 pointer-events-none">
           <h3
-            className="text-[18px] font-black text-[#1A3A52] leading-tight pr-24 line-clamp-1 group-hover:text-[#2E5F8A] transition-colors pointer-events-auto"
+            className="text-[18px] font-black text-[#1A3A52] leading-tight line-clamp-2 group-hover:text-[#2E5F8A] transition-colors pointer-events-auto"
             title={demand.nome_cliente}
           >
             {demand.nome_cliente}
@@ -427,9 +427,9 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
           <div className="flex flex-col gap-1.5 mt-1 pointer-events-auto">
             <div className="flex items-center gap-2 text-[14px] text-[#333333]">
               <MapPin className="w-4 h-4 text-[#F44336] shrink-0" />
-              <span className="font-medium line-clamp-1" title={demand.bairros?.join(', ')}>
+              <span className="font-medium line-clamp-2" title={demand.bairros?.join(', ')}>
                 {demand.bairros?.join(', ')}
-              </span>
+              </span>{' '}
             </div>
             <div className="flex items-center gap-2 text-[14px] text-[#333333]">
               <Home className="w-4 h-4 text-[#1A3A52] shrink-0" />
@@ -439,7 +439,7 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
 
           <div className="flex items-center gap-2 mt-1 pointer-events-auto">
             <DollarSign className="w-5 h-5 text-[#10B981] shrink-0" />
-            <span className="text-[20px] font-black text-[#10B981] tracking-tight">
+            <span className="text-[18px] sm:text-[20px] font-black text-[#10B981] tracking-tight">
               {formatPrice(demand.valor_minimo)} - {formatPrice(demand.valor_maximo)}
             </span>
           </div>

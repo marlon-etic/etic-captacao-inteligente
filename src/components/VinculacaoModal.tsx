@@ -343,7 +343,7 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-[1000px] w-[95vw] max-h-[75vh] md:max-h-[75vh] h-[75vh] md:h-[75vh] bg-white p-0 gap-0 overflow-hidden rounded-[12px] shadow-2xl flex flex-col [&>button]:hidden">
+      <DialogContent className="max-w-[1000px] w-[95vw] max-h-[90dvh] h-[90dvh] md:h-[85dvh] bg-white p-0 gap-0 overflow-hidden rounded-[12px] shadow-2xl flex flex-col [&>button]:hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-3 md:p-4 border-b border-gray-100 bg-white shrink-0 relative z-20 shadow-sm">
           <div className="flex items-center gap-2 text-slate-800">
@@ -417,7 +417,7 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
         </div>
 
         {/* Content Area */}
-        <div className="flex flex-col md:flex-row flex-1 min-h-0 overflow-y-auto bg-[#F8FAFC]">
+        <div className="flex flex-col md:flex-row flex-1 min-h-0 bg-[#F8FAFC]">
           {/* Lista de Sugestões (Left Sidebar) */}
           <div className="w-full md:w-[45%] flex flex-col border-b md:border-b-0 md:border-r border-gray-200 bg-white flex-1 min-h-0">
             <div className="p-3 border-b border-gray-100 shrink-0 bg-slate-50">
@@ -578,7 +578,7 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
         </div>
 
         {/* Footer Único Fixo na Base */}
-        <div className="p-3 md:p-4 border-t border-gray-100 shrink-0 bg-white z-20 flex flex-col-reverse sm:flex-row items-center justify-end gap-3 shadow-[0_-4px_6px_-1px_rgb(0,0,0,0.05)]">
+        <div className="p-3 md:p-4 border-t border-gray-100 shrink-0 bg-white z-20 flex flex-col-reverse sm:flex-row items-center justify-end gap-3 shadow-[0_-4px_6px_-1px_rgb(0,0,0,0.05)] pb-safe-offset-4">
           <Button
             variant="outline"
             className="w-full sm:w-auto h-12 font-bold text-slate-600 border-slate-300 hover:bg-slate-50 flex-1 sm:flex-none"
@@ -598,7 +598,7 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
           <Button
             onClick={handleVincularDemanda}
             disabled={isLinking || isSaving || !selectedDemand}
-            className="w-full sm:w-auto h-12 bg-[#10B981] hover:bg-[#059669] text-white font-bold text-[15px] rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition-all flex-1"
+            className="w-full sm:w-auto h-12 bg-[#10B981] hover:bg-[#059669] text-white font-bold text-[14px] md:text-[15px] rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition-all flex-1 whitespace-nowrap px-2"
           >
             {isLinking ? (
               <>

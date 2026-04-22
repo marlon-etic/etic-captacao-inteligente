@@ -155,7 +155,7 @@ export function CapturedPropertyCard({
       {/* Header: Data and Status */}
       <div className="px-4 pt-4 pb-3 border-b border-[#E5E5E5] bg-[#F5F5F5]/50 shrink-0 relative z-10 pointer-events-none rounded-t-[14px]">
         <div className="flex justify-between items-start mb-3">
-          <span className="text-[12px] text-[#6B7280] font-sans font-bold bg-white px-2.5 py-1.5 rounded-[6px] border border-[#E5E5E5] shadow-sm flex items-center gap-1.5 pointer-events-auto">
+          <span className="text-[12px] text-[#6B7280] font-sans font-bold bg-white px-2.5 py-1.5 rounded-[6px] border border-[#E5E5E5] shadow-sm flex items-center gap-1.5 pointer-events-auto shrink-0">
             📅 {captureDateStr}
           </span>
           <div
@@ -190,7 +190,7 @@ export function CapturedPropertyCard({
             target="_blank"
             rel="noopener noreferrer"
             className={cn(
-              'font-black text-[#1A3A52] hover:underline relative z-10 ml-1 text-[16px]',
+              'font-black text-[#1A3A52] hover:underline relative z-10 ml-1 text-[16px] truncate',
               !publicUrl && 'pointer-events-none text-[#999999]',
             )}
             onClick={(e) => {
@@ -200,6 +200,7 @@ export function CapturedPropertyCard({
               }
               if (!publicUrl) e.preventDefault()
             }}
+            title={property.code || 'Não informado'}
           >
             {property.code || 'Não informado'}
           </a>
@@ -232,25 +233,25 @@ export function CapturedPropertyCard({
           <>
             <Button
               variant="outline"
-              className="flex-1 h-11 min-h-[44px] border-[#2E5F8A]/30 text-[#1A3A52] bg-white hover:bg-gray-100 dark:hover:bg-gray-800 font-bold text-[13px] px-2 relative z-10 transition-all duration-150 ease-in-out active:shadow-inner w-full lg:w-auto"
+              className="flex-1 h-11 min-h-[44px] border-[#2E5F8A]/30 text-[#1A3A52] bg-white hover:bg-gray-100 dark:hover:bg-gray-800 font-bold text-[13px] px-2 relative z-10 transition-all duration-150 ease-in-out active:shadow-inner w-full lg:w-auto whitespace-nowrap"
               onClick={(e) => handleActionClick(e, 'edit')}
               aria-label={`Editar imóvel ${property.code}`}
             >
-              <Edit2 className="w-[14px] h-[14px] mr-1.5" />
-              Editar
+              <Edit2 className="w-[14px] h-[14px] mr-1.5 shrink-0" />
+              <span className="truncate">Editar</span>
             </Button>
             <Button
               variant="outline"
-              className="flex-1 h-11 min-h-[44px] border-[#2E5F8A]/30 text-[#1A3A52] bg-white hover:bg-gray-100 dark:hover:bg-gray-800 font-bold text-[13px] px-2 relative z-10 transition-all duration-150 ease-in-out active:shadow-inner w-full lg:w-auto"
+              className="flex-1 h-11 min-h-[44px] border-[#2E5F8A]/30 text-[#1A3A52] bg-white hover:bg-gray-100 dark:hover:bg-gray-800 font-bold text-[13px] px-2 relative z-10 transition-all duration-150 ease-in-out active:shadow-inner w-full lg:w-auto whitespace-nowrap"
               onClick={(e) => handleActionClick(e, 'details')}
               aria-label={`Ver detalhes do imóvel ${property.code}`}
             >
-              <BookOpen className="w-[14px] h-[14px] mr-1.5" />
-              Detalhes
+              <BookOpen className="w-[14px] h-[14px] mr-1.5 shrink-0" />
+              <span className="truncate">Detalhes</span>
             </Button>
             {demand && (
               <Button
-                className="flex-1 h-11 min-h-[44px] bg-[#25D366] hover:bg-[#128C7E] text-white font-bold text-[13px] px-2 border border-transparent relative z-10 transition-all duration-150 ease-in-out active:shadow-inner shadow-sm w-full lg:w-auto"
+                className="flex-1 h-11 min-h-[44px] bg-[#25D366] hover:bg-[#128C7E] text-white font-bold text-[13px] px-2 border border-transparent relative z-10 transition-all duration-150 ease-in-out active:shadow-inner shadow-sm w-full lg:w-auto whitespace-nowrap"
                 onClick={handleWhatsApp}
                 aria-label="Contatar Solicitante via WhatsApp"
               >
@@ -273,7 +274,6 @@ export function CapturedPropertyCard({
                 <span className="truncate">VINCULAR</span>
               </Button>
             )}
-
             {demand && !isClosed && !isVisita && (
               <Button
                 className="flex-1 h-11 min-h-[44px] bg-[#FF9800] hover:bg-[#F57C00] text-white font-bold text-[13px] px-2 shadow-sm relative z-10 transition-all duration-150 ease-in-out active:shadow-inner border-none w-full lg:w-auto"
@@ -296,13 +296,13 @@ export function CapturedPropertyCard({
             )}
             <Button
               variant="outline"
-              className="flex-1 h-11 min-h-[44px] border-[#2E5F8A]/30 text-[#1A3A52] bg-white hover:bg-gray-100 dark:hover:bg-gray-800 font-bold text-[13px] px-2 relative z-10 transition-all duration-150 ease-in-out active:shadow-inner w-full lg:w-auto"
+              className="flex-1 h-11 min-h-[44px] border-[#2E5F8A]/30 text-[#1A3A52] bg-white hover:bg-gray-100 dark:hover:bg-gray-800 font-bold text-[13px] px-2 relative z-10 transition-all duration-150 ease-in-out active:shadow-inner w-full lg:w-auto whitespace-nowrap"
               onClick={(e) => handleActionClick(e, 'details')}
               aria-label={`Ver detalhes do imóvel ${property.code}`}
             >
               <BookOpen className="w-[16px] h-[16px] mr-1.5 shrink-0" />
               <span className="truncate">Detalhes</span>
-            </Button>
+            </Button>{' '}
           </>
         )}
 
