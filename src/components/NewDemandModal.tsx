@@ -31,10 +31,7 @@ export const formSchema = z
     clientPhone: z
       .string()
       .transform((v) => (v ? v.replace(/\D/g, '') : ''))
-      .refine(
-        (v) => v === '' || v.length === 10 || v.length === 11,
-        'Telefone inválido. Use: (11) 99999-9999',
-      )
+      .refine((v) => v === '' || v.length >= 8, 'Telefone inválido. Mínimo de 8 dígitos numéricos.')
       .optional()
       .or(z.literal('')),
     clientEmail: z
@@ -173,6 +170,8 @@ export function NewDemandModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
           formattedPhone = `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`
         } else if (digits.length === 10) {
           formattedPhone = `(${digits.slice(0, 2)}) 9${digits.slice(2, 6)}-${digits.slice(6)}`
+        } else {
+          formattedPhone = values.clientPhone
         }
       }
 

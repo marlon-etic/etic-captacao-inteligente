@@ -42,8 +42,8 @@ const formSchema = z
       .string()
       .optional()
       .refine(
-        (val) => !val || /^\+?[0-9\s\-()]{8,}$/.test(val),
-        'Telefone inválido. Use um formato válido.',
+        (val) => !val || val.replace(/[^0-9]/g, '').length >= 8,
+        'Telefone inválido. Use um formato válido com pelo menos 8 dígitos.',
       ),
     email: z
       .string()
