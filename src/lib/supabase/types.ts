@@ -1470,7 +1470,8 @@ export const Constants = {
 //   FOREIGN KEY demandas_locacao_sdr_id_fkey: FOREIGN KEY (sdr_id) REFERENCES users(id) ON DELETE SET NULL
 //   CHECK demandas_locacao_status_demanda_check: CHECK (((status_demanda)::text = ANY ((ARRAY['aberta'::character varying, 'atendida'::character varying, 'impossivel'::character varying, 'sem_resposta_24h'::character varying, 'ganho'::character varying])::text[])))
 //   CHECK demandas_locacao_telefone_check: CHECK (((telefone IS NULL) OR ((telefone)::text = ''::text) OR (length(regexp_replace((telefone)::text, '[^0-9]'::text, ''::text, 'g'::text)) >= 8)))
-//   CHECK demandas_locacao_tipo_imovel_check: CHECK ((tipo_imovel = ANY (ARRAY['Casa'::text, 'Apartamento'::text, 'Terreno'::text, 'Galpão'::text, 'Comercial'::text])))
+//   CHECK demandas_locacao_tipo_imovel_check: CHECK (((tipo_imovel IS NULL) OR (tipo_imovel ~ '^(Apartamento|Casa|Casa/Sobrado|Prédio Comercial|Sala Comercial|Galpão)(,(Apartamento|Casa|Casa/Sobrado|Prédio Comercial|Sala Comercial|Galpão))*
+::text)))
 //   CHECK demandas_locacao_vagas_estacionamento_check: CHECK (((vagas_estacionamento >= 0) AND (vagas_estacionamento <= 10)))
 //   FOREIGN KEY demandas_locacao_vinculacao_captador_id_fkey: FOREIGN KEY (vinculacao_captador_id) REFERENCES auth.users(id) ON DELETE SET NULL
 //   FOREIGN KEY fk_demandas_locacao_sdr: FOREIGN KEY (sdr_id) REFERENCES users(id) ON DELETE SET NULL
@@ -1485,7 +1486,8 @@ export const Constants = {
 //   PRIMARY KEY demandas_vendas_pkey: PRIMARY KEY (id)
 //   CHECK demandas_vendas_status_demanda_check: CHECK (((status_demanda)::text = ANY ((ARRAY['aberta'::character varying, 'atendida'::character varying, 'impossivel'::character varying, 'sem_resposta_24h'::character varying, 'ganho'::character varying])::text[])))
 //   CHECK demandas_vendas_telefone_check: CHECK (((telefone IS NULL) OR ((telefone)::text = ''::text) OR (length(regexp_replace((telefone)::text, '[^0-9]'::text, ''::text, 'g'::text)) >= 8)))
-//   CHECK demandas_vendas_tipo_imovel_check: CHECK (((tipo_imovel)::text = ANY ((ARRAY['Casa'::character varying, 'Apartamento'::character varying, 'Terreno'::character varying, 'Galpão'::character varying, 'Comercial'::character varying])::text[])))
+//   CHECK demandas_vendas_tipo_imovel_check: CHECK (((tipo_imovel IS NULL) OR ((tipo_imovel)::text ~ '^(Apartamento|Casa|Casa/Sobrado|Prédio Comercial|Sala Comercial|Galpão)(,(Apartamento|Casa|Casa/Sobrado|Prédio Comercial|Sala Comercial|Galpão))*
+::text)))
 //   CHECK demandas_vendas_vagas_estacionamento_check: CHECK (((vagas_estacionamento >= 0) AND (vagas_estacionamento <= 10)))
 //   FOREIGN KEY demandas_vendas_vinculacao_captador_id_fkey: FOREIGN KEY (vinculacao_captador_id) REFERENCES auth.users(id) ON DELETE SET NULL
 // Table: grupos_demandas
