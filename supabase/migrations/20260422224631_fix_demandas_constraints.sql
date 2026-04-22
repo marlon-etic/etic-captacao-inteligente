@@ -2,7 +2,25 @@ DO $$
 DECLARE
   col_type text;
 BEGIN
+  -- Fix demandas_vendas constraints & types
   -- ==========================================
+  DROP CONSTRAINT IF EXISTS demandas_vendas_tipo_imovel_check ON public.demandas_vendas;
+  DROP CONSTRAINT IF EXISTS demandas_vendas_telefone_check ON public.demandas_vendas;
+=======
+  -- ==========================================
+  -- Fix demandas_vendas constraints & types
+  -- ==========================================
+  ALTER TABLE public.demandas_vendas DROP CONSTRAINT IF EXISTS demandas_vendas_tipo_imovel_check;
+  ALTER TABLE public.demandas_vendas DROP CONSTRAINT IF EXISTS demandas_vendas_telefone_check;Fix demandas_locacao constraints & types
+  -- ==========================================
+  DROP CONSTRAINT IF EXISTS demandas_locacao_tipo_imovel_check ON public.demandas_locacao;
+  DROP CONSTRAINT IF EXISTS demandas_locacao_telefone_check ON public.demandas_locacao;
+=======
+  -- ==========================================
+  -- Fix demandas_locacao constraints & types
+  -- ==========================================
+  ALTER TABLE public.demandas_locacao DROP CONSTRAINT IF EXISTS demandas_locacao_tipo_imovel_check;
+  ALTER TABLE public.demandas_locacao DROP CONSTRAINT IF EXISTS demandas_locacao_telefone_check;==========================================
   -- Fix demandas_locacao constraints & types
   -- ==========================================
   DROP CONSTRAINT IF EXISTS demandas_locacao_tipo_imovel_check ON public.demandas_locacao;
