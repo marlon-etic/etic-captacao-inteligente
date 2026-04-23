@@ -151,3 +151,19 @@ export function calculateMatching(
     },
   }
 }
+
+export function getScoreBadgeColor(score: number): string {
+  if (score >= 80)
+    return 'bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 border-emerald-500/20'
+  if (score >= 50) return 'bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 border-amber-500/20'
+  if (score > 0)
+    return 'bg-orange-500/10 text-orange-500 hover:bg-orange-500/20 border-orange-500/20'
+  return 'bg-gray-500/10 text-gray-500 hover:bg-gray-500/20 border-gray-500/20'
+}
+
+export function getScoreProgressColor(score: number): string {
+  if (score >= 80) return 'bg-emerald-500'
+  if (score >= 50) return 'bg-amber-500'
+  if (score > 0) return 'bg-orange-500'
+  return 'bg-gray-300'
+}
