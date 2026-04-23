@@ -1,8 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useRef, useEffect, useState, useContext, ReactNode } from 'react'
 import { Outlet, Navigate, useLocation, useNavigate } from 'react-router-dom'
 
-// @ts-expect-error - Prevent tree-shaking of React hooks
-export const __reactHooks = { useState, useEffect, useRef }
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar'
 import { AppSidebar } from '@/components/AppSidebar'
 import { AppHeader } from '@/components/AppHeader'

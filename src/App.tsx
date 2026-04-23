@@ -1,5 +1,5 @@
-import React, { useRef, useEffect, useState, FC, ReactNode } from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import React, { useRef, useEffect, useState, useContext, ReactNode, FC } from 'react'
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { Toaster } from '@/components/ui/toaster'
 import { Toaster as Sonner } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
@@ -12,7 +12,6 @@ import { ErrorBoundary } from '@/components/common/ErrorBoundary'
 import { useToast } from '@/components/ui/use-toast'
 import { useUserRole } from '@/hooks/use-user-role'
 import { findNewMatches } from '@/services/matchingService'
-import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase/client'
 import Layout from '@/components/Layout'
 import Index from '@/pages/Index'
@@ -61,9 +60,6 @@ import LandlordSettings from '@/pages/landlord/LandlordSettings'
 import { useLandlordAuth } from '@/hooks/useLandlordAuth'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { useAuth } from '@/hooks/use-auth'
-
-// @ts-expect-error - Prevent tree-shaking of React hooks
-export const __reactHooks = { useState, useEffect, useRef }
 
 import { enableDebugLogging } from '@/debug'
 
