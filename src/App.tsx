@@ -59,7 +59,7 @@ import LandlordProposals from '@/pages/landlord/LandlordProposals'
 import LandlordSettings from '@/pages/landlord/LandlordSettings'
 import { useLandlordAuth } from '@/hooks/useLandlordAuth'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
-import React, { useRef } from 'react'
+import React, { useRef, useEffect, useState } from 'react'
 import { useAuth } from '@/hooks/use-auth'
 
 import { enableDebugLogging } from '@/debug'
@@ -164,16 +164,16 @@ const AppRoutes = () => {
   const navigate = useNavigate()
   const { toast } = useToast()
   const { role } = useUserRole()
-  const isMounted = React.useRef(true)
+  const isMounted = useRef(true)
 
-  React.useEffect(() => {
+  useEffect(() => {
     isMounted.current = true
     return () => {
       isMounted.current = false
     }
   }, [])
 
-  React.useEffect(() => {
+  useEffect(() => {
     const handleNewMatch = (match: any) => {
       toast({
         title: '⚡ Novo Match Encontrado!',
@@ -214,7 +214,7 @@ const AppRoutes = () => {
     }
   }, [navigate, toast, role])
 
-  React.useEffect(() => {
+  useEffect(() => {
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
       const reasonStr = String(event.reason)
       const reasonMsg = event.reason?.message || ''

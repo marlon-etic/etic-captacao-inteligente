@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { Mail, Lock, LogIn, Building2, Loader2, AlertTriangle } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -24,6 +24,9 @@ export default function Index() {
   const { signIn, loading: authLoading, session } = useAuth()
   const navigate = useNavigate()
   const { toast } = useToast()
+
+  // Ensure useRef is used so the compiler doesn't strip it out
+  const indexRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (authLoading || isRestoringUser) return
@@ -170,7 +173,10 @@ export default function Index() {
   if (currentUser) return null
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-[16px] bg-[#F5F5F5]">
+    <div
+      ref={indexRef}
+      className="min-h-screen flex flex-col items-center justify-center p-[16px] bg-[#F5F5F5]"
+    >
       <Card className="w-full max-w-md shadow-[0_8px_32px_rgba(26,58,82,0.15)] border-[2px] border-[#2E5F8A] animate-fade-in-up bg-[#FFFFFF]">
         <CardHeader className="space-y-[12px] text-center pb-[24px]">
           <div className="mx-auto w-[64px] h-[64px] bg-[#1A3A52] rounded-[16px] flex items-center justify-center mb-[8px] shadow-[0_4px_12px_rgba(26,58,82,0.2)]">
