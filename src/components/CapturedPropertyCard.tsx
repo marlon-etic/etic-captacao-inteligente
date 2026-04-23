@@ -129,14 +129,29 @@ export function CapturedPropertyCard({
 
   const isClosed = property.etapa_funil === 'fechado' || !!property.data_fechamento
   const isVisita = (property.etapa_funil === 'visitado' || !!property.data_visita) && !isClosed
+  const isVinculado =
+    (!!property.demanda_locacao_id ||
+      !!property.demanda_venda_id ||
+      property.status_captacao === 'vinculado' ||
+      property.etapa_funil === 'vinculado') &&
+    !isClosed &&
+    !isVisita
 
-  const status = isClosed ? 'Fechado' : isVisita ? 'Visita' : 'Captado'
+  const status = isClosed
+    ? 'Fechado'
+    : isVisita
+      ? 'Visita Agendada'
+      : isVinculado
+        ? 'Vinculado'
+        : 'Captado'
   const captadoBadgeClass = isClosed
     ? 'bg-[#4CAF50] text-white'
     : isVisita
       ? 'bg-[#FF9800] text-white'
-      : 'bg-[#3B82F6] text-white'
-  const badgeIcon = isClosed ? '🟢' : isVisita ? '🟠' : '🔵'
+      : isVinculado
+        ? 'bg-[#8B5CF6] text-white'
+        : 'bg-[#3B82F6] text-white'
+  const badgeIcon = isClosed ? '🟢' : isVisita ? '🟠' : isVinculado ? '🟣' : '🔵'
 
   const propType = property.tipo || property.propertyType || demand?.type || 'Venda'
   const isAluguel = propType === 'Aluguel' || propType?.toLowerCase() === 'aluguel'
@@ -267,6 +282,23 @@ export function CapturedPropertyCard({
         {demand && (
           <p className="text-[12px] text-[#666666] mt-1">
             👤 Solicitado por: <span className="text-[#333333] font-bold">{solicitanteName}</span>
+          </p>
+        )}
+        {isVinculado && !demand && (
+          <div className="mt-1 flex flex-col gap-0.5">
+            <p className="text-[12px] text-[#8B5CF6] font-bold">
+              🔗 Vinculado a Demanda de {property.demanda_locacao_id ? 'Aluguel' : 'Venda'}
+            </p>
+          </div>
+        )}
+        {isVisita && property.data_visita && (
+          <p className="text-[12px] text-[#FF9800] mt-1 font-bold">
+            📅 Visita: {new Date(property.data_visita).toLocaleString('pt-BR')}
+          </p>
+        )}
+        {isClosed && property.data_fechamento && (
+          <p className="text-[12px] text-[#4CAF50] mt-1 font-bold">
+            🎉 Fechado em: {new Date(property.data_fechamento).toLocaleDateString('pt-BR')}
           </p>
         )}
         <div className="mt-[8px] pt-[8px] border-t border-[#E5E5E5] text-[13px] text-[#666666] max-h-[80px] overflow-y-auto custom-scrollbar">

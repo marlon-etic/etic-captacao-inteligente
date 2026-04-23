@@ -21,7 +21,9 @@ export async function linkImovelToDemanda(
     throw new Error('Você não tem permissão para vincular este imóvel')
   }
 
-  const updateData = isLocacao ? { demanda_locacao_id: demandaId } : { demanda_venda_id: demandaId }
+  const updateData = isLocacao
+    ? { demanda_locacao_id: demandaId, status_captacao: 'vinculado', etapa_funil: 'vinculado' }
+    : { demanda_venda_id: demandaId, status_captacao: 'vinculado', etapa_funil: 'vinculado' }
 
   const { error } = await supabase.from('imoveis_captados').update(updateData).eq('id', imovelId)
 

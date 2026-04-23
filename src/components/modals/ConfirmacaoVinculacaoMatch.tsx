@@ -33,7 +33,7 @@ export function ConfirmacaoVinculacaoMatch({
       await linkImovelToDemanda(
         match.imovel_id,
         match.demanda_id,
-        match.demanda_tipo === 'Locação',
+        match.demanda_tipo === 'Locação' || match.demanda_tipo === 'Aluguel',
         role,
       )
 
