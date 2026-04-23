@@ -495,6 +495,90 @@ export type Database = {
           },
         ]
       }
+      imoveis_captados_backup: {
+        Row: {
+          captador_id: string | null
+          codigo_imovel: string | null
+          comissao_percentual: number | null
+          created_at: string | null
+          data_fechamento: string | null
+          data_visita: string | null
+          demanda_locacao_id: string | null
+          demanda_venda_id: string | null
+          dormitorios: number | null
+          endereco: string | null
+          etapa_funil: string | null
+          fotos: string[] | null
+          id: string | null
+          landlord_id: string | null
+          localizacao_texto: string | null
+          observacoes: string | null
+          preco: number | null
+          status_captacao: string | null
+          status_revisao: string | null
+          tipo: string | null
+          tipo_imovel: string | null
+          updated_at: string | null
+          user_captador_id: string | null
+          vagas: number | null
+          valor: number | null
+        }
+        Insert: {
+          captador_id?: string | null
+          codigo_imovel?: string | null
+          comissao_percentual?: number | null
+          created_at?: string | null
+          data_fechamento?: string | null
+          data_visita?: string | null
+          demanda_locacao_id?: string | null
+          demanda_venda_id?: string | null
+          dormitorios?: number | null
+          endereco?: string | null
+          etapa_funil?: string | null
+          fotos?: string[] | null
+          id?: string | null
+          landlord_id?: string | null
+          localizacao_texto?: string | null
+          observacoes?: string | null
+          preco?: number | null
+          status_captacao?: string | null
+          status_revisao?: string | null
+          tipo?: string | null
+          tipo_imovel?: string | null
+          updated_at?: string | null
+          user_captador_id?: string | null
+          vagas?: number | null
+          valor?: number | null
+        }
+        Update: {
+          captador_id?: string | null
+          codigo_imovel?: string | null
+          comissao_percentual?: number | null
+          created_at?: string | null
+          data_fechamento?: string | null
+          data_visita?: string | null
+          demanda_locacao_id?: string | null
+          demanda_venda_id?: string | null
+          dormitorios?: number | null
+          endereco?: string | null
+          etapa_funil?: string | null
+          fotos?: string[] | null
+          id?: string | null
+          landlord_id?: string | null
+          localizacao_texto?: string | null
+          observacoes?: string | null
+          preco?: number | null
+          status_captacao?: string | null
+          status_revisao?: string | null
+          tipo?: string | null
+          tipo_imovel?: string | null
+          updated_at?: string | null
+          user_captador_id?: string | null
+          vagas?: number | null
+          valor?: number | null
+        }
+        Relationships: []
+      }
       landlord_profiles: {
         Row: {
           codigo_locador: string | null
@@ -1384,6 +1468,32 @@ export const Constants = {
 //   tipo: text (nullable, default: 'Ambos'::text)
 //   tipo_imovel: text (nullable, default: 'Apartamento'::text)
 //   status_revisao: text (nullable, default: 'ok'::text)
+// Table: imoveis_captados_backup
+//   id: uuid (nullable)
+//   captador_id: uuid (nullable)
+//   endereco: text (nullable)
+//   valor: numeric (nullable)
+//   demanda_locacao_id: uuid (nullable)
+//   demanda_venda_id: uuid (nullable)
+//   created_at: timestamp with time zone (nullable)
+//   updated_at: timestamp with time zone (nullable)
+//   user_captador_id: uuid (nullable)
+//   codigo_imovel: character varying (nullable)
+//   localizacao_texto: text (nullable)
+//   preco: numeric (nullable)
+//   fotos: _text (nullable)
+//   comissao_percentual: numeric (nullable)
+//   status_captacao: character varying (nullable)
+//   etapa_funil: character varying (nullable)
+//   data_visita: timestamp with time zone (nullable)
+//   data_fechamento: timestamp with time zone (nullable)
+//   dormitorios: integer (nullable)
+//   vagas: integer (nullable)
+//   observacoes: text (nullable)
+//   landlord_id: uuid (nullable)
+//   tipo: text (nullable)
+//   tipo_imovel: text (nullable)
+//   status_revisao: text (nullable)
 // Table: landlord_profiles
 //   id: uuid (not null, default: gen_random_uuid())
 //   user_id: uuid (not null)
@@ -1783,6 +1893,13 @@ export const Constants = {
 //   Policy "Authenticated users can manage webhook_queue" (ALL, PERMISSIVE) roles={authenticated}
 //     USING: true
 //     WITH CHECK: true
+
+// --- WARNING: TABLES WITH RLS ENABLED BUT NO POLICIES ---
+// These tables have Row Level Security enabled but NO policies defined.
+// This means ALL queries (SELECT, INSERT, UPDATE, DELETE) will return ZERO rows
+// for non-superuser roles (including the anon and authenticated roles used by the app).
+// You MUST create RLS policies for these tables to allow data access.
+//   - imoveis_captados_backup
 
 // --- DATABASE FUNCTIONS ---
 // FUNCTION append_captador_busca(uuid, text, uuid, text, text)
