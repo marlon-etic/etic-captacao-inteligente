@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import { User, Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase/client'
+import { findNewMatches } from '@/services/matchingService'
 
 interface AuthContextType {
   user: User | null
@@ -96,6 +97,39 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return { error }
     }
   }
+
+  useEffect(() => {
+    const handlePostLogin = async () => {
+      try {
+        console.log('[AUTH] Executando busca automática de matches...')
+        await findNewMatches()
+        console.log('[AUTH] Busca de matches concluída')
+      } catch (error) {
+        console.error('[AUTH] Erro na busca de matches:', error)
+      }
+    }
+
+    if (user) {
+      handlePostLogin()
+    }
+  }, [user])
+
+  useEffect(() => {
+    if (!user) return
+
+    const interval = setInterval(
+      async () => {
+        try {
+          await findNewMatches()
+        } catch (error) {
+          console.error('[MATCHING] Erro na busca periódica:', error)
+        }
+      },
+      60 * 60 * 1000,
+    )
+
+    return () => clearInterval(interval)
+  }, [user])
 
   const signOut = async () => {
     try {
