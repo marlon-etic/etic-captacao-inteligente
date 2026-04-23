@@ -537,6 +537,47 @@ export type Database = {
         }
         Relationships: []
       }
+      matches_sugestoes: {
+        Row: {
+          created_at: string | null
+          demanda_id: string
+          demanda_tipo: string
+          id: string
+          imovel_id: string
+          score: number
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          demanda_id: string
+          demanda_tipo: string
+          id?: string
+          imovel_id: string
+          score: number
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          demanda_id?: string
+          demanda_tipo?: string
+          id?: string
+          imovel_id?: string
+          score?: number
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "matches_sugestoes_imovel_id_fkey"
+            columns: ["imovel_id"]
+            isOneToOne: false
+            referencedRelation: "imoveis_captados"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notificacoes: {
         Row: {
           created_at: string | null
@@ -1355,6 +1396,15 @@ export const Constants = {
 //   total_revenue: numeric (nullable, default: 0)
 //   created_at: timestamp with time zone (nullable, default: now())
 //   updated_at: timestamp with time zone (nullable, default: now())
+// Table: matches_sugestoes
+//   id: uuid (not null, default: gen_random_uuid())
+//   imovel_id: uuid (not null)
+//   demanda_id: uuid (not null)
+//   demanda_tipo: text (not null)
+//   score: integer (not null)
+//   status: text (nullable, default: 'pendente'::text)
+//   created_at: timestamp with time zone (nullable, default: now())
+//   updated_at: timestamp with time zone (nullable, default: now())
 // Table: notificacoes
 //   id: uuid (not null, default: gen_random_uuid())
 //   usuario_id: uuid (not null)
@@ -1508,6 +1558,13 @@ export const Constants = {
 // Table: landlord_profiles
 //   PRIMARY KEY landlord_profiles_pkey: PRIMARY KEY (id)
 //   FOREIGN KEY landlord_profiles_user_id_fkey: FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
+// Table: matches_sugestoes
+//   CHECK matches_sugestoes_demanda_tipo_check: CHECK ((demanda_tipo = ANY (ARRAY['Venda'::text, 'Locação'::text, 'Aluguel'::text])))
+//   UNIQUE matches_sugestoes_imovel_id_demanda_id_demanda_tipo_key: UNIQUE (imovel_id, demanda_id, demanda_tipo)
+//   FOREIGN KEY matches_sugestoes_imovel_id_fkey: FOREIGN KEY (imovel_id) REFERENCES imoveis_captados(id) ON DELETE CASCADE
+//   PRIMARY KEY matches_sugestoes_pkey: PRIMARY KEY (id)
+//   CHECK matches_sugestoes_score_check: CHECK (((score >= 0) AND (score <= 100)))
+//   CHECK matches_sugestoes_status_check: CHECK ((status = ANY (ARRAY['pendente'::text, 'aceito'::text, 'rejeitado'::text, 'vinculado'::text])))
 // Table: notificacoes
 //   PRIMARY KEY notificacoes_pkey: PRIMARY KEY (id)
 //   FOREIGN KEY notificacoes_usuario_id_fkey: FOREIGN KEY (usuario_id) REFERENCES users(id) ON DELETE CASCADE
@@ -1656,6 +1713,16 @@ export const Constants = {
 //     USING: (user_id = auth.uid())
 //   Policy "Users can view own landlord profile" (SELECT, PERMISSIVE) roles={authenticated}
 //     USING: (user_id = auth.uid())
+// Table: matches_sugestoes
+//   Policy "Anyone can delete matches" (DELETE, PERMISSIVE) roles={authenticated}
+//     USING: true
+//   Policy "Anyone can view matches" (SELECT, PERMISSIVE) roles={authenticated}
+//     USING: true
+//   Policy "System only insert/update matches" (INSERT, PERMISSIVE) roles={authenticated}
+//     WITH CHECK: true
+//   Policy "System only update matches" (UPDATE, PERMISSIVE) roles={authenticated}
+//     USING: true
+//     WITH CHECK: true
 // Table: notificacoes
 //   Policy "System can insert notifications" (INSERT, PERMISSIVE) roles={public}
 //     WITH CHECK: true
@@ -3060,6 +3127,12 @@ export const Constants = {
 //   CREATE UNIQUE INDEX imoveis_captados_codigo_imovel_key ON public.imoveis_captados USING btree (codigo_imovel)
 // Table: landlord_profiles
 //   CREATE INDEX idx_landlord_profiles_user_id ON public.landlord_profiles USING btree (user_id)
+// Table: matches_sugestoes
+//   CREATE INDEX idx_matches_sugestoes_demanda ON public.matches_sugestoes USING btree (demanda_id)
+//   CREATE INDEX idx_matches_sugestoes_imovel ON public.matches_sugestoes USING btree (imovel_id)
+//   CREATE INDEX idx_matches_sugestoes_score ON public.matches_sugestoes USING btree (score DESC)
+//   CREATE INDEX idx_matches_sugestoes_status ON public.matches_sugestoes USING btree (status)
+//   CREATE UNIQUE INDEX matches_sugestoes_imovel_id_demanda_id_demanda_tipo_key ON public.matches_sugestoes USING btree (imovel_id, demanda_id, demanda_tipo)
 // Table: notificacoes
 //   CREATE INDEX idx_notificacoes_created ON public.notificacoes USING btree (created_at DESC)
 //   CREATE INDEX idx_notificacoes_lido ON public.notificacoes USING btree (usuario_id, lido)
