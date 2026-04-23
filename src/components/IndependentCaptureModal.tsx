@@ -81,6 +81,24 @@ const indepSchema = z
       path: ['neighborhoodOther'],
     },
   )
+  .superRefine((data, ctx) => {
+    if (data.tipoVinculacao === 'solto') {
+      if (data.tipoImovel === 'Aluguel' && data.value > 100000) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Aluguel deve ter valor até R$ 100.000',
+          path: ['value'],
+        })
+      }
+      if (data.tipoImovel === 'Venda' && data.value <= 100000) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Venda deve ter valor acima de R$ 100.000',
+          path: ['value'],
+        })
+      }
+    }
+  })
 
 export function IndependentCaptureModal({
   isOpen,
@@ -124,6 +142,24 @@ export function IndependentCaptureModal({
     if (data.tipoVinculacao === 'vinculado') {
       const selectedDemand = openDemands.find((d) => d.id === data.demandId)
       const inferredType = selectedDemand?.type === 'Aluguel' ? 'Aluguel' : 'Venda'
+
+      if (inferredType === 'Aluguel' && data.value > 100000) {
+        toast({
+          title: 'Erro de Validação',
+          description: 'Aluguel deve ter valor até R$ 100.000',
+          variant: 'destructive',
+        })
+        return
+      }
+      if (inferredType === 'Venda' && data.value <= 100000) {
+        toast({
+          title: 'Erro de Validação',
+          description: 'Venda deve ter valor acima de R$ 100.000',
+          variant: 'destructive',
+        })
+        return
+      }
+
       const res = submitDemandResponse(data.demandId, 'encontrei', {
         ...data,
         neighborhood: finalNeighborhood,

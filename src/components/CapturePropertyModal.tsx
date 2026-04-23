@@ -82,48 +82,19 @@ export function CapturePropertyModal({ demand, isOpen, onClose, onSuccess }: Pro
       }
     }
 
-    if (demandaVendaId && demandaLocacaoId) {
-      if (preco <= 100000) {
-        return {
-          isValid: false,
-          tipo: 'Ambos',
-          erro: `❌ Imóvel vinculado a VENDA e ALUGUEL deve ter valor acima de R$ 100.000. Valor atual: R$ ${preco.toLocaleString('pt-BR')}`,
-        }
-      }
-      return { isValid: true, tipo: 'Ambos' }
+    if (tipoAtual === 'Locação' && preco > 100000) {
+      return { isValid: false, tipo: 'Locação', erro: 'Aluguel deve ter valor até R$ 100.000' }
     }
 
-    if (demandaVendaId && !demandaLocacaoId) {
-      if (preco <= 100000) {
-        return {
-          isValid: false,
-          tipo: 'Venda',
-          erro: `❌ Imóvel de VENDA deve ter valor acima de R$ 100.000. Valor atual: R$ ${preco.toLocaleString('pt-BR')}`,
-        }
-      }
-      return { isValid: true, tipo: 'Venda' }
+    if (tipoAtual === 'Venda' && preco <= 100000) {
+      return { isValid: false, tipo: 'Venda', erro: 'Venda deve ter valor acima de R$ 100.000' }
     }
 
-    if (demandaLocacaoId && !demandaVendaId) {
-      if (preco > 100000) {
-        return {
-          isValid: false,
-          tipo: 'Locação',
-          erro: `❌ Imóvel de ALUGUEL deve ter valor até R$ 100.000. Valor atual: R$ ${preco.toLocaleString('pt-BR')}`,
-        }
-      }
-      return { isValid: true, tipo: 'Locação' }
+    if (tipoAtual === 'Ambos' && preco <= 100000) {
+      return { isValid: false, tipo: 'Ambos', erro: 'Ambos deve ter valor acima de R$ 100.000' }
     }
 
-    if (preco > 100000) {
-      return { isValid: true, tipo: 'Venda' }
-    }
-
-    if (preco > 0 && preco <= 100000) {
-      return { isValid: true, tipo: 'Locação' }
-    }
-
-    return { isValid: false, tipo: 'Ambos', erro: '❌ Erro ao determinar tipo de imóvel' }
+    return { isValid: true, tipo: (tipoAtual as any) || 'Ambos' }
   }
 
   const handleSubmit = async () => {
@@ -163,6 +134,16 @@ export function CapturePropertyModal({ demand, isOpen, onClose, onSuccess }: Pro
     const parsedPrice = parseFloat(price)
     if (!price || isNaN(parsedPrice) || parsedPrice <= 0) {
       newErrors.price = 'Preço deve ser maior que zero'
+    } else if (tipo) {
+      if (tipo === 'Locação' && parsedPrice > 100000) {
+        newErrors.price = 'Aluguel deve ter valor até R$ 100.000'
+      }
+      if (tipo === 'Venda' && parsedPrice <= 100000) {
+        newErrors.price = 'Venda deve ter valor acima de R$ 100.000'
+      }
+      if (tipo === 'Ambos' && parsedPrice <= 100000) {
+        newErrors.price = 'Ambos deve ter valor acima de R$ 100.000'
+      }
     }
 
     let parsedBedrooms = 0
