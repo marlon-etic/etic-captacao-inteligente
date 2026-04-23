@@ -13,6 +13,7 @@ import { SyncIndicator } from './SyncIndicator'
 import { VinculacaoModal } from './VinculacaoModal'
 import { PropertyDetailsModal } from './PropertyDetailsModal'
 import { useDeletedProperties } from '@/hooks/useDeletedProperties'
+import { normalizeTipo } from '@/lib/roleFilters'
 
 interface Props {
   filterType?: 'Venda' | 'Aluguel'
@@ -35,6 +36,13 @@ export function CapturedPropertiesView({
   } = useAppStore()
 
   const { properties: supabaseProps, loading, syncing } = useSupabaseProperties(filterType)
+
+  // ✅ DEBUG: Log para rastrear filterType
+  console.log('[CapturedPropertiesView] filterType recebido:', filterType)
+  console.log('[CapturedPropertiesView] Imóveis carregados:', supabaseProps.length)
+  supabaseProps.forEach((p) => {
+    console.log(`  - ${p.codigo_imovel}: tipo="${p.tipo}"`)
+  })
 
   const [filters, setFilters] = useViewFilters('captados_view_' + (filterType || 'all'), {
     status: 'Todos',
@@ -94,7 +102,9 @@ export function CapturedPropertiesView({
   }
 
   const allCaptured = useMemo(() => {
-    return supabaseProps
+    console.log('[allCaptured] Iniciando processamento. filterType:', filterType)
+
+    let filtered = supabaseProps
       .filter((p) => !deletedIds.includes(p.id))
       .map((p) => ({
         demand: p.demanda as Demand,
@@ -116,7 +126,25 @@ export function CapturedPropertiesView({
           data_fechamento: p.data_fechamento,
         } as any,
       }))
-  }, [supabaseProps])
+
+    // ✅ APLICAR FILTRO DE TIPO SE ESPECIFICADO
+    if (filterType) {
+      const normalizedFilterType = normalizeTipo(filterType)
+      filtered = filtered.filter(({ property: p }) => {
+        const match = p.propertyType === normalizedFilterType || p.propertyType === 'Ambos'
+        if (!match) {
+          console.log(
+            `[allCaptured] ❌ ${p.code}: tipo="${p.propertyType}" não corresponde a filterType="${filterType}"`,
+          )
+        }
+        return match
+      })
+      console.log(`[allCaptured] Após filtro de tipo "${filterType}":`, filtered.length)
+    }
+
+    console.log('[allCaptured] Total após filtro:', filtered.length)
+    return filtered
+  }, [supabaseProps, filterType, deletedIds])
 
   const filteredAndSorted = useMemo(() => {
     let result = allCaptured.filter(({ demand: d, property: p }) => {
