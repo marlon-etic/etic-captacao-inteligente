@@ -1,9 +1,8 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import useAppStore from '@/stores/useAppStore'
-import { toast } from '@/hooks/use-toast'
 import { useSmartSync, useConsolidatedSync } from '@/hooks/useSmartSync'
-import { getTiposVisiveis } from '@/lib/roleFilters'
+import { getTiposVisiveis, normalizeTipo, isImovelVisivelParaRole } from '@/lib/roleFilters'
 
 export interface SupabaseCapturedPropertyWithDemand {
   id: string
@@ -37,91 +36,46 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
     usersRef.current = users
   }, [users])
 
-  // ✅ FUNÇÃO PARA NORMALIZAR TIPOS DE IMÓVEL
-  const normalizeTipo = useCallback((tipo: string | null | undefined): string => {
-    if (!tipo) return 'Ambos'
+  const formatProperty = useCallback((p: any) => {
+    const userMap = new Map((usersRef.current || []).map((u: any) => [u.id, u.name]))
+    const d_loc = p.demanda_locacao
+    const d_ven = p.demanda_venda
+    const demanda = d_loc || d_ven
 
-    const normalized = tipo.toLowerCase().trim()
-
-    // Normalizar variações de "Aluguel"
-    if (normalized === 'aluguel' || normalized === 'locação' || normalized === 'locacao') {
-      return 'Aluguel'
+    // ✅ NORMALIZAR TIPO
+    let tipo = p.tipo
+    if (!tipo || tipo === 'Desconhecido') {
+      tipo = d_loc ? 'Aluguel' : d_ven ? 'Venda' : 'Ambos'
     }
+    const normalizedTipo = normalizeTipo(tipo)
 
-    // Normalizar "Venda"
-    if (normalized === 'venda') {
-      return 'Venda'
+    return {
+      id: p.id,
+      codigo_imovel: p.codigo_imovel,
+      endereco: p.endereco,
+      preco: p.preco || p.valor || 0,
+      user_captador_id: p.user_captador_id || p.captador_id,
+      captador_nome: userMap.get(p.user_captador_id || p.captador_id) || 'Captador',
+      created_at: p.created_at,
+      status_captacao: p.status_captacao,
+      bairros: demanda?.bairros || [],
+      dormitorios: p.dormitorios || demanda?.dormitorios || 0,
+      vagas: p.vagas || demanda?.vagas_estacionamento || 0,
+      observacoes: p.observacoes || p.localizacao_texto || '',
+      demanda: demanda
+        ? {
+            id: demanda.id,
+            clientName: demanda.nome_cliente || demanda.cliente_nome,
+            type: d_loc ? 'Aluguel' : 'Venda',
+            createdBy: demanda.sdr_id || demanda.corretor_id,
+          }
+        : null,
+      tipo: normalizedTipo, // ✅ USAR TIPO NORMALIZADO
+      etapa_funil: p.etapa_funil,
+      data_visita: p.data_visita,
+      data_fechamento: p.data_fechamento,
     }
-
-    // Normalizar "Ambos"
-    if (normalized === 'ambos' || normalized === 'ambas') {
-      return 'Ambos'
-    }
-
-    return 'Ambos' // Fallback seguro
   }, [])
-
-  // ✅ FUNÇÃO PARA VERIFICAR SE IMÓVEL É VISÍVEL PARA O ROLE
-  const isPropertyVisibleForRole = useCallback(
-    (propertyTipo: string | null | undefined, role: string | undefined): boolean => {
-      const tipos = getTiposVisiveis(role as any)
-      const normalizedPropertyTipo = normalizeTipo(propertyTipo)
-
-      console.log(
-        '[ROLE FILTER] Property tipo:',
-        propertyTipo,
-        '| Normalized:',
-        normalizedPropertyTipo,
-        '| Tipos visíveis:',
-        tipos,
-      )
-
-      return tipos.includes(normalizedPropertyTipo)
-    },
-    [normalizeTipo],
-  )
-
-  const formatProperty = useCallback(
-    (p: any) => {
-      const userMap = new Map((usersRef.current || []).map((u: any) => [u.id, u.name]))
-      const d_loc = p.demanda_locacao
-      const d_ven = p.demanda_venda
-      const demanda = d_loc || d_ven
-
-      // ✅ NORMALIZAR TIPO
-      const baseTipo = p.tipo && p.tipo !== 'Desconhecido' ? p.tipo : null
-      const tipo = baseTipo ? baseTipo : d_loc ? 'Aluguel' : d_ven ? 'Venda' : 'Ambos'
-      const normalizedTipo = normalizeTipo(tipo)
-
-      return {
-        id: p.id,
-        codigo_imovel: p.codigo_imovel,
-        endereco: p.endereco,
-        preco: p.preco || p.valor || 0,
-        user_captador_id: p.user_captador_id || p.captador_id,
-        captador_nome: userMap.get(p.user_captador_id || p.captador_id) || 'Captador',
-        created_at: p.created_at,
-        status_captacao: p.status_captacao,
-        bairros: demanda?.bairros || [],
-        dormitorios: p.dormitorios || demanda?.dormitorios || 0,
-        vagas: p.vagas || demanda?.vagas_estacionamento || 0,
-        observacoes: p.observacoes || p.localizacao_texto || '',
-        demanda: demanda
-          ? {
-              id: demanda.id,
-              clientName: demanda.nome_cliente || demanda.cliente_nome,
-              type: d_loc ? 'Aluguel' : 'Venda',
-              createdBy: demanda.sdr_id || demanda.corretor_id,
-            }
-          : null,
-        tipo: normalizedTipo, // ✅ USAR TIPO NORMALIZADO
-        etapa_funil: p.etapa_funil,
-        data_visita: p.data_visita,
-        data_fechamento: p.data_fechamento,
-      }
-    },
-    [normalizeTipo],
-  )
 
   const fetchProperties = useCallback(
     async (isBackground = false) => {
@@ -131,26 +85,32 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
         const { data: userData } = await supabase.auth.getUser()
         if (!userData?.user) return
 
-        console.group('🔍 [DIAGNÓSTICO] Origem de Dados de Imóveis')
-        console.log('[FETCH] Role:', currentUser?.role, '| FilterType:', filterType)
+        const userRole = currentUser?.role
+        const tipos = getTiposVisiveis(userRole)
+
+        console.group('🔍 [FETCH PROPERTIES] Diagnóstico')
+        console.log(
+          '[FETCH] Role:',
+          userRole,
+          '| Tipos visíveis:',
+          tipos,
+          '| FilterType:',
+          filterType,
+        )
 
         let finalData: any[] = []
 
         // ✅ BUSCAR TODOS OS DADOS (SEM FILTRO NA QUERY)
-        // O filtro será aplicado APÓS normalização do tipo
         const { data: directData, error: directError } = await supabase
           .from('imoveis_captados')
           .select('*, demanda_locacao:demandas_locacao(*), demanda_venda:demandas_vendas(*)')
           .order('created_at', { ascending: false })
 
         if (!directError && directData) {
-          console.log('1. Direct Supabase Fetch OK. Count:', directData.length)
+          console.log('[FETCH] Direct query OK. Total imóveis:', directData.length)
           finalData = directData
         } else {
-          console.log(
-            '1. Direct Supabase Fetch Falhou, usando fallback com fetchWithResilience. Erro:',
-            directError,
-          )
+          console.log('[FETCH] Direct query falhou, usando fallback. Erro:', directError?.message)
           const data = await fetchWithResilience(`properties_${filterType || 'all'}`, async () => {
             const { data: resData, error } = await supabase
               .from('imoveis_captados')
@@ -161,46 +121,56 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
           })
           finalData = data || []
         }
+
+        console.log('[FETCH] Total imóveis carregados:', finalData.length)
         console.groupEnd()
 
-        // ✅ FORMATAR E FILTRAR APÓS NORMALIZAÇÃO
+        // ✅ FORMATAR TODOS OS IMÓVEIS
         let formatted = finalData.map(formatProperty)
+        console.log('[FETCH] Imóveis formatados:', formatted.length)
 
-        // ✅ APLICAR FILTRO DE ROLE
-        formatted = formatted.filter((p) => isPropertyVisibleForRole(p.tipo, currentUser?.role))
+        // ✅ FILTRAR POR ROLE (CRÍTICO!)
+        formatted = formatted.filter((p) => {
+          const isVisivel = isImovelVisivelParaRole(p.tipo, userRole)
+          if (!isVisivel) {
+            console.log(
+              `[FETCH] ❌ ${p.codigo_imovel}: tipo="${p.tipo}" NÃO visível para role="${userRole}"`,
+            )
+          }
+          return isVisivel
+        })
+        console.log('[FETCH] Após filtro de role:', formatted.length)
 
-        // ✅ APLICAR FILTRO DE TIPO SE ESPECIFICADO
+        // ✅ FILTRAR POR TIPO SE ESPECIFICADO
         if (filterType) {
           const normalizedFilterType = normalizeTipo(filterType)
-          formatted = formatted.filter(
-            (f: any) => f.tipo === normalizedFilterType || f.tipo === 'Ambos',
-          )
-          console.log(
-            `[FILTER] FilterType: ${filterType} (normalizado: ${normalizedFilterType}) | Resultados: ${formatted.length}`,
-          )
+          formatted = formatted.filter((f: any) => {
+            const match = f.tipo === normalizedFilterType || f.tipo === 'Ambos'
+            if (!match) {
+              console.log(
+                `[FETCH] ❌ ${f.codigo_imovel}: tipo="${f.tipo}" não corresponde a filterType="${filterType}"`,
+              )
+            }
+            return match
+          })
+          console.log(`[FETCH] Após filtro de tipo "${filterType}":`, formatted.length)
         }
 
         setProperties(formatted)
       } catch (err: any) {
-        console.error('[useSupabaseProperties]', err)
+        console.error('[useSupabaseProperties] Erro:', err)
       } finally {
         if (!isBackground) setLoading(false)
       }
     },
-    [
-      filterType,
-      formatProperty,
-      fetchWithResilience,
-      currentUser?.role,
-      normalizeTipo,
-      isPropertyVisibleForRole,
-    ],
+    [filterType, formatProperty, fetchWithResilience, currentUser?.role],
   )
 
   const fetchSingleProperty = useCallback(
     async (id: string) => {
       try {
-        // ✅ BUSCAR PROPRIEDADE INDIVIDUAL (SEM FILTRO NA QUERY)
+        const userRole = currentUser?.role
+
         const { data: resData, error } = await supabase
           .from('imoveis_captados')
           .select('*, demanda_locacao:demandas_locacao(*), demanda_venda:demandas_vendas(*)')
@@ -227,8 +197,8 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
           const formatted = formatProperty(data)
 
           // ✅ VALIDAR SE PROPRIEDADE É VISÍVEL PARA O ROLE
-          if (!isPropertyVisibleForRole(formatted.tipo, currentUser?.role)) {
-            console.log('[FETCH SINGLE] Propriedade não visível para role:', currentUser?.role)
+          if (!isImovelVisivelParaRole(formatted.tipo, userRole)) {
+            console.log('[FETCH SINGLE] ❌ Propriedade não visível para role:', userRole)
             return
           }
 
@@ -249,7 +219,7 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
         console.error('Error fetching single property', err)
       }
     },
-    [filterType, formatProperty, fetchWithResilience, currentUser?.role, isPropertyVisibleForRole],
+    [filterType, formatProperty, fetchWithResilience, currentUser?.role],
   )
 
   useEffect(() => {
@@ -326,7 +296,7 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
                         data_visita: payload.new.data_visita ?? p.data_visita,
                         data_fechamento: payload.new.data_fechamento ?? p.data_fechamento,
                         status_captacao: payload.new.status_captacao || p.status_captacao,
-                        tipo: normalizeTipo((payload.new as any).tipo || p.tipo), // ✅ NORMALIZAR
+                        tipo: normalizeTipo(payload.new.tipo || p.tipo),
                       }
                     : p,
                 )
@@ -339,13 +309,9 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
           'postgres_changes',
           { event: 'DELETE', schema: 'public', table: 'imoveis_captados' },
           (payload) => {
-            console.log('🔴 [REALTIME] DELETE recebido na tabela imoveis_captados:', payload)
+            console.log('🔴 [REALTIME] DELETE recebido:', payload.old.id)
             setSyncing(true)
-            setProperties((prev) => {
-              const updated = prev.filter((p) => p.id !== payload.old.id)
-              console.log(`Removido imóvel ${payload.old.id}. Total restante: ${updated.length}`)
-              return updated
-            })
+            setProperties((prev) => prev.filter((p) => p.id !== payload.old.id))
             setTimeout(() => setSyncing(false), 500)
           },
         )
