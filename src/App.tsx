@@ -59,7 +59,7 @@ import LandlordProposals from '@/pages/landlord/LandlordProposals'
 import LandlordSettings from '@/pages/landlord/LandlordSettings'
 import { useLandlordAuth } from '@/hooks/useLandlordAuth'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
-import React from 'react'
+import React, { useRef } from 'react'
 import { useAuth } from '@/hooks/use-auth'
 
 import { enableDebugLogging } from '@/debug'
@@ -164,6 +164,14 @@ const AppRoutes = () => {
   const navigate = useNavigate()
   const { toast } = useToast()
   const { role } = useUserRole()
+  const isMounted = useRef(true)
+
+  React.useEffect(() => {
+    isMounted.current = true
+    return () => {
+      isMounted.current = false
+    }
+  }, [])
 
   React.useEffect(() => {
     const handleNewMatch = (match: any) => {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { Outlet, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar'
 import { AppSidebar } from '@/components/AppSidebar'
@@ -24,6 +24,10 @@ export default function Layout() {
   const [isAddPropertyModalOpen, setAddPropertyModalOpen] = useState(false)
   const [isNewDemandModalOpen, setNewDemandModalOpen] = useState(false)
 
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const intervalRef = useRef<NodeJS.Timeout | null>(null)
+  const isMountedRef = useRef(true)
+
   // Listen to global navigation events dispatched from outside router components (e.g. Hooks/Toasts)
   useEffect(() => {
     const handleNavigate = (e: Event) => {
@@ -37,14 +41,11 @@ export default function Layout() {
   }, [navigate])
 
   useEffect(() => {
+    isMountedRef.current = true
     if (!currentUser) return
 
-    let isMounted = true
-    let intervalId: NodeJS.Timeout
-    let timeoutId: NodeJS.Timeout
-
     const updatePrazos = () => {
-      if (!isMounted) return
+      if (!isMountedRef.current) return
 
       enqueueMutation(async () => {
         const { error } = await supabase.rpc('atualizar_prazos_vencidos')
@@ -53,13 +54,13 @@ export default function Layout() {
     }
 
     // Delay inicial para evitar sobrecarga no startup da página
-    timeoutId = setTimeout(() => updatePrazos(), 5000)
-    intervalId = setInterval(() => updatePrazos(), 60000)
+    timeoutRef.current = setTimeout(() => updatePrazos(), 5000)
+    intervalRef.current = setInterval(() => updatePrazos(), 60000)
 
     return () => {
-      isMounted = false
-      clearTimeout(timeoutId)
-      clearInterval(intervalId)
+      isMountedRef.current = false
+      if (timeoutRef.current) clearTimeout(timeoutRef.current)
+      if (intervalRef.current) clearInterval(intervalRef.current)
     }
   }, [currentUser, enqueueMutation])
 
