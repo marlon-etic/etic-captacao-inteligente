@@ -164,7 +164,7 @@ const AppRoutes = () => {
   const navigate = useNavigate()
   const { toast } = useToast()
   const { role } = useUserRole()
-  const isMounted = useRef(true)
+  const isMounted = React.useRef(true)
 
   React.useEffect(() => {
     isMounted.current = true
