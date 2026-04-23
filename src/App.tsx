@@ -59,7 +59,7 @@ import LandlordProposals from '@/pages/landlord/LandlordProposals'
 import LandlordSettings from '@/pages/landlord/LandlordSettings'
 import { useLandlordAuth } from '@/hooks/useLandlordAuth'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
-import React, { useRef, useEffect, useState } from 'react'
+import { useRef, useEffect, useState, FC, ReactNode } from 'react'
 import { useAuth } from '@/hooks/use-auth'
 
 import { enableDebugLogging } from '@/debug'
@@ -122,7 +122,7 @@ if (typeof window !== 'undefined') {
 
 enableDebugLogging()
 
-const LandlordProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+const LandlordProtectedRoute: FC<{ children: ReactNode }> = ({ children }) => {
   const { session, loading } = useLandlordAuth()
 
   if (loading) {
@@ -136,7 +136,7 @@ const LandlordProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ child
   return <>{children}</>
 }
 
-const AdminRoute = ({ children }: { children: React.ReactNode }) => {
+const AdminRoute = ({ children }: { children: ReactNode }) => {
   const { user, loading } = useAuth()
 
   if (loading) {
