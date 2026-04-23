@@ -39,24 +39,55 @@ export default function MatchInteligentes() {
 
       const pendingMatches = await getPendingMatches(50, role)
 
-      const enrichedMatches = await Promise.all(
-        pendingMatches.map(async (match) => {
-          const { data: imovel } = await supabase
-            .from('imoveis_captados')
-            .select('*')
-            .eq('id', match.imovel_id)
-            .single()
+      if (!pendingMatches || pendingMatches.length === 0) {
+        setMatches([])
+        setLoading(false)
+        return
+      }
 
-          const table = match.demanda_tipo === 'Venda' ? 'demandas_vendas' : 'demandas_locacao'
-          const { data: demanda } = await supabase
-            .from(table)
-            .select('*')
-            .eq('id', match.demanda_id)
-            .single()
+      const imovelIds = [...new Set(pendingMatches.map((m) => m.imovel_id))]
+      const demandaVendaIds = [
+        ...new Set(
+          pendingMatches.filter((m) => m.demanda_tipo === 'Venda').map((m) => m.demanda_id),
+        ),
+      ]
+      const demandaLocacaoIds = [
+        ...new Set(
+          pendingMatches
+            .filter((m) => m.demanda_tipo === 'Locação' || m.demanda_tipo === 'Aluguel')
+            .map((m) => m.demanda_id),
+        ),
+      ]
 
-          return { ...match, imovel, demanda }
-        }),
-      )
+      const promises = [supabase.from('imoveis_captados').select('*').in('id', imovelIds)]
+
+      if (demandaVendaIds.length > 0) {
+        promises.push(supabase.from('demandas_vendas').select('*').in('id', demandaVendaIds))
+      } else {
+        promises.push(Promise.resolve({ data: [] } as any))
+      }
+
+      if (demandaLocacaoIds.length > 0) {
+        promises.push(supabase.from('demandas_locacao').select('*').in('id', demandaLocacaoIds))
+      } else {
+        promises.push(Promise.resolve({ data: [] } as any))
+      }
+
+      const [imoveisRes, demandasVendaRes, demandasLocacaoRes] = await Promise.all(promises)
+
+      const imovelMap = new Map((imoveisRes.data || []).map((i) => [i.id, i]))
+      const demandaVendaMap = new Map((demandasVendaRes.data || []).map((d) => [d.id, d]))
+      const demandaLocacaoMap = new Map((demandasLocacaoRes.data || []).map((d) => [d.id, d]))
+
+      const enrichedMatches = pendingMatches.map((match) => {
+        const imovel = imovelMap.get(match.imovel_id)
+        const demanda =
+          match.demanda_tipo === 'Venda'
+            ? demandaVendaMap.get(match.demanda_id)
+            : demandaLocacaoMap.get(match.demanda_id)
+
+        return { ...match, imovel, demanda }
+      })
 
       setMatches(enrichedMatches.filter((m) => m.imovel && m.demanda))
     } catch (err) {

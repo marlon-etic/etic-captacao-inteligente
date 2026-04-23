@@ -42,6 +42,7 @@ export function useUltimosImoveis(
           '*, demanda_locacao:demandas_locacao(sdr_id), demanda_venda:demandas_vendas(corretor_id)',
         )
         .order('created_at', { ascending: false })
+        .limit(100)
 
       if (periodo !== 'todos') {
         const date = new Date()

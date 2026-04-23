@@ -147,10 +147,18 @@ export function useConsolidatedSync({
   setupRealtime: (channel: any) => void
   onFallbackPoll: () => void
 }) {
+  const setupRef = useRef(setupRealtime)
+  const pollRef = useRef(onFallbackPoll)
+
+  useEffect(() => {
+    setupRef.current = setupRealtime
+    pollRef.current = onFallbackPoll
+  }, [setupRealtime, onFallbackPoll])
+
   useEffect(() => {
     const channel = supabase.channel(channelName)
 
-    setupRealtime(channel)
+    setupRef.current(channel)
 
     channel.subscribe((status) => {
       if (import.meta.env.VITE_DEBUG_MODE && status === 'CHANNEL_ERROR') {
@@ -166,7 +174,7 @@ export function useConsolidatedSync({
     const startPolling = () => {
       pollingInterval = setInterval(() => {
         if (navigator.onLine) {
-          onFallbackPoll()
+          pollRef.current()
         }
       }, 120000) // Alterado de 60s para 120s para reduzir carga no DB
     }
@@ -178,5 +186,5 @@ export function useConsolidatedSync({
       clearTimeout(delayTimeout)
       if (pollingInterval) clearInterval(pollingInterval)
     }
-  }, [channelName, setupRealtime, onFallbackPoll])
+  }, [channelName])
 }

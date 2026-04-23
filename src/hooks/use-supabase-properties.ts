@@ -90,6 +90,7 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel' | 'Ambos'
           .from('imoveis_captados')
           .select('*, demanda_locacao:demandas_locacao(*), demanda_venda:demandas_vendas(*)')
           .order('created_at', { ascending: false })
+          .limit(200)
 
         if (!directError && directData) {
           finalData = directData
@@ -99,6 +100,7 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel' | 'Ambos'
               .from('imoveis_captados')
               .select('*, demanda_locacao:demandas_locacao(*), demanda_venda:demandas_vendas(*)')
               .order('created_at', { ascending: false })
+              .limit(200)
             if (error) throw error
             return resData
           })
