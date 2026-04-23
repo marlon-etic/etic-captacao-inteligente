@@ -177,14 +177,19 @@ export function CapturedPropertyCard({
 
         {/* Banner */}
         <div className="flex items-center gap-2 pointer-events-auto flex-wrap">
-          <Badge
-            className={cn(
-              'font-bold text-[10px] text-white px-2 py-0.5 shadow-sm tracking-widest',
-              isAluguel ? 'bg-[#3B82F6] hover:bg-[#2563EB]' : 'bg-[#EF4444] hover:bg-[#DC2626]',
-            )}
-          >
-            {isAluguel ? '🏠 ALUGUEL' : '🏢 VENDA'}
-          </Badge>
+          {(propType === 'Venda' || propType === 'Ambos') && (
+            <Badge className="font-bold text-[10px] text-white bg-[#10B981] hover:bg-[#059669] px-2 py-0.5 shadow-sm tracking-widest">
+              🏢 VENDA
+            </Badge>
+          )}
+          {(propType === 'Aluguel' ||
+            propType === 'Locação' ||
+            propType === 'Ambos' ||
+            isAluguel) && (
+            <Badge className="font-bold text-[10px] text-white bg-[#3B82F6] hover:bg-[#2563EB] px-2 py-0.5 shadow-sm tracking-widest">
+              🏠 ALUGUEL
+            </Badge>
+          )}
           {(property.tipo_imovel || property.propertyType) && (
             <Badge className="font-bold text-[10px] bg-[#E0E7FF] text-[#1E40AF] px-2 py-0.5 shadow-sm uppercase tracking-widest hover:bg-[#C7D2FE]">
               {property.tipo_imovel || property.propertyType}
@@ -220,9 +225,22 @@ export function CapturedPropertyCard({
         <p className="text-[13px] leading-tight text-[#333333] font-medium mt-1">
           📍 Localização: {property.neighborhood}
         </p>
-        <p className="text-[16px] font-black text-[#10B981] tracking-tight mt-1">
-          💰 Valor: R$ {formatPrice(property.value)}
-        </p>
+        <div className="flex flex-col gap-1 mt-2">
+          {(propType === 'Venda' || propType === 'Ambos') && property.value > 0 && (
+            <p className="text-[16px] font-black text-[#10B981] tracking-tight">
+              💰 Venda: R$ {formatPrice(property.value)}
+            </p>
+          )}
+          {(propType === 'Aluguel' ||
+            propType === 'Locação' ||
+            propType === 'Ambos' ||
+            isAluguel) &&
+            (property.rentValue > 0 || (property.value > 0 && property.value <= 100000)) && (
+              <p className="text-[16px] font-black text-[#3B82F6] tracking-tight">
+                💰 Aluguel: R$ {formatPrice(property.rentValue || property.value)}
+              </p>
+            )}
+        </div>
         <p className="text-[13px] text-[#666666] font-medium bg-[#F5F5F5] p-2 rounded-[8px] border border-[#E5E5E5] mt-1">
           🏠 Perfil: {property.dormitorios ?? property.bedrooms ?? 0} dorm,{' '}
           {property.banheiros ?? property.bathrooms ?? 0} banh,{' '}

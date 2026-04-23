@@ -176,12 +176,25 @@ export function UltimosImoveisTab() {
                     </span>
                   </div>
 
-                  <div className="space-y-1.5 pointer-events-auto">
-                    <div className="font-black text-[20px] text-[#1A3A52] flex items-center gap-1.5">
-                      <DollarSign className="w-5 h-5 text-[#10B981]" />
-                      R$ {imovel.preco.toLocaleString('pt-BR')}
+                  <div className="space-y-2 pointer-events-auto">
+                    <div className="font-black text-[18px] text-[#1A3A52] flex flex-col gap-1">
+                      {(imovel.tipo === 'Venda' || imovel.tipo === 'Ambos') && imovel.preco > 0 && (
+                        <div className="flex items-center gap-1.5">
+                          <DollarSign className="w-4 h-4 text-[#10B981]" />
+                          Venda: R$ {imovel.preco.toLocaleString('pt-BR')}
+                        </div>
+                      )}
+                      {(imovel.tipo === 'Aluguel' ||
+                        imovel.tipo === 'Locação' ||
+                        imovel.tipo === 'Ambos') &&
+                        (imovel.valor > 0 || (imovel.preco > 0 && imovel.preco <= 100000)) && (
+                          <div className="flex items-center gap-1.5">
+                            <DollarSign className="w-4 h-4 text-[#3B82F6]" />
+                            Aluguel: R$ {(imovel.valor || imovel.preco).toLocaleString('pt-BR')}
+                          </div>
+                        )}
                     </div>
-                    <div className="text-[14px] text-[#333333] flex items-start gap-1.5 font-medium">
+                    <div className="text-[14px] text-[#333333] flex items-start gap-1.5 font-medium pt-1">
                       <MapPin className="w-4 h-4 mt-0.5 shrink-0 text-[#666666]" />
                       <span className="line-clamp-2 leading-tight">
                         {imovel.endereco || 'Endereço não informado'}

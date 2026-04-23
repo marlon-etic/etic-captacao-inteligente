@@ -1,11 +1,17 @@
 // ✅ TIPOS DE FILTRO POR ROLE
-export type UserRole = 'sdr' | 'corretor' | 'broker' | 'captador' | 'admin'
+export type UserRole = 'sdr' | 'corretor' | 'broker' | 'captador' | 'admin' | 'gestor'
 
-// ✅ NORMALIZAR TIPO DE IMÓVEL COM LÓGICA INTELIGENTE
-export function normalizeTipo(tipo: string | null | undefined, preco?: number): string {
-  if (!tipo) {
-    // Se não tem tipo, usar preço como indicador
+// ✅ NORMALIZAR TIPO DE IMÓVEL COM LÓGICA INTELIGENTE E SUPORTE A "AMBOS"
+export function normalizeTipo(
+  tipo: string | null | undefined,
+  preco?: number,
+  valor?: number,
+): string {
+  if (!tipo || tipo === 'Desconhecido') {
+    // Se não tem tipo explícito, tentamos inferir com base nos preços
+    if (preco && preco > 0 && valor && valor > 0) return 'Ambos'
     if (preco && preco > 100000) return 'Venda'
+    if (valor && valor > 0 && valor <= 100000) return 'Aluguel'
     if (preco && preco > 0 && preco <= 100000) return 'Aluguel'
     return 'Ambos'
   }
@@ -34,33 +40,24 @@ export function normalizeTipo(tipo: string | null | undefined, preco?: number): 
 export function getTiposVisiveis(role: string | undefined): string[] {
   const roleNormalizado = (role || 'captador').toLowerCase().trim()
 
-  console.log('[getTiposVisiveis] Role recebido:', role, '| Normalizado:', roleNormalizado)
-
   switch (roleNormalizado) {
     case 'sdr':
-      // SDR vê apenas imóveis de ALUGUEL ou AMBOS
-      console.log('[getTiposVisiveis] SDR → Tipos: ["Aluguel", "Ambos"]')
+      // SDR vê imóveis de ALUGUEL ou AMBOS
       return ['Aluguel', 'Ambos']
 
     case 'corretor':
     case 'broker':
-      // Broker/Corretor vê apenas imóveis de VENDA ou AMBOS
-      console.log('[getTiposVisiveis] Broker → Tipos: ["Venda", "Ambos"]')
+      // Broker/Corretor vê imóveis de VENDA ou AMBOS
       return ['Venda', 'Ambos']
 
     case 'captador':
-      // Captador vê TUDO
-      console.log('[getTiposVisiveis] Captador → Tipos: ["Venda", "Aluguel", "Ambos"]')
-      return ['Venda', 'Aluguel', 'Ambos']
-
     case 'admin':
-      // Admin vê TUDO
-      console.log('[getTiposVisiveis] Admin → Tipos: ["Venda", "Aluguel", "Ambos"]')
+    case 'gestor':
+      // Roles irrestritos veem TUDO
       return ['Venda', 'Aluguel', 'Ambos']
 
     default:
-      // Fallback seguro: Captador
-      console.log('[getTiposVisiveis] Role desconhecido → Fallback para Captador')
+      // Fallback seguro: vê tudo
       return ['Venda', 'Aluguel', 'Ambos']
   }
 }
@@ -72,20 +69,7 @@ export function isImovelVisivelParaRole(
 ): boolean {
   const tipos = getTiposVisiveis(role)
   const normalizedTipo = normalizeTipo(imovelTipo)
-  const isVisivel = tipos.includes(normalizedTipo)
-
-  console.log(
-    '[isImovelVisivelParaRole] Tipo:',
-    imovelTipo,
-    '| Normalizado:',
-    normalizedTipo,
-    '| Role:',
-    role,
-    '| Visível:',
-    isVisivel,
-  )
-
-  return isVisivel
+  return tipos.includes(normalizedTipo)
 }
 
 // ✅ LOGS DE DEBUG

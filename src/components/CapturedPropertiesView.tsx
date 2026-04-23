@@ -35,15 +35,7 @@ export function CapturedPropertiesView({
     markPropertyLost,
   } = useAppStore()
 
-  const { properties: supabaseProps, loading, syncing } = useSupabaseProperties(filterType)
-
-  // ✅ DEBUG: Log para rastrear filterType
-  console.log('[CapturedPropertiesView] filterType recebido:', filterType)
-  console.log('[CapturedPropertiesView] Role:', currentUser?.role)
-  console.log('[CapturedPropertiesView] Imóveis carregados:', supabaseProps.length)
-  supabaseProps.forEach((p) => {
-    console.log(`  - ${p.codigo_imovel}: tipo="${p.tipo}" (preço: R$ ${p.preco})`)
-  })
+  const { properties: supabaseProps, loading, syncing } = useSupabaseProperties(filterType as any)
 
   const [filters, setFilters] = useViewFilters('captados_view_' + (filterType || 'all'), {
     status: 'Todos',
@@ -103,8 +95,6 @@ export function CapturedPropertiesView({
   }
 
   const allCaptured = useMemo(() => {
-    console.log('[allCaptured] Iniciando processamento. filterType:', filterType)
-
     let filtered = supabaseProps
       .filter((p) => !deletedIds.includes(p.id))
       .map((p) => ({
@@ -114,6 +104,7 @@ export function CapturedPropertiesView({
           code: p.codigo_imovel,
           neighborhood: p.endereco,
           value: p.preco,
+          rentValue: p.valor,
           captador_id: p.user_captador_id,
           captador_name: p.captador_nome,
           capturedAt: p.created_at,
@@ -128,22 +119,13 @@ export function CapturedPropertiesView({
         } as any,
       }))
 
-    // ✅ APLICAR FILTRO DE TIPO SE ESPECIFICADO
     if (filterType) {
       const normalizedFilterType = normalizeTipo(filterType)
       filtered = filtered.filter(({ property: p }) => {
-        const match = p.propertyType === normalizedFilterType || p.propertyType === 'Ambos'
-        if (!match) {
-          console.log(
-            `[allCaptured] ❌ ${p.code}: tipo="${p.propertyType}" não corresponde a filterType="${filterType}"`,
-          )
-        }
-        return match
+        return p.propertyType === normalizedFilterType || p.propertyType === 'Ambos'
       })
-      console.log(`[allCaptured] Após filtro de tipo "${filterType}":`, filtered.length)
     }
 
-    console.log('[allCaptured] Total após filtro:', filtered.length)
     return filtered
   }, [supabaseProps, filterType, deletedIds])
 
@@ -242,6 +224,7 @@ export function CapturedPropertiesView({
       codigo_imovel: detailsProperty.code,
       endereco: detailsProperty.neighborhood,
       preco: detailsProperty.value,
+      valor: (detailsProperty as any).rentValue || 0,
       tipo: detailsProperty.propertyType || actionDemand?.type || 'Venda',
       dormitorios: detailsProperty.bedrooms,
       vagas: detailsProperty.parkingSpots,
@@ -357,7 +340,7 @@ export function CapturedPropertiesView({
 
       {detailsProperty && (
         <PropertyDetailsModal
-          property={mappedDetails}
+          property={mappedDetails as any}
           onClose={() => {
             setDetailsProperty(null)
             setActionDemand(null)

@@ -9,6 +9,7 @@ export interface SupabaseCapturedPropertyWithDemand {
   codigo_imovel: string
   endereco: string
   preco: number
+  valor: number
   user_captador_id: string
   created_at: string
   status_captacao: string
@@ -24,7 +25,7 @@ export interface SupabaseCapturedPropertyWithDemand {
   data_fechamento?: string
 }
 
-export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
+export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel' | 'Ambos') {
   const [properties, setProperties] = useState<SupabaseCapturedPropertyWithDemand[]>([])
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
@@ -42,42 +43,14 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
     const d_ven = p.demanda_venda
     const demanda = d_loc || d_ven
 
-    // ✅ LÓGICA CORRIGIDA DE DETERMINAÇÃO DE TIPO
-    let tipo = p.tipo
-
-    // Se tipo não está definido ou é "Ambos", usar lógica inteligente
-    if (!tipo || tipo === 'Desconhecido' || tipo === 'Ambos') {
-      // Se tem ambas as demandas
-      if (d_loc && d_ven) {
-        // Se preço > 100k, é VENDA
-        // Se preço <= 100k, é ALUGUEL
-        tipo = (p.preco || 0) > 100000 ? 'Venda' : 'Aluguel'
-      }
-      // Se tem apenas locação
-      else if (d_loc) {
-        tipo = 'Aluguel'
-      }
-      // Se tem apenas venda
-      else if (d_ven) {
-        tipo = 'Venda'
-      }
-      // Se não tem demanda, usar regra de preço
-      else {
-        tipo = (p.preco || 0) > 100000 ? 'Venda' : 'Aluguel'
-      }
-    }
-
-    const normalizedTipo = normalizeTipo(tipo, p.preco)
-
-    console.log(
-      `[formatProperty] ${p.codigo_imovel}: tipo original="${p.tipo}" → final="${normalizedTipo}" (preço: R$ ${p.preco})`,
-    )
+    const normalizedTipo = normalizeTipo(p.tipo, p.preco, p.valor)
 
     return {
       id: p.id,
       codigo_imovel: p.codigo_imovel,
       endereco: p.endereco,
-      preco: p.preco || p.valor || 0,
+      preco: p.preco || 0,
+      valor: p.valor || 0,
       user_captador_id: p.user_captador_id || p.captador_id,
       captador_nome: userMap.get(p.user_captador_id || p.captador_id) || 'Captador',
       created_at: p.created_at,
@@ -110,31 +83,17 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
         if (!userData?.user) return
 
         const userRole = currentUser?.role
-        const tipos = getTiposVisiveis(userRole)
-
-        console.group('🔍 [FETCH PROPERTIES] Diagnóstico')
-        console.log(
-          '[FETCH] Role:',
-          userRole,
-          '| Tipos visíveis:',
-          tipos,
-          '| FilterType:',
-          filterType,
-        )
 
         let finalData: any[] = []
 
-        // ✅ BUSCAR TODOS OS DADOS (SEM FILTRO NA QUERY)
         const { data: directData, error: directError } = await supabase
           .from('imoveis_captados')
           .select('*, demanda_locacao:demandas_locacao(*), demanda_venda:demandas_vendas(*)')
           .order('created_at', { ascending: false })
 
         if (!directError && directData) {
-          console.log('[FETCH] Direct query OK. Total imóveis:', directData.length)
           finalData = directData
         } else {
-          console.log('[FETCH] Direct query falhou, usando fallback. Erro:', directError?.message)
           const data = await fetchWithResilience(`properties_${filterType || 'all'}`, async () => {
             const { data: resData, error } = await supabase
               .from('imoveis_captados')
@@ -146,38 +105,19 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
           finalData = data || []
         }
 
-        console.log('[FETCH] Total imóveis carregados:', finalData.length)
-        console.groupEnd()
-
-        // ✅ FORMATAR TODOS OS IMÓVEIS
         let formatted = finalData.map(formatProperty)
-        console.log('[FETCH] Imóveis formatados:', formatted.length)
 
-        // ✅ FILTRAR POR ROLE (CRÍTICO!)
+        // Aplica os filtros de perfil (Role Based Visibility)
         formatted = formatted.filter((p) => {
-          const isVisivel = isImovelVisivelParaRole(p.tipo, userRole)
-          if (!isVisivel) {
-            console.log(
-              `[FETCH] ❌ ${p.codigo_imovel}: tipo="${p.tipo}" NÃO visível para role="${userRole}"`,
-            )
-          }
-          return isVisivel
+          return isImovelVisivelParaRole(p.tipo, userRole)
         })
-        console.log('[FETCH] Após filtro de role:', formatted.length)
 
-        // ✅ FILTRAR POR TIPO SE ESPECIFICADO
-        if (filterType) {
+        // Aplica o filtro selecionado pelo dropdown na UI (Venda/Aluguel) se existir
+        if (filterType && filterType !== ('Todos' as any)) {
           const normalizedFilterType = normalizeTipo(filterType)
           formatted = formatted.filter((f: any) => {
-            const match = f.tipo === normalizedFilterType || f.tipo === 'Ambos'
-            if (!match) {
-              console.log(
-                `[FETCH] ❌ ${f.codigo_imovel}: tipo="${f.tipo}" não corresponde a filterType="${filterType}"`,
-              )
-            }
-            return match
+            return f.tipo === normalizedFilterType || f.tipo === 'Ambos'
           })
-          console.log(`[FETCH] Após filtro de tipo "${filterType}":`, formatted.length)
         }
 
         setProperties(formatted)
@@ -220,13 +160,16 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
         if (data) {
           const formatted = formatProperty(data)
 
-          // ✅ VALIDAR SE PROPRIEDADE É VISÍVEL PARA O ROLE
           if (!isImovelVisivelParaRole(formatted.tipo, userRole)) {
-            console.log('[FETCH SINGLE] ❌ Propriedade não visível para role:', userRole)
             return
           }
 
-          if (!filterType || formatted.tipo === filterType || formatted.tipo === 'Ambos') {
+          if (
+            !filterType ||
+            filterType === ('Todos' as any) ||
+            formatted.tipo === filterType ||
+            formatted.tipo === 'Ambos'
+          ) {
             setProperties((prev) => {
               const exists = prev.some((p) => p.id === formatted.id)
               if (exists) {
@@ -312,6 +255,7 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
                         codigo_imovel: payload.new.codigo_imovel || p.codigo_imovel,
                         endereco: payload.new.endereco || p.endereco,
                         preco: payload.new.preco || payload.new.valor || p.preco,
+                        valor: payload.new.valor || p.valor,
                         dormitorios: payload.new.dormitorios ?? p.dormitorios,
                         vagas: payload.new.vagas ?? p.vagas,
                         observacoes:
@@ -323,6 +267,7 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
                         tipo: normalizeTipo(
                           payload.new.tipo || p.tipo,
                           payload.new.preco || p.preco,
+                          payload.new.valor || p.valor,
                         ),
                       }
                     : p,
@@ -336,7 +281,6 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
           'postgres_changes',
           { event: 'DELETE', schema: 'public', table: 'imoveis_captados' },
           (payload) => {
-            console.log('🔴 [REALTIME] DELETE recebido:', payload.old.id)
             setSyncing(true)
             setProperties((prev) => prev.filter((p) => p.id !== payload.old.id))
             setTimeout(() => setSyncing(false), 500)
