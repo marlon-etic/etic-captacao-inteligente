@@ -23,6 +23,8 @@ import { useSlaCountdown, useTimeElapsed } from '@/hooks/useTimeElapsed'
 import useAppStore from '@/stores/useAppStore'
 import { useToast } from '@/hooks/use-toast'
 import { RespostasBadge, RespostasHistory } from './RespostasHistory'
+import { useMatchCount } from '@/hooks/use-match-count'
+import { useNavigate } from 'react-router-dom'
 
 export function ExpandableDemandCardSDR({
   demand,
@@ -33,6 +35,8 @@ export function ExpandableDemandCardSDR({
 }) {
   const { currentUser, logSolicitorContactAttempt } = useAppStore()
   const { toast } = useToast()
+  const navigate = useNavigate()
+  const { count: matchCount } = useMatchCount('demanda', demand.id || '')
 
   const { text: timeElapsedText, hoursElapsed } = useTimeElapsed(demand.created_at)
 
@@ -139,10 +143,27 @@ export function ExpandableDemandCardSDR({
           )}
 
           {isNew && !isPrioritized && (
-            <Badge className="bg-[#4CAF50] text-[#FFFFFF] border-none font-bold text-[10px] px-2 py-1 shadow-sm uppercase tracking-wider animate-pulse flex items-center gap-1">
+            <Badge className="bg-[#4CAF50] text-[#FFFFFF] border-none font-bold text-[10px] px-2 py-1 shadow-sm uppercase tracking-wider animate-pulse flex items-center gap-1 pointer-events-auto">
               <Zap className="w-3 h-3 fill-current" /> NOVA DEMANDA
             </Badge>
           )}
+
+          {matchCount > 0 &&
+            !isLost &&
+            demand.status_demanda !== 'atendida' &&
+            demand.status_demanda !== 'ganho' && (
+              <Badge
+                onClick={(e) => {
+                  e.stopPropagation()
+                  e.preventDefault()
+                  navigate('/app/match-inteligentes')
+                }}
+                className="bg-[#3B82F6] hover:bg-[#2563EB] text-white border-none font-bold text-[10px] px-2 py-1 shadow-sm cursor-pointer animate-pulse flex items-center gap-1 pointer-events-auto"
+              >
+                <Zap className="w-3 h-3 fill-current" /> {matchCount} MATCH
+                {matchCount !== 1 ? 'ES' : ''}
+              </Badge>
+            )}
 
           <RespostasBadge respostas={respostasNaoEncontrei} />
 

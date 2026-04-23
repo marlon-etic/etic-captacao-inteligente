@@ -392,19 +392,23 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
             )}
 
             <RespostasBadge respostas={respostasNaoEncontrei} />
-            {matchCount > 0 && (
-              <Badge
-                onClick={(e) => {
-                  e.stopPropagation()
-                  e.preventDefault()
-                  navigate('/app/match-inteligentes')
-                }}
-                className="bg-[#3B82F6] hover:bg-[#2563EB] text-white border-none font-bold text-[10px] px-2 py-1 shadow-sm cursor-pointer animate-pulse flex items-center gap-1"
-              >
-                <Zap className="w-3.5 h-3.5 fill-current" /> {matchCount} Match
-                {matchCount !== 1 ? 'es' : ''}
-              </Badge>
-            )}
+            {matchCount > 0 &&
+              !isLost &&
+              demand.status !== 'Atendida' &&
+              demand.status !== 'ganho' &&
+              demand.status !== 'Negócio' && (
+                <Badge
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    e.preventDefault()
+                    navigate('/app/match-inteligentes')
+                  }}
+                  className="bg-[#3B82F6] hover:bg-[#2563EB] text-white border-none font-bold text-[10px] px-2 py-1 shadow-sm cursor-pointer animate-pulse flex items-center gap-1 pointer-events-auto"
+                >
+                  <Zap className="w-3.5 h-3.5 fill-current" /> {matchCount} Match
+                  {matchCount !== 1 ? 'es' : ''}
+                </Badge>
+              )}
             <div
               className={cn(
                 'flex items-center justify-center px-2 py-1 gap-[4px] rounded-[6px] shadow-sm shrink-0',

@@ -59,14 +59,14 @@ export function ImovelCapturadoCard({
             </Badge>
           )}
           {getStatusBadge()}
-          {matchCount > 0 && (
+          {matchCount > 0 && !isClosed && !isVisita && (
             <Badge
               onClick={(e) => {
                 e.stopPropagation()
                 e.preventDefault()
                 navigate('/app/match-inteligentes')
               }}
-              className="bg-[#3B82F6] hover:bg-[#2563EB] text-white font-bold text-[10px] px-2 py-0.5 shadow-sm cursor-pointer animate-pulse flex items-center gap-1"
+              className="bg-[#3B82F6] hover:bg-[#2563EB] text-white border-none font-bold text-[10px] px-2 py-0.5 shadow-sm cursor-pointer animate-pulse flex items-center gap-1 pointer-events-auto"
             >
               <Zap className="w-3 h-3 fill-current" /> {matchCount} Match
               {matchCount !== 1 ? 'es' : ''}

@@ -23,6 +23,7 @@ import {
   XCircle,
   Search,
   RefreshCw,
+  Zap,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { SupabaseDemand } from '@/hooks/use-supabase-demands'
@@ -34,6 +35,8 @@ import { CapturePropertyModal } from './CapturePropertyModal'
 import { NaoEncontreiModal } from './NaoEncontreiModal'
 import { PrazoCounter } from './PrazoCounter'
 import { RespostasBadge, RespostasHistory } from './RespostasHistory'
+import { useMatchCount } from '@/hooks/use-match-count'
+import { useNavigate } from 'react-router-dom'
 
 export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDemand }) {
   const [expanded, setExpanded] = useState(false)
@@ -43,6 +46,8 @@ export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDeman
 
   const { currentUser, users } = useAppStore()
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const navigate = useNavigate()
+  const { count: matchCount } = useMatchCount('demanda', demand.id || '')
 
   const handleAtribuirBuscaMultipla = async (e: React.MouseEvent) => {
     e.preventDefault()
@@ -440,10 +445,28 @@ export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDeman
             </div>
 
             {demand.is_prioritaria && (
-              <Badge className="bg-[#FCD34D] text-[#854D0E] hover:bg-[#FCD34D] text-[10px] font-black px-2 py-1 flex items-center gap-1 shadow-sm border border-[#F59E0B]">
+              <Badge className="bg-[#FCD34D] text-[#854D0E] hover:bg-[#FCD34D] text-[10px] font-black px-2 py-1 flex items-center gap-1 shadow-sm border border-[#F59E0B] pointer-events-auto">
                 <Star className="w-3 h-3 fill-current" /> PRIORITÁRIA
               </Badge>
             )}
+
+            {matchCount > 0 &&
+              !isGloballyLost &&
+              !isLocallyLost &&
+              demand.status_demanda !== 'atendida' &&
+              demand.status_demanda !== 'ganho' && (
+                <Badge
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    e.preventDefault()
+                    navigate('/app/match-inteligentes')
+                  }}
+                  className="bg-[#3B82F6] hover:bg-[#2563EB] text-white border-none font-bold text-[10px] px-2 py-1 shadow-sm cursor-pointer animate-pulse flex items-center gap-1 pointer-events-auto"
+                >
+                  <Zap className="w-3.5 h-3.5 fill-current" /> {matchCount} MATCH
+                  {matchCount !== 1 ? 'ES' : ''}
+                </Badge>
+              )}
 
             <RespostasBadge respostas={respostasNaoEncontrei} />
 

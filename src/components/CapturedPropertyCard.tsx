@@ -17,6 +17,9 @@ import {
 import { useToast } from '@/hooks/use-toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { getPropertyPublicUrl } from '@/lib/propertyUrl'
+import { useMatchCount } from '@/hooks/use-match-count'
+import { useNavigate } from 'react-router-dom'
+import { Zap } from 'lucide-react'
 
 export function CapturedPropertyCard({
   demand,
@@ -33,6 +36,8 @@ export function CapturedPropertyCard({
 }) {
   const { users, currentUser } = useAppStore()
   const { toast } = useToast()
+  const navigate = useNavigate()
+  const { count: matchCount } = useMatchCount('imovel', property.id || '')
 
   const capturer = users.find((u) => u.id === property.captador_id)
   const capturerName = capturer?.name || property.captador_name || 'Não informado'
@@ -193,6 +198,19 @@ export function CapturedPropertyCard({
           {(property.tipo_imovel || property.propertyType) && (
             <Badge className="font-bold text-[10px] bg-[#E0E7FF] text-[#1E40AF] px-2 py-0.5 shadow-sm uppercase tracking-widest hover:bg-[#C7D2FE]">
               {property.tipo_imovel || property.propertyType}
+            </Badge>
+          )}
+          {matchCount > 0 && !isClosed && !isVisita && (
+            <Badge
+              onClick={(e) => {
+                e.stopPropagation()
+                e.preventDefault()
+                navigate('/app/match-inteligentes')
+              }}
+              className="font-bold text-[10px] text-white bg-[#3B82F6] hover:bg-[#2563EB] px-2 py-0.5 shadow-sm cursor-pointer animate-pulse flex items-center gap-1 tracking-widest pointer-events-auto"
+            >
+              <Zap className="w-3.5 h-3.5 fill-current" /> {matchCount} MATCH
+              {matchCount !== 1 ? 'ES' : ''}
             </Badge>
           )}
         </div>
