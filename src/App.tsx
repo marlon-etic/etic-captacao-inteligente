@@ -8,10 +8,10 @@ import { GlobalPontuacaoListener } from '@/components/GlobalPontuacaoListener'
 import { GlobalNotificationListener } from '@/components/GlobalNotificationListener'
 import { GlobalMatchListener } from '@/components/GlobalMatchListener'
 import { ErrorBoundary } from '@/components/common/ErrorBoundary'
-import { useNavigate } from 'react-router-dom'
 import { useToast } from '@/components/ui/use-toast'
 import { useUserRole } from '@/hooks/use-user-role'
 import { findNewMatches } from '@/services/matchingService'
+import { useNavigate } from 'react-router-dom'
 import Layout from '@/components/Layout'
 import Index from '@/pages/Index'
 import EsqueciSenha from '@/pages/EsqueciSenha'
@@ -59,6 +59,7 @@ import LandlordSettings from '@/pages/landlord/LandlordSettings'
 import { useLandlordAuth } from '@/hooks/useLandlordAuth'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import React from 'react'
+import { useAuth } from '@/hooks/use-auth'
 
 import { enableDebugLogging } from '@/debug'
 
@@ -156,7 +157,9 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>
 }
 
-const AppContent = () => {
+// ✅ NOVO COMPONENTE: AppRoutes
+// Este componente está DENTRO do BrowserRouter, então useNavigate() funciona corretamente
+const AppRoutes = () => {
   const navigate = useNavigate()
   const { toast } = useToast()
   const { role } = useUserRole()
@@ -220,172 +223,176 @@ const AppContent = () => {
   }, [])
 
   return (
+    <Routes>
+      <Route path="/" element={<Index />} />
+      <Route path="/esqueci-senha" element={<EsqueciSenha />} />
+      <Route path="/redefinir-senha" element={<RedefinirSenha />} />
+      <Route path="/diagnostico" element={<HealthCheckTester />} />
+
+      {/* Landlord Auth Routes */}
+      <Route path="/landlord/login" element={<LandlordLogin />} />
+      <Route path="/landlord/signup" element={<LandlordSignup />} />
+
+      {/* Landlord Protected Routes */}
+      <Route
+        path="/landlord"
+        element={
+          <LandlordProtectedRoute>
+            <LandlordLayout />
+          </LandlordProtectedRoute>
+        }
+      >
+        <Route index element={<Navigate to="/landlord/dashboard" replace />} />
+        <Route path="dashboard" element={<LandlordDashboard />} />
+        <Route path="properties" element={<LandlordProperties />} />
+        <Route path="proposals" element={<LandlordProposals />} />
+        <Route path="settings" element={<LandlordSettings />} />
+      </Route>
+
+      {/* Redirects for common root routes to avoid 404s */}
+      <Route path="/demandas" element={<Navigate to="/app/demandas" replace />} />
+      <Route path="/perfil" element={<Navigate to="/app/perfil" replace />} />
+      <Route path="/notificacoes" element={<Navigate to="/app/notificacoes" replace />} />
+      <Route path="/ajuda" element={<Navigate to="/app/ajuda" replace />} />
+      <Route path="/admin/properties" element={<Navigate to="/app/admin/properties" replace />} />
+
+      <Route path="/app" element={<Layout />}>
+        <Route index element={<DashboardRedirect />} />
+        <Route path="demandas" element={<Demandas />} />
+        <Route path="nova-demanda" element={<NovaDemanda />} />
+        <Route path="ranking" element={<Ranking />} />
+        <Route path="perfil" element={<Perfil />} />
+        <Route path="notificacoes" element={<Notificacoes />} />
+        <Route path="ajuda" element={<Ajuda />} />
+        <Route path="gestor-dashboard" element={<GestorDashboard />} />
+        <Route path="analytics" element={<AnalyticsDashboard />} />
+        <Route path="performance" element={<PerformanceDashboard />} />
+        <Route
+          path="usuarios"
+          element={
+            <AdminRoute>
+              <Usuarios />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="auditoria"
+          element={
+            <AdminRoute>
+              <Auditoria />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="rls-tester"
+          element={
+            <AdminRoute>
+              <RLSTester />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="e2e-tester"
+          element={
+            <AdminRoute>
+              <E2ETester />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="performance-tester"
+          element={
+            <AdminRoute>
+              <PerformanceTester />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="realtime-tester"
+          element={
+            <AdminRoute>
+              <RealtimeTester />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="integration-tester"
+          element={
+            <AdminRoute>
+              <IntegrationTester />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="resilience-tester"
+          element={
+            <AdminRoute>
+              <ResilienceTester />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="functional-tester"
+          element={
+            <AdminRoute>
+              <FunctionalTester />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="go-live-tester"
+          element={
+            <AdminRoute>
+              <GoLiveTester />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="health-check"
+          element={
+            <AdminRoute>
+              <HealthCheckTester />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="database-reset"
+          element={
+            <AdminRoute>
+              <DatabaseReset />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="admin/properties"
+          element={
+            <AdminRoute>
+              <AdminProperties />
+            </AdminRoute>
+          }
+        />
+        <Route path="pontuacao" element={<PontuacaoPage />} />
+        <Route path="historico" element={<HistoricoPage />} />
+        <Route path="perdidos" element={<PerdidosPage />} />
+        <Route path="meus-captados" element={<MeusCaptadosPage />} />
+        <Route path="disponivel-geral" element={<DisponivelGeralPage />} />
+        <Route path="todos-captados" element={<TodosCaptadosPage />} />
+        <Route path="match-inteligentes" element={<MatchInteligentes />} />
+      </Route>
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  )
+}
+
+// ✅ COMPONENTE AppContent SIMPLIFICADO
+const AppContent = () => {
+  return (
     <BrowserRouter>
       <TooltipProvider>
         <Toaster />
         <Sonner />
         <GlobalMatchListener />
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/esqueci-senha" element={<EsqueciSenha />} />
-          <Route path="/redefinir-senha" element={<RedefinirSenha />} />
-          <Route path="/diagnostico" element={<HealthCheckTester />} />
-
-          {/* Landlord Auth Routes */}
-          <Route path="/landlord/login" element={<LandlordLogin />} />
-          <Route path="/landlord/signup" element={<LandlordSignup />} />
-
-          {/* Landlord Protected Routes */}
-          <Route
-            path="/landlord"
-            element={
-              <LandlordProtectedRoute>
-                <LandlordLayout />
-              </LandlordProtectedRoute>
-            }
-          >
-            <Route index element={<Navigate to="/landlord/dashboard" replace />} />
-            <Route path="dashboard" element={<LandlordDashboard />} />
-            <Route path="properties" element={<LandlordProperties />} />
-            <Route path="proposals" element={<LandlordProposals />} />
-            <Route path="settings" element={<LandlordSettings />} />
-          </Route>
-
-          {/* Redirects for common root routes to avoid 404s */}
-          <Route path="/demandas" element={<Navigate to="/app/demandas" replace />} />
-          <Route path="/perfil" element={<Navigate to="/app/perfil" replace />} />
-          <Route path="/notificacoes" element={<Navigate to="/app/notificacoes" replace />} />
-          <Route path="/ajuda" element={<Navigate to="/app/ajuda" replace />} />
-          <Route
-            path="/admin/properties"
-            element={<Navigate to="/app/admin/properties" replace />}
-          />
-
-          <Route path="/app" element={<Layout />}>
-            <Route index element={<DashboardRedirect />} />
-            <Route path="demandas" element={<Demandas />} />
-            <Route path="nova-demanda" element={<NovaDemanda />} />
-            <Route path="ranking" element={<Ranking />} />
-            <Route path="perfil" element={<Perfil />} />
-            <Route path="notificacoes" element={<Notificacoes />} />
-            <Route path="ajuda" element={<Ajuda />} />
-            <Route path="gestor-dashboard" element={<GestorDashboard />} />
-            <Route path="analytics" element={<AnalyticsDashboard />} />
-            <Route path="performance" element={<PerformanceDashboard />} />
-            <Route
-              path="usuarios"
-              element={
-                <AdminRoute>
-                  <Usuarios />
-                </AdminRoute>
-              }
-            />
-            <Route
-              path="auditoria"
-              element={
-                <AdminRoute>
-                  <Auditoria />
-                </AdminRoute>
-              }
-            />
-            <Route
-              path="rls-tester"
-              element={
-                <AdminRoute>
-                  <RLSTester />
-                </AdminRoute>
-              }
-            />
-            <Route
-              path="e2e-tester"
-              element={
-                <AdminRoute>
-                  <E2ETester />
-                </AdminRoute>
-              }
-            />
-            <Route
-              path="performance-tester"
-              element={
-                <AdminRoute>
-                  <PerformanceTester />
-                </AdminRoute>
-              }
-            />
-            <Route
-              path="realtime-tester"
-              element={
-                <AdminRoute>
-                  <RealtimeTester />
-                </AdminRoute>
-              }
-            />
-            <Route
-              path="integration-tester"
-              element={
-                <AdminRoute>
-                  <IntegrationTester />
-                </AdminRoute>
-              }
-            />
-            <Route
-              path="resilience-tester"
-              element={
-                <AdminRoute>
-                  <ResilienceTester />
-                </AdminRoute>
-              }
-            />
-            <Route
-              path="functional-tester"
-              element={
-                <AdminRoute>
-                  <FunctionalTester />
-                </AdminRoute>
-              }
-            />
-            <Route
-              path="go-live-tester"
-              element={
-                <AdminRoute>
-                  <GoLiveTester />
-                </AdminRoute>
-              }
-            />
-            <Route
-              path="health-check"
-              element={
-                <AdminRoute>
-                  <HealthCheckTester />
-                </AdminRoute>
-              }
-            />
-            <Route
-              path="database-reset"
-              element={
-                <AdminRoute>
-                  <DatabaseReset />
-                </AdminRoute>
-              }
-            />
-            <Route
-              path="admin/properties"
-              element={
-                <AdminRoute>
-                  <AdminProperties />
-                </AdminRoute>
-              }
-            />
-            <Route path="pontuacao" element={<PontuacaoPage />} />
-            <Route path="historico" element={<HistoricoPage />} />
-            <Route path="perdidos" element={<PerdidosPage />} />
-            <Route path="meus-captados" element={<MeusCaptadosPage />} />
-            <Route path="disponivel-geral" element={<DisponivelGeralPage />} />
-            <Route path="todos-captados" element={<TodosCaptadosPage />} />
-            <Route path="match-inteligentes" element={<MatchInteligentes />} />
-          </Route>
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <AppRoutes /> {/* ✅ AppRoutes está DENTRO do BrowserRouter */}
       </TooltipProvider>
     </BrowserRouter>
   )
