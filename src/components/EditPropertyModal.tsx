@@ -28,6 +28,7 @@ const editSchema = z.object({
   bedrooms: z.coerce.number().min(0).optional().catch(0),
   parking: z.coerce.number().min(0).optional().catch(0),
   obs: z.string().max(500, 'Máximo 500 caracteres').optional().catch(''),
+  tipo_imovel: z.string().min(1, 'Tipo de imóvel é obrigatório'),
 })
 
 interface Props {
@@ -64,6 +65,7 @@ export function EditPropertyModal({ isOpen, onClose, property }: Props) {
         bedrooms: (property as any).dormitorios ?? property.bedrooms ?? 0,
         parking: (property as any).vagas ?? property.parkingSpots ?? 0,
         obs: originalObs,
+        tipo_imovel: (property as any).tipo_imovel || property.propertyType || '',
       })
     }
   }, [property, isOpen, form, originalObs])
@@ -78,6 +80,7 @@ export function EditPropertyModal({ isOpen, onClose, property }: Props) {
       preco: data.price,
       dormitorios: data.bedrooms,
       vagas: data.parking,
+      tipo_imovel: data.tipo_imovel,
     }
 
     if (!hasOriginalObs) {
@@ -175,6 +178,28 @@ export function EditPropertyModal({ isOpen, onClose, property }: Props) {
                 {form.formState.errors.address && (
                   <p className="text-red-500 text-xs mt-1 font-bold">
                     {form.formState.errors.address.message}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <Label className="font-bold text-[#333333]">Tipo de Imóvel *</Label>
+                <select
+                  {...form.register('tipo_imovel')}
+                  disabled={isSubmitting}
+                  className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 font-medium"
+                >
+                  <option value="">Selecione o tipo</option>
+                  <option value="Apartamento">Apartamento</option>
+                  <option value="Casa">Casa</option>
+                  <option value="Casa/Sobrado">Casa/Sobrado</option>
+                  <option value="Prédio Comercial">Prédio Comercial</option>
+                  <option value="Sala Comercial">Sala Comercial</option>
+                  <option value="Galpão">Galpão</option>
+                </select>
+                {form.formState.errors.tipo_imovel && (
+                  <p className="text-red-500 text-xs mt-1 font-bold">
+                    {form.formState.errors.tipo_imovel.message}
                   </p>
                 )}
               </div>

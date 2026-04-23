@@ -145,22 +145,29 @@ export function CapturedPropertyCard({
 
   const captureDateStr = property.capturedAt
     ? new Date(property.capturedAt).toLocaleDateString('pt-BR')
-    : (() => {
-        if (import.meta.env.DEV) console.error(`Data ausente em card [${property.code}]`)
-        return 'Data pendente'
-      })()
+    : property.created_at
+      ? new Date(property.created_at).toLocaleDateString('pt-BR')
+      : (() => {
+          if (import.meta.env.DEV) console.error(`Data ausente em card [${property.code}]`)
+          return 'Data pendente'
+        })()
 
   return (
     <Card className="w-full h-full min-h-[160px] rounded-[16px] border-[2px] border-[#2E5F8A] hover:shadow-[0_8px_24px_rgba(26,58,82,0.12)] flex flex-col bg-[#FFFFFF] transition-all duration-150 ease-in-out overflow-visible relative group">
       {/* Header: Data and Status */}
-      <div className="px-4 pt-4 pb-3 border-b border-[#E5E5E5] bg-[#F5F5F5]/50 shrink-0 relative z-10 pointer-events-none rounded-t-[14px]">
-        <div className="flex justify-between items-start mb-3">
-          <span className="text-[12px] text-[#6B7280] font-sans font-bold bg-white px-2.5 py-1.5 rounded-[6px] border border-[#E5E5E5] shadow-sm flex items-center gap-1.5 pointer-events-auto shrink-0">
-            📅 {captureDateStr}
-          </span>
+      <div className="px-4 pt-3 pb-3 border-b border-[#E5E5E5] bg-[#F8FAFC] shrink-0 relative z-10 pointer-events-none rounded-t-[14px]">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2 pointer-events-auto">
+            <span className="text-[11px] font-bold text-[#64748B] uppercase tracking-wider">
+              Captado em:
+            </span>
+            <span className="text-[13px] font-black text-[#1E293B] flex items-center gap-1.5 bg-white px-2 py-1 rounded-md border border-[#E2E8F0] shadow-sm">
+              📅 {captureDateStr}
+            </span>
+          </div>
           <div
             className={cn(
-              'px-2 py-1 rounded-[6px] font-bold text-[12px] flex items-center gap-1 shadow-sm border-none tracking-wide pointer-events-auto',
+              'px-2 py-1 rounded-[6px] font-bold text-[11px] flex items-center gap-1 shadow-sm border-none tracking-wide pointer-events-auto uppercase',
               captadoBadgeClass,
             )}
           >
@@ -169,15 +176,20 @@ export function CapturedPropertyCard({
         </div>
 
         {/* Banner */}
-        <div className="flex items-center gap-2 pointer-events-auto">
+        <div className="flex items-center gap-2 pointer-events-auto flex-wrap">
           <Badge
             className={cn(
-              'font-bold text-[10px] text-white px-2 py-1 shadow-sm tracking-widest',
+              'font-bold text-[10px] text-white px-2 py-0.5 shadow-sm tracking-widest',
               isAluguel ? 'bg-[#3B82F6] hover:bg-[#2563EB]' : 'bg-[#EF4444] hover:bg-[#DC2626]',
             )}
           >
             {isAluguel ? '🏠 ALUGUEL' : '🏢 VENDA'}
           </Badge>
+          {(property.tipo_imovel || property.propertyType) && (
+            <Badge className="font-bold text-[10px] bg-[#E0E7FF] text-[#1E40AF] px-2 py-0.5 shadow-sm uppercase tracking-widest hover:bg-[#C7D2FE]">
+              {property.tipo_imovel || property.propertyType}
+            </Badge>
+          )}
         </div>
       </div>
 

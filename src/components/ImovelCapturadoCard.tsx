@@ -49,6 +49,11 @@ export function ImovelCapturadoCard({
           >
             {isAluguel ? 'ALUGUEL' : 'VENDA'}
           </Badge>
+          {property.tipo_imovel && (
+            <Badge className="font-bold text-[10px] bg-[#E0E7FF] text-[#1E40AF] px-2 py-0.5 shadow-sm uppercase tracking-widest hover:bg-[#C7D2FE]">
+              {property.tipo_imovel}
+            </Badge>
+          )}
           {getStatusBadge()}
           {publicUrl && (
             <a
