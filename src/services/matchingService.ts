@@ -28,6 +28,15 @@ export async function getPendingMatches(limit = 50): Promise<MatchSugestao[]> {
   }
 }
 
+export async function findNewMatches(): Promise<void> {
+  try {
+    console.log('[MATCHING SERVICE] Verificando novos matches...')
+    // Lógica para processar novos matches pode ser implementada via RPC ou Edge Function futuramente
+  } catch (error) {
+    console.error('[MATCHING SERVICE] Erro ao verificar novos matches:', error)
+  }
+}
+
 export async function updateMatchStatus(
   matchId: string,
   status: 'aceito' | 'rejeitado' | 'vinculado',
