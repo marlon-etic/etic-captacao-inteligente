@@ -12,6 +12,7 @@ import { toast } from '@/hooks/use-toast'
 import { DemandDetailsModal } from '@/components/DemandDetailsModal'
 import { LostModal } from '@/components/LostModal'
 import { useSlaCountdown, useTimeElapsed } from '@/hooks/useTimeElapsed'
+import { useMatchCount } from '@/hooks/use-match-count'
 import { RespostasBadge, RespostasHistory } from './RespostasHistory'
 import {
   Building2,
@@ -59,6 +60,7 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
   const creatorName = creator?.name || 'Desconhecido'
 
   const { text: timeElapsedText, hoursElapsed } = useTimeElapsed(demand.createdAt)
+  const { count: matchCount } = useMatchCount('demanda', demand.id || '')
 
   // Extrai o prazo real da estrutura mapeada para sincronização em tempo real
   const prazoDb = (demand as any).prazos_captacao?.[0]
@@ -390,6 +392,19 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
             )}
 
             <RespostasBadge respostas={respostasNaoEncontrei} />
+            {matchCount > 0 && (
+              <Badge
+                onClick={(e) => {
+                  e.stopPropagation()
+                  e.preventDefault()
+                  navigate('/app/match-inteligentes')
+                }}
+                className="bg-[#3B82F6] hover:bg-[#2563EB] text-white border-none font-bold text-[10px] px-2 py-1 shadow-sm cursor-pointer animate-pulse flex items-center gap-1"
+              >
+                <Zap className="w-3.5 h-3.5 fill-current" /> {matchCount} Match
+                {matchCount !== 1 ? 'es' : ''}
+              </Badge>
+            )}
             <div
               className={cn(
                 'flex items-center justify-center px-2 py-1 gap-[4px] rounded-[6px] shadow-sm shrink-0',

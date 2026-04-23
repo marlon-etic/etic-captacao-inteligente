@@ -6,6 +6,7 @@ import { AppStoreProvider } from '@/stores/useAppStore'
 import { AuthProvider } from '@/hooks/use-auth'
 import { GlobalPontuacaoListener } from '@/components/GlobalPontuacaoListener'
 import { GlobalNotificationListener } from '@/components/GlobalNotificationListener'
+import { GlobalMatchListener } from '@/components/GlobalMatchListener'
 import { ErrorBoundary } from '@/components/common/ErrorBoundary'
 import Layout from '@/components/Layout'
 import Index from '@/pages/Index'
@@ -190,6 +191,7 @@ const AppContent = () => {
       <TooltipProvider>
         <Toaster />
         <Sonner />
+        <GlobalMatchListener />
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/esqueci-senha" element={<EsqueciSenha />} />

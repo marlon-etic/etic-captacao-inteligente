@@ -28,12 +28,35 @@ export async function getPendingMatches(limit = 50): Promise<MatchSugestao[]> {
   }
 }
 
-export async function findNewMatches(): Promise<void> {
+export async function findNewMatches(onNewMatch?: (match: any) => void): Promise<MatchSugestao[]> {
   try {
     console.log('[MATCHING SERVICE] Verificando novos matches...')
-    // Lógica para processar novos matches pode ser implementada via RPC ou Edge Function futuramente
+
+    // Simulate finding new matches by fetching pending ones created recently
+    const { data, error } = await supabase
+      .from('matches_sugestoes')
+      .select(`
+        *,
+        imovel:imoveis_captados(codigo_imovel, localizacao_texto, preco, valor)
+      `)
+      .eq('status', 'pendente')
+      .order('created_at', { ascending: false })
+      .limit(10)
+
+    if (error) throw error
+
+    const matches = data || []
+
+    for (const match of matches) {
+      if (onNewMatch) {
+        onNewMatch(match)
+      }
+    }
+
+    return matches as MatchSugestao[]
   } catch (error) {
     console.error('[MATCHING SERVICE] Erro ao verificar novos matches:', error)
+    return []
   }
 }
 

@@ -1,8 +1,10 @@
 import { Badge } from '@/components/ui/badge'
 import { Demand } from '@/types'
-import { MapPin, UserIcon, ExternalLink } from 'lucide-react'
+import { MapPin, UserIcon, ExternalLink, Zap } from 'lucide-react'
 import { getPropertyPublicUrl } from '@/lib/propertyUrl'
 import { cn } from '@/lib/utils'
+import { useMatchCount } from '@/hooks/use-match-count'
+import { useNavigate } from 'react-router-dom'
 
 export function ImovelCapturadoCard({
   property,
@@ -33,6 +35,8 @@ export function ImovelCapturadoCard({
   const isAluguel = propType === 'Aluguel' || propType?.toLowerCase() === 'aluguel'
 
   const publicUrl = property.codigo_imovel ? getPropertyPublicUrl(property.codigo_imovel) : null
+  const { count: matchCount } = useMatchCount('imovel', property.id)
+  const navigate = useNavigate()
 
   return (
     <div className="bg-white p-3 md:p-4 rounded-[10px] border border-[#E5E5E5] shadow-sm flex flex-col sm:flex-row gap-3 items-start sm:items-center hover:border-[#1A3A52]/30 transition-colors">
@@ -55,6 +59,19 @@ export function ImovelCapturadoCard({
             </Badge>
           )}
           {getStatusBadge()}
+          {matchCount > 0 && (
+            <Badge
+              onClick={(e) => {
+                e.stopPropagation()
+                e.preventDefault()
+                navigate('/app/match-inteligentes')
+              }}
+              className="bg-[#3B82F6] hover:bg-[#2563EB] text-white font-bold text-[10px] px-2 py-0.5 shadow-sm cursor-pointer animate-pulse flex items-center gap-1"
+            >
+              <Zap className="w-3 h-3 fill-current" /> {matchCount} Match
+              {matchCount !== 1 ? 'es' : ''}
+            </Badge>
+          )}
           {publicUrl && (
             <a
               href={publicUrl}
