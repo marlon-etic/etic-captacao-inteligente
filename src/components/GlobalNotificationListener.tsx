@@ -41,6 +41,7 @@ export function GlobalNotificationListener() {
           filter: `usuario_id=eq.${currentUser.id}`,
         },
         (payload) => {
+          console.log('[REALTIME] INSERT notificacoes (GlobalNotificationListener):', payload)
           if (!mounted) return
           const notif = payload.new
 

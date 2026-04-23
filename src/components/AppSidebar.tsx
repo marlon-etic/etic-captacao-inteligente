@@ -34,6 +34,7 @@ import useAppStore from '@/stores/useAppStore'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { getPendingMatches } from '@/services/matchingService'
+import { supabase } from '@/lib/supabase/client'
 
 export function AppSidebar() {
   const { currentUser, demands, looseProperties } = useAppStore()
@@ -54,9 +55,23 @@ export function AppSidebar() {
 
     loadMatchCount()
     const interval = setInterval(loadMatchCount, 30000)
+
+    const channel = supabase
+      .channel('sidebar_matches_realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'matches_sugestoes' },
+        (payload) => {
+          console.log('[REALTIME] Alteração em matches_sugestoes (AppSidebar):', payload)
+          loadMatchCount()
+        },
+      )
+      .subscribe()
+
     return () => {
       mounted = false
       clearInterval(interval)
+      supabase.removeChannel(channel)
     }
   }, [])
 

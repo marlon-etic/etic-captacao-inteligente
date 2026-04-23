@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { findNewMatches } from '@/services/matchingService'
 import { toast } from '@/hooks/use-toast'
 import { Button } from '@/components/ui/button'
+import { supabase } from '@/lib/supabase/client'
 
 export function GlobalMatchListener() {
   const navigate = useNavigate()
@@ -43,7 +44,22 @@ export function GlobalMatchListener() {
     checkMatches()
     const interval = setInterval(checkMatches, 60000)
 
-    return () => clearInterval(interval)
+    const channel = supabase
+      .channel('global_match_listener')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'matches_sugestoes' },
+        (payload) => {
+          console.log('[REALTIME] Alteração em matches_sugestoes (GlobalMatchListener):', payload)
+          checkMatches()
+        },
+      )
+      .subscribe()
+
+    return () => {
+      clearInterval(interval)
+      supabase.removeChannel(channel)
+    }
   }, [navigate])
 
   return null

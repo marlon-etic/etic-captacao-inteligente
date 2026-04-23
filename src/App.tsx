@@ -12,6 +12,7 @@ import { useToast } from '@/components/ui/use-toast'
 import { useUserRole } from '@/hooks/use-user-role'
 import { findNewMatches } from '@/services/matchingService'
 import { useNavigate } from 'react-router-dom'
+import { supabase } from '@/lib/supabase/client'
 import Layout from '@/components/Layout'
 import Index from '@/pages/Index'
 import EsqueciSenha from '@/pages/EsqueciSenha'
@@ -185,7 +186,23 @@ const AppRoutes = () => {
       const interval = setInterval(() => {
         findNewMatches(handleNewMatch, role).catch(console.error)
       }, 60000)
-      return () => clearInterval(interval)
+
+      const channel = supabase
+        .channel('app_routes_matches')
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'matches_sugestoes' },
+          (payload) => {
+            console.log('[REALTIME] Novo match em AppRoutes:', payload)
+            findNewMatches(handleNewMatch, role).catch(console.error)
+          },
+        )
+        .subscribe()
+
+      return () => {
+        clearInterval(interval)
+        supabase.removeChannel(channel)
+      }
     }
   }, [navigate, toast, role])
 

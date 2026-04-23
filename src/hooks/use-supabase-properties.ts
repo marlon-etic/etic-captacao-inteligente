@@ -222,6 +222,7 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel' | 'Ambos'
           'postgres_changes',
           { event: 'INSERT', schema: 'public', table: 'imoveis_captados' },
           (payload) => {
+            console.log('[REALTIME] INSERT imoveis_captados (useSupabaseProperties):', payload)
             setSyncing(true)
             fetchSingleProperty(payload.new.id).finally(() => {
               setTimeout(() => setSyncing(false), 500)
@@ -232,6 +233,7 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel' | 'Ambos'
           'postgres_changes',
           { event: 'UPDATE', schema: 'public', table: 'imoveis_captados' },
           (payload) => {
+            console.log('[REALTIME] UPDATE imoveis_captados (useSupabaseProperties):', payload)
             setSyncing(true)
             if (
               payload.old &&
@@ -281,6 +283,7 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel' | 'Ambos'
           'postgres_changes',
           { event: 'DELETE', schema: 'public', table: 'imoveis_captados' },
           (payload) => {
+            console.log('[REALTIME] DELETE imoveis_captados (useSupabaseProperties):', payload)
             setSyncing(true)
             setProperties((prev) => prev.filter((p) => p.id !== payload.old.id))
             setTimeout(() => setSyncing(false), 500)

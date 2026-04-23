@@ -38,9 +38,22 @@ export function useMatchCount(type: 'imovel' | 'demanda', id: string) {
     loadMatchCount()
     const interval = setInterval(loadMatchCount, 30000)
 
+    const channel = supabase
+      .channel(`match_count_realtime_${id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'matches_sugestoes' },
+        (payload) => {
+          console.log('[REALTIME] Alteração em matches_sugestoes (useMatchCount):', payload)
+          loadMatchCount()
+        },
+      )
+      .subscribe()
+
     return () => {
       isMounted = false
       clearInterval(interval)
+      supabase.removeChannel(channel)
     }
   }, [id, type, role])
 

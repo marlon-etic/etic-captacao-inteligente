@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase/client'
 import { useUserRole } from '@/hooks/use-user-role'
 import { getTiposVisiveis, normalizeTipo } from '@/lib/roleFilters'
 import useAppStore from '@/stores/useAppStore'
+import { useConsolidatedSync } from '@/hooks/useSmartSync'
 
 export interface UltimoImovel {
   id: string
@@ -99,6 +100,47 @@ export function useUltimosImoveis(
   useEffect(() => {
     fetchImoveis()
   }, [fetchImoveis])
+
+  useConsolidatedSync({
+    channelName: `ultimos_imoveis_realtime_${periodo}_${tipoFiltro}`,
+    setupRealtime: (channel) => {
+      channel
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'imoveis_captados' },
+          (payload) => {
+            console.log('[REALTIME] INSERT imoveis_captados (useUltimosImoveis):', payload)
+            setSyncing(true)
+            fetchImoveis().finally(() => {
+              setTimeout(() => setSyncing(false), 500)
+            })
+          },
+        )
+        .on(
+          'postgres_changes',
+          { event: 'UPDATE', schema: 'public', table: 'imoveis_captados' },
+          (payload) => {
+            console.log('[REALTIME] UPDATE imoveis_captados (useUltimosImoveis):', payload)
+            setSyncing(true)
+            fetchImoveis().finally(() => {
+              setTimeout(() => setSyncing(false), 500)
+            })
+          },
+        )
+        .on(
+          'postgres_changes',
+          { event: 'DELETE', schema: 'public', table: 'imoveis_captados' },
+          (payload) => {
+            console.log('[REALTIME] DELETE imoveis_captados (useUltimosImoveis):', payload)
+            setSyncing(true)
+            fetchImoveis().finally(() => {
+              setTimeout(() => setSyncing(false), 500)
+            })
+          },
+        )
+    },
+    onFallbackPoll: () => fetchImoveis(),
+  })
 
   return { imoveis, loading, syncing, refresh: fetchImoveis }
 }
