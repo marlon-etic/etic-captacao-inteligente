@@ -5,6 +5,7 @@ import { useToast } from '@/components/ui/use-toast'
 import { ThumbsDown, ThumbsUp, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { ConfirmacaoVinculacaoMatch } from '@/components/modals/ConfirmacaoVinculacaoMatch'
 
 interface MatchCard {
   id: string
@@ -20,6 +21,7 @@ export default function MatchInteligentes() {
   const [matches, setMatches] = useState<MatchCard[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [selectedMatch, setSelectedMatch] = useState<MatchCard | null>(null)
   const { toast } = useToast()
 
   useEffect(() => {
@@ -61,20 +63,26 @@ export default function MatchInteligentes() {
     }
   }
 
-  const handleAccept = async (match: MatchCard) => {
-    try {
-      await updateMatchStatus(match.id, 'aceito')
-      setMatches(matches.filter((m) => m.id !== match.id))
-      toast({
-        title: '✅ Match aceito!',
-        description: 'Abrindo confirmação de vinculação...',
-      })
-    } catch (err) {
-      console.error('[MATCH] Erro ao aceitar:', err)
-      toast({
-        title: '❌ Erro ao aceitar match',
-        variant: 'destructive',
-      })
+  const handleAccept = (match: MatchCard) => {
+    setSelectedMatch(match)
+  }
+
+  const handleConfirmSuccess = async () => {
+    if (selectedMatch) {
+      try {
+        await updateMatchStatus(selectedMatch.id, 'vinculado')
+        setMatches(matches.filter((m) => m.id !== selectedMatch.id))
+        setSelectedMatch(null)
+      } catch (err) {
+        console.error('[MATCH] Erro ao atualizar status para vinculado:', err)
+        toast({
+          title: 'Aviso',
+          description: 'A vinculação foi feita, mas houve erro ao atualizar o status do match.',
+          variant: 'destructive',
+        })
+        setMatches(matches.filter((m) => m.id !== selectedMatch.id))
+        setSelectedMatch(null)
+      }
     }
   }
 
@@ -150,6 +158,14 @@ export default function MatchInteligentes() {
           />
         ))}
       </div>
+
+      {selectedMatch && (
+        <ConfirmacaoVinculacaoMatch
+          match={selectedMatch}
+          onClose={() => setSelectedMatch(null)}
+          onSuccess={handleConfirmSuccess}
+        />
+      )}
     </div>
   )
 }
