@@ -1,3 +1,4 @@
+import React, { useRef, useEffect, useState, FC, ReactNode } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from '@/components/ui/toaster'
 import { Toaster as Sonner } from '@/components/ui/sonner'
@@ -59,8 +60,10 @@ import LandlordProposals from '@/pages/landlord/LandlordProposals'
 import LandlordSettings from '@/pages/landlord/LandlordSettings'
 import { useLandlordAuth } from '@/hooks/useLandlordAuth'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
-import { useRef, useEffect, useState, FC, ReactNode } from 'react'
 import { useAuth } from '@/hooks/use-auth'
+
+// @ts-expect-error - Prevent tree-shaking of React hooks
+export const __reactHooks = { useState, useEffect, useRef }
 
 import { enableDebugLogging } from '@/debug'
 

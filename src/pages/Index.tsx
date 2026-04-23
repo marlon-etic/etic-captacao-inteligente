@@ -1,5 +1,8 @@
-import { useState, useEffect, useRef, FormEvent } from 'react'
+import React, { useState, useEffect, useRef, FormEvent } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+
+// @ts-expect-error - Prevent tree-shaking of React hooks
+export const __reactHooks = { useState, useEffect, useRef }
 import { Mail, Lock, LogIn, Building2, Loader2, AlertTriangle } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
