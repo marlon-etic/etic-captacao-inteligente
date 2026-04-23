@@ -8,6 +8,10 @@ import { GlobalPontuacaoListener } from '@/components/GlobalPontuacaoListener'
 import { GlobalNotificationListener } from '@/components/GlobalNotificationListener'
 import { GlobalMatchListener } from '@/components/GlobalMatchListener'
 import { ErrorBoundary } from '@/components/common/ErrorBoundary'
+import { useNavigate } from 'react-router-dom'
+import { useToast } from '@/components/ui/use-toast'
+import { useUserRole } from '@/hooks/use-user-role'
+import { findNewMatches } from '@/services/matchingService'
 import Layout from '@/components/Layout'
 import Index from '@/pages/Index'
 import EsqueciSenha from '@/pages/EsqueciSenha'
@@ -153,6 +157,35 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
 }
 
 const AppContent = () => {
+  const navigate = useNavigate()
+  const { toast } = useToast()
+  const { role } = useUserRole()
+
+  React.useEffect(() => {
+    const handleNewMatch = (match: any) => {
+      toast({
+        title: '⚡ Novo Match Encontrado!',
+        description: `Imóvel ${match.imovel?.codigo_imovel} altamente compatível`,
+        action: (
+          <button
+            onClick={() => navigate('/app/match-inteligentes')}
+            className="px-3 py-1.5 bg-blue-500 text-white rounded-md hover:bg-blue-600 text-xs font-bold transition-colors"
+          >
+            Ver Match
+          </button>
+        ),
+      })
+    }
+
+    if (role) {
+      findNewMatches(handleNewMatch, role).catch(console.error)
+      const interval = setInterval(() => {
+        findNewMatches(handleNewMatch, role).catch(console.error)
+      }, 60000)
+      return () => clearInterval(interval)
+    }
+  }, [navigate, toast, role])
+
   React.useEffect(() => {
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
       const reasonStr = String(event.reason)

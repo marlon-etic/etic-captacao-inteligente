@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { useUltimosImoveis, UltimoImovel } from '@/hooks/use-ultimos-imoveis'
+import { useMatchCount } from '@/hooks/use-match-count'
+import { useNavigate } from 'react-router-dom'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import {
@@ -32,6 +34,27 @@ import { useToast } from '@/hooks/use-toast'
 import { VinculacaoModal, VinculacaoImovelData } from './VinculacaoModal'
 import { ImovelDetailsSheet } from './ImovelDetailsSheet'
 import { SyncIndicator } from './SyncIndicator'
+import { Zap } from 'lucide-react'
+
+function MatchBadge({ type, id }: { type: 'imovel' | 'demanda'; id: string }) {
+  const { count } = useMatchCount(type, id)
+  const navigate = useNavigate()
+
+  if (count === 0) return null
+
+  return (
+    <div
+      onClick={(e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        navigate('/app/match-inteligentes')
+      }}
+      className="absolute -top-3 -right-3 bg-blue-500 text-white px-2.5 py-0.5 rounded-full text-[10px] font-black cursor-pointer hover:bg-blue-600 transition-colors flex items-center gap-1 shadow-md z-20 animate-fade-in"
+    >
+      <Zap className="w-3 h-3 fill-current" /> {count} Match{count !== 1 ? 'es' : ''}
+    </div>
+  )
+}
 
 export function UltimosImoveisTab() {
   const [periodo, setPeriodo] = useState<'24h' | '7d' | '30d' | 'todos'>('30d')
@@ -136,7 +159,8 @@ export function UltimosImoveisTab() {
                 )}
               >
                 <CardContent className="p-4 space-y-3 pointer-events-none relative z-0">
-                  <div className="flex justify-between items-start pointer-events-auto">
+                  <div className="flex justify-between items-start pointer-events-auto relative">
+                    <MatchBadge type="imovel" id={imovel.id} />
                     <Badge
                       variant="outline"
                       className="font-mono bg-[#F5F5F5] text-[#333333] border-[#E5E5E5]"

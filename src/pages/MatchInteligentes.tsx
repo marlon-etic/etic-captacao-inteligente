@@ -6,6 +6,7 @@ import { ThumbsDown, ThumbsUp, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { ConfirmacaoVinculacaoMatch } from '@/components/modals/ConfirmacaoVinculacaoMatch'
+import { useUserRole } from '@/hooks/use-user-role'
 
 interface MatchCard {
   id: string
@@ -18,6 +19,7 @@ interface MatchCard {
 }
 
 export default function MatchInteligentes() {
+  const { role, loading: roleLoading } = useUserRole()
   const [matches, setMatches] = useState<MatchCard[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -25,15 +27,17 @@ export default function MatchInteligentes() {
   const { toast } = useToast()
 
   useEffect(() => {
-    loadMatches()
-  }, [])
+    if (!roleLoading && role) {
+      loadMatches()
+    }
+  }, [role, roleLoading])
 
   const loadMatches = async () => {
     try {
       setLoading(true)
       setError(null)
 
-      const pendingMatches = await getPendingMatches(50)
+      const pendingMatches = await getPendingMatches(50, role)
 
       const enrichedMatches = await Promise.all(
         pendingMatches.map(async (match) => {
@@ -103,7 +107,7 @@ export default function MatchInteligentes() {
     }
   }
 
-  if (loading) {
+  if (loading || roleLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-100px)]">
         <Zap className="w-12 h-12 animate-pulse text-yellow-500 mb-4" />

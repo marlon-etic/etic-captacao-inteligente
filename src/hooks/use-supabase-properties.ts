@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase/client'
 import useAppStore from '@/stores/useAppStore'
 import { toast } from '@/hooks/use-toast'
 import { useSmartSync, useConsolidatedSync } from '@/hooks/useSmartSync'
+import { getTiposVisiveis } from '@/lib/roleFilters'
 
 export interface SupabaseCapturedPropertyWithDemand {
   id: string
@@ -28,7 +29,7 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
   const [properties, setProperties] = useState<SupabaseCapturedPropertyWithDemand[]>([])
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
-  const { users } = useAppStore()
+  const { users, currentUser } = useAppStore()
   const { fetchWithResilience } = useSmartSync()
   const usersRef = useRef(users)
 
@@ -80,6 +81,8 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
         const { data: userData } = await supabase.auth.getUser()
         if (!userData?.user) return
 
+        const tipos = getTiposVisiveis(currentUser?.role)
+
         console.group('🔍 [DIAGNÓSTICO] Origem de Dados de Imóveis')
 
         let finalData: any[] = []
@@ -88,6 +91,7 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
         const { data: directData, error: directError } = await supabase
           .from('imoveis_captados')
           .select('*, demanda_locacao:demandas_locacao(*), demanda_venda:demandas_vendas(*)')
+          .in('tipo', tipos)
           .order('created_at', { ascending: false })
 
         if (!directError && directData) {
@@ -102,6 +106,7 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
             const { data: resData, error } = await supabase
               .from('imoveis_captados')
               .select('*, demanda_locacao:demandas_locacao(*), demanda_venda:demandas_vendas(*)')
+              .in('tipo', tipos)
               .order('created_at', { ascending: false })
             if (error) throw error
             return resData
@@ -128,11 +133,13 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
     async (id: string) => {
       try {
         let data: any = null
+        const tipos = getTiposVisiveis(currentUser?.role)
         // Bypassing cache to get fresh data
         const { data: resData, error } = await supabase
           .from('imoveis_captados')
           .select('*, demanda_locacao:demandas_locacao(*), demanda_venda:demandas_vendas(*)')
           .eq('id', id)
+          .in('tipo', tipos)
           .single()
 
         if (!error && resData) {
@@ -143,6 +150,7 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
               .from('imoveis_captados')
               .select('*, demanda_locacao:demandas_locacao(*), demanda_venda:demandas_vendas(*)')
               .eq('id', id)
+              .in('tipo', tipos)
               .single()
             if (fallbackError) throw fallbackError
             return fallbackData

@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/client'
+import { getTiposVisiveis } from '@/lib/roleFilters'
 
 export interface MatchSugestao {
   id: string
@@ -10,42 +11,55 @@ export interface MatchSugestao {
   created_at: string
 }
 
-export async function getPendingMatches(limit = 50): Promise<MatchSugestao[]> {
+export async function getPendingMatches(limit = 50, role?: string): Promise<MatchSugestao[]> {
   try {
+    const tipos = getTiposVisiveis(role)
+
     const { data, error } = await supabase
       .from('matches_sugestoes')
-      .select('*')
+      .select(`
+        *,
+        imoveis_captados!inner(id, tipo)
+      `)
       .eq('status', 'pendente')
+      .in('imoveis_captados.tipo', tipos)
       .order('score', { ascending: false })
       .order('created_at', { ascending: false })
       .limit(limit)
 
     if (error) throw error
-    return (data as MatchSugestao[]) || []
+    return (data as any) || []
   } catch (error) {
     console.error('[MATCHING SERVICE] Erro ao buscar matches pendentes:', error)
     throw error
   }
 }
 
-export async function findNewMatches(onNewMatch?: (match: any) => void): Promise<MatchSugestao[]> {
+export async function findNewMatches(
+  onNewMatch?: (match: any) => void,
+  role?: string,
+): Promise<MatchSugestao[]> {
   try {
     console.log('[MATCHING SERVICE] Verificando novos matches...')
+    const tipos = getTiposVisiveis(role)
 
-    // Simulate finding new matches by fetching pending ones created recently
     const { data, error } = await supabase
       .from('matches_sugestoes')
       .select(`
         *,
-        imovel:imoveis_captados(codigo_imovel, localizacao_texto, preco, valor)
+        imoveis_captados!inner(id, codigo_imovel, localizacao_texto, preco, valor, tipo)
       `)
       .eq('status', 'pendente')
+      .in('imoveis_captados.tipo', tipos)
       .order('created_at', { ascending: false })
       .limit(10)
 
     if (error) throw error
 
-    const matches = data || []
+    const matches = (data || []).map((d: any) => ({
+      ...d,
+      imovel: d.imoveis_captados,
+    }))
 
     for (const match of matches) {
       if (onNewMatch) {
@@ -53,7 +67,7 @@ export async function findNewMatches(onNewMatch?: (match: any) => void): Promise
       }
     }
 
-    return matches as MatchSugestao[]
+    return matches as any
   } catch (error) {
     console.error('[MATCHING SERVICE] Erro ao verificar novos matches:', error)
     return []

@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import useAppStore from '@/stores/useAppStore'
 import { toast } from '@/hooks/use-toast'
+import { getTiposVisiveis } from '@/lib/roleFilters'
 
 export interface UltimoImovel {
   id: string
@@ -21,6 +22,7 @@ export interface UltimoImovel {
   observacoes: string
   status_captacao: string
   etapa_funil: string
+  tipo: string
 }
 
 export function useUltimosImoveis(
@@ -43,6 +45,8 @@ export function useUltimosImoveis(
       else if (filtroPeriodo === '30d') dateLimit.setDate(dateLimit.getDate() - 30)
       else dateLimit = new Date(0)
 
+      const tipos = getTiposVisiveis(currentUser.role)
+
       const { data, error } = await supabase
         .from('imoveis_captados')
         .select(`
@@ -52,6 +56,7 @@ export function useUltimosImoveis(
         users!imoveis_captados_user_captador_id_fkey ( nome )
       `)
         .gte('created_at', dateLimit.toISOString())
+        .in('tipo', tipos)
         .order('created_at', { ascending: false })
         .limit(50)
 
@@ -86,6 +91,7 @@ export function useUltimosImoveis(
           observacoes: d.observacoes || d.localizacao_texto || '',
           status_captacao: d.status_captacao || 'pendente',
           etapa_funil: d.etapa_funil || 'capturado',
+          tipo: d.tipo || 'Ambos',
         }
       })
 
@@ -102,6 +108,9 @@ export function useUltimosImoveis(
   const fetchSingleImovel = useCallback(
     async (id: string) => {
       if (!id || !currentUser) return
+
+      const tipos = getTiposVisiveis(currentUser.role)
+
       const { data, error } = await supabase
         .from('imoveis_captados')
         .select(`
@@ -111,6 +120,7 @@ export function useUltimosImoveis(
         users!imoveis_captados_user_captador_id_fkey ( nome )
       `)
         .eq('id', id)
+        .in('tipo', tipos)
         .single()
 
       if (error || !data) return
@@ -140,6 +150,7 @@ export function useUltimosImoveis(
           observacoes: data.observacoes || data.localizacao_texto || '',
           status_captacao: data.status_captacao || 'pendente',
           etapa_funil: data.etapa_funil || 'capturado',
+          tipo: data.tipo || 'Ambos',
         }
 
         if (filtroTipo === 'meus' && !formatted.is_minha_demanda) {
