@@ -33,7 +33,13 @@ export function normalizeTipologia(tipologia: string | undefined): string {
 
   const normalized = tipologia.toLowerCase().trim()
 
-  if (normalized === 'casa/sobrado' || normalized === 'casa' || normalized === 'sobrado') {
+  if (
+    normalized === 'casa/sobrado' ||
+    normalized === 'casa' ||
+    normalized === 'sobrado' ||
+    (normalized.includes('casa') && normalized.includes('sobrado'))
+  ) {
+    console.log('[MATCHING] Tipologia normalizada:', { original: tipologia, normalized: 'Casa' })
     return 'Casa'
   }
   if (
@@ -60,22 +66,22 @@ export function validateTipologiaCompatibility(
 ): boolean {
   const imovelNormalizado = normalizeTipologia(imovelTipologia)
 
-  let demandasArray: string[] = []
+  let demandasNormalizadas: string[] = []
   if (typeof demandaTipologias === 'string') {
-    demandasArray = demandaTipologias.split(',').map((t) => normalizeTipologia(t.trim()))
+    demandasNormalizadas = demandaTipologias.split(',').map((t) => normalizeTipologia(t.trim()))
   } else if (Array.isArray(demandaTipologias)) {
-    demandasArray = demandaTipologias.map((t) => normalizeTipologia(t))
+    demandasNormalizadas = demandaTipologias.map((t) => normalizeTipologia(t))
   } else {
-    demandasArray = ['Apartamento']
+    demandasNormalizadas = ['Apartamento']
   }
 
-  const isCompativel = demandasArray.includes(imovelNormalizado)
+  const isCompativel = demandasNormalizadas.includes(imovelNormalizado)
 
-  console.log('[MATCHING] Validação de Tipologia (String Delimitada):', {
+  console.log('[MATCHING] Validação de Tipologia:', {
     imovelOriginal: imovelTipologia,
     imovelNormalizado,
     demandasOriginais: demandaTipologias,
-    demandasArray,
+    demandasNormalizadas,
     isCompativel,
   })
 
@@ -115,7 +121,7 @@ export function calculateMatching(
   )
 
   if (!tipologiaCompativel) {
-    console.log('[MATCHING] Tipologias incompatíveis (após normalização) - Score 0%')
+    console.log('[MATCHING] Tipologias incompatíveis - Score 0%')
     return {
       score: 0,
       details: {
