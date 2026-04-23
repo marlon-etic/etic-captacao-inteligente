@@ -1,3 +1,4 @@
+import React, { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import {
   Users,
@@ -16,6 +17,7 @@ import {
   ShieldAlert,
   CheckSquare,
   Activity,
+  Zap,
 } from 'lucide-react'
 import {
   Sidebar,
@@ -31,11 +33,32 @@ import {
 import useAppStore from '@/stores/useAppStore'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
+import { getPendingMatches } from '@/services/matchingService'
 
 export function AppSidebar() {
   const { currentUser, demands, looseProperties } = useAppStore()
   const location = useLocation()
   const { isMobile, setOpenMobile } = useSidebar()
+  const [matchCount, setMatchCount] = useState(0)
+
+  useEffect(() => {
+    let mounted = true
+    const loadMatchCount = async () => {
+      try {
+        const matches = await getPendingMatches(1000)
+        if (mounted) setMatchCount(matches.length)
+      } catch (err) {
+        console.error('[SIDEBAR] Erro ao carregar contador:', err)
+      }
+    }
+
+    loadMatchCount()
+    const interval = setInterval(loadMatchCount, 30000)
+    return () => {
+      mounted = false
+      clearInterval(interval)
+    }
+  }, [])
 
   if (!currentUser) return null
 
@@ -85,6 +108,12 @@ export function AppSidebar() {
         badge: undefined,
       },
       {
+        title: 'MATCH Inteligentes',
+        icon: Zap,
+        url: '/app/match-inteligentes',
+        badge: matchCount > 0 ? matchCount : undefined,
+      },
+      {
         title: 'Histórico',
         icon: History,
         url: '/app/historico',
@@ -98,6 +127,12 @@ export function AppSidebar() {
     navItems = [
       { title: 'Dashboard', icon: LayoutDashboard, url: '/app' },
       { title: 'Meus Captados', icon: Building, url: '/app/meus-captados' },
+      {
+        title: 'MATCH Inteligentes',
+        icon: Zap,
+        url: '/app/match-inteligentes',
+        badge: matchCount > 0 ? matchCount : undefined,
+      },
       { title: 'Pontuação', icon: Star, url: '/app/pontuacao' },
       { title: 'Ranking', icon: Trophy, url: '/app/ranking' },
       { title: 'Histórico', icon: History, url: '/app/historico' },
@@ -110,6 +145,12 @@ export function AppSidebar() {
     navItems = [
       { title: 'Dashboard Geral', icon: LayoutDashboard, url: '/app' },
       { title: 'Todas as Demandas', icon: Users, url: '/app/demandas' },
+      {
+        title: 'MATCH Inteligentes',
+        icon: Zap,
+        url: '/app/match-inteligentes',
+        badge: matchCount > 0 ? matchCount : undefined,
+      },
       { title: 'Analytics', icon: LineChart, url: '/app/analytics' },
       { title: 'Ranking', icon: Trophy, url: '/app/ranking' },
       { title: 'Notificações', icon: Bell, url: '/app/notificacoes' },

@@ -41,6 +41,7 @@ import PerdidosPage from '@/pages/dashboard/PerdidosPage'
 import DisponivelGeralPage from '@/pages/dashboard/DisponivelGeralPage'
 import TodosCaptadosPage from '@/pages/dashboard/TodosCaptadosPage'
 import MeusCaptadosPage from '@/pages/MeusCaptadosPage'
+import MatchInteligentes from '@/pages/MatchInteligentes'
 
 // Landlord Panel Imports
 import LandlordLogin from '@/pages/auth/LandlordLogin'
@@ -346,6 +347,7 @@ const AppContent = () => {
             <Route path="meus-captados" element={<MeusCaptadosPage />} />
             <Route path="disponivel-geral" element={<DisponivelGeralPage />} />
             <Route path="todos-captados" element={<TodosCaptadosPage />} />
+            <Route path="match-inteligentes" element={<MatchInteligentes />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>

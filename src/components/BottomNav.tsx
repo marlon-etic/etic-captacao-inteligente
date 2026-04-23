@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
-import { Users, Building, User, LayoutDashboard, Search } from 'lucide-react'
+import { Users, Building, User, LayoutDashboard, Search, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import useAppStore from '@/stores/useAppStore'
 
@@ -17,18 +17,21 @@ export function BottomNav() {
     navItems = [
       { icon: Users, label: 'Clientes', path: '/app' },
       { icon: Building, label: 'Imóveis', path: '/app/disponivel-geral' },
+      { icon: Zap, label: 'Matches', path: '/app/match-inteligentes' },
       { icon: User, label: 'Perfil', path: '/app/perfil' },
     ]
   } else if (currentUser.role === 'captador') {
     navItems = [
       { icon: LayoutDashboard, label: 'Início', path: '/app' },
       { icon: Building, label: 'Meus Captados', path: '/app/meus-captados' },
+      { icon: Zap, label: 'Matches', path: '/app/match-inteligentes' },
       { icon: User, label: 'Perfil', path: '/app/perfil' },
     ]
   } else {
     navItems = [
       { icon: LayoutDashboard, label: 'Início', path: '/app' },
       { icon: Search, label: 'Demandas', path: '/app/demandas' },
+      { icon: Zap, label: 'Matches', path: '/app/match-inteligentes' },
       { icon: User, label: 'Perfil', path: '/app/perfil' },
     ]
   }
