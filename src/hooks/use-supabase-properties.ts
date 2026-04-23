@@ -37,41 +37,91 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
     usersRef.current = users
   }, [users])
 
-  const formatProperty = useCallback((p: any) => {
-    const userMap = new Map((usersRef.current || []).map((u: any) => [u.id, u.name]))
-    const d_loc = p.demanda_locacao
-    const d_ven = p.demanda_venda
-    const demanda = d_loc || d_ven
-    const baseTipo = p.tipo && p.tipo !== 'Desconhecido' ? p.tipo : null
-    const tipo = baseTipo || (d_loc ? 'Aluguel' : d_ven ? 'Venda' : 'Ambos')
+  // ✅ FUNÇÃO PARA NORMALIZAR TIPOS DE IMÓVEL
+  const normalizeTipo = useCallback((tipo: string | null | undefined): string => {
+    if (!tipo) return 'Ambos'
 
-    return {
-      id: p.id,
-      codigo_imovel: p.codigo_imovel,
-      endereco: p.endereco,
-      preco: p.preco || p.valor || 0,
-      user_captador_id: p.user_captador_id || p.captador_id,
-      captador_nome: userMap.get(p.user_captador_id || p.captador_id) || 'Captador',
-      created_at: p.created_at,
-      status_captacao: p.status_captacao,
-      bairros: demanda?.bairros || [],
-      dormitorios: p.dormitorios || demanda?.dormitorios || 0,
-      vagas: p.vagas || demanda?.vagas_estacionamento || 0,
-      observacoes: p.observacoes || p.localizacao_texto || '',
-      demanda: demanda
-        ? {
-            id: demanda.id,
-            clientName: demanda.nome_cliente || demanda.cliente_nome,
-            type: d_loc ? 'Aluguel' : 'Venda',
-            createdBy: demanda.sdr_id || demanda.corretor_id,
-          }
-        : null,
-      tipo,
-      etapa_funil: p.etapa_funil,
-      data_visita: p.data_visita,
-      data_fechamento: p.data_fechamento,
+    const normalized = tipo.toLowerCase().trim()
+
+    // Normalizar variações de "Aluguel"
+    if (normalized === 'aluguel' || normalized === 'locação' || normalized === 'locacao') {
+      return 'Aluguel'
     }
+
+    // Normalizar "Venda"
+    if (normalized === 'venda') {
+      return 'Venda'
+    }
+
+    // Normalizar "Ambos"
+    if (normalized === 'ambos' || normalized === 'ambas') {
+      return 'Ambos'
+    }
+
+    return 'Ambos' // Fallback seguro
   }, [])
+
+  // ✅ FUNÇÃO PARA VERIFICAR SE IMÓVEL É VISÍVEL PARA O ROLE
+  const isPropertyVisibleForRole = useCallback(
+    (propertyTipo: string | null | undefined, role: string | undefined): boolean => {
+      const tipos = getTiposVisiveis(role as any)
+      const normalizedPropertyTipo = normalizeTipo(propertyTipo)
+
+      console.log(
+        '[ROLE FILTER] Property tipo:',
+        propertyTipo,
+        '| Normalized:',
+        normalizedPropertyTipo,
+        '| Tipos visíveis:',
+        tipos,
+      )
+
+      return tipos.includes(normalizedPropertyTipo)
+    },
+    [normalizeTipo],
+  )
+
+  const formatProperty = useCallback(
+    (p: any) => {
+      const userMap = new Map((usersRef.current || []).map((u: any) => [u.id, u.name]))
+      const d_loc = p.demanda_locacao
+      const d_ven = p.demanda_venda
+      const demanda = d_loc || d_ven
+
+      // ✅ NORMALIZAR TIPO
+      const baseTipo = p.tipo && p.tipo !== 'Desconhecido' ? p.tipo : null
+      const tipo = baseTipo ? baseTipo : d_loc ? 'Aluguel' : d_ven ? 'Venda' : 'Ambos'
+      const normalizedTipo = normalizeTipo(tipo)
+
+      return {
+        id: p.id,
+        codigo_imovel: p.codigo_imovel,
+        endereco: p.endereco,
+        preco: p.preco || p.valor || 0,
+        user_captador_id: p.user_captador_id || p.captador_id,
+        captador_nome: userMap.get(p.user_captador_id || p.captador_id) || 'Captador',
+        created_at: p.created_at,
+        status_captacao: p.status_captacao,
+        bairros: demanda?.bairros || [],
+        dormitorios: p.dormitorios || demanda?.dormitorios || 0,
+        vagas: p.vagas || demanda?.vagas_estacionamento || 0,
+        observacoes: p.observacoes || p.localizacao_texto || '',
+        demanda: demanda
+          ? {
+              id: demanda.id,
+              clientName: demanda.nome_cliente || demanda.cliente_nome,
+              type: d_loc ? 'Aluguel' : 'Venda',
+              createdBy: demanda.sdr_id || demanda.corretor_id,
+            }
+          : null,
+        tipo: normalizedTipo, // ✅ USAR TIPO NORMALIZADO
+        etapa_funil: p.etapa_funil,
+        data_visita: p.data_visita,
+        data_fechamento: p.data_fechamento,
+      }
+    },
+    [normalizeTipo],
+  )
 
   const fetchProperties = useCallback(
     async (isBackground = false) => {
@@ -81,17 +131,16 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
         const { data: userData } = await supabase.auth.getUser()
         if (!userData?.user) return
 
-        const tipos = getTiposVisiveis(currentUser?.role)
-
         console.group('🔍 [DIAGNÓSTICO] Origem de Dados de Imóveis')
+        console.log('[FETCH] Role:', currentUser?.role, '| FilterType:', filterType)
 
         let finalData: any[] = []
 
-        // 1. Tentar buscar dados diretos do Supabase primeiro (SEM CACHE) para evitar "dados fantasmas" do fetchWithResilience
+        // ✅ BUSCAR TODOS OS DADOS (SEM FILTRO NA QUERY)
+        // O filtro será aplicado APÓS normalização do tipo
         const { data: directData, error: directError } = await supabase
           .from('imoveis_captados')
           .select('*, demanda_locacao:demandas_locacao(*), demanda_venda:demandas_vendas(*)')
-          .in('tipo', tipos)
           .order('created_at', { ascending: false })
 
         if (!directError && directData) {
@@ -106,7 +155,6 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
             const { data: resData, error } = await supabase
               .from('imoveis_captados')
               .select('*, demanda_locacao:demandas_locacao(*), demanda_venda:demandas_vendas(*)')
-              .in('tipo', tipos)
               .order('created_at', { ascending: false })
             if (error) throw error
             return resData
@@ -115,10 +163,23 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
         }
         console.groupEnd()
 
+        // ✅ FORMATAR E FILTRAR APÓS NORMALIZAÇÃO
         let formatted = finalData.map(formatProperty)
+
+        // ✅ APLICAR FILTRO DE ROLE
+        formatted = formatted.filter((p) => isPropertyVisibleForRole(p.tipo, currentUser?.role))
+
+        // ✅ APLICAR FILTRO DE TIPO SE ESPECIFICADO
         if (filterType) {
-          formatted = formatted.filter((f: any) => f.tipo === filterType || f.tipo === 'Ambos')
+          const normalizedFilterType = normalizeTipo(filterType)
+          formatted = formatted.filter(
+            (f: any) => f.tipo === normalizedFilterType || f.tipo === 'Ambos',
+          )
+          console.log(
+            `[FILTER] FilterType: ${filterType} (normalizado: ${normalizedFilterType}) | Resultados: ${formatted.length}`,
+          )
         }
+
         setProperties(formatted)
       } catch (err: any) {
         console.error('[useSupabaseProperties]', err)
@@ -126,21 +187,27 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
         if (!isBackground) setLoading(false)
       }
     },
-    [filterType, formatProperty, fetchWithResilience],
+    [
+      filterType,
+      formatProperty,
+      fetchWithResilience,
+      currentUser?.role,
+      normalizeTipo,
+      isPropertyVisibleForRole,
+    ],
   )
 
   const fetchSingleProperty = useCallback(
     async (id: string) => {
       try {
-        let data: any = null
-        const tipos = getTiposVisiveis(currentUser?.role)
-        // Bypassing cache to get fresh data
+        // ✅ BUSCAR PROPRIEDADE INDIVIDUAL (SEM FILTRO NA QUERY)
         const { data: resData, error } = await supabase
           .from('imoveis_captados')
           .select('*, demanda_locacao:demandas_locacao(*), demanda_venda:demandas_vendas(*)')
           .eq('id', id)
-          .in('tipo', tipos)
           .single()
+
+        let data: any = null
 
         if (!error && resData) {
           data = resData
@@ -150,7 +217,6 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
               .from('imoveis_captados')
               .select('*, demanda_locacao:demandas_locacao(*), demanda_venda:demandas_vendas(*)')
               .eq('id', id)
-              .in('tipo', tipos)
               .single()
             if (fallbackError) throw fallbackError
             return fallbackData
@@ -159,6 +225,13 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
 
         if (data) {
           const formatted = formatProperty(data)
+
+          // ✅ VALIDAR SE PROPRIEDADE É VISÍVEL PARA O ROLE
+          if (!isPropertyVisibleForRole(formatted.tipo, currentUser?.role)) {
+            console.log('[FETCH SINGLE] Propriedade não visível para role:', currentUser?.role)
+            return
+          }
+
           if (!filterType || formatted.tipo === filterType || formatted.tipo === 'Ambos') {
             setProperties((prev) => {
               const exists = prev.some((p) => p.id === formatted.id)
@@ -176,7 +249,7 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
         console.error('Error fetching single property', err)
       }
     },
-    [filterType, formatProperty, fetchWithResilience],
+    [filterType, formatProperty, fetchWithResilience, currentUser?.role, isPropertyVisibleForRole],
   )
 
   useEffect(() => {
@@ -253,7 +326,7 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
                         data_visita: payload.new.data_visita ?? p.data_visita,
                         data_fechamento: payload.new.data_fechamento ?? p.data_fechamento,
                         status_captacao: payload.new.status_captacao || p.status_captacao,
-                        tipo: (payload.new as any).tipo || p.tipo,
+                        tipo: normalizeTipo((payload.new as any).tipo || p.tipo), // ✅ NORMALIZAR
                       }
                     : p,
                 )
