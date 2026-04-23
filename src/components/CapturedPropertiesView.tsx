@@ -39,9 +39,10 @@ export function CapturedPropertiesView({
 
   // ✅ DEBUG: Log para rastrear filterType
   console.log('[CapturedPropertiesView] filterType recebido:', filterType)
+  console.log('[CapturedPropertiesView] Role:', currentUser?.role)
   console.log('[CapturedPropertiesView] Imóveis carregados:', supabaseProps.length)
   supabaseProps.forEach((p) => {
-    console.log(`  - ${p.codigo_imovel}: tipo="${p.tipo}"`)
+    console.log(`  - ${p.codigo_imovel}: tipo="${p.tipo}" (preço: R$ ${p.preco})`)
   })
 
   const [filters, setFilters] = useViewFilters('captados_view_' + (filterType || 'all'), {

@@ -1,6 +1,35 @@
 // ✅ TIPOS DE FILTRO POR ROLE
 export type UserRole = 'sdr' | 'corretor' | 'broker' | 'captador' | 'admin'
 
+// ✅ NORMALIZAR TIPO DE IMÓVEL COM LÓGICA INTELIGENTE
+export function normalizeTipo(tipo: string | null | undefined, preco?: number): string {
+  if (!tipo) {
+    // Se não tem tipo, usar preço como indicador
+    if (preco && preco > 100000) return 'Venda'
+    if (preco && preco > 0 && preco <= 100000) return 'Aluguel'
+    return 'Ambos'
+  }
+
+  const normalized = tipo.toLowerCase().trim()
+
+  // Normalizar variações de "Aluguel"
+  if (normalized === 'aluguel' || normalized === 'locação' || normalized === 'locacao') {
+    return 'Aluguel'
+  }
+
+  // Normalizar "Venda"
+  if (normalized === 'venda') {
+    return 'Venda'
+  }
+
+  // Normalizar "Ambos"
+  if (normalized === 'ambos' || normalized === 'ambas') {
+    return 'Ambos'
+  }
+
+  return 'Ambos'
+}
+
 // ✅ FUNÇÃO PARA OBTER TIPOS DE IMÓVEL VISÍVEIS PARA CADA ROLE
 export function getTiposVisiveis(role: string | undefined): string[] {
   const roleNormalizado = (role || 'captador').toLowerCase().trim()
@@ -34,30 +63,6 @@ export function getTiposVisiveis(role: string | undefined): string[] {
       console.log('[getTiposVisiveis] Role desconhecido → Fallback para Captador')
       return ['Venda', 'Aluguel', 'Ambos']
   }
-}
-
-// ✅ FUNÇÃO PARA NORMALIZAR TIPO DE IMÓVEL
-export function normalizeTipo(tipo: string | null | undefined): string {
-  if (!tipo) return 'Ambos'
-
-  const normalized = tipo.toLowerCase().trim()
-
-  // Normalizar variações de "Aluguel"
-  if (normalized === 'aluguel' || normalized === 'locação' || normalized === 'locacao') {
-    return 'Aluguel'
-  }
-
-  // Normalizar "Venda"
-  if (normalized === 'venda') {
-    return 'Venda'
-  }
-
-  // Normalizar "Ambos"
-  if (normalized === 'ambos' || normalized === 'ambas') {
-    return 'Ambos'
-  }
-
-  return 'Ambos' // Fallback seguro
 }
 
 // ✅ FUNÇÃO PARA VALIDAR SE IMÓVEL É VISÍVEL PARA ROLE

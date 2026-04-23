@@ -70,9 +70,91 @@ export function EditPropertyModal({ isOpen, onClose, property }: Props) {
     }
   }, [property, isOpen, form, originalObs])
 
+  // ✅ VALIDAÇÃO INTELIGENTE DE TIPO DE IMÓVEL
+  const validateAndNormalizeTipo = (
+    preco: number,
+    demandaVendaId?: string | null,
+    demandaLocacaoId?: string | null,
+    tipoAtual?: string,
+  ): {
+    isValid: boolean
+    tipo: 'Venda' | 'Locação' | 'Ambos'
+    erro?: string
+  } => {
+    if (!preco || preco === 0) {
+      return {
+        isValid: false,
+        tipo: 'Ambos',
+        erro: '❌ Preencha o valor do imóvel para determinar o tipo',
+      }
+    }
+
+    if (demandaVendaId && demandaLocacaoId) {
+      if (preco <= 100000) {
+        return {
+          isValid: false,
+          tipo: 'Ambos',
+          erro: `❌ Imóvel vinculado a VENDA e ALUGUEL deve ter valor acima de R$ 100.000. Valor atual: R$ ${preco.toLocaleString('pt-BR')}`,
+        }
+      }
+      return { isValid: true, tipo: 'Ambos' }
+    }
+
+    if (demandaVendaId && !demandaLocacaoId) {
+      if (preco <= 100000) {
+        return {
+          isValid: false,
+          tipo: 'Venda',
+          erro: `❌ Imóvel de VENDA deve ter valor acima de R$ 100.000. Valor atual: R$ ${preco.toLocaleString('pt-BR')}`,
+        }
+      }
+      return { isValid: true, tipo: 'Venda' }
+    }
+
+    if (demandaLocacaoId && !demandaVendaId) {
+      if (preco > 100000) {
+        return {
+          isValid: false,
+          tipo: 'Locação',
+          erro: `❌ Imóvel de ALUGUEL deve ter valor até R$ 100.000. Valor atual: R$ ${preco.toLocaleString('pt-BR')}`,
+        }
+      }
+      return { isValid: true, tipo: 'Locação' }
+    }
+
+    if (preco > 100000) {
+      return { isValid: true, tipo: 'Venda' }
+    }
+
+    if (preco > 0 && preco <= 100000) {
+      return { isValid: true, tipo: 'Locação' }
+    }
+
+    return { isValid: false, tipo: 'Ambos', erro: '❌ Erro ao determinar tipo de imóvel' }
+  }
+
   const onSubmit = async (data: z.infer<typeof editSchema>) => {
     if (!property?.id) return
     setIsSubmitting(true)
+
+    // ✅ VALIDAR TIPO DE IMÓVEL ANTES DE SALVAR
+    const propertyDemandaVendaId = (property as any).demanda_venda_id || null
+    const propertyDemandaLocacaoId = (property as any).demanda_locacao_id || null
+    const validation = validateAndNormalizeTipo(
+      data.price,
+      propertyDemandaVendaId,
+      propertyDemandaLocacaoId,
+      property.propertyType,
+    )
+
+    if (!validation.isValid) {
+      toast({
+        title: validation.erro || 'Erro de validação',
+        variant: 'destructive',
+      })
+      setIsSubmitting(false)
+      return
+    }
 
     const payload: any = {
       codigo_imovel: data.code.toUpperCase(),
@@ -81,6 +163,7 @@ export function EditPropertyModal({ isOpen, onClose, property }: Props) {
       dormitorios: data.bedrooms,
       vagas: data.parking,
       tipo_imovel: data.tipo_imovel,
+      tipo: validation.tipo, // ✅ DEFINIR TIPO AUTOMATICAMENTE
     }
 
     if (!hasOriginalObs) {

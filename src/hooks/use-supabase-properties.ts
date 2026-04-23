@@ -42,12 +42,36 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
     const d_ven = p.demanda_venda
     const demanda = d_loc || d_ven
 
-    // ✅ NORMALIZAR TIPO
+    // ✅ LÓGICA CORRIGIDA DE DETERMINAÇÃO DE TIPO
     let tipo = p.tipo
-    if (!tipo || tipo === 'Desconhecido') {
-      tipo = d_loc ? 'Aluguel' : d_ven ? 'Venda' : 'Ambos'
+
+    // Se tipo não está definido ou é "Ambos", usar lógica inteligente
+    if (!tipo || tipo === 'Desconhecido' || tipo === 'Ambos') {
+      // Se tem ambas as demandas
+      if (d_loc && d_ven) {
+        // Se preço > 100k, é VENDA
+        // Se preço <= 100k, é ALUGUEL
+        tipo = (p.preco || 0) > 100000 ? 'Venda' : 'Aluguel'
+      }
+      // Se tem apenas locação
+      else if (d_loc) {
+        tipo = 'Aluguel'
+      }
+      // Se tem apenas venda
+      else if (d_ven) {
+        tipo = 'Venda'
+      }
+      // Se não tem demanda, usar regra de preço
+      else {
+        tipo = (p.preco || 0) > 100000 ? 'Venda' : 'Aluguel'
+      }
     }
-    const normalizedTipo = normalizeTipo(tipo)
+
+    const normalizedTipo = normalizeTipo(tipo, p.preco)
+
+    console.log(
+      `[formatProperty] ${p.codigo_imovel}: tipo original="${p.tipo}" → final="${normalizedTipo}" (preço: R$ ${p.preco})`,
+    )
 
     return {
       id: p.id,
@@ -70,7 +94,7 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
             createdBy: demanda.sdr_id || demanda.corretor_id,
           }
         : null,
-      tipo: normalizedTipo, // ✅ USAR TIPO NORMALIZADO
+      tipo: normalizedTipo,
       etapa_funil: p.etapa_funil,
       data_visita: p.data_visita,
       data_fechamento: p.data_fechamento,
@@ -296,7 +320,10 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel') {
                         data_visita: payload.new.data_visita ?? p.data_visita,
                         data_fechamento: payload.new.data_fechamento ?? p.data_fechamento,
                         status_captacao: payload.new.status_captacao || p.status_captacao,
-                        tipo: normalizeTipo(payload.new.tipo || p.tipo),
+                        tipo: normalizeTipo(
+                          payload.new.tipo || p.tipo,
+                          payload.new.preco || p.preco,
+                        ),
                       }
                     : p,
                 )

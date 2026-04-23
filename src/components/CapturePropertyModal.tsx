@@ -63,6 +63,69 @@ export function CapturePropertyModal({ demand, isOpen, onClose, onSuccess }: Pro
 
   if (!demand) return null
 
+  // ✅ VALIDAÇÃO INTELIGENTE DE TIPO DE IMÓVEL
+  const validateAndNormalizeTipo = (
+    preco: number,
+    demandaVendaId?: string | null,
+    demandaLocacaoId?: string | null,
+    tipoAtual?: string,
+  ): {
+    isValid: boolean
+    tipo: 'Venda' | 'Locação' | 'Ambos'
+    erro?: string
+  } => {
+    if (!preco || preco === 0) {
+      return {
+        isValid: false,
+        tipo: 'Ambos',
+        erro: '❌ Preencha o valor do imóvel para determinar o tipo',
+      }
+    }
+
+    if (demandaVendaId && demandaLocacaoId) {
+      if (preco <= 100000) {
+        return {
+          isValid: false,
+          tipo: 'Ambos',
+          erro: `❌ Imóvel vinculado a VENDA e ALUGUEL deve ter valor acima de R$ 100.000. Valor atual: R$ ${preco.toLocaleString('pt-BR')}`,
+        }
+      }
+      return { isValid: true, tipo: 'Ambos' }
+    }
+
+    if (demandaVendaId && !demandaLocacaoId) {
+      if (preco <= 100000) {
+        return {
+          isValid: false,
+          tipo: 'Venda',
+          erro: `❌ Imóvel de VENDA deve ter valor acima de R$ 100.000. Valor atual: R$ ${preco.toLocaleString('pt-BR')}`,
+        }
+      }
+      return { isValid: true, tipo: 'Venda' }
+    }
+
+    if (demandaLocacaoId && !demandaVendaId) {
+      if (preco > 100000) {
+        return {
+          isValid: false,
+          tipo: 'Locação',
+          erro: `❌ Imóvel de ALUGUEL deve ter valor até R$ 100.000. Valor atual: R$ ${preco.toLocaleString('pt-BR')}`,
+        }
+      }
+      return { isValid: true, tipo: 'Locação' }
+    }
+
+    if (preco > 100000) {
+      return { isValid: true, tipo: 'Venda' }
+    }
+
+    if (preco > 0 && preco <= 100000) {
+      return { isValid: true, tipo: 'Locação' }
+    }
+
+    return { isValid: false, tipo: 'Ambos', erro: '❌ Erro ao determinar tipo de imóvel' }
+  }
+
   const handleSubmit = async () => {
     if (!tipo) {
       toast({
@@ -168,6 +231,26 @@ export function CapturePropertyModal({ demand, isOpen, onClose, onSuccess }: Pro
         vagas: { value: payload.vagas, type: typeof payload.vagas },
         endereco: { value: bairrosArray, type: 'Array<string>' },
       })
+
+      // ✅ VALIDAR TIPO DE IMÓVEL ANTES DE SALVAR
+      const validation = validateAndNormalizeTipo(
+        payload.preco,
+        payload.demanda_venda_id,
+        payload.demanda_locacao_id,
+        payload.tipo,
+      )
+
+      if (!validation.isValid) {
+        toast({
+          title: validation.erro || 'Erro de validação',
+          variant: 'destructive',
+        })
+        setIsSubmitting(false)
+        return
+      }
+
+      // ✅ DEFINIR TIPO AUTOMATICAMENTE
+      payload.tipo = validation.tipo
 
       const { error } = await supabase.from('imoveis_captados').insert(payload)
 
