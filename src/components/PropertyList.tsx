@@ -28,6 +28,14 @@ export function PropertyList({ initialType }: Props) {
 
   const [selectedProperty, setSelectedProperty] = useState<any>(null)
 
+  const activeCount = Object.entries(filters).filter(([k, v]) => {
+    if (k === 'tipo' && v === 'Todos') return false
+    if (k === 'status' && v === 'Todos') return false
+    return v !== ''
+  }).length
+
+  const hasActiveFilters = activeCount > 0
+
   const filteredProperties = useMemo(() => {
     return properties.filter((p) => {
       if (deletedIds.includes(p.id)) return false
@@ -69,9 +77,17 @@ export function PropertyList({ initialType }: Props) {
       <PropertyFilters filters={filters} onChange={setFilters} />
 
       {isMobile ? (
-        <PropertyListMobile properties={filteredProperties} onSelect={setSelectedProperty} />
+        <PropertyListMobile
+          properties={filteredProperties}
+          onSelect={setSelectedProperty}
+          hasActiveFilters={hasActiveFilters}
+        />
       ) : (
-        <PropertyListDesktop properties={filteredProperties} onSelect={setSelectedProperty} />
+        <PropertyListDesktop
+          properties={filteredProperties}
+          onSelect={setSelectedProperty}
+          hasActiveFilters={hasActiveFilters}
+        />
       )}
 
       <PropertyDetailsModal property={selectedProperty} onClose={() => setSelectedProperty(null)} />

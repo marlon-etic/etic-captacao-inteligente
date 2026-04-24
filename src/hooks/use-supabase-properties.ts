@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase/client'
 import useAppStore from '@/stores/useAppStore'
 import { useSmartSync, useConsolidatedSync } from '@/hooks/useSmartSync'
 import { getTiposVisiveis, normalizeTipo, isImovelVisivelParaRole } from '@/lib/roleFilters'
+import { toast } from '@/components/ui/use-toast'
 
 export interface SupabaseCapturedPropertyWithDemand {
   id: string
@@ -125,6 +126,24 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel' | 'Ambos'
         setProperties(formatted)
       } catch (err: any) {
         console.error('[useSupabaseProperties] Erro:', err)
+        if (
+          err.code === 'PGRST301' ||
+          err.code === '42501' ||
+          err.message?.toLowerCase().includes('permission')
+        ) {
+          window.dispatchEvent(new CustomEvent('navigate-to', { detail: '/app' }))
+          toast({
+            title: 'Erro de Permissão',
+            description: 'Você não tem acesso a esta visualização. Redirecionando...',
+            variant: 'destructive',
+          })
+        } else if (!isBackground) {
+          toast({
+            title: 'Erro ao carregar imóveis',
+            description: 'Houve uma falha na consulta. Tentando novamente em background...',
+            variant: 'destructive',
+          })
+        }
       } finally {
         if (!isBackground) setLoading(false)
       }

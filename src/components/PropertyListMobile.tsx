@@ -4,9 +4,10 @@ import { Card, CardContent } from '@/components/ui/card'
 interface Props {
   properties: any[]
   onSelect: (p: any) => void
+  hasActiveFilters?: boolean
 }
 
-export function PropertyListMobile({ properties, onSelect }: Props) {
+export function PropertyListMobile({ properties, onSelect, hasActiveFilters }: Props) {
   const formatCurrency = (v: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v)
 
@@ -44,7 +45,11 @@ export function PropertyListMobile({ properties, onSelect }: Props) {
     return (
       <div className="text-center py-16 bg-white rounded-xl border-[2px] border-dashed border-gray-300 flex flex-col items-center justify-center gap-3">
         <span className="text-5xl">🏢</span>
-        <p className="text-[15px] font-bold text-gray-500">Nenhum imóvel encontrado.</p>
+        <p className="text-[15px] font-bold text-gray-500">
+          {hasActiveFilters
+            ? 'Nenhum imóvel encontrado com os filtros atuais.'
+            : 'Nenhum imóvel encontrado para seu perfil.'}
+        </p>
       </div>
     )
   }

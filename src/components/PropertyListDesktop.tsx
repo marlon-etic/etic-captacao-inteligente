@@ -11,9 +11,10 @@ import { Badge } from '@/components/ui/badge'
 interface Props {
   properties: any[]
   onSelect: (p: any) => void
+  hasActiveFilters?: boolean
 }
 
-export function PropertyListDesktop({ properties, onSelect }: Props) {
+export function PropertyListDesktop({ properties, onSelect, hasActiveFilters }: Props) {
   const formatCurrency = (v: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v)
 
@@ -162,7 +163,9 @@ export function PropertyListDesktop({ properties, onSelect }: Props) {
                 <div className="flex flex-col items-center justify-center gap-3">
                   <span className="text-4xl">🏢</span>
                   <p className="text-sm font-bold text-gray-500">
-                    Nenhum imóvel encontrado com os filtros atuais.
+                    {hasActiveFilters
+                      ? 'Nenhum imóvel encontrado com os filtros atuais.'
+                      : 'Nenhum imóvel encontrado para seu perfil.'}
                   </p>
                 </div>
               </TableCell>

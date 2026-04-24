@@ -8,6 +8,8 @@ import {
 } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
+import useAppStore from '@/stores/useAppStore'
+import { getTiposVisiveis } from '@/lib/roleFilters'
 
 interface Props {
   filters: any
@@ -15,6 +17,9 @@ interface Props {
 }
 
 export function PropertyFilters({ filters, onChange }: Props) {
+  const { currentUser } = useAppStore()
+  const tiposVisiveis = getTiposVisiveis(currentUser?.role)
+
   const update = (key: string, val: string) => onChange({ ...filters, [key]: val })
 
   const activeCount = Object.entries(filters).filter(([k, v]) => {
@@ -55,8 +60,10 @@ export function PropertyFilters({ filters, onChange }: Props) {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="Todos">Todos</SelectItem>
-              <SelectItem value="Venda">Venda</SelectItem>
-              <SelectItem value="Aluguel">Aluguel</SelectItem>
+              {tiposVisiveis.includes('Venda') && <SelectItem value="Venda">Venda</SelectItem>}
+              {tiposVisiveis.includes('Aluguel') && (
+                <SelectItem value="Aluguel">Aluguel</SelectItem>
+              )}
             </SelectContent>
           </Select>
         </div>
