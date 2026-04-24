@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react'
+import * as React from 'react'
+const { useState, useMemo } = React
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useSupabaseProperties } from '@/hooks/use-supabase-properties'
 import { PropertyListMobile } from './PropertyListMobile'

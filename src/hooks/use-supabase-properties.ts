@@ -1,4 +1,5 @@
-import { useEffect, useState, useCallback, useRef } from 'react'
+import * as React from 'react'
+const { useEffect, useState, useCallback, useRef } = React
 import { supabase } from '@/lib/supabase/client'
 import useAppStore from '@/stores/useAppStore'
 import { useSmartSync, useConsolidatedSync } from '@/hooks/useSmartSync'

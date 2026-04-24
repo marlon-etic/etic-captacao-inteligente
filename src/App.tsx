@@ -1,4 +1,6 @@
-import React, { useRef, useEffect, useState, useContext, ReactNode, FC } from 'react'
+import * as React from 'react'
+import type { ReactNode, FC } from 'react'
+const { useRef, useEffect, useState, useContext } = React
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { Toaster } from '@/components/ui/toaster'
 import { Toaster as Sonner } from '@/components/ui/sonner'
