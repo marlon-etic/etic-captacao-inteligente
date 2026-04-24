@@ -39,27 +39,35 @@ export function normalizeTipo(
 // ✅ FUNÇÃO PARA OBTER TIPOS DE IMÓVEL VISÍVEIS PARA CADA ROLE
 export function getTiposVisiveis(role: string | undefined): string[] {
   const roleNormalizado = (role || 'captador').toLowerCase().trim()
+  let tipos: string[] = []
 
   switch (roleNormalizado) {
     case 'sdr':
       // SDR vê imóveis de ALUGUEL ou AMBOS
-      return ['Aluguel', 'Ambos']
+      tipos = ['Aluguel', 'Ambos']
+      break
 
     case 'corretor':
     case 'broker':
       // Broker/Corretor vê imóveis de VENDA ou AMBOS
-      return ['Venda', 'Ambos']
+      tipos = ['Venda', 'Ambos']
+      break
 
     case 'captador':
     case 'admin':
     case 'gestor':
       // Roles irrestritos veem TUDO
-      return ['Venda', 'Aluguel', 'Ambos']
+      tipos = ['Venda', 'Aluguel', 'Ambos']
+      break
 
     default:
       // Fallback seguro: vê tudo
-      return ['Venda', 'Aluguel', 'Ambos']
+      tipos = ['Venda', 'Aluguel', 'Ambos']
+      break
   }
+
+  logRoleFilter(roleNormalizado, tipos)
+  return tipos
 }
 
 // ✅ FUNÇÃO PARA VALIDAR SE IMÓVEL É VISÍVEL PARA ROLE
@@ -74,5 +82,5 @@ export function isImovelVisivelParaRole(
 
 // ✅ LOGS DE DEBUG
 export function logRoleFilter(role: string | undefined, tipos: string[]) {
-  console.log('[ROLE FILTER] Role:', role, '| Tipos visíveis:', tipos)
+  console.log(`[getTiposVisiveis] Role: ${role} | Tipos visíveis: ['${tipos.join("', '")}']`)
 }

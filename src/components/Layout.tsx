@@ -1,6 +1,4 @@
-import * as React from 'react'
-import type { ReactNode } from 'react'
-const { useRef, useEffect, useState, useContext } = React
+import { useRef, useEffect, useState, type ReactNode } from 'react'
 import { Outlet, Navigate, useLocation, useNavigate } from 'react-router-dom'
 
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar'

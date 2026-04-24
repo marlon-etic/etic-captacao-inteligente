@@ -1,5 +1,4 @@
-import * as React from 'react'
-const { useState, useEffect } = React
+import { useState, useEffect } from 'react'
 
 export function useViewFilters<T extends Record<string, string>>(
   viewId: string,
