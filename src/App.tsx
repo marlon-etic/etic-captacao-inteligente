@@ -1,5 +1,11 @@
-import { useRef, useEffect, useState, type ReactNode, type FC } from 'react'
+import * as React from 'react'
+import type { ReactNode, FC } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
+
+// Força a disponibilidade do React no escopo global para evitar falhas de tree-shaking
+if (typeof window !== 'undefined') {
+  ;(window as any).React = React
+}
 import { Toaster } from '@/components/ui/toaster'
 import { Toaster as Sonner } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
@@ -163,16 +169,16 @@ const AppRoutes = () => {
   const navigate = useNavigate()
   const { toast } = useToast()
   const { role } = useUserRole()
-  const isMounted = useRef(true)
+  const isMounted = React.useRef(true)
 
-  useEffect(() => {
+  React.useEffect(() => {
     isMounted.current = true
     return () => {
       isMounted.current = false
     }
   }, [])
 
-  useEffect(() => {
+  React.useEffect(() => {
     const handleNewMatch = (match: any) => {
       toast({
         title: '⚡ Novo Match Encontrado!',
@@ -213,7 +219,7 @@ const AppRoutes = () => {
     }
   }, [navigate, toast, role])
 
-  useEffect(() => {
+  React.useEffect(() => {
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
       const reasonStr = String(event.reason)
       const reasonMsg = event.reason?.message || ''

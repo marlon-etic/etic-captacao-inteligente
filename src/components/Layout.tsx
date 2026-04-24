@@ -1,5 +1,10 @@
-import { useRef, useEffect, useState, type ReactNode } from 'react'
+import * as React from 'react'
 import { Outlet, Navigate, useLocation, useNavigate } from 'react-router-dom'
+
+// Força a disponibilidade do React no escopo global para evitar falhas de tree-shaking
+if (typeof window !== 'undefined') {
+  ;(window as any).React = React
+}
 
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar'
 import { AppSidebar } from '@/components/AppSidebar'
@@ -22,15 +27,27 @@ export default function Layout() {
   const { toast } = useToast()
   const { enqueueMutation } = useSmartSync()
 
-  const [isAddPropertyModalOpen, setAddPropertyModalOpen] = useState(false)
-  const [isNewDemandModalOpen, setNewDemandModalOpen] = useState(false)
+  const [isAddPropertyModalOpen, setAddPropertyModalOpen] = React.useState(false)
+  const [isNewDemandModalOpen, setNewDemandModalOpen] = React.useState(false)
 
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null)
-  const intervalRef = useRef<NodeJS.Timeout | null>(null)
-  const isMountedRef = useRef(true)
+  const timeoutRef = React.useRef<NodeJS.Timeout | null>(null)
+  const intervalRef = React.useRef<NodeJS.Timeout | null>(null)
+  const isMountedRef = React.useRef(true)
+
+  React.useEffect(() => {
+    if (currentUser) {
+      const role = currentUser.role || 'captador'
+      let visiveis: string[] = []
+      if (role === 'sdr') visiveis = ['Aluguel', 'Ambos']
+      else if (role === 'corretor') visiveis = ['Venda', 'Ambos']
+      else visiveis = ['Venda', 'Aluguel', 'Locação', 'Ambos', 'Todos'] // Representa total acesso
+
+      console.log(`[getTiposVisiveis] Role: ${role} | Tipos visíveis:`, visiveis)
+    }
+  }, [currentUser])
 
   // Listen to global navigation events dispatched from outside router components (e.g. Hooks/Toasts)
-  useEffect(() => {
+  React.useEffect(() => {
     const handleNavigate = (e: Event) => {
       const customEvent = e as CustomEvent<string>
       if (customEvent.detail) {
@@ -41,7 +58,7 @@ export default function Layout() {
     return () => window.removeEventListener('navigate-to', handleNavigate)
   }, [navigate])
 
-  useEffect(() => {
+  React.useEffect(() => {
     isMountedRef.current = true
     if (!currentUser) return
 
@@ -65,7 +82,7 @@ export default function Layout() {
     }
   }, [currentUser, enqueueMutation])
 
-  useEffect(() => {
+  React.useEffect(() => {
     // Only logout if auth is completely resolved, session is invalid, and user was previously logged in
     if (!loading && !isRestoringUser && !session && currentUser) {
       toast({
@@ -77,7 +94,7 @@ export default function Layout() {
     }
   }, [loading, isRestoringUser, session, currentUser, logout, toast])
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (!isRestoringUser && currentUser && sessionExpiresAt && Date.now() > sessionExpiresAt) {
       toast({
         title: 'Sessão expirada',
@@ -88,7 +105,7 @@ export default function Layout() {
     }
   }, [currentUser, isRestoringUser, sessionExpiresAt, logout, toast])
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (
       !isRestoringUser &&
       currentUser &&
