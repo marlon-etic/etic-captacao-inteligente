@@ -18,6 +18,7 @@ import { Plus, Loader2 } from 'lucide-react'
 import { useAuth } from '@/hooks/use-auth'
 import { supabase } from '@/lib/supabase/client'
 import { useSmartSync } from '@/hooks/useSmartSync'
+import { DailyCheckInModal } from '@/components/checkin/DailyCheckInModal'
 
 export default function Layout() {
   const { currentUser, sessionExpiresAt, logout, isRestoringUser } = useAppStore()
@@ -29,6 +30,7 @@ export default function Layout() {
 
   const [isAddPropertyModalOpen, setAddPropertyModalOpen] = React.useState(false)
   const [isNewDemandModalOpen, setNewDemandModalOpen] = React.useState(false)
+  const [isDailyCheckInOpen, setDailyCheckInOpen] = React.useState(false)
 
   const timeoutRef = React.useRef<NodeJS.Timeout | null>(null)
   const intervalRef = React.useRef<NodeJS.Timeout | null>(null)
@@ -57,6 +59,17 @@ export default function Layout() {
     window.addEventListener('navigate-to', handleNavigate)
     return () => window.removeEventListener('navigate-to', handleNavigate)
   }, [navigate])
+
+  React.useEffect(() => {
+    if (currentUser && (currentUser.role === 'sdr' || currentUser.role === 'corretor')) {
+      const today = new Date().toISOString().split('T')[0]
+      const lastCheckin = localStorage.getItem(`daily_checkin_${currentUser.id}`)
+      if (lastCheckin !== today) {
+        setTimeout(() => setDailyCheckInOpen(true), 2000)
+        localStorage.setItem(`daily_checkin_${currentUser.id}`, today)
+      }
+    }
+  }, [currentUser])
 
   React.useEffect(() => {
     isMountedRef.current = true
@@ -199,6 +212,7 @@ export default function Layout() {
         )}
 
         <BottomNav />
+        <DailyCheckInModal isOpen={isDailyCheckInOpen} onClose={() => setDailyCheckInOpen(false)} />
       </SidebarInset>
     </SidebarProvider>
   )
