@@ -15,6 +15,67 @@ export type Database = {
   }
   public: {
     Tables: {
+      acompanhamento_diario: {
+        Row: {
+          clientes_em_fechamento: number | null
+          clientes_em_visita: number | null
+          created_at: string | null
+          data_checkin: string
+          demandas_atualizadas: Json | null
+          id: string
+          novas_demandas_dia: number | null
+          observacoes: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          clientes_em_fechamento?: number | null
+          clientes_em_visita?: number | null
+          created_at?: string | null
+          data_checkin?: string
+          demandas_atualizadas?: Json | null
+          id?: string
+          novas_demandas_dia?: number | null
+          observacoes?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          clientes_em_fechamento?: number | null
+          clientes_em_visita?: number | null
+          created_at?: string | null
+          data_checkin?: string
+          demandas_atualizadas?: Json | null
+          id?: string
+          novas_demandas_dia?: number | null
+          observacoes?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "acompanhamento_diario_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "acompanhamento_diario_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "vw_engajamento_captadores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "acompanhamento_diario_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "vw_engajamento_sdr_corretor"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       api_error_logs: {
         Row: {
           api_name: string
@@ -81,25 +142,71 @@ export type Database = {
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "audit_log_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "vw_engajamento_captadores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audit_log_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "vw_engajamento_sdr_corretor"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      cron_execution_log: {
+        Row: {
+          error_message: string | null
+          executed_at: string | null
+          id: number
+          status: string
+        }
+        Insert: {
+          error_message?: string | null
+          executed_at?: string | null
+          id?: number
+          status: string
+        }
+        Update: {
+          error_message?: string | null
+          executed_at?: string | null
+          id?: number
+          status?: string
+        }
+        Relationships: []
       }
       demandas_locacao: {
         Row: {
           bairros: string[] | null
           banheiros: number | null
           captadores_busca: Json | null
+          cliente_em_fechamento: boolean | null
+          cliente_em_visita: boolean | null
           cliente_nome: string | null
           created_at: string | null
+          data_check_status: string | null
+          data_fechamento: string | null
+          data_marcacao_sem_resposta: string | null
+          data_prazo_resposta: string | null
+          data_primeira_resposta: string | null
           dormitorios: number | null
           email: string | null
           grupo_id: string | null
           id: string
           is_prioritaria: boolean | null
           localizacoes: string[] | null
+          marcada_sem_resposta: boolean | null
+          motivo_perda: string | null
+          motivo_perda_descricao: string | null
           nivel_urgencia: string | null
           nome_cliente: string | null
           observacoes: string | null
           orcamento_max: number | null
+          prorrogacoes_count: number | null
           quartos: number | null
           renda_mensal_estimada: number | null
           sdr_id: string | null
@@ -121,18 +228,29 @@ export type Database = {
           bairros?: string[] | null
           banheiros?: number | null
           captadores_busca?: Json | null
+          cliente_em_fechamento?: boolean | null
+          cliente_em_visita?: boolean | null
           cliente_nome?: string | null
           created_at?: string | null
+          data_check_status?: string | null
+          data_fechamento?: string | null
+          data_marcacao_sem_resposta?: string | null
+          data_prazo_resposta?: string | null
+          data_primeira_resposta?: string | null
           dormitorios?: number | null
           email?: string | null
           grupo_id?: string | null
           id?: string
           is_prioritaria?: boolean | null
           localizacoes?: string[] | null
+          marcada_sem_resposta?: boolean | null
+          motivo_perda?: string | null
+          motivo_perda_descricao?: string | null
           nivel_urgencia?: string | null
           nome_cliente?: string | null
           observacoes?: string | null
           orcamento_max?: number | null
+          prorrogacoes_count?: number | null
           quartos?: number | null
           renda_mensal_estimada?: number | null
           sdr_id?: string | null
@@ -154,18 +272,29 @@ export type Database = {
           bairros?: string[] | null
           banheiros?: number | null
           captadores_busca?: Json | null
+          cliente_em_fechamento?: boolean | null
+          cliente_em_visita?: boolean | null
           cliente_nome?: string | null
           created_at?: string | null
+          data_check_status?: string | null
+          data_fechamento?: string | null
+          data_marcacao_sem_resposta?: string | null
+          data_prazo_resposta?: string | null
+          data_primeira_resposta?: string | null
           dormitorios?: number | null
           email?: string | null
           grupo_id?: string | null
           id?: string
           is_prioritaria?: boolean | null
           localizacoes?: string[] | null
+          marcada_sem_resposta?: boolean | null
+          motivo_perda?: string | null
+          motivo_perda_descricao?: string | null
           nivel_urgencia?: string | null
           nome_cliente?: string | null
           observacoes?: string | null
           orcamento_max?: number | null
+          prorrogacoes_count?: number | null
           quartos?: number | null
           renda_mensal_estimada?: number | null
           sdr_id?: string | null
@@ -199,10 +328,38 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "demandas_locacao_sdr_id_fkey"
+            columns: ["sdr_id"]
+            isOneToOne: false
+            referencedRelation: "vw_engajamento_captadores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "demandas_locacao_sdr_id_fkey"
+            columns: ["sdr_id"]
+            isOneToOne: false
+            referencedRelation: "vw_engajamento_sdr_corretor"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "fk_demandas_locacao_sdr"
             columns: ["sdr_id"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_demandas_locacao_sdr"
+            columns: ["sdr_id"]
+            isOneToOne: false
+            referencedRelation: "vw_engajamento_captadores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_demandas_locacao_sdr"
+            columns: ["sdr_id"]
+            isOneToOne: false
+            referencedRelation: "vw_engajamento_sdr_corretor"
             referencedColumns: ["id"]
           },
         ]
@@ -212,19 +369,30 @@ export type Database = {
           bairros: string[] | null
           banheiros: number | null
           captadores_busca: Json | null
+          cliente_em_fechamento: boolean | null
+          cliente_em_visita: boolean | null
           cliente_nome: string | null
           corretor_id: string | null
           created_at: string | null
+          data_check_status: string | null
+          data_fechamento: string | null
+          data_marcacao_sem_resposta: string | null
+          data_prazo_resposta: string | null
+          data_primeira_resposta: string | null
           dormitorios: number | null
           email: string | null
           grupo_id: string | null
           id: string
           is_prioritaria: boolean | null
           localizacoes: string[] | null
+          marcada_sem_resposta: boolean | null
+          motivo_perda: string | null
+          motivo_perda_descricao: string | null
           necessidades_especificas: string | null
           nivel_urgencia: string | null
           nome_cliente: string | null
           orcamento_max: number | null
+          prorrogacoes_count: number | null
           quartos: number | null
           status_demanda: string | null
           telefone: string | null
@@ -242,19 +410,30 @@ export type Database = {
           bairros?: string[] | null
           banheiros?: number | null
           captadores_busca?: Json | null
+          cliente_em_fechamento?: boolean | null
+          cliente_em_visita?: boolean | null
           cliente_nome?: string | null
           corretor_id?: string | null
           created_at?: string | null
+          data_check_status?: string | null
+          data_fechamento?: string | null
+          data_marcacao_sem_resposta?: string | null
+          data_prazo_resposta?: string | null
+          data_primeira_resposta?: string | null
           dormitorios?: number | null
           email?: string | null
           grupo_id?: string | null
           id?: string
           is_prioritaria?: boolean | null
           localizacoes?: string[] | null
+          marcada_sem_resposta?: boolean | null
+          motivo_perda?: string | null
+          motivo_perda_descricao?: string | null
           necessidades_especificas?: string | null
           nivel_urgencia?: string | null
           nome_cliente?: string | null
           orcamento_max?: number | null
+          prorrogacoes_count?: number | null
           quartos?: number | null
           status_demanda?: string | null
           telefone?: string | null
@@ -272,19 +451,30 @@ export type Database = {
           bairros?: string[] | null
           banheiros?: number | null
           captadores_busca?: Json | null
+          cliente_em_fechamento?: boolean | null
+          cliente_em_visita?: boolean | null
           cliente_nome?: string | null
           corretor_id?: string | null
           created_at?: string | null
+          data_check_status?: string | null
+          data_fechamento?: string | null
+          data_marcacao_sem_resposta?: string | null
+          data_prazo_resposta?: string | null
+          data_primeira_resposta?: string | null
           dormitorios?: number | null
           email?: string | null
           grupo_id?: string | null
           id?: string
           is_prioritaria?: boolean | null
           localizacoes?: string[] | null
+          marcada_sem_resposta?: boolean | null
+          motivo_perda?: string | null
+          motivo_perda_descricao?: string | null
           necessidades_especificas?: string | null
           nivel_urgencia?: string | null
           nome_cliente?: string | null
           orcamento_max?: number | null
+          prorrogacoes_count?: number | null
           quartos?: number | null
           status_demanda?: string | null
           telefone?: string | null
@@ -304,6 +494,20 @@ export type Database = {
             columns: ["corretor_id"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "demandas_vendas_corretor_id_fkey"
+            columns: ["corretor_id"]
+            isOneToOne: false
+            referencedRelation: "vw_engajamento_captadores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "demandas_vendas_corretor_id_fkey"
+            columns: ["corretor_id"]
+            isOneToOne: false
+            referencedRelation: "vw_engajamento_sdr_corretor"
             referencedColumns: ["id"]
           },
           {
@@ -466,6 +670,20 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "fk_imoveis_captador"
+            columns: ["user_captador_id"]
+            isOneToOne: false
+            referencedRelation: "vw_engajamento_captadores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_imoveis_captador"
+            columns: ["user_captador_id"]
+            isOneToOne: false
+            referencedRelation: "vw_engajamento_sdr_corretor"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "imoveis_captados_demanda_locacao_id_fkey"
             columns: ["demanda_locacao_id"]
             isOneToOne: false
@@ -491,6 +709,20 @@ export type Database = {
             columns: ["user_captador_id"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "imoveis_captados_user_captador_id_fkey"
+            columns: ["user_captador_id"]
+            isOneToOne: false
+            referencedRelation: "vw_engajamento_captadores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "imoveis_captados_user_captador_id_fkey"
+            columns: ["user_captador_id"]
+            isOneToOne: false
+            referencedRelation: "vw_engajamento_sdr_corretor"
             referencedColumns: ["id"]
           },
         ]
@@ -713,6 +945,20 @@ export type Database = {
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "notificacoes_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "vw_engajamento_captadores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notificacoes_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "vw_engajamento_sdr_corretor"
+            referencedColumns: ["id"]
+          },
         ]
       }
       pontuacao_captador: {
@@ -749,6 +995,20 @@ export type Database = {
             columns: ["captador_id"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pontuacao_captador_captador_id_fkey"
+            columns: ["captador_id"]
+            isOneToOne: false
+            referencedRelation: "vw_engajamento_captadores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pontuacao_captador_captador_id_fkey"
+            columns: ["captador_id"]
+            isOneToOne: false
+            referencedRelation: "vw_engajamento_sdr_corretor"
             referencedColumns: ["id"]
           },
           {
@@ -804,6 +1064,20 @@ export type Database = {
             columns: ["captador_id"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prazos_captacao_captador_id_fkey"
+            columns: ["captador_id"]
+            isOneToOne: false
+            referencedRelation: "vw_engajamento_captadores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prazos_captacao_captador_id_fkey"
+            columns: ["captador_id"]
+            isOneToOne: false
+            referencedRelation: "vw_engajamento_sdr_corretor"
             referencedColumns: ["id"]
           },
           {
@@ -930,6 +1204,20 @@ export type Database = {
             columns: ["captador_id"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "respostas_captador_captador_id_fkey"
+            columns: ["captador_id"]
+            isOneToOne: false
+            referencedRelation: "vw_engajamento_captadores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "respostas_captador_captador_id_fkey"
+            columns: ["captador_id"]
+            isOneToOne: false
+            referencedRelation: "vw_engajamento_sdr_corretor"
             referencedColumns: ["id"]
           },
           {
@@ -1122,6 +1410,49 @@ export type Database = {
         }
         Relationships: []
       }
+      vw_demandas_sem_retorno: {
+        Row: {
+          cliente_nome: string | null
+          data_criacao: string | null
+          data_vencimento: string | null
+          demanda_id: string | null
+          horas_sem_resposta: number | null
+          status_atual: string | null
+          status_urgencia: string | null
+          tipo_demanda: string | null
+        }
+        Relationships: []
+      }
+      vw_engajamento_captadores: {
+        Row: {
+          captador_nome: string | null
+          data_relatorio: string | null
+          demandas_sem_resposta_24h: number | null
+          id: string | null
+          imoveis_captados_hoje: number | null
+          imoveis_livres: number | null
+          imoveis_sob_demanda: number | null
+          taxa_resposta_percentual: number | null
+        }
+        Relationships: []
+      }
+      vw_engajamento_sdr_corretor: {
+        Row: {
+          clientes_em_fechamento: number | null
+          clientes_em_visita: number | null
+          data_relatorio: string | null
+          demandas_locacao_hoje: number | null
+          demandas_locacao_mes: number | null
+          demandas_locacao_semana: number | null
+          demandas_vendas_hoje: number | null
+          demandas_vendas_mes: number | null
+          demandas_vendas_semana: number | null
+          id: string | null
+          role: Database["public"]["Enums"]["user_role"] | null
+          sdr_corretor_nome: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       append_captador_busca: {
@@ -1151,6 +1482,7 @@ export type Database = {
         Returns: Json
       }
       fn_diagnose_oauth_setup: { Args: never; Returns: Json }
+      fn_executar_marcar_demandas_cron: { Args: never; Returns: undefined }
       fn_hard_reset_imoveis: { Args: never; Returns: undefined }
       fn_logar_falhas_api: {
         Args: {
@@ -1160,6 +1492,13 @@ export type Database = {
           p_payload?: Json
         }
         Returns: undefined
+      }
+      fn_marcar_demandas_sem_resposta: {
+        Args: never
+        Returns: {
+          qtd_marcadas: number
+          tabela: string
+        }[]
       }
       fn_processar_webhook_queue: {
         Args: never
@@ -1347,6 +1686,17 @@ export const Constants = {
 // --- COLUMN TYPES (actual PostgreSQL types) ---
 // Use this to know the real database type when writing migrations.
 // "string" in TypeScript types above may be uuid, text, varchar, timestamptz, etc.
+// Table: acompanhamento_diario
+//   id: uuid (not null, default: gen_random_uuid())
+//   user_id: uuid (not null)
+//   data_checkin: date (not null, default: CURRENT_DATE)
+//   clientes_em_visita: integer (nullable, default: 0)
+//   clientes_em_fechamento: integer (nullable, default: 0)
+//   novas_demandas_dia: integer (nullable, default: 0)
+//   demandas_atualizadas: jsonb (nullable, default: '[]'::jsonb)
+//   observacoes: text (nullable)
+//   created_at: timestamp with time zone (nullable, default: now())
+//   updated_at: timestamp with time zone (nullable, default: now())
 // Table: api_error_logs
 //   id: uuid (not null, default: gen_random_uuid())
 //   api_name: text (not null)
@@ -1363,6 +1713,11 @@ export const Constants = {
 //   dados_antigos: jsonb (nullable)
 //   dados_novos: jsonb (nullable)
 //   created_at: timestamp with time zone (nullable, default: now())
+// Table: cron_execution_log
+//   id: integer (not null, default: nextval('cron_execution_log_id_seq'::regclass))
+//   executed_at: timestamp with time zone (nullable, default: CURRENT_TIMESTAMP)
+//   status: character varying (not null)
+//   error_message: text (nullable)
 // Table: demandas_locacao
 //   id: uuid (not null, default: gen_random_uuid())
 //   cliente_nome: character varying (nullable)
@@ -1395,6 +1750,17 @@ export const Constants = {
 //   captadores_busca: jsonb (nullable, default: '[]'::jsonb)
 //   tipo_imovel: text (nullable, default: 'Casa'::text)
 //   tipo: text (nullable, default: 'Locação'::text)
+//   motivo_perda: text (nullable)
+//   motivo_perda_descricao: text (nullable)
+//   data_fechamento: timestamp with time zone (nullable)
+//   data_primeira_resposta: timestamp with time zone (nullable)
+//   data_prazo_resposta: timestamp with time zone (nullable)
+//   prorrogacoes_count: integer (nullable, default: 0)
+//   marcada_sem_resposta: boolean (nullable, default: false)
+//   data_marcacao_sem_resposta: timestamp with time zone (nullable)
+//   cliente_em_visita: boolean (nullable, default: false)
+//   cliente_em_fechamento: boolean (nullable, default: false)
+//   data_check_status: timestamp with time zone (nullable)
 // Table: demandas_vendas
 //   id: uuid (not null, default: gen_random_uuid())
 //   cliente_nome: character varying (nullable)
@@ -1424,6 +1790,17 @@ export const Constants = {
 //   vinculacao_captador_id: uuid (nullable)
 //   captadores_busca: jsonb (nullable, default: '[]'::jsonb)
 //   tipo: text (nullable, default: 'Venda'::text)
+//   motivo_perda: text (nullable)
+//   motivo_perda_descricao: text (nullable)
+//   data_fechamento: timestamp with time zone (nullable)
+//   data_primeira_resposta: timestamp with time zone (nullable)
+//   data_prazo_resposta: timestamp with time zone (nullable)
+//   prorrogacoes_count: integer (nullable, default: 0)
+//   marcada_sem_resposta: boolean (nullable, default: false)
+//   data_marcacao_sem_resposta: timestamp with time zone (nullable)
+//   cliente_em_visita: boolean (nullable, default: false)
+//   cliente_em_fechamento: boolean (nullable, default: false)
+//   data_check_status: timestamp with time zone (nullable)
 // Table: grupos_demandas
 //   id: uuid (not null, default: gen_random_uuid())
 //   bairro: text (not null)
@@ -1600,6 +1977,37 @@ export const Constants = {
 //   data: jsonb (not null)
 //   expires_at: timestamp with time zone (not null)
 //   created_at: timestamp with time zone (nullable, default: now())
+// Table: vw_demandas_sem_retorno
+//   demanda_id: uuid (nullable)
+//   cliente_nome: character varying (nullable)
+//   tipo_demanda: text (nullable)
+//   data_criacao: timestamp with time zone (nullable)
+//   data_vencimento: timestamp with time zone (nullable)
+//   horas_sem_resposta: integer (nullable)
+//   status_urgencia: text (nullable)
+//   status_atual: character varying (nullable)
+// Table: vw_engajamento_captadores
+//   id: uuid (nullable)
+//   captador_nome: character varying (nullable)
+//   imoveis_captados_hoje: bigint (nullable)
+//   imoveis_sob_demanda: bigint (nullable)
+//   imoveis_livres: bigint (nullable)
+//   taxa_resposta_percentual: numeric (nullable)
+//   demandas_sem_resposta_24h: bigint (nullable)
+//   data_relatorio: timestamp with time zone (nullable)
+// Table: vw_engajamento_sdr_corretor
+//   id: uuid (nullable)
+//   sdr_corretor_nome: character varying (nullable)
+//   role: user_role (nullable)
+//   demandas_locacao_hoje: bigint (nullable)
+//   demandas_vendas_hoje: bigint (nullable)
+//   demandas_locacao_semana: bigint (nullable)
+//   demandas_vendas_semana: bigint (nullable)
+//   demandas_locacao_mes: bigint (nullable)
+//   demandas_vendas_mes: bigint (nullable)
+//   clientes_em_visita: integer (nullable)
+//   clientes_em_fechamento: integer (nullable)
+//   data_relatorio: timestamp with time zone (nullable)
 // Table: webhook_queue
 //   id: uuid (not null, default: gen_random_uuid())
 //   event_type: text (not null)
@@ -1614,11 +2022,17 @@ export const Constants = {
 //   processed_at: timestamp with time zone (nullable)
 
 // --- CONSTRAINTS ---
+// Table: acompanhamento_diario
+//   PRIMARY KEY acompanhamento_diario_pkey: PRIMARY KEY (id)
+//   UNIQUE acompanhamento_diario_user_id_data_checkin_key: UNIQUE (user_id, data_checkin)
+//   FOREIGN KEY acompanhamento_diario_user_id_fkey: FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 // Table: api_error_logs
 //   PRIMARY KEY api_error_logs_pkey: PRIMARY KEY (id)
 // Table: audit_log
 //   PRIMARY KEY audit_log_pkey: PRIMARY KEY (id)
 //   FOREIGN KEY audit_log_usuario_id_fkey: FOREIGN KEY (usuario_id) REFERENCES users(id) ON DELETE SET NULL
+// Table: cron_execution_log
+//   PRIMARY KEY cron_execution_log_pkey: PRIMARY KEY (id)
 // Table: demandas_locacao
 //   CHECK check_valor_min_max_locacao: CHECK ((valor_maximo >= valor_minimo))
 //   CHECK chk_demandas_locacao_renda: CHECK ((renda_mensal_estimada >= (0)::numeric))
@@ -1722,6 +2136,12 @@ export const Constants = {
 //   CHECK webhook_queue_status_check: CHECK ((status = ANY (ARRAY['pending'::text, 'processing'::text, 'completed'::text, 'failed'::text])))
 
 // --- ROW LEVEL SECURITY POLICIES ---
+// Table: acompanhamento_diario
+//   Policy "Admin sees all checkins" (SELECT, PERMISSIVE) roles={public}
+//     USING: (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND ((users.role = 'admin'::user_role) OR (users.role = 'gestor'::user_role)))))
+//   Policy "Users manage own checkin" (ALL, PERMISSIVE) roles={public}
+//     USING: (user_id = auth.uid())
+//     WITH CHECK: (user_id = auth.uid())
 // Table: api_error_logs
 //   Policy "Admins can read api_error_logs" (SELECT, PERMISSIVE) roles={authenticated}
 //     USING: true
@@ -1809,9 +2229,9 @@ export const Constants = {
 //     USING: true
 //   Policy "Captadores insert captures" (INSERT, PERMISSIVE) roles={authenticated}
 //     WITH CHECK: true
-//   Policy "Captadores update own captures" (UPDATE, PERMISSIVE) roles={authenticated}
-//     USING: ((user_captador_id = auth.uid()) OR (captador_id = auth.uid()))
-//     WITH CHECK: ((user_captador_id = auth.uid()) OR (captador_id = auth.uid()))
+//   Policy "Captadores update own captures" (UPDATE, PERMISSIVE) roles={public}
+//     USING: (user_captador_id = auth.uid())
+//     WITH CHECK: (user_captador_id = auth.uid())
 //   Policy "Corretores update captures" (UPDATE, PERMISSIVE) roles={authenticated}
 //     USING: (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND (users.role = 'corretor'::user_role))))
 //     WITH CHECK: (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND (users.role = 'corretor'::user_role))))
@@ -1899,6 +2319,7 @@ export const Constants = {
 // This means ALL queries (SELECT, INSERT, UPDATE, DELETE) will return ZERO rows
 // for non-superuser roles (including the anon and authenticated roles used by the app).
 // You MUST create RLS policies for these tables to allow data access.
+//   - cron_execution_log
 //   - imoveis_captados_backup
 
 // --- DATABASE FUNCTIONS ---
@@ -2459,6 +2880,23 @@ export const Constants = {
 //   END;
 //   $function$
 //   
+// FUNCTION fn_executar_marcar_demandas_cron()
+//   CREATE OR REPLACE FUNCTION public.fn_executar_marcar_demandas_cron()
+//    RETURNS void
+//    LANGUAGE plpgsql
+//   AS $function$
+//   BEGIN
+//       INSERT INTO cron_execution_log (status) VALUES ('INICIADO');
+//       
+//       PERFORM fn_marcar_demandas_sem_resposta();
+//       
+//       INSERT INTO cron_execution_log (status) VALUES ('SUCESSO');
+//       
+//   EXCEPTION WHEN OTHERS THEN
+//       INSERT INTO cron_execution_log (status, error_message) VALUES ('ERRO', SQLERRM);
+//   END;
+//   $function$
+//   
 // FUNCTION fn_hard_reset_imoveis()
 //   CREATE OR REPLACE FUNCTION public.fn_hard_reset_imoveis()
 //    RETURNS void
@@ -2509,6 +2947,47 @@ export const Constants = {
 //   BEGIN
 //       INSERT INTO public.api_error_logs (api_name, endpoint, error_message, payload)
 //       VALUES (p_api, p_endpoint, p_message, p_payload);
+//   END;
+//   $function$
+//   
+// FUNCTION fn_marcar_demandas_sem_resposta()
+//   CREATE OR REPLACE FUNCTION public.fn_marcar_demandas_sem_resposta()
+//    RETURNS TABLE(tabela text, qtd_marcadas integer)
+//    LANGUAGE plpgsql
+//    SECURITY DEFINER
+//   AS $function$
+//   DECLARE
+//       qtd_loc INTEGER;
+//       qtd_vend INTEGER;
+//   BEGIN
+//       -- Atualiza demandas de locação
+//       UPDATE demandas_locacao
+//       SET marcada_sem_resposta = TRUE,
+//           data_marcacao_sem_resposta = NOW()
+//       WHERE marcada_sem_resposta = FALSE
+//         AND status_demanda = 'aberta'
+//         AND data_prazo_resposta < NOW()
+//         AND NOT EXISTS (SELECT 1 FROM respostas_captador WHERE demanda_locacao_id = demandas_locacao.id)
+//         AND NOT EXISTS (SELECT 1 FROM imoveis_captados WHERE demanda_locacao_id = demandas_locacao.id);
+//       
+//       GET DIAGNOSTICS qtd_loc = ROW_COUNT;
+//       
+//       -- Atualiza demandas de vendas
+//       UPDATE demandas_vendas
+//       SET marcada_sem_resposta = TRUE,
+//           data_marcacao_sem_resposta = NOW()
+//       WHERE marcada_sem_resposta = FALSE
+//         AND status_demanda = 'aberta'
+//         AND data_prazo_resposta < NOW()
+//         AND NOT EXISTS (SELECT 1 FROM respostas_captador WHERE demanda_venda_id = demandas_vendas.id)
+//         AND NOT EXISTS (SELECT 1 FROM imoveis_captados WHERE demanda_venda_id = demandas_vendas.id);
+//       
+//       GET DIAGNOSTICS qtd_vend = ROW_COUNT;
+//       
+//       RETURN QUERY
+//       SELECT 'demandas_locacao'::TEXT, qtd_loc::INTEGER
+//       UNION ALL
+//       SELECT 'demandas_vendas'::TEXT, qtd_vend::INTEGER;
 //   END;
 //   $function$
 //   
@@ -2624,6 +3103,31 @@ export const Constants = {
 //       END;
 //   
 //       RETURN jsonb_build_object('status', 'success', 'recalculated_points', v_count);
+//   END;
+//   $function$
+//   
+// FUNCTION fn_registrar_primeira_resposta()
+//   CREATE OR REPLACE FUNCTION public.fn_registrar_primeira_resposta()
+//    RETURNS trigger
+//    LANGUAGE plpgsql
+//    SECURITY DEFINER
+//   AS $function$
+//   BEGIN
+//       IF TG_TABLE_NAME IN ('imoveis_captados', 'respostas_captador') THEN
+//           IF NEW.demanda_locacao_id IS NOT NULL THEN
+//               UPDATE demandas_locacao
+//               SET data_primeira_resposta = COALESCE(data_primeira_resposta, NOW())
+//               WHERE id = NEW.demanda_locacao_id;
+//           END IF;
+//           
+//           IF NEW.demanda_venda_id IS NOT NULL THEN
+//               UPDATE demandas_vendas
+//               SET data_primeira_resposta = COALESCE(data_primeira_resposta, NOW())
+//               WHERE id = NEW.demanda_venda_id;
+//           END IF;
+//       END IF;
+//       
+//       RETURN NEW;
 //   END;
 //   $function$
 //   
@@ -3209,30 +3713,37 @@ export const Constants = {
 //   pontuacao_imovel_trigger: CREATE TRIGGER pontuacao_imovel_trigger AFTER INSERT ON public.imoveis_captados FOR EACH ROW EXECUTE FUNCTION fn_calculate_points_on_insert()
 //   trg_notify_imovel_atualizado: CREATE TRIGGER trg_notify_imovel_atualizado AFTER UPDATE ON public.imoveis_captados FOR EACH ROW EXECUTE FUNCTION notify_imovel_atualizado()
 //   trg_notify_novo_imovel: CREATE TRIGGER trg_notify_novo_imovel AFTER INSERT ON public.imoveis_captados FOR EACH ROW EXECUTE FUNCTION notify_novo_imovel()
+//   trg_primeira_resposta_imovel: CREATE TRIGGER trg_primeira_resposta_imovel AFTER INSERT ON public.imoveis_captados FOR EACH ROW EXECUTE FUNCTION fn_registrar_primeira_resposta()
 //   trg_set_tipo_imovel: CREATE TRIGGER trg_set_tipo_imovel BEFORE INSERT OR UPDATE ON public.imoveis_captados FOR EACH ROW EXECUTE FUNCTION fn_set_tipo_imovel()
 //   update_imoveis_captados_updated_at: CREATE TRIGGER update_imoveis_captados_updated_at BEFORE UPDATE ON public.imoveis_captados FOR EACH ROW EXECUTE FUNCTION set_updated_at()
 // Table: respostas_captador
 //   marcar_prazo_resposta_trigger: CREATE TRIGGER marcar_prazo_resposta_trigger AFTER INSERT ON public.respostas_captador FOR EACH ROW EXECUTE FUNCTION marcar_prazo_respondido_resposta()
 //   trg_auto_close_demand: CREATE TRIGGER trg_auto_close_demand AFTER INSERT OR UPDATE ON public.respostas_captador FOR EACH ROW EXECUTE FUNCTION check_demand_auto_close()
 //   trg_notify_resposta_captador: CREATE TRIGGER trg_notify_resposta_captador AFTER INSERT ON public.respostas_captador FOR EACH ROW EXECUTE FUNCTION notify_resposta_captador()
+//   trg_primeira_resposta_resposta: CREATE TRIGGER trg_primeira_resposta_resposta AFTER INSERT ON public.respostas_captador FOR EACH ROW EXECUTE FUNCTION fn_registrar_primeira_resposta()
 //   update_respostas_captador_updated_at: CREATE TRIGGER update_respostas_captador_updated_at BEFORE UPDATE ON public.respostas_captador FOR EACH ROW EXECUTE FUNCTION set_updated_at()
 // Table: users
 //   audit_users: CREATE TRIGGER audit_users AFTER INSERT OR DELETE OR UPDATE ON public.users FOR EACH ROW EXECUTE FUNCTION audit_log_function()
 //   update_users_updated_at: CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON public.users FOR EACH ROW EXECUTE FUNCTION set_updated_at()
 
 // --- INDEXES ---
+// Table: acompanhamento_diario
+//   CREATE UNIQUE INDEX acompanhamento_diario_user_id_data_checkin_key ON public.acompanhamento_diario USING btree (user_id, data_checkin)
+//   CREATE INDEX idx_acompanhamento_user_data ON public.acompanhamento_diario USING btree (user_id, data_checkin DESC)
 // Table: admin_dashboard_summary
 //   CREATE UNIQUE INDEX idx_admin_dashboard_id ON public.admin_dashboard_summary USING btree (id)
 // Table: demandas_locacao
 //   CREATE INDEX idx_demandas_grouping_criteria ON public.demandas_locacao USING btree (tipo_demanda, valor_maximo, dormitorios, vagas_estacionamento)
 //   CREATE INDEX idx_demandas_locacao_bairros ON public.demandas_locacao USING gin (bairros)
 //   CREATE INDEX idx_demandas_locacao_created_at_desc ON public.demandas_locacao USING btree (created_at DESC)
+//   CREATE INDEX idx_demandas_locacao_prazo ON public.demandas_locacao USING btree (data_prazo_resposta) WHERE (marcada_sem_resposta = false)
 //   CREATE INDEX idx_demandas_locacao_sdr_id ON public.demandas_locacao USING btree (sdr_id)
 //   CREATE INDEX idx_demandas_locacao_status_demanda ON public.demandas_locacao USING btree (status_demanda)
 // Table: demandas_vendas
 //   CREATE INDEX idx_demandas_vendas_bairros ON public.demandas_vendas USING gin (bairros)
 //   CREATE INDEX idx_demandas_vendas_corretor_id ON public.demandas_vendas USING btree (corretor_id)
 //   CREATE INDEX idx_demandas_vendas_created_at_desc ON public.demandas_vendas USING btree (created_at DESC)
+//   CREATE INDEX idx_demandas_vendas_prazo ON public.demandas_vendas USING btree (data_prazo_resposta) WHERE (marcada_sem_resposta = false)
 //   CREATE INDEX idx_demandas_vendas_status_demanda ON public.demandas_vendas USING btree (status_demanda)
 // Table: imoveis_captados
 //   CREATE INDEX idx_imoveis_captados_captador_id ON public.imoveis_captados USING btree (captador_id)
