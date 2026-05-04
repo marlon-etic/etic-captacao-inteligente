@@ -146,4 +146,98 @@ export const checkinService = {
       .eq('data', today)
     if (error) throw error
   },
+
+  async getYesterdayClients(userId: string): Promise<any[]> {
+    const yesterday = new Date()
+    yesterday.setDate(yesterday.getDate() - 1)
+    const yesterdayStr = yesterday.toISOString().split('T')[0]
+
+    const start = `${yesterdayStr}T00:00:00.000Z`
+    const end = `${yesterdayStr}T23:59:59.999Z`
+
+    const { data: locacao } = await supabase
+      .from('demandas_locacao')
+      .select('id, nome_cliente, tipo_demanda')
+      .eq('sdr_id', userId)
+      .gte('created_at', start)
+      .lte('created_at', end)
+
+    const { data: vendas } = await supabase
+      .from('demandas_vendas')
+      .select('id, nome_cliente, tipo')
+      .eq('corretor_id', userId)
+      .gte('created_at', start)
+      .lte('created_at', end)
+
+    return [...(locacao || []), ...(vendas || [])]
+  },
+
+  async getTodayVisits(userId: string) {
+    const today = new Date().toISOString().split('T')[0]
+    const { data } = await supabase
+      .from('visitas_imovel')
+      .select('*')
+      .eq('user_sdr_id', userId)
+      .gte('created_at', `${today}T00:00:00.000Z`)
+    return data || []
+  },
+
+  async getTodayClosings(userId: string) {
+    const today = new Date().toISOString().split('T')[0]
+    const { data } = await supabase
+      .from('fechamentos')
+      .select('*')
+      .eq('user_sdr_id', userId)
+      .gte('created_at', `${today}T00:00:00.000Z`)
+    return data || []
+  },
+
+  async updateAcompanhamentoDiario(
+    userId: string,
+    increments: {
+      novas_demandas_dia?: number
+      clientes_em_visita?: number
+      clientes_em_fechamento?: number
+    },
+  ) {
+    const today = new Date().toISOString().split('T')[0]
+    let { data } = await supabase
+      .from('acompanhamento_diario')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('data_checkin', today)
+      .single()
+
+    if (!data) {
+      const { data: newData, error } = await supabase
+        .from('acompanhamento_diario')
+        .insert([
+          {
+            user_id: userId,
+            data_checkin: today,
+            novas_demandas_dia: increments.novas_demandas_dia || 0,
+            clientes_em_visita: increments.clientes_em_visita || 0,
+            clientes_em_fechamento: increments.clientes_em_fechamento || 0,
+          },
+        ])
+        .select()
+        .single()
+      if (error) console.error('Erro ao criar acompanhamento diário', error)
+      return newData
+    } else {
+      const { data: updated, error } = await supabase
+        .from('acompanhamento_diario')
+        .update({
+          novas_demandas_dia: (data.novas_demandas_dia || 0) + (increments.novas_demandas_dia || 0),
+          clientes_em_visita: (data.clientes_em_visita || 0) + (increments.clientes_em_visita || 0),
+          clientes_em_fechamento:
+            (data.clientes_em_fechamento || 0) + (increments.clientes_em_fechamento || 0),
+        })
+        .eq('id', data.id)
+        .select()
+        .single()
+      if (error) console.error('Erro ao atualizar acompanhamento diário', error)
+      return updated
+    }
+  },
 }

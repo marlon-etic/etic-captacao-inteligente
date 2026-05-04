@@ -1,4 +1,4 @@
-import * as React from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { toast } from '@/hooks/use-toast'
 
@@ -6,11 +6,11 @@ const inFlightRequests = new Map<string, { promise: Promise<any>; timestamp: num
 const offlineQueue: Array<{ id: string; fn: () => Promise<any> }> = []
 
 export function useSmartSync() {
-  const [isOnline, setIsOnline] = React.useState(
+  const [isOnline, setIsOnline] = useState(
     typeof navigator !== 'undefined' ? navigator.onLine : true,
   )
 
-  React.useEffect(() => {
+  useEffect(() => {
     const handleOnline = () => {
       setIsOnline(true)
       processOfflineQueue()
@@ -43,7 +43,7 @@ export function useSmartSync() {
     }
   }
 
-  const fetchWithResilience = React.useCallback(
+  const fetchWithResilience = useCallback(
     async <T>(key: string, fetcher: (signal?: AbortSignal) => Promise<T>): Promise<T> => {
       const existing = inFlightRequests.get(key)
       if (existing) {
@@ -109,7 +109,7 @@ export function useSmartSync() {
     [],
   )
 
-  const enqueueMutation = React.useCallback((fn: () => Promise<any>) => {
+  const enqueueMutation = useCallback((fn: () => Promise<any>) => {
     if (navigator.onLine) {
       fn().catch((err: any) => {
         const isClientError = err?.status >= 400 && err?.status < 500
@@ -147,15 +147,15 @@ export function useConsolidatedSync({
   setupRealtime: (channel: any) => void
   onFallbackPoll: () => void
 }) {
-  const setupRef = React.useRef(setupRealtime)
-  const pollRef = React.useRef(onFallbackPoll)
+  const setupRef = useRef(setupRealtime)
+  const pollRef = useRef(onFallbackPoll)
 
-  React.useEffect(() => {
+  useEffect(() => {
     setupRef.current = setupRealtime
     pollRef.current = onFallbackPoll
   }, [setupRealtime, onFallbackPoll])
 
-  React.useEffect(() => {
+  useEffect(() => {
     const channel = supabase.channel(channelName)
 
     setupRef.current(channel)

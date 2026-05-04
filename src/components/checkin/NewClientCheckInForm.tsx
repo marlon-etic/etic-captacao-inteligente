@@ -40,7 +40,7 @@ export function NewClientCheckInForm({
     dormitorios: '1',
     vagas: '1',
     observacoes: '',
-    dataLimite: '',
+    dataLimite: new Date(Date.now() + 86400000).toISOString().slice(0, 16),
   })
   const [errors, setErrors] = useState<any>({})
 
@@ -97,6 +97,7 @@ export function NewClientCheckInForm({
       await checkinService.updateTodayStats(user.id, {
         novos_clientes: (today?.novos_clientes || 0) + 1,
       })
+      await checkinService.updateAcompanhamentoDiario(user.id, { novas_demandas_dia: 1 })
 
       toast({ title: 'Cliente registrado com sucesso!' })
       onSuccess()
@@ -205,6 +206,7 @@ export function NewClientCheckInForm({
                   <option value="Apartamento">Apartamento</option>
                   <option value="Casa">Casa</option>
                   <option value="Comercial">Comercial</option>
+                  <option value="Terreno">Terreno</option>
                 </select>
               </div>
               <div className="col-span-3 sm:col-span-1">
@@ -214,7 +216,7 @@ export function NewClientCheckInForm({
                   value={formData.dormitorios}
                   onChange={(e) => setFormData({ ...formData, dormitorios: e.target.value })}
                 >
-                  {[0, 1, 2, 3, 4, 5].map((n) => (
+                  {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
                     <option key={n} value={n}>
                       {n}
                     </option>
@@ -228,7 +230,7 @@ export function NewClientCheckInForm({
                   value={formData.vagas}
                   onChange={(e) => setFormData({ ...formData, vagas: e.target.value })}
                 >
-                  {[0, 1, 2, 3, 4, 5].map((n) => (
+                  {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
                     <option key={n} value={n}>
                       {n}
                     </option>

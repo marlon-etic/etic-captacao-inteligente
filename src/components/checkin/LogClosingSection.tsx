@@ -8,6 +8,8 @@ import { useAuth } from '@/hooks/use-auth'
 import { useToast } from '@/hooks/use-toast'
 import { sendWebhookEvent } from '@/services/n8nService'
 
+import { useEffect } from 'react'
+
 export function LogClosingSection({
   demands,
   properties,
@@ -24,6 +26,15 @@ export function LogClosingSection({
   const [valor, setValor] = useState('')
   const [dataPrevista, setDataPrevista] = useState('')
   const [loading, setLoading] = useState(false)
+  const [loggedClosings, setLoggedClosings] = useState<any[]>([])
+
+  const loadClosings = () => {
+    if (user) checkinService.getTodayClosings(user.id).then(setLoggedClosings)
+  }
+
+  useEffect(() => {
+    loadClosings()
+  }, [user, demands])
 
   const handleSave = async () => {
     if (!selectedDemanda || !valor || !dataPrevista || !user) return
@@ -43,6 +54,7 @@ export function LogClosingSection({
 
       const today = await checkinService.getTodayStats(user.id)
       await checkinService.updateTodayStats(user.id, { fechamentos: (today?.fechamentos || 0) + 1 })
+      await checkinService.updateAcompanhamentoDiario(user.id, { clientes_em_fechamento: 1 })
 
       await sendWebhookEvent({
         event_type: 'fechamento_registrado',
@@ -58,6 +70,7 @@ export function LogClosingSection({
       setSelectedProperty('')
       setValor('')
       setDataPrevista('')
+      loadClosings()
       onClosingLogged()
     } catch (err: any) {
       toast({
@@ -145,6 +158,32 @@ export function LogClosingSection({
               {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
               Registrar Fechamento
             </Button>
+          </div>
+        )}
+
+        {loggedClosings.length > 0 && (
+          <div className="mt-4 pt-4 border-t">
+            <p className="text-xs font-semibold text-gray-700 mb-2">
+              Fechamentos registrados hoje:
+            </p>
+            <ul className="text-xs text-gray-600 space-y-1">
+              {loggedClosings.map((c) => {
+                const dem = demands.find((d) => d.id === c.demanda_id)
+                return (
+                  <li
+                    key={c.id}
+                    className="flex flex-col bg-gray-50 p-2 rounded border border-gray-100"
+                  >
+                    <span className="font-semibold text-gray-800">
+                      {dem?.nome_cliente || 'Cliente'}
+                    </span>
+                    <span className="text-gray-500">
+                      Vai fechar em {new Date(c.data_prevista).toLocaleDateString()}
+                    </span>
+                  </li>
+                )
+              })}
+            </ul>
           </div>
         )}
       </div>

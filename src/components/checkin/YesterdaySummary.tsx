@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
-export function YesterdaySummary({ stats }: { stats: any }) {
+export function YesterdaySummary({ stats, clients = [] }: { stats: any; clients?: any[] }) {
   const [showDetails, setShowDetails] = useState(false)
 
   return (
@@ -39,9 +39,25 @@ export function YesterdaySummary({ stats }: { stats: any }) {
 
       {showDetails && (
         <div className="mt-3 p-3 bg-gray-50 rounded text-xs text-gray-500">
-          Você converteu{' '}
-          {stats?.visitas > 0 ? ((stats.fechamentos / stats.visitas) * 100).toFixed(1) : 0}% das
-          suas visitas ontem. Mantenha o foco!
+          <p className="mb-2">
+            Você converteu{' '}
+            {stats?.visitas > 0 ? ((stats.fechamentos / stats.visitas) * 100).toFixed(1) : 0}% das
+            suas visitas ontem. Mantenha o foco!
+          </p>
+          {clients.length > 0 ? (
+            <div className="space-y-1">
+              <p className="font-bold text-gray-700">Clientes de Ontem:</p>
+              <ul className="list-disc pl-4">
+                {clients.map((c, i) => (
+                  <li key={i}>
+                    {c.nome_cliente || c.cliente_nome} ({c.tipo_demanda || c.tipo})
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : (
+            <p>Nenhum cliente registrado ontem.</p>
+          )}
         </div>
       )}
     </div>

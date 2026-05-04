@@ -8,6 +8,8 @@ import { useAuth } from '@/hooks/use-auth'
 import { useToast } from '@/hooks/use-toast'
 import { sendWebhookEvent } from '@/services/n8nService'
 
+import { useEffect } from 'react'
+
 export function LogVisitSection({
   demands,
   properties,
@@ -26,6 +28,15 @@ export function LogVisitSection({
   const [newPropValue, setNewPropValue] = useState('')
   const [qtd, setQtd] = useState('1')
   const [loading, setLoading] = useState(false)
+  const [loggedVisits, setLoggedVisits] = useState<any[]>([])
+
+  const loadVisits = () => {
+    if (user) checkinService.getTodayVisits(user.id).then(setLoggedVisits)
+  }
+
+  useEffect(() => {
+    loadVisits()
+  }, [user, demands])
 
   const handleSave = async () => {
     if (!selectedDemanda || !user) return
@@ -46,6 +57,7 @@ export function LogVisitSection({
 
       const today = await checkinService.getTodayStats(user.id)
       await checkinService.updateTodayStats(user.id, { visitas: (today?.visitas || 0) + 1 })
+      await checkinService.updateAcompanhamentoDiario(user.id, { clientes_em_visita: 1 })
 
       await sendWebhookEvent({
         event_type: 'visita_registrada',
@@ -66,6 +78,7 @@ export function LogVisitSection({
       setNewPropAddress('')
       setNewPropValue('')
       setQtd('1')
+      loadVisits()
       onVisitLogged()
     } catch (err: any) {
       toast({ title: 'Erro ao registrar visita', description: err.message, variant: 'destructive' })
@@ -158,6 +171,30 @@ export function LogVisitSection({
               {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
               Adicionar à Visita
             </Button>
+          </div>
+        )}
+
+        {loggedVisits.length > 0 && (
+          <div className="mt-4 pt-4 border-t">
+            <p className="text-xs font-semibold text-gray-700 mb-2">Visitas registradas hoje:</p>
+            <ul className="text-xs text-gray-600 space-y-1">
+              {loggedVisits.map((v) => {
+                const dem = demands.find((d) => d.id === v.demanda_id)
+                return (
+                  <li
+                    key={v.id}
+                    className="flex flex-col bg-gray-50 p-2 rounded border border-gray-100"
+                  >
+                    <span className="font-semibold text-gray-800">
+                      {dem?.nome_cliente || 'Cliente'}
+                    </span>
+                    <span className="text-gray-500">
+                      Visitou {v.qtd_imoveis_visitados} imóvel(is)
+                    </span>
+                  </li>
+                )
+              })}
+            </ul>
           </div>
         )}
       </div>

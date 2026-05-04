@@ -28,6 +28,7 @@ export function DailyCheckInModal({ isOpen, onClose }: { isOpen: boolean; onClos
   const [showNewClientForm, setShowNewClientForm] = useState(false)
   const [todayStats, setTodayStats] = useState<any>(null)
   const [yesterdayStats, setYesterdayStats] = useState<any>(null)
+  const [yesterdayClients, setYesterdayClients] = useState<any[]>([])
 
   useEffect(() => {
     if (isOpen && user) {
@@ -38,18 +39,20 @@ export function DailyCheckInModal({ isOpen, onClose }: { isOpen: boolean; onClos
   const loadData = async () => {
     if (!user) return
     try {
-      const [demandStatus, demands, props, today, yesterday] = await Promise.all([
+      const [demandStatus, demands, props, today, yesterday, yClients] = await Promise.all([
         checkinService.hasDemandLast24h(user.id),
         checkinService.getRecentDemands(user.id),
         checkinService.getProperties(),
         checkinService.getTodayStats(user.id),
         checkinService.getYesterdayStats(user.id),
+        checkinService.getYesterdayClients(user.id),
       ])
       setHasDemand(demandStatus)
       setRecentDemands(demands)
       setProperties(props)
       setTodayStats(today)
       setYesterdayStats(yesterday)
+      setYesterdayClients(yClients)
     } catch (err) {
       console.error('Error loading checkin data:', err)
     }
@@ -87,7 +90,9 @@ export function DailyCheckInModal({ isOpen, onClose }: { isOpen: boolean; onClos
           <div className="space-y-6 pb-6">
             {!hasDemand && <CheckInAlert />}
 
-            {yesterdayStats && <YesterdaySummary stats={yesterdayStats} />}
+            {yesterdayStats && (
+              <YesterdaySummary stats={yesterdayStats} clients={yesterdayClients} />
+            )}
 
             <div className="bg-white p-4 rounded-xl shadow-sm border">
               <Button
@@ -113,12 +118,22 @@ export function DailyCheckInModal({ isOpen, onClose }: { isOpen: boolean; onClos
           </div>
         </ScrollArea>
 
-        <div className="p-4 bg-white border-t shrink-0 flex gap-3">
-          <Button variant="outline" className="flex-1" onClick={onClose}>
+        <div className="p-4 bg-white border-t shrink-0 flex gap-3 flex-wrap sm:flex-nowrap">
+          <Button variant="outline" className="flex-1 min-w-[100px]" onClick={onClose}>
             Fechar
           </Button>
           <Button
-            className="flex-1 bg-[#0070f3] hover:bg-[#005bb5] text-white"
+            variant="secondary"
+            className="flex-1 min-w-[140px] bg-gray-200 hover:bg-gray-300 text-gray-800"
+            onClick={() => {
+              toast({ title: 'Check-in salvo temporariamente' })
+              onClose()
+            }}
+          >
+            Salvar Check-in
+          </Button>
+          <Button
+            className="flex-1 min-w-[150px] bg-[#0070f3] hover:bg-[#005bb5] text-white"
             onClick={handleGenerateSummary}
           >
             Gerar Resumo do Dia
