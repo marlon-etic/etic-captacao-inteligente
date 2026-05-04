@@ -519,6 +519,42 @@ export type Database = {
           },
         ]
       }
+      fechamentos: {
+        Row: {
+          created_at: string | null
+          data_prevista: string | null
+          demanda_id: string
+          id: string
+          imovel_id: string | null
+          status: string | null
+          tipo_demanda: string
+          user_sdr_id: string
+          valor: number
+        }
+        Insert: {
+          created_at?: string | null
+          data_prevista?: string | null
+          demanda_id: string
+          id?: string
+          imovel_id?: string | null
+          status?: string | null
+          tipo_demanda: string
+          user_sdr_id: string
+          valor: number
+        }
+        Update: {
+          created_at?: string | null
+          data_prevista?: string | null
+          demanda_id?: string
+          id?: string
+          imovel_id?: string | null
+          status?: string | null
+          tipo_demanda?: string
+          user_sdr_id?: string
+          valor?: number
+        }
+        Relationships: []
+      }
       grupos_demandas: {
         Row: {
           bairro: string
@@ -1236,6 +1272,39 @@ export type Database = {
           },
         ]
       }
+      resumo_diario_sdr: {
+        Row: {
+          conversao_pct: number | null
+          criado_em: string | null
+          data: string
+          fechamentos: number | null
+          id: string
+          novos_clientes: number | null
+          user_id: string
+          visitas: number | null
+        }
+        Insert: {
+          conversao_pct?: number | null
+          criado_em?: string | null
+          data?: string
+          fechamentos?: number | null
+          id?: string
+          novos_clientes?: number | null
+          user_id: string
+          visitas?: number | null
+        }
+        Update: {
+          conversao_pct?: number | null
+          criado_em?: string | null
+          data?: string
+          fechamentos?: number | null
+          id?: string
+          novos_clientes?: number | null
+          user_id?: string
+          visitas?: number | null
+        }
+        Relationships: []
+      }
       tenant_proposals: {
         Row: {
           created_at: string | null
@@ -1331,6 +1400,45 @@ export type Database = {
           role?: Database["public"]["Enums"]["user_role"]
           status?: string | null
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      visitas_imovel: {
+        Row: {
+          created_at: string | null
+          data_visita: string | null
+          demanda_id: string
+          id: string
+          imovel_id: string | null
+          novo_imovel_endereco: string | null
+          novo_imovel_valor: number | null
+          qtd_imoveis_visitados: number | null
+          tipo_demanda: string
+          user_sdr_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          data_visita?: string | null
+          demanda_id: string
+          id?: string
+          imovel_id?: string | null
+          novo_imovel_endereco?: string | null
+          novo_imovel_valor?: number | null
+          qtd_imoveis_visitados?: number | null
+          tipo_demanda: string
+          user_sdr_id: string
+        }
+        Update: {
+          created_at?: string | null
+          data_visita?: string | null
+          demanda_id?: string
+          id?: string
+          imovel_id?: string | null
+          novo_imovel_endereco?: string | null
+          novo_imovel_valor?: number | null
+          qtd_imoveis_visitados?: number | null
+          tipo_demanda?: string
+          user_sdr_id?: string
         }
         Relationships: []
       }
@@ -1801,6 +1909,16 @@ export const Constants = {
 //   cliente_em_visita: boolean (nullable, default: false)
 //   cliente_em_fechamento: boolean (nullable, default: false)
 //   data_check_status: timestamp with time zone (nullable)
+// Table: fechamentos
+//   id: uuid (not null, default: gen_random_uuid())
+//   demanda_id: uuid (not null)
+//   tipo_demanda: text (not null)
+//   imovel_id: uuid (nullable)
+//   user_sdr_id: uuid (not null)
+//   valor: numeric (not null)
+//   data_prevista: date (nullable)
+//   status: text (nullable, default: 'pendente'::text)
+//   created_at: timestamp with time zone (nullable, default: now())
 // Table: grupos_demandas
 //   id: uuid (not null, default: gen_random_uuid())
 //   bairro: text (not null)
@@ -1946,6 +2064,15 @@ export const Constants = {
 //   created_at: timestamp with time zone (nullable, default: now())
 //   updated_at: timestamp with time zone (nullable, default: now())
 //   observacao: text (nullable)
+// Table: resumo_diario_sdr
+//   id: uuid (not null, default: gen_random_uuid())
+//   user_id: uuid (not null)
+//   data: date (not null, default: CURRENT_DATE)
+//   novos_clientes: integer (nullable, default: 0)
+//   visitas: integer (nullable, default: 0)
+//   fechamentos: integer (nullable, default: 0)
+//   conversao_pct: numeric (nullable, default: 0)
+//   criado_em: timestamp with time zone (nullable, default: now())
 // Table: tenant_proposals
 //   id: uuid (not null, default: gen_random_uuid())
 //   property_id: uuid (not null)
@@ -1972,6 +2099,17 @@ export const Constants = {
 //   status: character varying (nullable, default: 'ativo'::character varying)
 //   created_at: timestamp with time zone (nullable, default: now())
 //   updated_at: timestamp with time zone (nullable, default: now())
+// Table: visitas_imovel
+//   id: uuid (not null, default: gen_random_uuid())
+//   demanda_id: uuid (not null)
+//   tipo_demanda: text (not null)
+//   imovel_id: uuid (nullable)
+//   novo_imovel_endereco: text (nullable)
+//   novo_imovel_valor: numeric (nullable)
+//   user_sdr_id: uuid (not null)
+//   data_visita: timestamp with time zone (nullable, default: now())
+//   qtd_imoveis_visitados: integer (nullable, default: 1)
+//   created_at: timestamp with time zone (nullable, default: now())
 // Table: vistasoft_cache
 //   key: text (not null)
 //   data: jsonb (not null)
@@ -2064,6 +2202,10 @@ export const Constants = {
 ::text)))
 //   CHECK demandas_vendas_vagas_estacionamento_check: CHECK (((vagas_estacionamento >= 0) AND (vagas_estacionamento <= 10)))
 //   FOREIGN KEY demandas_vendas_vinculacao_captador_id_fkey: FOREIGN KEY (vinculacao_captador_id) REFERENCES auth.users(id) ON DELETE SET NULL
+// Table: fechamentos
+//   PRIMARY KEY fechamentos_pkey: PRIMARY KEY (id)
+//   CHECK fechamentos_tipo_demanda_check: CHECK ((tipo_demanda = ANY (ARRAY['Locação'::text, 'Venda'::text])))
+//   FOREIGN KEY fechamentos_user_sdr_id_fkey: FOREIGN KEY (user_sdr_id) REFERENCES auth.users(id) ON DELETE CASCADE
 // Table: grupos_demandas
 //   PRIMARY KEY grupos_demandas_pkey: PRIMARY KEY (id)
 // Table: imoveis_captados
@@ -2119,6 +2261,10 @@ export const Constants = {
 //   FOREIGN KEY respostas_captador_demanda_venda_id_fkey: FOREIGN KEY (demanda_venda_id) REFERENCES demandas_vendas(id) ON DELETE CASCADE
 //   PRIMARY KEY respostas_captador_pkey: PRIMARY KEY (id)
 //   CHECK respostas_captador_resposta_check: CHECK (((resposta)::text = ANY ((ARRAY['encontrei'::character varying, 'nao_encontrei'::character varying])::text[])))
+// Table: resumo_diario_sdr
+//   PRIMARY KEY resumo_diario_sdr_pkey: PRIMARY KEY (id)
+//   UNIQUE resumo_diario_sdr_user_id_data_key: UNIQUE (user_id, data)
+//   FOREIGN KEY resumo_diario_sdr_user_id_fkey: FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
 // Table: tenant_proposals
 //   PRIMARY KEY tenant_proposals_pkey: PRIMARY KEY (id)
 //   FOREIGN KEY tenant_proposals_property_id_fkey: FOREIGN KEY (property_id) REFERENCES imoveis_captados(id) ON DELETE CASCADE
@@ -2129,6 +2275,10 @@ export const Constants = {
 //   FOREIGN KEY users_id_fkey: FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE
 //   PRIMARY KEY users_pkey: PRIMARY KEY (id)
 //   CHECK users_status_check: CHECK (((status)::text = ANY ((ARRAY['ativo'::character varying, 'inativo'::character varying])::text[])))
+// Table: visitas_imovel
+//   PRIMARY KEY visitas_imovel_pkey: PRIMARY KEY (id)
+//   CHECK visitas_imovel_tipo_demanda_check: CHECK ((tipo_demanda = ANY (ARRAY['Locação'::text, 'Venda'::text])))
+//   FOREIGN KEY visitas_imovel_user_sdr_id_fkey: FOREIGN KEY (user_sdr_id) REFERENCES auth.users(id) ON DELETE CASCADE
 // Table: vistasoft_cache
 //   PRIMARY KEY vistasoft_cache_pkey: PRIMARY KEY (key)
 // Table: webhook_queue
@@ -2206,6 +2356,11 @@ export const Constants = {
 //     USING: (((auth.jwt() ->> 'role'::text) ~~* 'sdr'::text) OR (((auth.jwt() -> 'user_metadata'::text) ->> 'role'::text) ~~* 'sdr'::text) OR (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND ((users.role)::text ~~* 'sdr'::text)))))
 //   Policy "SDR can update own vendas" (UPDATE, PERMISSIVE) roles={authenticated}
 //     USING: (((auth.jwt() ->> 'role'::text) ~~* 'sdr'::text) OR (((auth.jwt() -> 'user_metadata'::text) ->> 'role'::text) ~~* 'sdr'::text) OR (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND ((users.role)::text ~~* 'sdr'::text)))))
+// Table: fechamentos
+//   Policy "Users can insert own fechamentos" (INSERT, PERMISSIVE) roles={public}
+//     WITH CHECK: (user_sdr_id = auth.uid())
+//   Policy "Users can view own fechamentos" (SELECT, PERMISSIVE) roles={public}
+//     USING: ((user_sdr_id = auth.uid()) OR (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND (users.role = ANY (ARRAY['admin'::user_role, 'gestor'::user_role]))))))
 // Table: grupos_demandas
 //   Policy "Authenticated users can delete grupos_demandas" (DELETE, PERMISSIVE) roles={authenticated}
 //     USING: true
@@ -2293,6 +2448,13 @@ export const Constants = {
 //     WITH CHECK: (captador_id = auth.uid())
 //   Policy "Captadores manage own respostas" (ALL, PERMISSIVE) roles={public}
 //     USING: (captador_id = auth.uid())
+// Table: resumo_diario_sdr
+//   Policy "Users can insert own resumo" (INSERT, PERMISSIVE) roles={public}
+//     WITH CHECK: (user_id = auth.uid())
+//   Policy "Users can update own resumo" (UPDATE, PERMISSIVE) roles={public}
+//     USING: (user_id = auth.uid())
+//   Policy "Users can view own resumo" (SELECT, PERMISSIVE) roles={public}
+//     USING: ((user_id = auth.uid()) OR (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND (users.role = ANY (ARRAY['admin'::user_role, 'gestor'::user_role]))))))
 // Table: tenant_proposals
 //   Policy "Landlords can update own proposals" (UPDATE, PERMISSIVE) roles={authenticated}
 //     USING: (EXISTS ( SELECT 1    FROM (imoveis_captados ic      JOIN landlord_profiles lp ON ((ic.landlord_id = lp.id)))   WHERE ((ic.id = tenant_proposals.property_id) AND (lp.user_id = auth.uid()))))
@@ -2305,6 +2467,11 @@ export const Constants = {
 //     USING: (id = auth.uid())
 //   Policy "Users update own profile" (UPDATE, PERMISSIVE) roles={public}
 //     USING: (id = auth.uid())
+// Table: visitas_imovel
+//   Policy "Users can insert own visitas" (INSERT, PERMISSIVE) roles={public}
+//     WITH CHECK: (user_sdr_id = auth.uid())
+//   Policy "Users can view own visitas" (SELECT, PERMISSIVE) roles={public}
+//     USING: ((user_sdr_id = auth.uid()) OR (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND (users.role = ANY (ARRAY['admin'::user_role, 'gestor'::user_role]))))))
 // Table: vistasoft_cache
 //   Policy "vistasoft_cache_all" (ALL, PERMISSIVE) roles={authenticated}
 //     USING: true
@@ -3745,6 +3912,8 @@ export const Constants = {
 //   CREATE INDEX idx_demandas_vendas_created_at_desc ON public.demandas_vendas USING btree (created_at DESC)
 //   CREATE INDEX idx_demandas_vendas_prazo ON public.demandas_vendas USING btree (data_prazo_resposta) WHERE (marcada_sem_resposta = false)
 //   CREATE INDEX idx_demandas_vendas_status_demanda ON public.demandas_vendas USING btree (status_demanda)
+// Table: fechamentos
+//   CREATE INDEX idx_fechamentos_user ON public.fechamentos USING btree (user_sdr_id)
 // Table: imoveis_captados
 //   CREATE INDEX idx_imoveis_captados_captador_id ON public.imoveis_captados USING btree (captador_id)
 //   CREATE INDEX idx_imoveis_captados_landlord_id ON public.imoveis_captados USING btree (landlord_id)
@@ -3770,6 +3939,9 @@ export const Constants = {
 //   CREATE INDEX idx_respostas_captador_cap_id ON public.respostas_captador USING btree (captador_id)
 //   CREATE INDEX idx_respostas_captador_dem_loc ON public.respostas_captador USING btree (demanda_locacao_id)
 //   CREATE INDEX idx_respostas_captador_dem_ven ON public.respostas_captador USING btree (demanda_venda_id)
+// Table: resumo_diario_sdr
+//   CREATE INDEX idx_resumo_diario_sdr_user_data ON public.resumo_diario_sdr USING btree (user_id, data)
+//   CREATE UNIQUE INDEX resumo_diario_sdr_user_id_data_key ON public.resumo_diario_sdr USING btree (user_id, data)
 // Table: tenant_proposals
 //   CREATE INDEX idx_tenant_proposals_property_id ON public.tenant_proposals USING btree (property_id)
 // Table: users
@@ -3777,6 +3949,8 @@ export const Constants = {
 //   CREATE INDEX idx_users_role ON public.users USING btree (role)
 //   CREATE INDEX idx_users_status ON public.users USING btree (status)
 //   CREATE UNIQUE INDEX users_email_key ON public.users USING btree (email)
+// Table: visitas_imovel
+//   CREATE INDEX idx_visitas_imovel_user ON public.visitas_imovel USING btree (user_sdr_id)
 // Table: vistasoft_cache
 //   CREATE INDEX idx_vistasoft_cache_expires_at ON public.vistasoft_cache USING btree (expires_at)
 // Table: webhook_queue
