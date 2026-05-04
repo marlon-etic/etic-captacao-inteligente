@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react'
+import * as React from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { useToast } from '@/hooks/use-toast'
 import useAppStore from '@/stores/useAppStore'
@@ -15,13 +15,13 @@ export interface Pontuacao {
 }
 
 export function useSupabasePontuacao() {
-  const [pontuacoes, setPontuacoes] = useState<Pontuacao[]>([])
+  const [pontuacoes, setPontuacoes] = React.useState<Pontuacao[]>([])
   const { toast } = useToast()
   const { currentUser } = useAppStore()
-  const mounted = useRef(true)
+  const mounted = React.useRef(true)
   const { fetchWithResilience } = useSmartSync()
 
-  const fetchPontuacoes = useCallback(async () => {
+  const fetchPontuacoes = React.useCallback(async () => {
     try {
       const data = await fetchWithResilience('pontuacoes', async () => {
         const { data: resData, error } = await supabase
@@ -39,7 +39,7 @@ export function useSupabasePontuacao() {
     }
   }, [fetchWithResilience])
 
-  useEffect(() => {
+  React.useEffect(() => {
     mounted.current = true
     fetchPontuacoes()
     return () => {
