@@ -1,13 +1,16 @@
 import { CheckCircle, XCircle, Zap, AlertTriangle, TrendingUp } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { cn } from '@/lib/utils'
 
 interface MetricsCardsProps {
   metrics: any
   loading: boolean
+  activeFilter?: string
+  onCardClick?: (filter: string) => void
 }
 
-export function MetricsCards({ metrics, loading }: MetricsCardsProps) {
+export function MetricsCards({ metrics, loading, activeFilter, onCardClick }: MetricsCardsProps) {
   if (loading) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
@@ -18,10 +21,20 @@ export function MetricsCards({ metrics, loading }: MetricsCardsProps) {
     )
   }
 
+  const handleCardClick = (filter: string) => {
+    if (onCardClick) onCardClick(activeFilter === filter ? '' : filter)
+  }
+
   return (
     <>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-        <Card className="rounded-2xl hover:shadow-lg hover:-translate-y-1 transition-all duration-300 border-emerald-100 bg-gradient-to-br from-emerald-50 to-white group">
+        <Card
+          className={cn(
+            'rounded-2xl hover:shadow-lg hover:-translate-y-1 transition-all duration-300 border-emerald-100 bg-gradient-to-br from-emerald-50 to-white group cursor-pointer',
+            activeFilter === 'sob_demanda' && 'ring-2 ring-emerald-500 shadow-md',
+          )}
+          onClick={() => handleCardClick('sob_demanda')}
+        >
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-[14px] font-bold text-emerald-800">Sob Demanda</CardTitle>
             <div className="p-2 bg-emerald-100 rounded-full group-hover:scale-110 transition-transform">
@@ -34,7 +47,13 @@ export function MetricsCards({ metrics, loading }: MetricsCardsProps) {
           </CardContent>
         </Card>
 
-        <Card className="rounded-2xl hover:shadow-lg hover:-translate-y-1 transition-all duration-300 border-blue-100 bg-gradient-to-br from-blue-50 to-white group">
+        <Card
+          className={cn(
+            'rounded-2xl hover:shadow-lg hover:-translate-y-1 transition-all duration-300 border-blue-100 bg-gradient-to-br from-blue-50 to-white group cursor-pointer',
+            activeFilter === 'aleatorios' && 'ring-2 ring-blue-500 shadow-md',
+          )}
+          onClick={() => handleCardClick('aleatorios')}
+        >
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-[14px] font-bold text-blue-800">Aleatórios</CardTitle>
             <div className="p-2 bg-blue-100 rounded-full group-hover:scale-110 transition-transform">
@@ -47,7 +66,13 @@ export function MetricsCards({ metrics, loading }: MetricsCardsProps) {
           </CardContent>
         </Card>
 
-        <Card className="rounded-2xl hover:shadow-lg hover:-translate-y-1 transition-all duration-300 border-red-100 bg-gradient-to-br from-red-50 to-white group">
+        <Card
+          className={cn(
+            'rounded-2xl hover:shadow-lg hover:-translate-y-1 transition-all duration-300 border-red-100 bg-gradient-to-br from-red-50 to-white group cursor-pointer',
+            activeFilter === 'perdidos' && 'ring-2 ring-red-500 shadow-md',
+          )}
+          onClick={() => handleCardClick('perdidos')}
+        >
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-[14px] font-bold text-red-800">Imóveis Perdidos</CardTitle>
             <div className="p-2 bg-red-100 rounded-full group-hover:scale-110 transition-transform">
@@ -60,7 +85,13 @@ export function MetricsCards({ metrics, loading }: MetricsCardsProps) {
           </CardContent>
         </Card>
 
-        <Card className="rounded-2xl hover:shadow-lg hover:-translate-y-1 transition-all duration-300 border-amber-100 bg-gradient-to-br from-amber-50 to-white group">
+        <Card
+          className={cn(
+            'rounded-2xl hover:shadow-lg hover:-translate-y-1 transition-all duration-300 border-amber-100 bg-gradient-to-br from-amber-50 to-white group cursor-pointer',
+            activeFilter === 'sem_resposta' && 'ring-2 ring-amber-500 shadow-md',
+          )}
+          onClick={() => handleCardClick('sem_resposta')}
+        >
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-[14px] font-bold text-amber-800">Sem Resposta</CardTitle>
             <div className="p-2 bg-amber-100 rounded-full group-hover:scale-110 transition-transform">
@@ -74,7 +105,6 @@ export function MetricsCards({ metrics, loading }: MetricsCardsProps) {
         </Card>
       </div>
 
-      {/* Gamification Banner */}
       <div className="mb-8">
         {metrics?.semResposta > 3 ? (
           <div className="bg-red-50 text-red-700 p-4 rounded-xl border border-red-200 font-bold flex items-center shadow-sm">

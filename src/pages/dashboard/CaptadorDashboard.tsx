@@ -16,13 +16,14 @@ import { Target, Trophy, HelpCircle, X } from 'lucide-react'
 
 export function CaptadorDashboard() {
   const { metrics, imoveis, demandas, perdidos, charts, loading, refetch } = useCaptadorDashboard()
-  const { period } = usePeriodStore()
+  const { period, transactionType } = usePeriodStore()
   const [showModal, setShowModal] = useState(false)
   const [selectedImovel, setSelectedImovel] = useState<any>(null)
   const [activeFilters, setActiveFilters] = useState<{
     tipo?: string
     faixa?: string
     status?: string
+    card?: string
   }>({})
 
   useEffect(() => {
@@ -44,6 +45,18 @@ export function CaptadorDashboard() {
         if (activeFilters.faixa === 'R$ 1M - R$ 2M' && (v <= 1000000 || v > 2000000)) return false
         if (activeFilters.faixa === 'Acima de R$ 2M' && v <= 2000000) return false
       }
+      if (activeFilters.card) {
+        if (activeFilters.card === 'sob_demanda' && !i.demanda_locacao_id && !i.demanda_venda_id)
+          return false
+        if (activeFilters.card === 'aleatorios' && (i.demanda_locacao_id || i.demanda_venda_id))
+          return false
+        if (
+          activeFilters.card === 'perdidos' &&
+          i.status_captacao !== 'perdido' &&
+          i.status_captacao !== 'descartado'
+        )
+          return false
+      }
       return true
     })
   }, [imoveis, activeFilters])
@@ -52,6 +65,11 @@ export function CaptadorDashboard() {
     return demandas.filter((d) => {
       if (activeFilters.tipo && !(d.tipo_imovel || '').includes(activeFilters.tipo)) return false
       if (activeFilters.status && d.status_demanda !== activeFilters.status) return false
+      if (activeFilters.card === 'sem_resposta') {
+        const diffDays =
+          (new Date().getTime() - new Date(d.created_at).getTime()) / (1000 * 3600 * 24)
+        if (diffDays <= 4) return false
+      }
       return true
     })
   }, [demandas, activeFilters])
@@ -62,6 +80,10 @@ export function CaptadorDashboard() {
 
   const clearFilter = (type: string) => {
     setActiveFilters((prev) => ({ ...prev, [type]: undefined }))
+  }
+
+  const handleCardClick = (filter: string) => {
+    setActiveFilters((prev) => ({ ...prev, card: filter || undefined }))
   }
 
   const periodLabel =
@@ -88,11 +110,20 @@ export function CaptadorDashboard() {
 
       <div className="mb-6 mt-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h2 className="text-[18px] font-bold text-[#1A3A52]">
-          Seu Desempenho <span className="text-blue-600">{periodLabel}</span>
+          Seu Desempenho <span className="text-blue-600">{periodLabel}</span> ({transactionType})
         </h2>
         {Object.values(activeFilters).some((v) => v !== undefined) && (
           <div className="flex flex-wrap items-center gap-2 animate-in fade-in zoom-in-95 duration-200">
             <span className="text-xs font-bold text-gray-500 uppercase mr-1">Filtros Ativos:</span>
+            {activeFilters.card && (
+              <Badge
+                variant="secondary"
+                className="bg-indigo-50 text-indigo-700 hover:bg-indigo-100 cursor-pointer shadow-sm border-indigo-200"
+                onClick={() => clearFilter('card')}
+              >
+                Card: {activeFilters.card} <X className="w-3 h-3 ml-1" />
+              </Badge>
+            )}
             {activeFilters.tipo && (
               <Badge
                 variant="secondary"
@@ -130,19 +161,28 @@ export function CaptadorDashboard() {
         )}
       </div>
 
-      <MetricsCards metrics={metrics} loading={loading} />
+      <MetricsCards
+        metrics={metrics}
+        loading={loading}
+        activeFilter={activeFilters.card}
+        onCardClick={handleCardClick}
+      />
 
       <DashboardCharts charts={charts} loading={loading} onFilterClick={handleFilterClick} />
 
-      <ImoveisCadastradosList
-        imoveis={imoveisFiltrados}
-        loading={loading}
-        onSelect={setSelectedImovel}
-      />
-
-      <DemandasAbertasTable demandas={demandasFiltradas} />
-
-      <ImoveisPerdidosTable perdidos={perdidos} />
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-8">
+        <div className="lg:col-span-7 flex flex-col gap-6">
+          <ImoveisCadastradosList
+            imoveis={imoveisFiltrados}
+            loading={loading}
+            onSelect={setSelectedImovel}
+          />
+        </div>
+        <div className="lg:col-span-5 flex flex-col gap-6">
+          <DemandasAbertasTable demandas={demandasFiltradas} />
+          {activeFilters.card === 'perdidos' && <ImoveisPerdidosTable perdidos={perdidos} />}
+        </div>
+      </div>
 
       <div className="fixed bottom-6 left-0 right-0 pointer-events-none flex justify-center z-40 px-4">
         <div className="bg-white/90 backdrop-blur-md border border-gray-200 shadow-xl rounded-2xl p-2 flex gap-2 pointer-events-auto">

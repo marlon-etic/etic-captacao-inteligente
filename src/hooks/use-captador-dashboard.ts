@@ -5,7 +5,7 @@ import { useAuth } from '@/hooks/use-auth'
 import { toast } from 'sonner'
 
 export function useCaptadorDashboard() {
-  const { period, customRange } = usePeriodStore()
+  const { period, customRange, transactionType } = usePeriodStore()
   const { user } = useAuth()
 
   const [metrics, setMetrics] = useState<any>(null)
@@ -47,13 +47,19 @@ export function useCaptadorDashboard() {
         startIso = d.toISOString()
       }
 
-      const { data: imoveisData, error: errImv } = await supabase
+      let queryImv = supabase
         .from('imoveis_captados')
         .select('*')
         .eq('user_captador_id', user.id)
         .gte('created_at', startIso)
         .lte('created_at', endIso)
         .order('created_at', { ascending: false })
+
+      if (transactionType !== 'Todos') {
+        queryImv = queryImv.in('tipo', [transactionType, 'Ambos'])
+      }
+
+      const { data: imoveisData, error: errImv } = await queryImv
 
       if (errImv) throw errImv
 
@@ -63,25 +69,34 @@ export function useCaptadorDashboard() {
       )
       const receita = convertidos.reduce((acc, i) => acc + Number(i.preco || i.valor || 0), 0)
 
-      const { data: demLoc } = await supabase
-        .from('demandas_locacao')
-        .select('*, imovel_demand_match(id)')
-        .eq('vinculacao_captador_id', user.id)
-        .in('status_demanda', ['aberta', 'em busca'])
-        .gte('created_at', startIso)
-        .lte('created_at', endIso)
+      let demLocData: any[] = []
+      let demVenData: any[] = []
 
-      const { data: demVen } = await supabase
-        .from('demandas_vendas')
-        .select('*, imovel_demand_match(id)')
-        .eq('vinculacao_captador_id', user.id)
-        .in('status_demanda', ['aberta', 'em busca'])
-        .gte('created_at', startIso)
-        .lte('created_at', endIso)
+      if (transactionType === 'Todos' || transactionType === 'Locação') {
+        const { data } = await supabase
+          .from('demandas_locacao')
+          .select('*, imovel_demand_match(id)')
+          .eq('vinculacao_captador_id', user.id)
+          .in('status_demanda', ['aberta', 'em busca'])
+          .gte('created_at', startIso)
+          .lte('created_at', endIso)
+        demLocData = data || []
+      }
+
+      if (transactionType === 'Todos' || transactionType === 'Venda') {
+        const { data } = await supabase
+          .from('demandas_vendas')
+          .select('*, imovel_demand_match(id)')
+          .eq('vinculacao_captador_id', user.id)
+          .in('status_demanda', ['aberta', 'em busca'])
+          .gte('created_at', startIso)
+          .lte('created_at', endIso)
+        demVenData = data || []
+      }
 
       const todasDemandas = [
-        ...(demLoc || []).map((d) => ({ ...d, tipo: 'Locação' })),
-        ...(demVen || []).map((d) => ({ ...d, tipo: 'Venda' })),
+        ...demLocData.map((d) => ({ ...d, tipo: 'Locação' })),
+        ...demVenData.map((d) => ({ ...d, tipo: 'Venda' })),
       ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 
       const sobDemanda = (imoveisData || []).filter(
@@ -163,7 +178,7 @@ export function useCaptadorDashboard() {
     } finally {
       setLoading(false)
     }
-  }, [period, customRange, user])
+  }, [period, customRange, transactionType, user])
 
   useEffect(() => {
     fetchData()

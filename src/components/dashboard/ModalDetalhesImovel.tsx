@@ -193,12 +193,7 @@ export function ModalDetalhesImovel({ imovel, onClose, refetch }: any) {
               >
                 Informações
               </TabsTrigger>
-              <TabsTrigger
-                value="acoes"
-                className="data-[state=active]:border-b-[3px] data-[state=active]:border-[#1A3A52] data-[state=active]:text-[#1A3A52] font-bold text-gray-500 data-[state=active]:shadow-none rounded-none px-0 pb-3 transition-colors"
-              >
-                Ações Rápidas
-              </TabsTrigger>
+
               <TabsTrigger
                 value="compatibilidade"
                 className="data-[state=active]:border-b-[3px] data-[state=active]:border-[#1A3A52] data-[state=active]:text-[#1A3A52] font-bold text-gray-500 data-[state=active]:shadow-none rounded-none px-0 pb-3 transition-colors"
@@ -222,6 +217,20 @@ export function ModalDetalhesImovel({ imovel, onClose, refetch }: any) {
 
           <ScrollArea className="flex-1 p-6">
             <TabsContent value="info" className="mt-0 space-y-6 animate-in fade-in duration-300">
+              <div className="flex gap-4">
+                <Button
+                  onClick={() =>
+                    window.open(
+                      `https://www.eticimoveis.com.br/imovel/${imovel.codigo_imovel}`,
+                      '_blank',
+                    )
+                  }
+                  className="bg-emerald-600 hover:bg-emerald-700 font-bold shadow-md shadow-emerald-600/20"
+                >
+                  <ExternalLink className="w-4 h-4 mr-2" /> Ver no Site
+                </Button>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
                   <h4 className="text-xs font-black text-gray-400 uppercase tracking-wider mb-1">
@@ -265,23 +274,8 @@ export function ModalDetalhesImovel({ imovel, onClose, refetch }: any) {
                   ))}
                 </div>
               )}
-            </TabsContent>
 
-            <TabsContent value="acoes" className="mt-0 space-y-6 animate-in fade-in duration-300">
-              <div className="flex gap-4 mb-6">
-                <Button
-                  onClick={() =>
-                    window.open(
-                      `https://www.eticimoveis.com.br/imovel/${imovel.codigo_imovel}`,
-                      '_blank',
-                    )
-                  }
-                  className="bg-emerald-600 hover:bg-emerald-700 font-bold shadow-md shadow-emerald-600/20"
-                >
-                  <ExternalLink className="w-4 h-4 mr-2" /> Ver no Site
-                </Button>
-              </div>
-              <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+              <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4 mt-6">
                 <h3 className="font-black text-[#1A3A52] text-lg">✏️ Editar Captação</h3>
                 <div>
                   <label className="text-sm font-bold text-gray-600 block mb-2">Valor (R$)</label>

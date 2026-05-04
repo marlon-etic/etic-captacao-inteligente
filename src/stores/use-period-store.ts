@@ -1,12 +1,15 @@
 import { create } from 'zustand'
 
 export type Period = 'today' | 'week' | 'month' | 'custom'
+export type TransactionType = 'Todos' | 'Locação' | 'Venda'
 
 interface PeriodStore {
   period: Period
   customRange: { start: Date; end: Date } | null
+  transactionType: TransactionType
   setPeriod: (period: Period) => void
   setCustomRange: (range: { start: Date; end: Date } | null) => void
+  setTransactionType: (type: TransactionType) => void
 }
 
 export const usePeriodStore = create<PeriodStore>((set) => ({
@@ -17,6 +20,7 @@ export const usePeriodStore = create<PeriodStore>((set) => ({
     if (start && end) return { start: new Date(start), end: new Date(end) }
     return null
   })(),
+  transactionType: (localStorage.getItem('tipo_transacao') as TransactionType) || 'Todos',
   setPeriod: (period) => {
     localStorage.setItem('periodo_ativo', period)
     set({ period })
@@ -30,5 +34,9 @@ export const usePeriodStore = create<PeriodStore>((set) => ({
       localStorage.removeItem('periodo_custom_end')
     }
     set({ customRange: range })
+  },
+  setTransactionType: (type) => {
+    localStorage.setItem('tipo_transacao', type)
+    set({ transactionType: type })
   },
 }))
