@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { PeriodSelector } from '@/components/dashboard/PeriodSelector'
 import { MetricsCards } from '@/components/dashboard/MetricsCards'
 import { DashboardCharts } from '@/components/dashboard/DashboardCharts'
-import { ImoveisCadastradosGrid } from '@/components/dashboard/ImoveisCadastradosGrid'
+import { ImoveisCadastradosList } from '@/components/dashboard/ImoveisCadastradosList'
 import { DemandasAbertasTable } from '@/components/dashboard/DemandasAbertasTable'
 import { ImoveisPerdidosTable } from '@/components/dashboard/ImoveisPerdidosTable'
 import { ModalDetalhesImovel } from '@/components/dashboard/ModalDetalhesImovel'
@@ -10,14 +10,20 @@ import { useCaptadorDashboard } from '@/hooks/use-captador-dashboard'
 import { CaptadorEngajamentoModal } from '@/components/dashboard/CaptadorEngajamentoModal'
 import { usePeriodStore } from '@/stores/use-period-store'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Link } from 'react-router-dom'
-import { Target, Trophy, HelpCircle } from 'lucide-react'
+import { Target, Trophy, HelpCircle, X } from 'lucide-react'
 
 export function CaptadorDashboard() {
   const { metrics, imoveis, demandas, perdidos, charts, loading, refetch } = useCaptadorDashboard()
   const { period } = usePeriodStore()
   const [showModal, setShowModal] = useState(false)
   const [selectedImovel, setSelectedImovel] = useState<any>(null)
+  const [activeFilters, setActiveFilters] = useState<{
+    tipo?: string
+    faixa?: string
+    status?: string
+  }>({})
 
   useEffect(() => {
     const lastShown = localStorage.getItem('captador_engajamento_modal_last_shown')
@@ -27,6 +33,36 @@ export function CaptadorDashboard() {
       localStorage.setItem('captador_engajamento_modal_last_shown', today)
     }
   }, [])
+
+  const imoveisFiltrados = useMemo(() => {
+    return imoveis.filter((i) => {
+      if (activeFilters.tipo && i.tipo_imovel !== activeFilters.tipo) return false
+      if (activeFilters.faixa) {
+        const v = Number(i.preco || i.valor || 0)
+        if (activeFilters.faixa === 'Até R$ 500k' && v > 500000) return false
+        if (activeFilters.faixa === 'R$ 500k - R$ 1M' && (v <= 500000 || v > 1000000)) return false
+        if (activeFilters.faixa === 'R$ 1M - R$ 2M' && (v <= 1000000 || v > 2000000)) return false
+        if (activeFilters.faixa === 'Acima de R$ 2M' && v <= 2000000) return false
+      }
+      return true
+    })
+  }, [imoveis, activeFilters])
+
+  const demandasFiltradas = useMemo(() => {
+    return demandas.filter((d) => {
+      if (activeFilters.tipo && !(d.tipo_imovel || '').includes(activeFilters.tipo)) return false
+      if (activeFilters.status && d.status_demanda !== activeFilters.status) return false
+      return true
+    })
+  }, [demandas, activeFilters])
+
+  const handleFilterClick = (type: string, value: string) => {
+    setActiveFilters((prev) => ({ ...prev, [type]: value }))
+  }
+
+  const clearFilter = (type: string) => {
+    setActiveFilters((prev) => ({ ...prev, [type]: undefined }))
+  }
 
   const periodLabel =
     period === 'today'
@@ -50,22 +86,61 @@ export function CaptadorDashboard() {
 
       <PeriodSelector />
 
-      <div className="mb-6 mt-8">
+      <div className="mb-6 mt-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h2 className="text-[18px] font-bold text-[#1A3A52]">
           Seu Desempenho <span className="text-blue-600">{periodLabel}</span>
         </h2>
+        {Object.values(activeFilters).some((v) => v !== undefined) && (
+          <div className="flex flex-wrap items-center gap-2 animate-in fade-in zoom-in-95 duration-200">
+            <span className="text-xs font-bold text-gray-500 uppercase mr-1">Filtros Ativos:</span>
+            {activeFilters.tipo && (
+              <Badge
+                variant="secondary"
+                className="bg-blue-50 text-blue-700 hover:bg-blue-100 cursor-pointer shadow-sm border-blue-200"
+                onClick={() => clearFilter('tipo')}
+              >
+                Tipo: {activeFilters.tipo} <X className="w-3 h-3 ml-1" />
+              </Badge>
+            )}
+            {activeFilters.faixa && (
+              <Badge
+                variant="secondary"
+                className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 cursor-pointer shadow-sm border-emerald-200"
+                onClick={() => clearFilter('faixa')}
+              >
+                Faixa: {activeFilters.faixa} <X className="w-3 h-3 ml-1" />
+              </Badge>
+            )}
+            {activeFilters.status && (
+              <Badge
+                variant="secondary"
+                className="bg-amber-50 text-amber-700 hover:bg-amber-100 cursor-pointer shadow-sm border-amber-200"
+                onClick={() => clearFilter('status')}
+              >
+                Status: {activeFilters.status} <X className="w-3 h-3 ml-1" />
+              </Badge>
+            )}
+            <button
+              onClick={() => setActiveFilters({})}
+              className="text-xs text-gray-400 hover:text-gray-700 font-bold transition-colors ml-2"
+            >
+              Limpar Todos
+            </button>
+          </div>
+        )}
       </div>
 
       <MetricsCards metrics={metrics} loading={loading} />
 
-      <div className="mb-6 mt-8">
-        <h2 className="text-[18px] font-bold text-[#1A3A52]">🏠 Seus Imóveis Cadastrados</h2>
-      </div>
-      <ImoveisCadastradosGrid imoveis={imoveis} loading={loading} onSelect={setSelectedImovel} />
+      <DashboardCharts charts={charts} loading={loading} onFilterClick={handleFilterClick} />
 
-      <DemandasAbertasTable demandas={demandas} />
+      <ImoveisCadastradosList
+        imoveis={imoveisFiltrados}
+        loading={loading}
+        onSelect={setSelectedImovel}
+      />
 
-      <DashboardCharts charts={charts} loading={loading} />
+      <DemandasAbertasTable demandas={demandasFiltradas} />
 
       <ImoveisPerdidosTable perdidos={perdidos} />
 

@@ -21,10 +21,13 @@ export function DemandasAbertasTable({ demandas }: { demandas: any[] }) {
 
   return (
     <Card className="mb-8 border-gray-100 shadow-[0_4px_12px_rgba(0,0,0,0.05)] rounded-2xl overflow-hidden bg-white">
-      <CardHeader className="bg-gray-50/50 border-b border-gray-100 pb-4">
+      <CardHeader className="bg-gray-50/50 border-b border-gray-100 pb-4 flex flex-row items-center justify-between">
         <CardTitle className="text-lg font-black text-[#1A3A52]">
           🎯 Demandas Abertas (Foco Rápido)
         </CardTitle>
+        <Badge variant="outline" className="font-bold text-gray-500 bg-white">
+          {demandas.length} listadas
+        </Badge>
       </CardHeader>
       <CardContent className="p-0">
         <div className="overflow-x-auto">

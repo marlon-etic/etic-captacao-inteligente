@@ -107,15 +107,45 @@ export function useCaptadorDashboard() {
       setPerdidos(perdidosData)
       setDemandas(todasDemandas)
 
-      // Imóveis por tipo
-      const barDataMap: Record<string, number> = {}
-      ;(imoveisData || []).forEach((i) => {
-        const tipo = i.tipo_imovel || 'Outros'
-        barDataMap[tipo] = (barDataMap[tipo] || 0) + 1
+      // Faixas de Preço
+      const faixas: Record<string, number> = {
+        'Até R$ 500k': 0,
+        'R$ 500k - R$ 1M': 0,
+        'R$ 1M - R$ 2M': 0,
+        'Acima de R$ 2M': 0,
+      }
+
+      imoveisData?.forEach((i) => {
+        const v = Number(i.preco || i.valor || 0)
+        if (v <= 500000) faixas['Até R$ 500k']++
+        else if (v <= 1000000) faixas['R$ 500k - R$ 1M']++
+        else if (v <= 2000000) faixas['R$ 1M - R$ 2M']++
+        else faixas['Acima de R$ 2M']++
       })
-      const barData = Object.entries(barDataMap)
+      const faixaPrecoData = Object.entries(faixas)
         .map(([name, value]) => ({ name, value }))
-        .sort((a, b) => b.value - a.value)
+        .filter((d) => d.value > 0)
+
+      // Oferta vs Demanda (Imóveis x Demandas por Tipo)
+      const ofertaDemandaMap: Record<string, { name: string; oferta: number; demanda: number }> = {}
+
+      imoveisData?.forEach((i) => {
+        const t = i.tipo_imovel || 'Outros'
+        if (!ofertaDemandaMap[t]) ofertaDemandaMap[t] = { name: t, oferta: 0, demanda: 0 }
+        ofertaDemandaMap[t].oferta++
+      })
+
+      todasDemandas.forEach((d) => {
+        const tStr = d.tipo_imovel || 'Outros'
+        const ts = tStr.split(',').map((s: string) => s.trim())
+        ts.forEach((t: string) => {
+          if (!ofertaDemandaMap[t]) ofertaDemandaMap[t] = { name: t, oferta: 0, demanda: 0 }
+          ofertaDemandaMap[t].demanda++
+        })
+      })
+      const ofertaDemandaData = Object.values(ofertaDemandaMap).sort(
+        (a, b) => b.oferta + b.demanda - (a.oferta + a.demanda),
+      )
 
       // Demandas por status
       const pieDataMap: Record<string, number> = {}
@@ -127,7 +157,7 @@ export function useCaptadorDashboard() {
         .map(([name, value]) => ({ name, value }))
         .filter((d) => d.value > 0)
 
-      setCharts({ barData, pieData })
+      setCharts({ ofertaDemandaData, pieData, faixaPrecoData })
     } catch (err: any) {
       toast.error('Erro ao carregar dados do período: ' + err.message)
     } finally {
