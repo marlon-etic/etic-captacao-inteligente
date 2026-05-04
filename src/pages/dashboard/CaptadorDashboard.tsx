@@ -5,7 +5,7 @@ import { DemandasAbertasView } from '@/components/DemandasAbertasView'
 import { CapturedPropertiesView } from '@/components/CapturedPropertiesView'
 import { DemandasPerdidasView } from '@/components/DemandasPerdidasView'
 import { ScrollableTabs } from '@/components/ScrollableTabs'
-import { CaptadorPerformanceTab } from '@/components/dashboard/CaptadorPerformanceTab'
+import { CaptadorDashboardOverview } from '@/components/dashboard/CaptadorDashboardOverview'
 import { CaptadorEngajamentoModal } from '@/components/dashboard/CaptadorEngajamentoModal'
 import useAppStore from '@/stores/useAppStore'
 
@@ -48,13 +48,7 @@ export function CaptadorDashboard() {
 
         <div className="mt-4 transition-opacity duration-300 ease-in animate-in fade-in">
           <TabsContent value="dashboard" className="m-0 border-none">
-            {currentUser && (
-              <CaptadorPerformanceTab
-                demands={demands}
-                currentUser={currentUser}
-                onViewDemands={() => handleTabChange('demandas-abertas')}
-              />
-            )}
+            {currentUser && <CaptadorDashboardOverview onTabChange={handleTabChange} />}
           </TabsContent>
           <TabsContent value="demandas-abertas" className="m-0 border-none">
             <DemandasAbertasView />
