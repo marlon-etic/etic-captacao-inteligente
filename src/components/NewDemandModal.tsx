@@ -126,7 +126,15 @@ function FormSummary({
   )
 }
 
-export function NewDemandModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+export function NewDemandModal({
+  isOpen,
+  onClose,
+  onSuccess,
+}: {
+  isOpen: boolean
+  onClose: () => void
+  onSuccess?: (data?: any) => void
+}) {
   const { addDemand, currentUser } = useAppStore()
   const { toast } = useToast()
   const navigate = useNavigate()
@@ -292,7 +300,12 @@ export function NewDemandModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
         JSON.stringify({ status: 'Todos', urgencia: 'Todos', data: 'Todos', bairro: '' }),
       )
       window.dispatchEvent(new Event('filters-updated'))
-      navigate('/app?tab=minhas-demandas')
+
+      if (onSuccess) {
+        onSuccess(values.type === 'Aluguel' ? 'Aluguel' : 'Venda')
+      } else {
+        navigate('/app?tab=minhas-demandas')
+      }
     } catch (e: any) {
       toast({
         title: 'Erro',

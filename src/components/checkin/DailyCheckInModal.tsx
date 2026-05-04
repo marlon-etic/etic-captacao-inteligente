@@ -13,8 +13,8 @@ import { YesterdaySummary } from './YesterdaySummary'
 import { TodaySummaryCards } from './TodaySummaryCards'
 import { LogVisitSection } from './LogVisitSection'
 import { LogClosingSection } from './LogClosingSection'
-import { NewClientCheckInForm } from './NewClientCheckInForm'
 import { checkinService, CheckinDemanda } from '@/services/checkinService'
+import { NewDemandModal } from '@/components/NewDemandModal'
 import { useAuth } from '@/hooks/use-auth'
 import { useToast } from '@/hooks/use-toast'
 import { sendWebhookEvent } from '@/services/n8nService'
@@ -141,11 +141,18 @@ export function DailyCheckInModal({ isOpen, onClose }: { isOpen: boolean; onClos
         </div>
       </DialogContent>
 
-      <NewClientCheckInForm
+      <NewDemandModal
         isOpen={showNewClientForm}
         onClose={() => setShowNewClientForm(false)}
-        onSuccess={() => {
+        onSuccess={async () => {
           setShowNewClientForm(false)
+          if (user) {
+            const today = await checkinService.getTodayStats(user.id)
+            await checkinService.updateTodayStats(user.id, {
+              novos_clientes: (today?.novos_clientes || 0) + 1,
+            })
+            await checkinService.updateAcompanhamentoDiario(user.id, { novas_demandas_dia: 1 })
+          }
           loadData()
         }}
       />
