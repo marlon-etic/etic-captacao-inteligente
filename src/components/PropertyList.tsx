@@ -41,8 +41,12 @@ export function PropertyList({ initialType }: Props) {
     return properties.filter((p) => {
       if (deletedIds.includes(p.id)) return false
       if (filters.tipo !== 'Todos' && p.tipo !== filters.tipo && p.tipo !== 'Ambos') return false
-      if (filters.bairro && !p.endereco?.toLowerCase().includes(filters.bairro.toLowerCase()))
-        return false
+      if (filters.bairro) {
+        const term = filters.bairro.toLowerCase()
+        const matchEnd = p.endereco?.toLowerCase().includes(term)
+        const matchCod = p.codigo_imovel?.toLowerCase().includes(term)
+        if (!matchEnd && !matchCod) return false
+      }
       if (filters.minValor && p.preco < Number(filters.minValor)) return false
       if (filters.maxValor && p.preco > Number(filters.maxValor)) return false
       if (filters.dormitorios && (p.dormitorios || 0) < Number(filters.dormitorios)) return false

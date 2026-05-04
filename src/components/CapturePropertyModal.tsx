@@ -15,7 +15,7 @@ import { SupabaseDemand } from '@/hooks/use-supabase-demands'
 import { useToast } from '@/hooks/use-toast'
 import useAppStore from '@/stores/useAppStore'
 import { supabase } from '@/lib/supabase/client'
-import { X, CheckCircle2 } from 'lucide-react'
+import { X, CheckCircle2, Image as ImageIcon } from 'lucide-react'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { BairroCombobox } from './BairroCombobox'
 
@@ -38,7 +38,9 @@ export function CapturePropertyModal({ demand, isOpen, onClose, onSuccess }: Pro
   const [tipo, setTipo] = useState('')
   const [tipo_imovel, setTipoImovel] = useState('Apartamento')
   const [notes, setNotes] = useState('')
+  const [fotos, setFotos] = useState<File[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   useEffect(() => {
@@ -57,69 +59,129 @@ export function CapturePropertyModal({ demand, isOpen, onClose, onSuccess }: Pro
       setParking(demand.vagas_estacionamento?.toString() || '')
       setTipoImovel('Apartamento')
       setNotes('')
+      setFotos([])
+      setUploadProgress(0)
       setErrors({})
     }
   }, [isOpen, demand])
 
   if (!demand) return null
 
-  // ✅ VALIDAÇÃO INTELIGENTE DE TIPO DE IMÓVEL
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      setFotos((prev) => [...prev, ...Array.from(e.target.files!)])
+    }
+  }
+
+  const compressImage = (file: File): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.readAsDataURL(file)
+      reader.onload = (event) => {
+        const img = new Image()
+        img.src = event.target?.result as string
+        img.onload = () => {
+          const canvas = document.createElement('canvas')
+          let width = img.width
+          let height = img.height
+          const max_size = 1200
+          if (width > height) {
+            if (width > max_size) {
+              height *= max_size / width
+              width = max_size
+            }
+          } else {
+            if (height > max_size) {
+              width *= max_size / height
+              height = max_size
+            }
+          }
+          canvas.width = width
+          canvas.height = height
+          const ctx = canvas.getContext('2d')
+          ctx?.drawImage(img, 0, 0, width, height)
+          canvas.toBlob(
+            (blob) => {
+              if (blob) resolve(blob)
+              else reject(new Error('Canvas to Blob failed'))
+            },
+            'image/jpeg',
+            0.8,
+          )
+        }
+      }
+    })
+  }
+
+  const uploadFotos = async (imovelId: string): Promise<string[]> => {
+    const urls: string[] = []
+    if (fotos.length === 0) return urls
+
+    for (let i = 0; i < fotos.length; i++) {
+      const file = fotos[i]
+      const fileName = `${imovelId}/${Math.random().toString(36).substring(2)}_${Date.now()}.jpg`
+
+      setUploadProgress(Math.round((i / fotos.length) * 100))
+
+      try {
+        const compressedBlob = await compressImage(file)
+        const { error, data } = await supabase.storage
+          .from('imoveis-captados')
+          .upload(fileName, compressedBlob, {
+            cacheControl: '3600',
+            upsert: false,
+            contentType: 'image/jpeg',
+          })
+
+        if (!error && data) {
+          const {
+            data: { publicUrl },
+          } = supabase.storage.from('imoveis-captados').getPublicUrl(fileName)
+          urls.push(publicUrl)
+        }
+      } catch (err) {
+        console.error('Erro na compressão ou upload', err)
+      }
+    }
+    setUploadProgress(100)
+    return urls
+  }
+
   const validateAndNormalizeTipo = (
     preco: number,
     demandaVendaId?: string | null,
     demandaLocacaoId?: string | null,
     tipoAtual?: string,
-  ): {
-    isValid: boolean
-    tipo: 'Venda' | 'Locação' | 'Ambos'
-    erro?: string
-  } => {
+  ): { isValid: boolean; tipo: 'Venda' | 'Locação' | 'Ambos'; erro?: string } => {
     if (!preco || preco === 0) {
-      return {
-        isValid: false,
-        tipo: 'Ambos',
-        erro: '❌ Preencha o valor do imóvel para determinar o tipo',
-      }
+      return { isValid: false, tipo: 'Ambos', erro: '❌ Preencha o valor do imóvel' }
     }
-
     if (tipoAtual === 'Locação' && preco > 100000) {
       return { isValid: false, tipo: 'Locação', erro: 'Aluguel deve ter valor até R$ 100.000' }
     }
-
     if (tipoAtual === 'Venda' && preco <= 100000) {
       return { isValid: false, tipo: 'Venda', erro: 'Venda deve ter valor acima de R$ 100.000' }
     }
-
     if (tipoAtual === 'Ambos' && preco <= 100000) {
       return { isValid: false, tipo: 'Ambos', erro: 'Ambos deve ter valor acima de R$ 100.000' }
     }
-
     return { isValid: true, tipo: (tipoAtual as any) || 'Ambos' }
   }
 
   const handleSubmit = async () => {
     if (!tipo) {
-      toast({
-        title: '❌ Tipo de transação é obrigatória',
-        description: 'Selecione se o imóvel é para Venda, Locação ou Ambos',
-        variant: 'destructive',
-      })
-      setErrors((prev) => ({ ...prev, tipo: 'Tipo de transação é obrigatório' }))
+      toast({ title: '❌ Transação obrigatória', variant: 'destructive' })
+      setErrors((prev) => ({ ...prev, tipo: 'Obrigatório' }))
       return
     }
-
     if (!tipo_imovel) {
-      toast({
-        title: '❌ Tipo de imóvel é obrigatório',
-        description: 'Selecione Apartamento, Casa, Comercial ou Galpão',
-        variant: 'destructive',
-      })
-      setErrors((prev) => ({ ...prev, tipo_imovel: 'Tipo de imóvel é obrigatório' }))
+      toast({ title: '❌ Tipo de imóvel obrigatório', variant: 'destructive' })
+      setErrors((prev) => ({ ...prev, tipo_imovel: 'Obrigatório' }))
       return
     }
 
     const newErrors: Record<string, string> = {}
-    if (!code) newErrors.code = 'Código é obrigatório'
+    if (!code) newErrors.code = 'Obrigatório'
 
     const bairrosArray: string[] = address
       ? address
@@ -127,56 +189,19 @@ export function CapturePropertyModal({ demand, isOpen, onClose, onSuccess }: Pro
           .map((s) => s.trim())
           .filter(Boolean)
       : []
-    if (!address || !Array.isArray(bairrosArray) || bairrosArray.length === 0) {
-      newErrors.address = 'Bairro é obrigatório (deve ser um array de strings)'
+    if (!address || bairrosArray.length === 0) {
+      newErrors.address = 'Obrigatório'
     }
 
     const parsedPrice = parseFloat(price)
-    if (!price || isNaN(parsedPrice) || parsedPrice <= 0) {
-      newErrors.price = 'Preço deve ser maior que zero'
-    } else if (tipo) {
-      if (tipo === 'Locação' && parsedPrice > 100000) {
-        newErrors.price = 'Aluguel deve ter valor até R$ 100.000'
-      }
-      if (tipo === 'Venda' && parsedPrice <= 100000) {
-        newErrors.price = 'Venda deve ter valor acima de R$ 100.000'
-      }
-      if (tipo === 'Ambos' && parsedPrice <= 100000) {
-        newErrors.price = 'Ambos deve ter valor acima de R$ 100.000'
-      }
-    }
+    if (!price || isNaN(parsedPrice) || parsedPrice <= 0) newErrors.price = 'Inválido'
 
-    let parsedBedrooms = 0
-    if (bedrooms.trim() !== '') {
-      if (!/^\d+$/.test(bedrooms.trim())) {
-        newErrors.bedrooms = 'Apenas números permitidos'
-      } else {
-        parsedBedrooms = parseInt(bedrooms, 10)
-        if (isNaN(parsedBedrooms) || parsedBedrooms < 0) {
-          newErrors.bedrooms = 'Valor inválido'
-        }
-      }
-    }
-
-    let parsedParking = 0
-    if (parking.trim() !== '') {
-      if (!/^\d+$/.test(parking.trim())) {
-        newErrors.parking = 'Apenas números permitidos'
-      } else {
-        parsedParking = parseInt(parking, 10)
-        if (isNaN(parsedParking) || parsedParking < 0) {
-          newErrors.parking = 'Valor inválido'
-        }
-      }
-    }
+    let parsedBedrooms = parseInt(bedrooms || '0', 10)
+    let parsedParking = parseInt(parking || '0', 10)
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors)
-      toast({
-        title: '❌ Erro de validação',
-        description: 'Verifique os campos destacados antes de salvar.',
-        variant: 'destructive',
-      })
+      toast({ title: '❌ Verifique os campos destacados.', variant: 'destructive' })
       return
     }
 
@@ -185,13 +210,11 @@ export function CapturePropertyModal({ demand, isOpen, onClose, onSuccess }: Pro
 
     try {
       const extraInfo = `Dorms: ${parsedBedrooms}, Vagas: ${parsedParking}. Obs: ${notes || '-'}`
-      const enderecoValue = bairrosArray.length > 0 ? bairrosArray.join(', ') : address
-
       const isLocacao = 'sdr_id' in demand || 'renda_mensal_estimada' in demand
 
       const payload = {
         codigo_imovel: code.toUpperCase(),
-        endereco: enderecoValue,
+        endereco: bairrosArray.join(', '),
         preco: parsedPrice,
         status_captacao: 'pendente',
         user_captador_id: currentUser?.id,
@@ -207,13 +230,6 @@ export function CapturePropertyModal({ demand, isOpen, onClose, onSuccess }: Pro
         etapa_funil: 'capturado',
       }
 
-      console.log('[CapturaImovel] Tipos de dados processados:', {
-        dormitorios: { value: payload.dormitorios, type: typeof payload.dormitorios },
-        vagas: { value: payload.vagas, type: typeof payload.vagas },
-        endereco: { value: bairrosArray, type: 'Array<string>' },
-      })
-
-      // ✅ VALIDAR TIPO DE IMÓVEL ANTES DE SALVAR
       const validation = validateAndNormalizeTipo(
         payload.preco,
         payload.demanda_venda_id,
@@ -222,18 +238,18 @@ export function CapturePropertyModal({ demand, isOpen, onClose, onSuccess }: Pro
       )
 
       if (!validation.isValid) {
-        toast({
-          title: validation.erro || 'Erro de validação',
-          variant: 'destructive',
-        })
+        toast({ title: validation.erro || 'Erro de validação', variant: 'destructive' })
         setIsSubmitting(false)
         return
       }
 
-      // ✅ DEFINIR TIPO AUTOMATICAMENTE
       payload.tipo = validation.tipo
 
-      const { error } = await supabase.from('imoveis_captados').insert(payload)
+      const { data: newImovel, error } = await supabase
+        .from('imoveis_captados')
+        .insert(payload)
+        .select('id')
+        .single()
 
       if (error) {
         if (error.code === '23505') {
@@ -241,6 +257,16 @@ export function CapturePropertyModal({ demand, isOpen, onClose, onSuccess }: Pro
           throw new Error('Código do imóvel já cadastrado.')
         }
         throw error
+      }
+
+      if (newImovel && fotos.length > 0) {
+        const photoUrls = await uploadFotos(newImovel.id)
+        if (photoUrls.length > 0) {
+          await supabase
+            .from('imoveis_captados')
+            .update({ fotos: photoUrls })
+            .eq('id', newImovel.id)
+        }
       }
 
       toast({
@@ -254,7 +280,7 @@ export function CapturePropertyModal({ demand, isOpen, onClose, onSuccess }: Pro
     } catch (err: any) {
       toast({
         title: 'Erro ao captar imóvel',
-        description: err.message || 'Verifique os dados e tente novamente.',
+        description: err.message || 'Tente novamente.',
         variant: 'destructive',
       })
     } finally {
@@ -400,7 +426,7 @@ export function CapturePropertyModal({ demand, isOpen, onClose, onSuccess }: Pro
               <div>
                 <Label className="font-bold text-[#333333] mb-1.5 block">Dormitórios</Label>
                 <Input
-                  type="text"
+                  type="number"
                   value={bedrooms}
                   onChange={(e) => {
                     setBedrooms(e.target.value)
@@ -409,15 +435,12 @@ export function CapturePropertyModal({ demand, isOpen, onClose, onSuccess }: Pro
                   placeholder="Ex: 2"
                   className={errors.bedrooms ? 'border-red-500 ring-red-500' : ''}
                 />
-                {errors.bedrooms && (
-                  <p className="text-red-500 text-xs mt-1 font-medium">{errors.bedrooms}</p>
-                )}
               </div>
 
               <div>
                 <Label className="font-bold text-[#333333] mb-1.5 block">Vagas</Label>
                 <Input
-                  type="text"
+                  type="number"
                   value={parking}
                   onChange={(e) => {
                     setParking(e.target.value)
@@ -426,8 +449,60 @@ export function CapturePropertyModal({ demand, isOpen, onClose, onSuccess }: Pro
                   placeholder="Ex: 1"
                   className={errors.parking ? 'border-red-500 ring-red-500' : ''}
                 />
-                {errors.parking && (
-                  <p className="text-red-500 text-xs mt-1 font-medium">{errors.parking}</p>
+              </div>
+
+              <div className="md:col-span-2">
+                <Label className="font-bold text-[#333333] mb-1.5 block">Fotos do Imóvel</Label>
+                <div className="border-2 border-dashed border-[#E5E5E5] rounded-xl p-6 text-center hover:bg-slate-50 transition-colors cursor-pointer relative">
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    onChange={handlePhotoSelect}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  />
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="w-12 h-12 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center">
+                      <ImageIcon className="w-6 h-6" />
+                    </div>
+                    <span className="font-bold text-slate-700">Clique ou arraste fotos aqui</span>
+                    <span className="text-xs text-slate-500">
+                      {fotos.length} fotos selecionadas
+                    </span>
+                  </div>
+                </div>
+                {fotos.length > 0 && (
+                  <div className="flex gap-2 mt-3 overflow-x-auto pb-2">
+                    {fotos.map((file, i) => (
+                      <div
+                        key={i}
+                        className="w-16 h-16 shrink-0 rounded-lg overflow-hidden border bg-slate-100 relative group"
+                      >
+                        <img
+                          src={URL.createObjectURL(file)}
+                          alt=""
+                          className="w-full h-full object-cover"
+                        />
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault()
+                            setFotos((prev) => prev.filter((_, idx) => idx !== i))
+                          }}
+                          className="absolute top-1 right-1 w-5 h-5 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {isSubmitting && uploadProgress > 0 && uploadProgress < 100 && (
+                  <div className="w-full bg-slate-200 h-2 rounded-full mt-2 overflow-hidden">
+                    <div
+                      className="bg-blue-500 h-full transition-all duration-300"
+                      style={{ width: `${uploadProgress}%` }}
+                    ></div>
+                  </div>
                 )}
               </div>
 
@@ -460,10 +535,13 @@ export function CapturePropertyModal({ demand, isOpen, onClose, onSuccess }: Pro
             type="button"
             onClick={handleSubmit}
             disabled={isSubmitting}
-            className="min-h-[48px] bg-[#10B981] hover:bg-[#059669] text-white font-black px-6 pointer-events-auto"
+            className="min-h-[48px] bg-[#10B981] hover:bg-[#059669] text-white font-black px-6 pointer-events-auto flex items-center"
           >
             {isSubmitting ? (
-              'Salvando...'
+              <span className="flex items-center gap-2">
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                Salvando ({uploadProgress}%)
+              </span>
             ) : (
               <>
                 <CheckCircle2 className="w-5 h-5 mr-2" /> Confirmar Captura

@@ -88,10 +88,10 @@ export function PropertyFilters({ filters, onChange }: Props) {
 
         <div className="col-span-2 md:col-span-2 space-y-1.5">
           <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide ml-0.5">
-            Bairro
+            Busca (Endereço, Código, Bairro)
           </Label>
           <Input
-            placeholder="Buscar por bairro..."
+            placeholder="Buscar imóveis..."
             value={filters.bairro}
             onChange={(e) => update('bairro', e.target.value)}
             className="h-[44px] text-sm border-[#E5E5E5] focus-visible:ring-[#1A3A52]"

@@ -48,34 +48,44 @@ export function useNotificacoes() {
   useConsolidatedSync({
     channelName: 'notificacoes_changes',
     setupRealtime: (channel) => {
-      if (!currentUser) return
-      channel
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'notificacoes',
-            filter: `usuario_id=eq.${currentUser.id}`,
-          },
-          (payload) => {
-            setNotificacoes((prev) => [payload.new as Notificacao, ...prev].slice(0, 50))
-          },
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'notificacoes',
-            filter: `usuario_id=eq.${currentUser.id}`,
-          },
-          (payload) => {
-            setNotificacoes((prev) =>
-              prev.map((n) => (n.id === payload.new.id ? (payload.new as Notificacao) : n)),
-            )
-          },
-        )
+      if (!currentUser)
+        return channel
+          .on(
+            'postgres_changes',
+            {
+              event: 'INSERT',
+              schema: 'public',
+              table: 'notificacoes',
+              filter: `usuario_id=eq.${currentUser.id}`,
+            },
+            (payload) => {
+              const newNotif = payload.new as Notificacao
+              setNotificacoes((prev) => [newNotif, ...prev].slice(0, 50))
+              if (typeof window !== 'undefined') {
+                import('@/components/ui/use-toast').then(({ toast }) => {
+                  toast({
+                    title: newNotif.titulo,
+                    description: newNotif.mensagem,
+                    duration: 5000,
+                  })
+                })
+              }
+            },
+          )
+          .on(
+            'postgres_changes',
+            {
+              event: 'UPDATE',
+              schema: 'public',
+              table: 'notificacoes',
+              filter: `usuario_id=eq.${currentUser.id}`,
+            },
+            (payload) => {
+              setNotificacoes((prev) =>
+                prev.map((n) => (n.id === payload.new.id ? (payload.new as Notificacao) : n)),
+              )
+            },
+          )
     },
     onFallbackPoll: fetchNotificacoes,
   })

@@ -18,6 +18,7 @@ import {
   CheckSquare,
   Activity,
   Zap,
+  Search,
 } from 'lucide-react'
 import {
   Sidebar,
@@ -141,6 +142,7 @@ export function AppSidebar() {
   } else if (isCaptador) {
     navItems = [
       { title: 'Dashboard', icon: LayoutDashboard, url: '/app' },
+      { title: 'Buscar Imóveis', icon: Search, url: '/app/disponivel-geral' },
       { title: 'Meus Captados', icon: Building, url: '/app/meus-captados' },
       {
         title: 'MATCH Inteligentes',
