@@ -5,11 +5,13 @@ import { useAuth } from '@/hooks/use-auth'
 import { toast } from 'sonner'
 
 export function useCaptadorDashboard() {
-  const { period } = usePeriodStore()
+  const { period, customRange } = usePeriodStore()
   const { user } = useAuth()
 
   const [metrics, setMetrics] = useState<any>(null)
-  const [leads, setLeads] = useState<any[]>([])
+  const [imoveis, setImoveis] = useState<any[]>([])
+  const [demandas, setDemandas] = useState<any[]>([])
+  const [perdidos, setPerdidos] = useState<any[]>([])
   const [charts, setCharts] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
@@ -19,76 +21,112 @@ export function useCaptadorDashboard() {
 
     try {
       const now = new Date()
-      let startDate = new Date()
+      let startIso = ''
+      let endIso = new Date().toISOString()
+
       if (period === 'today') {
-        startDate.setHours(0, 0, 0, 0)
+        const d = new Date()
+        d.setHours(0, 0, 0, 0)
+        startIso = d.toISOString()
       } else if (period === 'week') {
-        startDate.setDate(now.getDate() - 7)
+        const d = new Date()
+        d.setDate(d.getDate() - d.getDay() + (d.getDay() === 0 ? -6 : 1)) // Monday
+        d.setHours(0, 0, 0, 0)
+        startIso = d.toISOString()
       } else if (period === 'month') {
-        startDate.setMonth(now.getMonth() - 1)
+        const d = new Date(now.getFullYear(), now.getMonth(), 1)
+        startIso = d.toISOString()
+      } else if (period === 'custom' && customRange) {
+        startIso = customRange.start.toISOString()
+        const e = new Date(customRange.end)
+        e.setHours(23, 59, 59, 999)
+        endIso = e.toISOString()
+      } else {
+        const d = new Date()
+        d.setDate(d.getDate() - 7)
+        startIso = d.toISOString()
       }
 
-      const isoStart = startDate.toISOString()
-
-      const { data: imoveis, error } = await supabase
+      const { data: imoveisData, error: errImv } = await supabase
         .from('imoveis_captados')
         .select('*')
         .eq('user_captador_id', user.id)
-        .gte('created_at', isoStart)
+        .gte('created_at', startIso)
+        .lte('created_at', endIso)
         .order('created_at', { ascending: false })
 
-      if (error) throw error
+      if (errImv) throw errImv
 
-      const validImoveis = imoveis || []
-
-      const convertidos = validImoveis.filter((i) => i.status_captacao === 'fechado')
+      const convertidos = (imoveisData || []).filter((i) => i.status_captacao === 'fechado')
+      const perdidosData = (imoveisData || []).filter(
+        (i) => i.status_captacao === 'perdido' || i.status_captacao === 'descartado',
+      )
       const receita = convertidos.reduce((acc, i) => acc + Number(i.preco || i.valor || 0), 0)
 
       setMetrics({
-        total: validImoveis.length,
+        total: imoveisData?.length || 0,
         convertidos: convertidos.length,
         receita,
-        taxa: validImoveis.length
-          ? ((convertidos.length / validImoveis.length) * 100).toFixed(1)
+        taxa: imoveisData?.length
+          ? ((convertidos.length / imoveisData.length) * 100).toFixed(1)
           : 0,
+        perdidos: perdidosData.length,
       })
 
-      setLeads(validImoveis)
+      setImoveis(imoveisData || [])
+      setPerdidos(perdidosData)
+
+      const { data: demLoc } = await supabase
+        .from('demandas_locacao')
+        .select('*, imovel_demand_match(id)')
+        .eq('vinculacao_captador_id', user.id)
+        .in('status_demanda', ['aberta', 'em busca'])
+        .gte('created_at', startIso)
+        .lte('created_at', endIso)
+
+      const { data: demVen } = await supabase
+        .from('demandas_vendas')
+        .select('*, imovel_demand_match(id)')
+        .eq('vinculacao_captador_id', user.id)
+        .in('status_demanda', ['aberta', 'em busca'])
+        .gte('created_at', startIso)
+        .lte('created_at', endIso)
+
+      const todasDemandas = [
+        ...(demLoc || []).map((d) => ({ ...d, tipo: 'Locação' })),
+        ...(demVen || []).map((d) => ({ ...d, tipo: 'Venda' })),
+      ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+
+      setDemandas(todasDemandas)
 
       const lineDataMap: Record<string, number> = {}
-      const statusMap: Record<string, number> = {
-        pendente: 0,
-        capturado: 0,
-        visitado: 0,
-        fechado: 0,
-        perdido: 0,
-      }
-
-      validImoveis.forEach((i) => {
-        const dateStr = new Date(i.created_at).toLocaleDateString('pt-BR', {
+      ;(imoveisData || []).forEach((i) => {
+        const dStr = new Date(i.created_at).toLocaleDateString('pt-BR', {
           month: 'short',
           day: 'numeric',
         })
-        lineDataMap[dateStr] = (lineDataMap[dateStr] || 0) + 1
-
-        const st = i.status_captacao || 'pendente'
-        statusMap[st] = (statusMap[st] || 0) + 1
+        lineDataMap[dStr] = (lineDataMap[dStr] || 0) + 1
       })
-
       const lineData = Object.entries(lineDataMap)
         .map(([date, count]) => ({ date, count }))
         .reverse()
-      const pieData = Object.entries(statusMap)
-        .filter(([_, count]) => count > 0)
-        .map(([name, value]) => ({ name, value }))
+
+      const pieDataMap: Record<string, number> = {
+        locacao: demLoc?.length || 0,
+        venda: demVen?.length || 0,
+      }
+      const pieData = [
+        { name: 'Locação', value: pieDataMap.locacao, fill: '#0070f3' },
+        { name: 'Venda', value: pieDataMap.venda, fill: '#10b981' },
+      ].filter((d) => d.value > 0)
 
       setCharts({ lineData, pieData })
     } catch (err: any) {
-      toast.error('Erro ao carregar dados: ' + err.message)
+      toast.error('Erro ao carregar dados do período: ' + err.message)
     } finally {
       setLoading(false)
     }
-  }, [period, user])
+  }, [period, customRange, user])
 
   useEffect(() => {
     fetchData()
@@ -96,8 +134,8 @@ export function useCaptadorDashboard() {
 
   useEffect(() => {
     if (!user) return
-    const channel = supabase
-      .channel('dashboard_changes')
+    const ch = supabase
+      .channel('dashboard_updates')
       .on(
         'postgres_changes',
         {
@@ -106,16 +144,33 @@ export function useCaptadorDashboard() {
           table: 'imoveis_captados',
           filter: `user_captador_id=eq.${user.id}`,
         },
-        () => {
-          fetchData()
+        fetchData,
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'demandas_locacao',
+          filter: `vinculacao_captador_id=eq.${user.id}`,
         },
+        fetchData,
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'demandas_vendas',
+          filter: `vinculacao_captador_id=eq.${user.id}`,
+        },
+        fetchData,
       )
       .subscribe()
-
     return () => {
-      supabase.removeChannel(channel)
+      supabase.removeChannel(ch)
     }
   }, [user, fetchData])
 
-  return { metrics, leads, charts, loading, refetch: fetchData }
+  return { metrics, imoveis, demandas, perdidos, charts, loading, refetch: fetchData }
 }

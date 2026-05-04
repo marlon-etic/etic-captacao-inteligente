@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell } from 'recharts'
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell, Legend } from 'recharts'
 
 export function DashboardCharts({ charts, loading }: { charts: any; loading: boolean }) {
   if (loading) {
@@ -20,13 +20,13 @@ export function DashboardCharts({ charts, loading }: { charts: any; loading: boo
       <Card className="rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.05)] border-gray-100 bg-white overflow-hidden">
         <CardHeader className="bg-gray-50/50 border-b border-gray-100 pb-4">
           <CardTitle className="text-[15px] font-bold text-[#1A3A52]">
-            Leads Captados por Dia
+            Imóveis Captados (Evolução)
           </CardTitle>
         </CardHeader>
         <CardContent className="h-[280px] w-full pt-6">
           {charts?.lineData?.length > 0 ? (
             <ChartContainer
-              config={{ count: { label: 'Leads', color: '#0070f3' } }}
+              config={{ count: { label: 'Captados', color: '#0070f3' } }}
               className="h-full w-full"
             >
               <AreaChart
@@ -72,13 +72,17 @@ export function DashboardCharts({ charts, loading }: { charts: any; loading: boo
 
       <Card className="rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.05)] border-gray-100 bg-white overflow-hidden">
         <CardHeader className="bg-gray-50/50 border-b border-gray-100 pb-4">
-          <CardTitle className="text-[15px] font-bold text-[#1A3A52]">
-            Distribuição por Status
-          </CardTitle>
+          <CardTitle className="text-[15px] font-bold text-[#1A3A52]">Demandas por Tipo</CardTitle>
         </CardHeader>
         <CardContent className="h-[280px] w-full pb-4 pt-6">
           {charts?.pieData?.length > 0 ? (
-            <ChartContainer config={{}} className="h-full w-full mx-auto">
+            <ChartContainer
+              config={{
+                locacao: { label: 'Locação', color: '#0070f3' },
+                venda: { label: 'Venda', color: '#10b981' },
+              }}
+              className="h-full w-full mx-auto"
+            >
               <PieChart>
                 <Pie
                   data={charts.pieData}
@@ -96,6 +100,7 @@ export function DashboardCharts({ charts, loading }: { charts: any; loading: boo
                   ))}
                 </Pie>
                 <ChartTooltip content={<ChartTooltipContent />} />
+                <Legend verticalAlign="bottom" height={36} />
               </PieChart>
             </ChartContainer>
           ) : (
