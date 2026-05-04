@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import useAppStore from '@/stores/useAppStore'
 import { useSmartSync, useConsolidatedSync } from '@/hooks/useSmartSync'
+import { toast } from '@/components/ui/use-toast'
 
 export interface Notificacao {
   id: string
@@ -62,12 +63,10 @@ export function useNotificacoes() {
               const newNotif = payload.new as Notificacao
               setNotificacoes((prev) => [newNotif, ...prev].slice(0, 50))
               if (typeof window !== 'undefined') {
-                import('@/components/ui/use-toast').then(({ toast }) => {
-                  toast({
-                    title: newNotif.titulo,
-                    description: newNotif.mensagem,
-                    duration: 5000,
-                  })
+                toast({
+                  title: newNotif.titulo,
+                  description: newNotif.mensagem,
+                  duration: 5000,
                 })
               }
             },
