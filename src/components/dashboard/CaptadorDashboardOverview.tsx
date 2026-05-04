@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Home, Target, XCircle, Award, TrendingUp, Search, Building, MapPin } from 'lucide-react'
-import { ChartLegend, ChartLegendContent } from '@/components/ui/chart'
+import { ChartContainer, ChartLegend, ChartLegendContent } from '@/components/ui/chart'
 import {
   BarChart,
   Bar,
@@ -294,30 +294,38 @@ export function CaptadorDashboardOverview({ onTabChange }: { onTabChange: (tab: 
                 className="h-[300px] flex items-center justify-center"
               >
                 <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={chartVendaLocacao}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={100}
-                      paddingAngle={5}
-                      dataKey="value"
-                      onClick={() => handleChartClick()}
-                    >
-                      {chartVendaLocacao.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.fill} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      contentStyle={{
-                        borderRadius: '8px',
-                        border: 'none',
-                        boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-                      }}
-                    />
-                    <ChartLegend content={<ChartLegendContent />} />
-                  </PieChart>
+                  <ChartContainer
+                    config={{
+                      Locação: { label: 'Locação', color: '#0070f3' },
+                      Venda: { label: 'Venda', color: '#10b981' },
+                    }}
+                    className="w-full h-full"
+                  >
+                    <PieChart>
+                      <Pie
+                        data={chartVendaLocacao}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={100}
+                        paddingAngle={5}
+                        dataKey="value"
+                        onClick={() => handleChartClick()}
+                      >
+                        {chartVendaLocacao.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.fill} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        contentStyle={{
+                          borderRadius: '8px',
+                          border: 'none',
+                          boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                        }}
+                      />
+                      <ChartLegend content={<ChartLegendContent />} />
+                    </PieChart>
+                  </ChartContainer>
                 </ResponsiveContainer>
               </TabsContent>
             </Tabs>
