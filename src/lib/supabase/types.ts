@@ -847,6 +847,50 @@ export type Database = {
         }
         Relationships: []
       }
+      imovel_demand_match: {
+        Row: {
+          captador_id: string | null
+          compatibilidade_pct: number | null
+          created_at: string | null
+          data_vinculacao: string | null
+          demanda_id: string | null
+          id: string
+          imovel_id: string | null
+          tipo_demanda: string | null
+          tipo_vinculacao: string | null
+        }
+        Insert: {
+          captador_id?: string | null
+          compatibilidade_pct?: number | null
+          created_at?: string | null
+          data_vinculacao?: string | null
+          demanda_id?: string | null
+          id?: string
+          imovel_id?: string | null
+          tipo_demanda?: string | null
+          tipo_vinculacao?: string | null
+        }
+        Update: {
+          captador_id?: string | null
+          compatibilidade_pct?: number | null
+          created_at?: string | null
+          data_vinculacao?: string | null
+          demanda_id?: string | null
+          id?: string
+          imovel_id?: string | null
+          tipo_demanda?: string | null
+          tipo_vinculacao?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "imovel_demand_match_imovel_id_fkey"
+            columns: ["imovel_id"]
+            isOneToOne: false
+            referencedRelation: "imoveis_captados"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       landlord_profiles: {
         Row: {
           codigo_locador: string | null
@@ -1574,6 +1618,14 @@ export type Database = {
         Returns: undefined
       }
       atualizar_prazos_vencidos: { Args: never; Returns: undefined }
+      calculate_imovel_demand_match: {
+        Args: {
+          p_demanda_id: string
+          p_imovel_id: string
+          p_tipo_demanda: string
+        }
+        Returns: Json
+      }
       fn_auto_fix_test_users: { Args: never; Returns: Json }
       fn_calcular_tenant_score: {
         Args: { p_renda_mensal: number; p_valor_aluguel: number }
@@ -1619,6 +1671,20 @@ export type Database = {
       }
       fn_recalcular_pontos_captadores: { Args: never; Returns: Json }
       fn_reset_database: { Args: { p_delete_before?: string }; Returns: Json }
+      get_imovel_matches: {
+        Args: { p_imovel_id: string }
+        Returns: {
+          bairros: string[]
+          budget: number
+          cliente_nome: string
+          compatibilidade_pct: number
+          demanda_id: string
+          match_status: string
+          motivo: string
+          specs: string
+          tipo: string
+        }[]
+      }
       log_realtime_error: {
         Args: {
           p_channel_name: string
@@ -1989,6 +2055,16 @@ export const Constants = {
 //   tipo: text (nullable)
 //   tipo_imovel: text (nullable)
 //   status_revisao: text (nullable)
+// Table: imovel_demand_match
+//   id: uuid (not null, default: gen_random_uuid())
+//   imovel_id: uuid (nullable)
+//   demanda_id: uuid (nullable)
+//   tipo_demanda: text (nullable)
+//   captador_id: uuid (nullable)
+//   data_vinculacao: timestamp with time zone (nullable, default: now())
+//   tipo_vinculacao: text (nullable)
+//   compatibilidade_pct: numeric (nullable)
+//   created_at: timestamp with time zone (nullable, default: now())
 // Table: landlord_profiles
 //   id: uuid (not null, default: gen_random_uuid())
 //   user_id: uuid (not null)
@@ -2221,6 +2297,12 @@ export const Constants = {
 //   CHECK imoveis_captados_status_revisao_check: CHECK ((status_revisao = ANY (ARRAY['ok'::text, 'revisar_preco'::text, 'revisar_dados'::text])))
 //   CHECK imoveis_captados_tipo_imovel_check: CHECK ((tipo_imovel = ANY (ARRAY['Apartamento'::text, 'Casa/Sobrado'::text, 'Prédio Comercial'::text, 'Sala Comercial'::text, 'Galpão'::text])))
 //   FOREIGN KEY imoveis_captados_user_captador_id_fkey: FOREIGN KEY (user_captador_id) REFERENCES users(id) ON DELETE SET NULL
+// Table: imovel_demand_match
+//   FOREIGN KEY imovel_demand_match_captador_id_fkey: FOREIGN KEY (captador_id) REFERENCES auth.users(id) ON DELETE CASCADE
+//   FOREIGN KEY imovel_demand_match_imovel_id_fkey: FOREIGN KEY (imovel_id) REFERENCES imoveis_captados(id) ON DELETE CASCADE
+//   PRIMARY KEY imovel_demand_match_pkey: PRIMARY KEY (id)
+//   CHECK imovel_demand_match_tipo_demanda_check: CHECK ((tipo_demanda = ANY (ARRAY['Locação'::text, 'Venda'::text])))
+//   CHECK imovel_demand_match_tipo_vinculacao_check: CHECK ((tipo_vinculacao = ANY (ARRAY['automatico'::text, 'manual'::text])))
 // Table: landlord_profiles
 //   PRIMARY KEY landlord_profiles_pkey: PRIMARY KEY (id)
 //   FOREIGN KEY landlord_profiles_user_id_fkey: FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
@@ -2393,6 +2475,9 @@ export const Constants = {
 //   Policy "SDRs update captures" (UPDATE, PERMISSIVE) roles={authenticated}
 //     USING: (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND (users.role = 'sdr'::user_role))))
 //     WITH CHECK: (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND (users.role = 'sdr'::user_role))))
+// Table: imovel_demand_match
+//   Policy "captador_owns_matches" (ALL, PERMISSIVE) roles={authenticated}
+//     USING: (captador_id = auth.uid())
 // Table: landlord_profiles
 //   Policy "Users can update own landlord profile" (UPDATE, PERMISSIVE) roles={authenticated}
 //     USING: (user_id = auth.uid())
@@ -2632,6 +2717,71 @@ export const Constants = {
 //           RETURN OLD;
 //       END IF;
 //       RETURN NULL;
+//   END;
+//   $function$
+//   
+// FUNCTION calculate_imovel_demand_match(uuid, uuid, text)
+//   CREATE OR REPLACE FUNCTION public.calculate_imovel_demand_match(p_imovel_id uuid, p_demanda_id uuid, p_tipo_demanda text)
+//    RETURNS jsonb
+//    LANGUAGE plpgsql
+//    SECURITY DEFINER
+//   AS $function$
+//   DECLARE
+//     v_imovel RECORD;
+//     v_demanda RECORD;
+//     v_score NUMERIC := 0;
+//     v_motivos TEXT[] := ARRAY[]::TEXT[];
+//   BEGIN
+//     SELECT * INTO v_imovel FROM public.imoveis_captados WHERE id = p_imovel_id;
+//     IF NOT FOUND THEN RETURN jsonb_build_object('compatibilidade_pct', 0, 'motivo', 'Imóvel não encontrado'); END IF;
+//   
+//     IF p_tipo_demanda = 'Locação' THEN
+//       SELECT * INTO v_demanda FROM public.demandas_locacao WHERE id = p_demanda_id;
+//     ELSE
+//       SELECT * INTO v_demanda FROM public.demandas_vendas WHERE id = p_demanda_id;
+//     END IF;
+//     
+//     IF NOT FOUND THEN RETURN jsonb_build_object('compatibilidade_pct', 0, 'motivo', 'Demanda não encontrada'); END IF;
+//   
+//     IF v_imovel.localizacao_texto IS NOT NULL AND v_demanda.bairros IS NOT NULL AND array_length(v_demanda.bairros, 1) > 0 THEN
+//       IF v_imovel.localizacao_texto = ANY(v_demanda.bairros) OR v_imovel.localizacao_texto ILIKE ANY(SELECT '%' || unnest(v_demanda.bairros) || '%') THEN
+//         v_score := v_score + 30;
+//         v_motivos := array_append(v_motivos, 'Bairro compatível (+30%)');
+//       END IF;
+//     END IF;
+//   
+//     IF v_imovel.tipo_imovel IS NOT NULL AND v_demanda.tipo_imovel IS NOT NULL THEN
+//       IF v_imovel.tipo_imovel = v_demanda.tipo_imovel OR v_imovel.tipo_imovel ILIKE '%' || v_demanda.tipo_imovel || '%' THEN
+//         v_score := v_score + 25;
+//         v_motivos := array_append(v_motivos, 'Tipo de imóvel compatível (+25%)');
+//       END IF;
+//     END IF;
+//   
+//     IF v_imovel.preco IS NOT NULL AND v_demanda.valor_maximo IS NOT NULL THEN
+//       IF v_imovel.preco <= v_demanda.valor_maximo THEN
+//         v_score := v_score + 20;
+//         v_motivos := array_append(v_motivos, 'Valor dentro do orçamento (+20%)');
+//       END IF;
+//     END IF;
+//   
+//     IF v_imovel.dormitorios IS NOT NULL AND v_demanda.dormitorios IS NOT NULL THEN
+//       IF v_imovel.dormitorios >= v_demanda.dormitorios THEN
+//         v_score := v_score + 15;
+//         v_motivos := array_append(v_motivos, 'Dormitórios compatíveis (+15%)');
+//       END IF;
+//     END IF;
+//   
+//     IF v_imovel.vagas IS NOT NULL AND v_demanda.vagas_estacionamento IS NOT NULL THEN
+//       IF v_imovel.vagas >= v_demanda.vagas_estacionamento THEN
+//         v_score := v_score + 10;
+//         v_motivos := array_append(v_motivos, 'Vagas compatíveis (+10%)');
+//       END IF;
+//     END IF;
+//   
+//     RETURN jsonb_build_object(
+//       'compatibilidade_pct', v_score,
+//       'motivo', array_to_string(v_motivos, ', ')
+//     );
 //   END;
 //   $function$
 //   
@@ -3397,6 +3547,64 @@ export const Constants = {
 //     END IF;
 //   
 //     RETURN NEW;
+//   END;
+//   $function$
+//   
+// FUNCTION get_imovel_matches(uuid)
+//   CREATE OR REPLACE FUNCTION public.get_imovel_matches(p_imovel_id uuid)
+//    RETURNS TABLE(demanda_id uuid, cliente_nome text, tipo text, budget numeric, bairros text[], specs text, compatibilidade_pct numeric, match_status text, motivo text)
+//    LANGUAGE plpgsql
+//    SECURITY DEFINER
+//   AS $function$
+//   DECLARE
+//     v_imovel RECORD;
+//     v_match JSONB;
+//     v_demanda RECORD;
+//   BEGIN
+//     SELECT * INTO v_imovel FROM public.imoveis_captados WHERE id = p_imovel_id;
+//     IF NOT FOUND THEN RETURN; END IF;
+//   
+//     FOR v_demanda IN 
+//       SELECT * FROM public.demandas_locacao 
+//       WHERE status_demanda IN ('aberta', 'em busca') 
+//         AND NOT EXISTS (SELECT 1 FROM public.imovel_demand_match WHERE demanda_id = public.demandas_locacao.id AND imovel_id = p_imovel_id)
+//     LOOP
+//       v_match := public.calculate_imovel_demand_match(p_imovel_id, v_demanda.id, 'Locação');
+//       IF (v_match->>'compatibilidade_pct')::NUMERIC >= 70 THEN
+//         demanda_id := v_demanda.id;
+//         cliente_nome := v_demanda.nome_cliente;
+//         tipo := 'Locação';
+//         budget := v_demanda.valor_maximo;
+//         bairros := v_demanda.bairros;
+//         specs := COALESCE(v_demanda.dormitorios::TEXT, '0') || ' Dorm, ' || COALESCE(v_demanda.vagas_estacionamento::TEXT, '0') || ' Vagas';
+//         compatibilidade_pct := (v_match->>'compatibilidade_pct')::NUMERIC;
+//         match_status := CASE WHEN compatibilidade_pct >= 70 THEN 'alto' WHEN compatibilidade_pct >= 50 THEN 'medio' ELSE 'baixo' END;
+//         motivo := v_match->>'motivo';
+//         RETURN NEXT;
+//       END IF;
+//     END LOOP;
+//   
+//     FOR v_demanda IN 
+//       SELECT * FROM public.demandas_vendas 
+//       WHERE status_demanda IN ('aberta', 'em busca') 
+//         AND NOT EXISTS (SELECT 1 FROM public.imovel_demand_match WHERE demanda_id = public.demandas_vendas.id AND imovel_id = p_imovel_id)
+//     LOOP
+//       v_match := public.calculate_imovel_demand_match(p_imovel_id, v_demanda.id, 'Venda');
+//       IF (v_match->>'compatibilidade_pct')::NUMERIC >= 70 THEN
+//         demanda_id := v_demanda.id;
+//         cliente_nome := v_demanda.nome_cliente;
+//         tipo := 'Venda';
+//         budget := v_demanda.valor_maximo;
+//         bairros := v_demanda.bairros;
+//         specs := COALESCE(v_demanda.dormitorios::TEXT, '0') || ' Dorm, ' || COALESCE(v_demanda.vagas_estacionamento::TEXT, '0') || ' Vagas';
+//         compatibilidade_pct := (v_match->>'compatibilidade_pct')::NUMERIC;
+//         match_status := CASE WHEN compatibilidade_pct >= 70 THEN 'alto' WHEN compatibilidade_pct >= 50 THEN 'medio' ELSE 'baixo' END;
+//         motivo := v_match->>'motivo';
+//         RETURN NEXT;
+//       END IF;
+//     END LOOP;
+//   
+//     RETURN;
 //   END;
 //   $function$
 //   
