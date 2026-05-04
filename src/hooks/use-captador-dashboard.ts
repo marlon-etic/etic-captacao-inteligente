@@ -63,28 +63,6 @@ export function useCaptadorDashboard() {
       )
       const receita = convertidos.reduce((acc, i) => acc + Number(i.preco || i.valor || 0), 0)
 
-      const sobDemanda = (imoveisData || []).filter(
-        (i) => i.demanda_locacao_id || i.demanda_venda_id,
-      ).length
-      const aleatorios = (imoveisData || []).length - sobDemanda
-      const semResposta = todasDemandas.filter((d) => d.status_demanda === 'aberta').length
-
-      setMetrics({
-        total: imoveisData?.length || 0,
-        convertidos: convertidos.length,
-        receita,
-        taxa: imoveisData?.length
-          ? ((convertidos.length / imoveisData.length) * 100).toFixed(1)
-          : 0,
-        perdidos: perdidosData.length,
-        sobDemanda,
-        aleatorios,
-        semResposta,
-      })
-
-      setImoveis(imoveisData || [])
-      setPerdidos(perdidosData)
-
       const { data: demLoc } = await supabase
         .from('demandas_locacao')
         .select('*, imovel_demand_match(id)')
@@ -106,6 +84,27 @@ export function useCaptadorDashboard() {
         ...(demVen || []).map((d) => ({ ...d, tipo: 'Venda' })),
       ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 
+      const sobDemanda = (imoveisData || []).filter(
+        (i) => i.demanda_locacao_id || i.demanda_venda_id,
+      ).length
+      const aleatorios = (imoveisData || []).length - sobDemanda
+      const semResposta = todasDemandas.filter((d) => d.status_demanda === 'aberta').length
+
+      setMetrics({
+        total: imoveisData?.length || 0,
+        convertidos: convertidos.length,
+        receita,
+        taxa: imoveisData?.length
+          ? ((convertidos.length / imoveisData.length) * 100).toFixed(1)
+          : 0,
+        perdidos: perdidosData.length,
+        sobDemanda,
+        aleatorios,
+        semResposta,
+      })
+
+      setImoveis(imoveisData || [])
+      setPerdidos(perdidosData)
       setDemandas(todasDemandas)
 
       // Imóveis por tipo
