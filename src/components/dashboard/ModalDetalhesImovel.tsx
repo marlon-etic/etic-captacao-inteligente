@@ -12,24 +12,29 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { ExternalLink, CheckCircle2 } from 'lucide-react'
+import { ExternalLink, CheckCircle2, History, PlusCircle, AlertCircle } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { sendWebhookEvent } from '@/services/n8nService'
+import { format } from 'date-fns'
 
 export function ModalDetalhesImovel({ imovel, onClose, refetch }: any) {
   const [activeTab, setActiveTab] = useState('info')
   const [matches, setMatches] = useState<any[]>([])
+  const [historico, setHistorico] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [editForm, setEditForm] = useState({
     valor: imovel.preco || imovel.valor,
     obs: imovel.observacoes,
   })
+  const [demandasDisponiveis, setDemandasDisponiveis] = useState<any[]>([])
+  const [selectedDemandaManual, setSelectedDemandaManual] = useState<string>('')
+  const [manualMatchScore, setManualMatchScore] = useState<any>(null)
 
   useEffect(() => {
-    if (activeTab === 'compatibilidade') {
-      loadMatches()
-    }
+    if (activeTab === 'compatibilidade') loadMatches()
+    if (activeTab === 'historico') loadHistorico()
+    if (activeTab === 'manual') loadDemandasDisponiveis()
   }, [activeTab])
 
   const loadMatches = async () => {
@@ -45,16 +50,65 @@ export function ModalDetalhesImovel({ imovel, onClose, refetch }: any) {
     }
   }
 
+  const loadHistorico = async () => {
+    try {
+      const { data } = await supabase
+        .from('imovel_demand_match')
+        .select('*, demandas_locacao(cliente_nome), demandas_vendas(cliente_nome)')
+        .eq('imovel_id', imovel.id)
+        .order('created_at', { ascending: false })
+      setHistorico(data || [])
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  const loadDemandasDisponiveis = async () => {
+    try {
+      const [{ data: loc }, { data: ven }] = await Promise.all([
+        supabase
+          .from('demandas_locacao')
+          .select('id, cliente_nome, tipo, valor_maximo')
+          .in('status_demanda', ['aberta', 'em busca']),
+        supabase
+          .from('demandas_vendas')
+          .select('id, cliente_nome, tipo, valor_maximo')
+          .in('status_demanda', ['aberta', 'em busca']),
+      ])
+      setDemandasDisponiveis([
+        ...(loc || []).map((l) => ({ ...l, tipo: 'Locação' })),
+        ...(ven || []).map((v) => ({ ...v, tipo: 'Venda' })),
+      ])
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  const handleSelectManual = async (demandaId: string) => {
+    setSelectedDemandaManual(demandaId)
+    if (!demandaId) {
+      setManualMatchScore(null)
+      return
+    }
+    try {
+      const dem = demandasDisponiveis.find((d) => d.id === demandaId)
+      const { data, error } = await supabase.rpc('calculate_imovel_demand_match', {
+        p_imovel_id: imovel.id,
+        p_demanda_id: demandaId,
+        p_tipo_demanda: dem?.tipo || 'Locação',
+      })
+      if (!error && data) setManualMatchScore(data)
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
   const handleUpdate = async () => {
     setLoading(true)
     try {
       const { error } = await supabase
         .from('imoveis_captados')
-        .update({
-          preco: editForm.valor,
-          valor: editForm.valor,
-          observacoes: editForm.obs,
-        })
+        .update({ preco: editForm.valor, valor: editForm.valor, observacoes: editForm.obs })
         .eq('id', imovel.id)
       if (error) throw error
       toast.success('Imóvel atualizado!')
@@ -66,33 +120,48 @@ export function ModalDetalhesImovel({ imovel, onClose, refetch }: any) {
     }
   }
 
-  const addDemand = async (demanda: any) => {
+  const addDemand = async (demanda: any, isManual = false) => {
     try {
+      const demId = isManual ? demanda.id : demanda.demanda_id
+      const demTipo = isManual ? demanda.tipo : demanda.tipo
+      const demNome = isManual ? demanda.cliente_nome : demanda.cliente_nome
+      const pct = isManual ? manualMatchScore?.compatibilidade_pct : demanda.compatibilidade_pct
+
       const { error: errMatch } = await supabase.from('imovel_demand_match').insert({
         imovel_id: imovel.id,
-        demanda_id: demanda.demanda_id,
-        tipo_demanda: demanda.tipo,
+        demanda_id: demId,
+        tipo_demanda: demTipo,
         captador_id: imovel.user_captador_id || imovel.captador_id,
-        tipo_vinculacao: 'automatico',
-        compatibilidade_pct: demanda.compatibilidade_pct,
+        tipo_vinculacao: isManual ? 'manual' : 'automatico',
+        compatibilidade_pct: pct,
       })
       if (errMatch) throw errMatch
 
-      const table = demanda.tipo === 'Locação' ? 'demandas_locacao' : 'demandas_vendas'
-      await supabase.from(table).update({ status_demanda: 'em busca' }).eq('id', demanda.demanda_id)
+      const table = demTipo === 'Locação' ? 'demandas_locacao' : 'demandas_vendas'
+      await supabase.from(table).update({ status_demanda: 'em busca' }).eq('id', demId)
 
-      toast.success(`Imóvel adicionado à demanda de ${demanda.cliente_nome}!`)
+      const fieldToUpdate = demTipo === 'Locação' ? 'demanda_locacao_id' : 'demanda_venda_id'
+      await supabase
+        .from('imoveis_captados')
+        .update({ [fieldToUpdate]: demId, status_captacao: 'vinculado' })
+        .eq('id', imovel.id)
 
+      toast.success(`Imóvel adicionado à demanda de ${demNome}!`)
       sendWebhookEvent({
         event_type: 'imovel_added_to_demand',
         landlord_id: 'system',
         entity_id: imovel.id,
         action: 'match',
-        data: { imovel, demanda },
+        data: { imovel, demanda: { id: demId, tipo: demTipo } },
         timestamp: new Date().toISOString(),
       })
 
-      loadMatches()
+      if (isManual) {
+        setSelectedDemandaManual('')
+        setManualMatchScore(null)
+      } else {
+        loadMatches()
+      }
       refetch()
     } catch (e: any) {
       toast.error('Erro ao vincular: ' + e.message)
@@ -101,7 +170,7 @@ export function ModalDetalhesImovel({ imovel, onClose, refetch }: any) {
 
   return (
     <Dialog open={!!imovel} onOpenChange={() => onClose()}>
-      <DialogContent className="max-w-3xl h-[85vh] flex flex-col p-0 overflow-hidden bg-slate-50 border-none shadow-2xl rounded-2xl">
+      <DialogContent className="max-w-4xl h-[85vh] flex flex-col p-0 overflow-hidden bg-slate-50 border-none shadow-2xl rounded-2xl">
         <DialogHeader className="p-6 bg-white border-b border-gray-100 shrink-0">
           <DialogTitle className="text-xl font-black text-[#1A3A52]">
             Detalhes do Imóvel
@@ -116,8 +185,8 @@ export function ModalDetalhesImovel({ imovel, onClose, refetch }: any) {
           onValueChange={setActiveTab}
           className="flex-1 flex flex-col overflow-hidden"
         >
-          <div className="px-6 pt-4 bg-white border-b border-gray-100 shrink-0">
-            <TabsList className="w-full justify-start h-auto p-0 bg-transparent gap-6 rounded-none">
+          <div className="px-6 pt-4 bg-white border-b border-gray-100 shrink-0 overflow-x-auto no-scrollbar">
+            <TabsList className="w-full justify-start h-auto p-0 bg-transparent gap-6 rounded-none whitespace-nowrap">
               <TabsTrigger
                 value="info"
                 className="data-[state=active]:border-b-[3px] data-[state=active]:border-[#1A3A52] data-[state=active]:text-[#1A3A52] font-bold text-gray-500 data-[state=active]:shadow-none rounded-none px-0 pb-3 transition-colors"
@@ -135,6 +204,18 @@ export function ModalDetalhesImovel({ imovel, onClose, refetch }: any) {
                 className="data-[state=active]:border-b-[3px] data-[state=active]:border-[#1A3A52] data-[state=active]:text-[#1A3A52] font-bold text-gray-500 data-[state=active]:shadow-none rounded-none px-0 pb-3 transition-colors"
               >
                 Demandas Compatíveis
+              </TabsTrigger>
+              <TabsTrigger
+                value="manual"
+                className="data-[state=active]:border-b-[3px] data-[state=active]:border-[#1A3A52] data-[state=active]:text-[#1A3A52] font-bold text-gray-500 data-[state=active]:shadow-none rounded-none px-0 pb-3 transition-colors"
+              >
+                Adicionar Manual
+              </TabsTrigger>
+              <TabsTrigger
+                value="historico"
+                className="data-[state=active]:border-b-[3px] data-[state=active]:border-[#1A3A52] data-[state=active]:text-[#1A3A52] font-bold text-gray-500 data-[state=active]:shadow-none rounded-none px-0 pb-3 transition-colors"
+              >
+                Histórico
               </TabsTrigger>
             </TabsList>
           </div>
@@ -276,6 +357,102 @@ export function ModalDetalhesImovel({ imovel, onClose, refetch }: any) {
                     </Button>
                   </div>
                 ))
+              )}
+            </TabsContent>
+
+            <TabsContent value="manual" className="mt-0 space-y-4 animate-in fade-in duration-300">
+              <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+                <h3 className="font-black text-[#1A3A52] text-lg">
+                  Vincular a uma Demanda Específica
+                </h3>
+                <select
+                  className="w-full p-3 rounded-lg border border-gray-200 font-medium bg-slate-50 outline-none focus:border-blue-500"
+                  value={selectedDemandaManual}
+                  onChange={(e) => handleSelectManual(e.target.value)}
+                >
+                  <option value="">Selecione uma demanda aberta...</option>
+                  {demandasDisponiveis.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.cliente_nome} - {d.tipo} (Até R$ {d.valor_maximo})
+                    </option>
+                  ))}
+                </select>
+
+                {manualMatchScore && selectedDemandaManual && (
+                  <div className="mt-4 p-4 rounded-xl border border-gray-100 bg-slate-50">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="font-bold text-gray-600">Compatibilidade:</span>
+                      <Badge
+                        className={
+                          manualMatchScore.compatibilidade_pct >= 70
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : manualMatchScore.compatibilidade_pct >= 50
+                              ? 'bg-amber-100 text-amber-800'
+                              : 'bg-red-100 text-red-800'
+                        }
+                      >
+                        {manualMatchScore.compatibilidade_pct}%
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-gray-500 mb-4">{manualMatchScore.motivo}</p>
+
+                    {manualMatchScore.compatibilidade_pct < 50 && (
+                      <div className="mb-4 bg-red-50 text-red-700 p-3 rounded-lg border border-red-200 text-sm flex items-center font-bold">
+                        <AlertCircle className="w-4 h-4 mr-2" /> Atenção: Compatibilidade muito
+                        baixa.
+                      </div>
+                    )}
+
+                    <Button
+                      onClick={() =>
+                        addDemand(
+                          demandasDisponiveis.find((d) => d.id === selectedDemandaManual),
+                          true,
+                        )
+                      }
+                      className="w-full bg-[#1A3A52] font-bold h-12"
+                    >
+                      <PlusCircle className="w-4 h-4 mr-2" /> Adicionar Demanda
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+
+            <TabsContent
+              value="historico"
+              className="mt-0 space-y-4 animate-in fade-in duration-300"
+            >
+              {historico.length === 0 ? (
+                <div className="text-center p-8 text-gray-500 font-bold bg-white rounded-xl border border-gray-100">
+                  Nenhum histórico de vinculação para este imóvel.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {historico.map((h) => (
+                    <div
+                      key={h.id}
+                      className="bg-white p-4 rounded-xl border border-gray-100 flex items-start gap-3"
+                    >
+                      <History className="w-5 h-5 text-gray-400 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-medium text-gray-700">
+                          Vinculado à demanda de{' '}
+                          <span className="font-bold">
+                            {h.demandas_locacao?.cliente_nome ||
+                              h.demandas_vendas?.cliente_nome ||
+                              'Desconhecido'}
+                          </span>{' '}
+                          ({h.tipo_demanda})
+                        </p>
+                        <p className="text-xs text-gray-400 mt-1">
+                          {format(new Date(h.created_at), 'dd/MM/yyyy HH:mm')} via{' '}
+                          {h.tipo_vinculacao}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
             </TabsContent>
           </ScrollArea>

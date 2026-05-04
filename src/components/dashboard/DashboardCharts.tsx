@@ -1,7 +1,13 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell, Legend } from 'recharts'
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  ChartLegend,
+  ChartLegendContent,
+} from '@/components/ui/chart'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell } from 'recharts'
 
 export function DashboardCharts({ charts, loading }: { charts: any; loading: boolean }) {
   if (loading) {
@@ -13,35 +19,24 @@ export function DashboardCharts({ charts, loading }: { charts: any; loading: boo
     )
   }
 
-  const COLORS = ['#0070f3', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6']
+  const COLORS = ['#10b981', '#f59e0b', '#ef4444', '#0070f3', '#8b5cf6']
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
       <Card className="rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.05)] border-gray-100 bg-white overflow-hidden">
         <CardHeader className="bg-gray-50/50 border-b border-gray-100 pb-4">
-          <CardTitle className="text-[15px] font-bold text-[#1A3A52]">
-            Imóveis Captados (Evolução)
-          </CardTitle>
+          <CardTitle className="text-[15px] font-bold text-[#1A3A52]">Imóveis por Tipo</CardTitle>
         </CardHeader>
         <CardContent className="h-[280px] w-full pt-6">
-          {charts?.lineData?.length > 0 ? (
+          {charts?.barData?.length > 0 ? (
             <ChartContainer
-              config={{ count: { label: 'Captados', color: '#0070f3' } }}
+              config={{ value: { label: 'Quantidade', color: '#10b981' } }}
               className="h-full w-full"
             >
-              <AreaChart
-                data={charts.lineData}
-                margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-              >
-                <defs>
-                  <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#0070f3" stopOpacity={0.4} />
-                    <stop offset="95%" stopColor="#0070f3" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
+              <BarChart data={charts.barData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
                 <XAxis
-                  dataKey="date"
+                  dataKey="name"
                   tickLine={false}
                   axisLine={false}
                   tick={{ fontSize: 12, fill: '#6b7280', fontWeight: 600 }}
@@ -52,15 +47,8 @@ export function DashboardCharts({ charts, loading }: { charts: any; loading: boo
                   tick={{ fontSize: 12, fill: '#6b7280', fontWeight: 600 }}
                 />
                 <ChartTooltip content={<ChartTooltipContent />} />
-                <Area
-                  type="monotone"
-                  dataKey="count"
-                  stroke="#0070f3"
-                  strokeWidth={4}
-                  fillOpacity={1}
-                  fill="url(#colorCount)"
-                />
-              </AreaChart>
+                <Bar dataKey="value" fill="#10b981" radius={[4, 4, 0, 0]} />
+              </BarChart>
             </ChartContainer>
           ) : (
             <div className="h-full flex items-center justify-center text-sm font-medium text-gray-400">
@@ -72,14 +60,18 @@ export function DashboardCharts({ charts, loading }: { charts: any; loading: boo
 
       <Card className="rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.05)] border-gray-100 bg-white overflow-hidden">
         <CardHeader className="bg-gray-50/50 border-b border-gray-100 pb-4">
-          <CardTitle className="text-[15px] font-bold text-[#1A3A52]">Demandas por Tipo</CardTitle>
+          <CardTitle className="text-[15px] font-bold text-[#1A3A52]">
+            Demandas por Status
+          </CardTitle>
         </CardHeader>
         <CardContent className="h-[280px] w-full pb-4 pt-6">
           {charts?.pieData?.length > 0 ? (
             <ChartContainer
               config={{
-                locacao: { label: 'Locação', color: '#0070f3' },
-                venda: { label: 'Venda', color: '#10b981' },
+                aberta: { label: 'Aberta', color: '#0070f3' },
+                em_busca: { label: 'Em Busca', color: '#f59e0b' },
+                ganho: { label: 'Ganho', color: '#10b981' },
+                perdida: { label: 'Perdida', color: '#ef4444' },
               }}
               className="h-full w-full mx-auto"
             >
@@ -88,9 +80,9 @@ export function DashboardCharts({ charts, loading }: { charts: any; loading: boo
                   data={charts.pieData}
                   cx="50%"
                   cy="50%"
-                  innerRadius={65}
-                  outerRadius={90}
-                  paddingAngle={6}
+                  innerRadius={60}
+                  outerRadius={80}
+                  paddingAngle={5}
                   dataKey="value"
                   label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                   labelLine={false}
@@ -100,7 +92,7 @@ export function DashboardCharts({ charts, loading }: { charts: any; loading: boo
                   ))}
                 </Pie>
                 <ChartTooltip content={<ChartTooltipContent />} />
-                <Legend verticalAlign="bottom" height={36} />
+                <ChartLegend content={<ChartLegendContent />} />
               </PieChart>
             </ChartContainer>
           ) : (

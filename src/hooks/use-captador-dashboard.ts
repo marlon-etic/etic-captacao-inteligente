@@ -63,6 +63,12 @@ export function useCaptadorDashboard() {
       )
       const receita = convertidos.reduce((acc, i) => acc + Number(i.preco || i.valor || 0), 0)
 
+      const sobDemanda = (imoveisData || []).filter(
+        (i) => i.demanda_locacao_id || i.demanda_venda_id,
+      ).length
+      const aleatorios = (imoveisData || []).length - sobDemanda
+      const semResposta = todasDemandas.filter((d) => d.status_demanda === 'aberta').length
+
       setMetrics({
         total: imoveisData?.length || 0,
         convertidos: convertidos.length,
@@ -71,6 +77,9 @@ export function useCaptadorDashboard() {
           ? ((convertidos.length / imoveisData.length) * 100).toFixed(1)
           : 0,
         perdidos: perdidosData.length,
+        sobDemanda,
+        aleatorios,
+        semResposta,
       })
 
       setImoveis(imoveisData || [])
@@ -99,28 +108,27 @@ export function useCaptadorDashboard() {
 
       setDemandas(todasDemandas)
 
-      const lineDataMap: Record<string, number> = {}
+      // Imóveis por tipo
+      const barDataMap: Record<string, number> = {}
       ;(imoveisData || []).forEach((i) => {
-        const dStr = new Date(i.created_at).toLocaleDateString('pt-BR', {
-          month: 'short',
-          day: 'numeric',
-        })
-        lineDataMap[dStr] = (lineDataMap[dStr] || 0) + 1
+        const tipo = i.tipo_imovel || 'Outros'
+        barDataMap[tipo] = (barDataMap[tipo] || 0) + 1
       })
-      const lineData = Object.entries(lineDataMap)
-        .map(([date, count]) => ({ date, count }))
-        .reverse()
+      const barData = Object.entries(barDataMap)
+        .map(([name, value]) => ({ name, value }))
+        .sort((a, b) => b.value - a.value)
 
-      const pieDataMap: Record<string, number> = {
-        locacao: demLoc?.length || 0,
-        venda: demVen?.length || 0,
-      }
-      const pieData = [
-        { name: 'Locação', value: pieDataMap.locacao, fill: '#0070f3' },
-        { name: 'Venda', value: pieDataMap.venda, fill: '#10b981' },
-      ].filter((d) => d.value > 0)
+      // Demandas por status
+      const pieDataMap: Record<string, number> = {}
+      todasDemandas.forEach((d) => {
+        const status = d.status_demanda || 'desconhecido'
+        pieDataMap[status] = (pieDataMap[status] || 0) + 1
+      })
+      const pieData = Object.entries(pieDataMap)
+        .map(([name, value]) => ({ name, value }))
+        .filter((d) => d.value > 0)
 
-      setCharts({ lineData, pieData })
+      setCharts({ barData, pieData })
     } catch (err: any) {
       toast.error('Erro ao carregar dados do período: ' + err.message)
     } finally {
