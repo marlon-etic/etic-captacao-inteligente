@@ -105,10 +105,11 @@ export function AppSidebar() {
 
   if (isSDRCorretor) {
     navItems = [
+      { title: 'Dashboard', icon: LayoutDashboard, url: '/app/sdr-corretor/dashboard' },
       {
         title: 'Minhas Demandas',
         icon: Users,
-        url: '/app',
+        url: '/app/demandas',
         badge: myActiveDemandsCount > 0 ? myActiveDemandsCount : undefined,
       },
       {

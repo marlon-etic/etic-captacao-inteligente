@@ -1,9 +1,7 @@
 import { useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Navigate } from 'react-router-dom'
 import useAppStore from '@/stores/useAppStore'
 import { Loader2 } from 'lucide-react'
-import { SDRDashboard } from '@/pages/dashboard/SDRDashboard'
-import { CorretorDashboard } from '@/pages/dashboard/CorretorDashboard'
 import { GestorDashboard } from '@/pages/dashboard/GestorDashboard'
 import { CaptadorDashboard } from '@/pages/dashboard/CaptadorDashboard'
 
@@ -32,15 +30,14 @@ export default function DashboardRedirect() {
 
   switch (currentUser.role) {
     case 'sdr':
-      return <SDRDashboard />
     case 'corretor':
-      return <CorretorDashboard />
+      return <Navigate to="/app/sdr-corretor/dashboard" replace />
     case 'gestor':
     case 'admin':
       return <GestorDashboard />
     case 'captador':
       return <CaptadorDashboard />
     default:
-      return <SDRDashboard />
+      return <Navigate to="/app/sdr-corretor/dashboard" replace />
   }
 }
