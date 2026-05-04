@@ -14,6 +14,8 @@ export function useSdrQueries() {
     const role = user?.user_metadata?.role || user?.app_metadata?.role || 'sdr'
     const isLocacao = role === 'sdr'
     const tipoTransacao = isLocacao ? 'Locação' : 'Venda'
+    const demandasTable = isLocacao ? 'demandas_locacao' : 'demandas_vendas'
+    const ownerField = isLocacao ? 'sdr_id' : 'corretor_id'
 
     async function fetchData() {
       setLoading(true)
@@ -38,36 +40,48 @@ export function useSdrQueries() {
         const startIso = start.toISOString()
         const endIso = end.toISOString()
 
-        const demandasTable = isLocacao ? 'demandas_locacao' : 'demandas_vendas'
-        const ownerField = isLocacao ? 'sdr_id' : 'corretor_id'
-
         const { data: demandas } = await supabase
           .from(demandasTable)
-          .select('*')
+          .select('*, imovel_demand_match(*)')
           .eq(ownerField, user.id)
           .gte('created_at', startIso)
           .lte('created_at', endIso)
+          .order('created_at', { ascending: false })
+
+        const seteDiasAtras = new Date()
+        seteDiasAtras.setDate(seteDiasAtras.getDate() - 7)
+        const { data: demandasInativas } = await supabase
+          .from(demandasTable)
+          .select('*')
+          .eq(ownerField, user.id)
+          .in('status_demanda', ['aberta', 'em busca', 'em visita'])
+          .not('updated_at', 'is', null)
+          .lt('updated_at', seteDiasAtras.toISOString())
 
         const { data: imoveisLivres } = await supabase
           .from('imoveis_captados')
-          .select('*')
+          .select('*, imovel_demand_match(*)')
           .eq('tipo', tipoTransacao)
           .is('demanda_locacao_id', null)
           .is('demanda_venda_id', null)
+          .gte('created_at', startIso)
+          .lte('created_at', endIso)
           .order('created_at', { ascending: false })
           .limit(200)
 
-        const sdrDemandaIds = demandas?.map((d: any) => d.id) || []
-        const demandaIdField = isLocacao ? 'demanda_locacao_id' : 'demanda_venda_id'
+        const imoveisLivresFiltered =
+          imoveisLivres?.filter(
+            (i) => !i.imovel_demand_match || i.imovel_demand_match.length === 0,
+          ) || []
 
+        const sdrDemandaIds = demandas?.map((d: any) => d.id) || []
         let imoveisSobDemanda = []
         if (sdrDemandaIds.length > 0) {
-          const { data: isd } = await supabase
-            .from('imoveis_captados')
-            .select('*, imovel_demand_match(*)')
-            .in(demandaIdField, sdrDemandaIds)
-            .order('created_at', { ascending: false })
-          imoveisSobDemanda = isd || []
+          const { data: imV } = await supabase
+            .from('imovel_demand_match')
+            .select('*, imoveis_captados(*)')
+            .in('demanda_id', sdrDemandaIds)
+          imoveisSobDemanda = imV?.map((m: any) => ({ ...m.imoveis_captados, match_info: m })) || []
         }
 
         const { data: visitas } = await supabase
@@ -76,6 +90,8 @@ export function useSdrQueries() {
           .eq('user_sdr_id', user.id)
           .eq('tipo_demanda', tipoTransacao)
           .gte('created_at', startIso)
+          .lte('created_at', endIso)
+          .order('data_visita', { ascending: false })
 
         const { data: fechados } = await supabase
           .from('fechamentos')
@@ -83,10 +99,13 @@ export function useSdrQueries() {
           .eq('user_sdr_id', user.id)
           .eq('tipo_demanda', tipoTransacao)
           .gte('created_at', startIso)
+          .lte('created_at', endIso)
+          .order('created_at', { ascending: false })
 
         setData({
           demandas: demandas || [],
-          imoveisLivres: imoveisLivres || [],
+          demandasInativas: demandasInativas || [],
+          imoveisLivres: imoveisLivresFiltered,
           imoveisSobDemanda,
           visitas: visitas || [],
           fechados: fechados || [],
