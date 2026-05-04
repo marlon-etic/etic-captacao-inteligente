@@ -67,6 +67,41 @@ import { enableDebugLogging } from '@/debug'
 
 // --- ROOT-KILL: Supressão Global de Alertas de Conexão (Sandbox) ---
 if (typeof window !== 'undefined') {
+  // Catch unhandled "stole it" auth lock errors globally
+  const originalConsoleError = console.error
+  console.error = (...args) => {
+    const isLockError = args.some((arg) => {
+      if (typeof arg === 'string' && (arg.includes('stole it') || arg.includes('lock:sb-')))
+        return true
+      if (arg instanceof Error && arg.message.includes('stole it')) return true
+      if (
+        arg &&
+        typeof arg === 'object' &&
+        typeof arg.message === 'string' &&
+        arg.message.includes('stole it')
+      )
+        return true
+      return false
+    })
+    if (isLockError) return
+    originalConsoleError(...args)
+  }
+
+  window.addEventListener('unhandledrejection', (event) => {
+    const reasonStr = String(event.reason)
+    if (reasonStr.includes('stole it') || event.reason?.message?.includes('stole it')) {
+      event.preventDefault()
+      event.stopPropagation()
+    }
+  })
+
+  window.addEventListener('error', (event) => {
+    if (event.message?.includes('stole it') || event.error?.message?.includes('stole it')) {
+      event.preventDefault()
+      event.stopPropagation()
+    }
+  })
+
   const originalAddEventListener = window.addEventListener
   window.addEventListener = function (type: string, listener: any, options?: any) {
     if (type === 'offline' || type === 'online') return
