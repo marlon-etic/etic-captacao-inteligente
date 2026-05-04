@@ -49,8 +49,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           await supabase.auth.signOut().catch(() => {})
         }
         if (mounted) {
-          setSession(null)
-          setUser(null)
+          if (
+            !err?.message?.toLowerCase().includes('stole it') &&
+            !err?.message?.toLowerCase().includes('auth-token')
+          ) {
+            setSession(null)
+            setUser(null)
+          }
           setLoading(false)
         }
       }

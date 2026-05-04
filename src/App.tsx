@@ -49,7 +49,6 @@ import DisponivelGeralPage from '@/pages/dashboard/DisponivelGeralPage'
 import TodosCaptadosPage from '@/pages/dashboard/TodosCaptadosPage'
 import MeusCaptadosPage from '@/pages/MeusCaptadosPage'
 import MatchInteligentes from '@/pages/MatchInteligentes'
-import SdrCorretorDashboard from '@/pages/dashboard/SdrCorretorDashboard'
 
 // Landlord Panel Imports
 import LandlordLogin from '@/pages/auth/LandlordLogin'
@@ -67,36 +66,27 @@ import { enableDebugLogging } from '@/debug'
 
 // --- ROOT-KILL: Supressão Global de Alertas de Conexão (Sandbox) ---
 if (typeof window !== 'undefined') {
-  // Catch unhandled "stole it" auth lock errors globally
   const originalConsoleError = console.error
-  console.error = (...args) => {
-    const isLockError = args.some((arg) => {
-      if (typeof arg === 'string' && (arg.includes('stole it') || arg.includes('lock:sb-')))
-        return true
-      if (arg instanceof Error && arg.message.includes('stole it')) return true
-      if (
-        arg &&
-        typeof arg === 'object' &&
-        typeof arg.message === 'string' &&
-        arg.message.includes('stole it')
-      )
-        return true
-      return false
-    })
-    if (isLockError) return
-    originalConsoleError(...args)
+  console.error = function (...args) {
+    const msg = args
+      .map((a) => String(a))
+      .join(' ')
+      .toLowerCase()
+    if (msg.includes('stole it') || msg.includes('auth-token')) return
+    originalConsoleError.apply(console, args)
   }
 
   window.addEventListener('unhandledrejection', (event) => {
-    const reasonStr = String(event.reason)
-    if (reasonStr.includes('stole it') || event.reason?.message?.includes('stole it')) {
+    const msg = (event.reason?.message || String(event.reason)).toLowerCase()
+    if (msg.includes('stole it') || msg.includes('auth-token')) {
       event.preventDefault()
       event.stopPropagation()
     }
   })
 
   window.addEventListener('error', (event) => {
-    if (event.message?.includes('stole it') || event.error?.message?.includes('stole it')) {
+    const msg = (event.message || '').toLowerCase()
+    if (msg.includes('stole it') || msg.includes('auth-token')) {
       event.preventDefault()
       event.stopPropagation()
     }
@@ -264,6 +254,8 @@ const AppRoutes = () => {
         reasonStr.includes('AuthApiError') ||
         reasonStr.includes('stole it') ||
         reasonMsg.includes('stole it') ||
+        reasonStr.includes('auth-token') ||
+        reasonMsg.includes('auth-token') ||
         reasonStr.includes('invalid_credentials') ||
         reasonStr.includes('Invalid login credentials') ||
         reasonStr.includes('HTTP 400') ||
@@ -276,6 +268,7 @@ const AppRoutes = () => {
           event.reason,
         )
         event.preventDefault()
+        event.stopPropagation()
       }
     }
 
@@ -439,7 +432,6 @@ const AppRoutes = () => {
         <Route path="disponivel-geral" element={<DisponivelGeralPage />} />
         <Route path="todos-captados" element={<TodosCaptadosPage />} />
         <Route path="match-inteligentes" element={<MatchInteligentes />} />
-        <Route path="sdr-corretor/dashboard" element={<SdrCorretorDashboard />} />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>
