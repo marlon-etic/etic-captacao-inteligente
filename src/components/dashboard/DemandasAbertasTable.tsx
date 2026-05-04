@@ -129,25 +129,31 @@ export function DemandasAbertasTable({ demandas }: { demandas: any[] }) {
       </CardHeader>
       <CardContent className="p-0 flex-1 flex flex-col">
         <Tabs defaultValue="semana" className="flex-1 flex flex-col">
-          <div className="px-4 pt-4 shrink-0">
-            <TabsList className="w-full grid grid-cols-3 bg-slate-100">
+          <div className="px-4 pt-4 shrink-0 overflow-x-auto">
+            <TabsList className="w-full grid grid-cols-4 bg-slate-100 min-w-[300px]">
               <TabsTrigger
                 value="hoje"
-                className="font-bold text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm"
+                className="font-bold text-xs data-[state=active]:bg-[#1A3A52] data-[state=active]:text-white data-[state=active]:shadow-sm transition-all"
               >
                 Hoje
               </TabsTrigger>
               <TabsTrigger
                 value="semana"
-                className="font-bold text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm"
+                className="font-bold text-xs data-[state=active]:bg-[#1A3A52] data-[state=active]:text-white data-[state=active]:shadow-sm transition-all"
               >
                 Semana
               </TabsTrigger>
               <TabsTrigger
                 value="mes"
-                className="font-bold text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm"
+                className="font-bold text-xs data-[state=active]:bg-[#1A3A52] data-[state=active]:text-white data-[state=active]:shadow-sm transition-all"
               >
                 Mês
+              </TabsTrigger>
+              <TabsTrigger
+                value="todas"
+                className="font-bold text-xs data-[state=active]:bg-[#1A3A52] data-[state=active]:text-white data-[state=active]:shadow-sm transition-all"
+              >
+                Todas
               </TabsTrigger>
             </TabsList>
           </div>
@@ -160,6 +166,9 @@ export function DemandasAbertasTable({ demandas }: { demandas: any[] }) {
             </TabsContent>
             <TabsContent value="mes" className="m-0 mt-2">
               {renderTable(dMes)}
+            </TabsContent>
+            <TabsContent value="todas" className="m-0 mt-2">
+              {renderTable(demandas)}
             </TabsContent>
           </div>
         </Tabs>

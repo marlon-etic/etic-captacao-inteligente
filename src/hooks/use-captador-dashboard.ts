@@ -76,10 +76,7 @@ export function useCaptadorDashboard() {
         const { data } = await supabase
           .from('demandas_locacao')
           .select('*, imovel_demand_match(id)')
-          .eq('vinculacao_captador_id', user.id)
           .in('status_demanda', ['aberta', 'em busca'])
-          .gte('created_at', startIso)
-          .lte('created_at', endIso)
         demLocData = data || []
       }
 
@@ -87,10 +84,7 @@ export function useCaptadorDashboard() {
         const { data } = await supabase
           .from('demandas_vendas')
           .select('*, imovel_demand_match(id)')
-          .eq('vinculacao_captador_id', user.id)
           .in('status_demanda', ['aberta', 'em busca'])
-          .gte('created_at', startIso)
-          .lte('created_at', endIso)
         demVenData = data || []
       }
 
@@ -204,7 +198,6 @@ export function useCaptadorDashboard() {
           event: '*',
           schema: 'public',
           table: 'demandas_locacao',
-          filter: `vinculacao_captador_id=eq.${user.id}`,
         },
         fetchData,
       )
@@ -214,7 +207,6 @@ export function useCaptadorDashboard() {
           event: '*',
           schema: 'public',
           table: 'demandas_vendas',
-          filter: `vinculacao_captador_id=eq.${user.id}`,
         },
         fetchData,
       )
