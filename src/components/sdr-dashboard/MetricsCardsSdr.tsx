@@ -26,16 +26,23 @@ export function MetricsCardsSdr({ data, loading }: { data: any; loading: boolean
       </div>
     )
 
+  const totais = data?.demandas?.length || 0
   const novas =
     data?.demandas?.filter((d: any) => !d.status_demanda || d.status_demanda === 'aberta').length ||
     0
-  const ativas = data?.demandas?.filter((d: any) => d.status_demanda === 'em busca').length || 0
+  const ativas =
+    data?.demandas?.filter((d: any) =>
+      ['aberta', 'em busca', 'em visita', 'em negociação'].includes(
+        d.status_demanda?.toLowerCase(),
+      ),
+    ).length || 0
   const livres = data?.imoveisLivres?.length || 0
   const sobDemanda = data?.imoveisSobDemanda?.length || 0
   const visitas = data?.visitas?.length || 0
   const fechados = data?.fechados?.length || 0
-  const taxaConv = ativas > 0 ? Math.round((fechados / ativas) * 100) : 0
-  const perfVinc = ativas > 0 ? Math.round((sobDemanda / ativas) * 100) : 0
+
+  const convVisitas = novas > 0 ? Math.round((visitas / novas) * 100) : 0
+  const convNegocios = totais > 0 ? Math.round((fechados / totais) * 100) : 0
 
   const toggle = (val: any) => setCardFiltrado(cardFiltrado === val ? 'nenhum' : val)
 
@@ -44,7 +51,7 @@ export function MetricsCardsSdr({ data, loading }: { data: any; loading: boolean
       id: 'novas',
       title: 'Novas Demandas',
       val: novas,
-      sub: 'novas hoje',
+      sub: 'no período',
       color: 'text-emerald-600',
       bg: 'bg-emerald-50',
       icon: UserPlus,
@@ -53,7 +60,7 @@ export function MetricsCardsSdr({ data, loading }: { data: any; loading: boolean
       id: 'ativas',
       title: 'Demandas Ativas',
       val: ativas,
-      sub: 'aguardando imóvel',
+      sub: 'aguardando / em processo',
       color: 'text-blue-600',
       bg: 'bg-blue-50',
       icon: Clock,
@@ -80,7 +87,7 @@ export function MetricsCardsSdr({ data, loading }: { data: any; loading: boolean
       id: 'visitas',
       title: 'Visitas',
       val: visitas,
-      sub: 'esta semana',
+      sub: 'no período',
       color: 'text-purple-600',
       bg: 'bg-purple-50',
       icon: Calendar,
@@ -96,18 +103,18 @@ export function MetricsCardsSdr({ data, loading }: { data: any; loading: boolean
     },
     {
       id: 'nenhum',
-      title: 'Taxa Conversão',
-      val: `${taxaConv}%`,
-      sub: 'meta 40%',
+      title: 'Conv. Clientes (Visitas)',
+      val: `${convVisitas}%`,
+      sub: 'visitas / novas demandas',
       color: 'text-blue-600',
       bg: 'bg-blue-50',
       icon: TrendingUp,
     },
     {
       id: 'nenhum2',
-      title: 'Performance Vinc.',
-      val: `${perfVinc}%`,
-      sub: 'demandas com imóvel',
+      title: 'Conv. Negócios',
+      val: `${convNegocios}%`,
+      sub: 'fechados / total demandas',
       color: 'text-purple-600',
       bg: 'bg-purple-50',
       icon: Target,

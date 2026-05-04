@@ -1,5 +1,6 @@
 import { useSdrStore } from '@/hooks/use-sdr-store'
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
 export function FilterBar() {
   const { periodo, setPeriodo } = useSdrStore()
@@ -11,9 +12,14 @@ export function FilterBar() {
       {periods.map((p) => (
         <Button
           key={p}
-          variant={periodo === p ? 'default' : 'ghost'}
+          variant="outline"
           onClick={() => setPeriodo(p)}
-          className={`text-sm font-bold h-8 px-4 rounded-md whitespace-nowrap ${periodo === p ? 'bg-[#1A3A52] text-white shadow-sm' : 'text-gray-500 hover:text-gray-900 bg-transparent'}`}
+          className={cn(
+            'text-sm font-bold h-8 px-4 rounded-md whitespace-nowrap border-none transition-all',
+            periodo === p
+              ? 'bg-[#1A3A52] text-white shadow-sm hover:bg-[#1A3A52]/90 hover:text-white'
+              : 'text-gray-500 hover:text-[#1A3A52] hover:bg-gray-100 bg-transparent',
+          )}
         >
           {labels[p]}
         </Button>

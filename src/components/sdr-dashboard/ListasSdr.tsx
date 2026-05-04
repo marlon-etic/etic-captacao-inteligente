@@ -10,6 +10,9 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { format } from 'date-fns'
+import { Dialog, DialogContent, DialogTrigger, DialogTitle } from '@/components/ui/dialog'
+import { LogVisitSection } from '@/components/checkin/LogVisitSection'
+import { LogClosingSection } from '@/components/checkin/LogClosingSection'
 
 export function ListasSdr({
   data,
@@ -23,6 +26,15 @@ export function ListasSdr({
   const { cardFiltrado } = useSdrStore()
 
   if (loading) return null
+
+  const activeDemands =
+    data?.demandas?.map((d: any) => ({
+      id: d.id,
+      tipo: isLocacao ? 'Locação' : 'Venda',
+      nome_cliente: d.nome_cliente || d.cliente_nome || 'Cliente',
+    })) || []
+
+  const allProperties = [...(data?.imoveisLivres || []), ...(data?.imoveisSobDemanda || [])]
 
   let listData: any[] = []
   let columns: string[] = []
@@ -51,7 +63,12 @@ export function ListasSdr({
       </TableRow>
     )
   } else if (cardFiltrado === 'ativas') {
-    listData = data?.demandas?.filter((d: any) => d.status_demanda === 'em busca') || []
+    listData =
+      data?.demandas?.filter((d: any) =>
+        ['aberta', 'em busca', 'em visita', 'em negociação'].includes(
+          d.status_demanda?.toLowerCase(),
+        ),
+      ) || []
     columns = ['Cliente', 'Budget', 'Criada em', 'Status']
     renderRow = (d) => (
       <TableRow key={d.id} className="hover:bg-gray-50">
@@ -157,9 +174,45 @@ export function ListasSdr({
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
       <div className="p-5 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
         <h2 className="font-black text-[#1A3A52] text-lg">{title}</h2>
-        <Badge variant="outline" className="bg-white font-bold">
-          {listData.length} registros
-        </Badge>
+        <div className="flex items-center gap-3">
+          {cardFiltrado === 'visitas' && (
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button size="sm" className="bg-[#0070f3] hover:bg-[#005bb5] text-white">
+                  Registrar Visita
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-md bg-white">
+                <DialogTitle className="sr-only">Registrar Visita</DialogTitle>
+                <LogVisitSection
+                  demands={activeDemands}
+                  properties={allProperties}
+                  onVisitLogged={() => window.location.reload()}
+                />
+              </DialogContent>
+            </Dialog>
+          )}
+          {cardFiltrado === 'fechados' && (
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button size="sm" className="bg-[#10B981] hover:bg-[#059669] text-white">
+                  Registrar Fechamento
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-md bg-white">
+                <DialogTitle className="sr-only">Registrar Fechamento</DialogTitle>
+                <LogClosingSection
+                  demands={activeDemands}
+                  properties={allProperties}
+                  onClosingLogged={() => window.location.reload()}
+                />
+              </DialogContent>
+            </Dialog>
+          )}
+          <Badge variant="outline" className="bg-white font-bold">
+            {listData.length} registros
+          </Badge>
+        </div>
       </div>
       <div className="p-0 overflow-x-auto">
         <Table>

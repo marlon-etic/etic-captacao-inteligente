@@ -54,7 +54,8 @@ export function useSdrQueries() {
           .eq('tipo', tipoTransacao)
           .is('demanda_locacao_id', null)
           .is('demanda_venda_id', null)
-          .gte('created_at', startIso)
+          .order('created_at', { ascending: false })
+          .limit(200)
 
         const sdrDemandaIds = demandas?.map((d: any) => d.id) || []
         const demandaIdField = isLocacao ? 'demanda_locacao_id' : 'demanda_venda_id'
@@ -65,6 +66,7 @@ export function useSdrQueries() {
             .from('imoveis_captados')
             .select('*, imovel_demand_match(*)')
             .in(demandaIdField, sdrDemandaIds)
+            .order('created_at', { ascending: false })
           imoveisSobDemanda = isd || []
         }
 
