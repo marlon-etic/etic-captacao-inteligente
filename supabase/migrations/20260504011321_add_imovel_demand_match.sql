@@ -81,7 +81,7 @@ BEGIN
     'motivo', array_to_string(v_motivos, ', ')
   );
 END;
-$;
+$$;
 
 CREATE OR REPLACE FUNCTION public.get_imovel_matches(p_imovel_id UUID)
 RETURNS TABLE (
@@ -148,4 +148,4 @@ BEGIN
 
   RETURN;
 END;
-$;
+$$;
