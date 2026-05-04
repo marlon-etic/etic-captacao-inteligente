@@ -1,19 +1,15 @@
-import { useState, useEffect } from 'react'
-import { useSearchParams } from 'react-router-dom'
-import { Tabs, TabsContent } from '@/components/ui/tabs'
-import { DemandasAbertasView } from '@/components/DemandasAbertasView'
-import { CapturedPropertiesView } from '@/components/CapturedPropertiesView'
-import { DemandasPerdidasView } from '@/components/DemandasPerdidasView'
-import { ScrollableTabs } from '@/components/ScrollableTabs'
-import { CaptadorDashboardOverview } from '@/components/dashboard/CaptadorDashboardOverview'
+import { useEffect, useState } from 'react'
+import { PeriodSelector } from '@/components/dashboard/PeriodSelector'
+import { MetricsCards } from '@/components/dashboard/MetricsCards'
+import { DashboardCharts } from '@/components/dashboard/DashboardCharts'
+import { LeadsTable } from '@/components/dashboard/LeadsTable'
+import { useCaptadorDashboard } from '@/hooks/use-captador-dashboard'
 import { CaptadorEngajamentoModal } from '@/components/dashboard/CaptadorEngajamentoModal'
-import useAppStore from '@/stores/useAppStore'
+import { usePeriodStore } from '@/stores/use-period-store'
 
 export function CaptadorDashboard() {
-  const [searchParams, setSearchParams] = useSearchParams()
-  const currentTab = searchParams.get('tab') || 'dashboard'
-  const { demands, currentUser } = useAppStore()
-
+  const { metrics, leads, charts, loading, refetch } = useCaptadorDashboard()
+  const { period } = usePeriodStore()
   const [showModal, setShowModal] = useState(false)
 
   useEffect(() => {
@@ -25,43 +21,36 @@ export function CaptadorDashboard() {
     }
   }, [])
 
-  const handleTabChange = (val: string) => {
-    setSearchParams({ tab: val })
-  }
-
-  const tabs = [
-    { value: 'dashboard', label: 'Visão Geral' },
-    { value: 'demandas-abertas', label: 'Demandas Atuais' },
-    { value: 'meus-captados', label: 'Meus Captados' },
-    { value: 'perdidos', label: 'Perdidos' },
-  ]
+  const periodLabel = period === 'today' ? 'Hoje' : period === 'week' ? 'Esta Semana' : 'Este Mês'
 
   return (
-    <div className="space-y-[16px] md:space-y-[24px]">
-      <Tabs value={currentTab} onValueChange={handleTabChange} className="w-full">
-        <ScrollableTabs
-          tabs={tabs}
-          activeTab={currentTab}
-          onTabChange={handleTabChange}
-          className="sticky top-[64px] lg:top-[72px] bg-[#F5F5F5] pt-2 z-[40] -mx-4 px-4 sm:mx-0 sm:px-0"
-        />
+    <div className="w-full max-w-7xl mx-auto pb-12 animate-in fade-in duration-500 px-4 sm:px-0 mt-4">
+      <div className="mb-6 flex flex-col gap-1">
+        <h1 className="text-[24px] md:text-[28px] font-black text-[#1A3A52] tracking-tight">
+          Dashboard Captador
+        </h1>
+        <p className="text-gray-500 font-medium">
+          Acompanhe o funil de captação e conversão de imóveis em tempo real.
+        </p>
+      </div>
 
-        <div className="mt-4 transition-opacity duration-300 ease-in animate-in fade-in">
-          <TabsContent value="dashboard" className="m-0 border-none">
-            {currentUser && <CaptadorDashboardOverview onTabChange={handleTabChange} />}
-          </TabsContent>
-          <TabsContent value="demandas-abertas" className="m-0 border-none">
-            <DemandasAbertasView />
-          </TabsContent>
-          <TabsContent value="meus-captados" className="m-0 border-none">
-            <CapturedPropertiesView emptyStateText="Você ainda não captou nenhum imóvel." />
-          </TabsContent>
-          <TabsContent value="perdidos" className="m-0 border-none">
-            <DemandasPerdidasView />
-          </TabsContent>
-        </div>
-      </Tabs>
-      <CaptadorEngajamentoModal isOpen={showModal} onClose={() => setShowModal(false)} />
+      <PeriodSelector />
+
+      <div className="mb-6 mt-8">
+        <h2 className="text-[18px] font-bold text-[#1A3A52]">
+          Seu Desempenho <span className="text-blue-600">{periodLabel}</span>
+        </h2>
+      </div>
+
+      <MetricsCards metrics={metrics} loading={loading} />
+
+      <DashboardCharts charts={charts} loading={loading} />
+
+      <LeadsTable leads={leads} loading={loading} refetch={refetch} />
+
+      {showModal && (
+        <CaptadorEngajamentoModal isOpen={showModal} onClose={() => setShowModal(false)} />
+      )}
     </div>
   )
 }
