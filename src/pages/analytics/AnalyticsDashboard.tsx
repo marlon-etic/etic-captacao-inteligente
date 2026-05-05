@@ -1,52 +1,71 @@
-import React, { useState } from 'react'
-import { FilterPanel, AnalyticsFilters } from '@/components/analytics/FilterPanel'
+import { useState } from 'react'
+import { FilterPanel, DashboardFilters } from '@/components/analytics/FilterPanel'
+import { DashboardCaptadores } from '@/components/analytics/DashboardCaptadores'
+import { cn } from '@/lib/utils'
 
 export function AnalyticsDashboard() {
-  const [filters, setFilters] = useState<AnalyticsFilters>({ period: 'this_week', userIds: [] })
+  const [filters, setFilters] = useState<DashboardFilters>({
+    period: 'this_week',
+    userIds: [],
+  })
 
-  const handleFiltersChange = (newFilters: AnalyticsFilters) => {
-    setFilters(newFilters)
-    console.log('[AdminDashboard] Filtros aplicados:', newFilters)
-  }
+  const [activeTab, setActiveTab] = useState<'captadores' | 'corretores'>('captadores')
 
   return (
-    <div className="p-4 md:p-6 w-full max-w-7xl mx-auto flex flex-col h-full bg-[#F5F5F5] overflow-y-auto">
-      <div className="mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold text-[#1A3A52] tracking-tight">
+    <div className="container mx-auto p-4 md:p-8 space-y-6 max-w-7xl animate-fade-in">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
           Dashboard de Analytics
         </h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Visualize e analise o desempenho da equipe e interações no sistema.
+        <p className="text-gray-500 mt-1">
+          Analise as métricas de performance e funil da sua equipe.
         </p>
       </div>
 
-      <FilterPanel onFiltersChange={handleFiltersChange} />
+      <FilterPanel onFiltersChange={setFilters} />
 
-      <div className="mt-4 bg-white p-8 rounded-lg border border-gray-200 shadow-sm min-h-[300px] flex items-center justify-center animate-in fade-in slide-in-from-bottom-2">
-        <div className="text-center">
-          <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-gray-100">
-            <svg
-              className="w-6 h-6 text-gray-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-              ></path>
-            </svg>
+      <div className="border-b border-gray-200 dark:border-gray-800">
+        <nav className="-mb-px flex space-x-6" aria-label="Tabs">
+          <button
+            onClick={() => setActiveTab('captadores')}
+            className={cn(
+              'whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm transition-colors',
+              activeTab === 'captadores'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
+            )}
+          >
+            Captadores
+          </button>
+          <button
+            onClick={() => setActiveTab('corretores')}
+            className={cn(
+              'whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm transition-colors',
+              activeTab === 'corretores'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
+            )}
+          >
+            Corretores / SDRs
+          </button>
+        </nav>
+      </div>
+
+      <div className="mt-6">
+        {activeTab === 'captadores' && <DashboardCaptadores filters={filters} />}
+        {activeTab === 'corretores' && (
+          <div className="flex flex-col items-center justify-center py-24 px-4 text-center border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-xl bg-gray-50 dark:bg-gray-900/50">
+            <h3 className="mt-2 text-sm font-semibold text-gray-900 dark:text-white">
+              Em Desenvolvimento
+            </h3>
+            <p className="mt-1 text-sm text-gray-500">
+              O dashboard de métricas para Corretores e SDRs estará disponível em breve.
+            </p>
           </div>
-          <h3 className="text-lg font-medium text-gray-800">Pronto para visualização</h3>
-          <p className="text-sm text-gray-500 mt-2 max-w-md mx-auto">
-            Os filtros foram aplicados com sucesso. As métricas e gráficos serão exibidos aqui com
-            base na sua seleção.
-          </p>
-        </div>
+        )}
       </div>
     </div>
   )
 }
+
+export default AnalyticsDashboard

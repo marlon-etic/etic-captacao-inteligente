@@ -15,18 +15,15 @@ export type EventType =
   | 'match_accepted'
 
 export async function trackEvent(
-  userId: string | undefined | null,
+  userId: string,
   eventType: EventType,
   eventData?: Record<string, any>,
 ) {
-  if (!userId) {
-    console.warn(`[Analytics] Ignored event ${eventType}: No user_id provided`)
-    return
-  }
+  if (!userId) return
 
   try {
     supabase
-      .from('analytics_events' as any)
+      .from('analytics_events')
       .insert([
         {
           user_id: userId,
@@ -34,15 +31,14 @@ export async function trackEvent(
           event_data: eventData || {},
         },
       ])
-      .then(({ error }: any) => {
-        if (error) throw error
-        console.log(`[Analytics] Event tracked: ${eventType} for user ${userId}`)
+      .then((res) => {
+        if (res.error) throw res.error
       })
-      .catch((err: any) => {
-        console.error(`[Analytics] Failed to track event: ${eventType}`, err)
+      .catch((err) => {
+        console.warn(`[Analytics] Retry track event: ${eventType}`, err)
         setTimeout(() => {
           supabase
-            .from('analytics_events' as any)
+            .from('analytics_events')
             .insert([
               {
                 user_id: userId,
@@ -50,12 +46,7 @@ export async function trackEvent(
                 event_data: eventData || {},
               },
             ])
-            .then(({ error }: any) => {
-              if (error) throw error
-            })
-            .catch((retryErr: any) => {
-              console.error(`[Analytics] Retry failed for ${eventType}`, retryErr)
-            })
+            .catch(() => {})
         }, 1000)
       })
   } catch (err) {

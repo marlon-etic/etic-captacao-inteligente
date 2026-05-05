@@ -1,33 +1,32 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase/client'
-import { useToast } from '@/components/ui/use-toast'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Badge } from '@/components/ui/badge'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Search, Calendar, Users } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
-export type PeriodType = 'today' | 'this_week' | 'this_month' | 'custom'
-
-export interface AnalyticsFilters {
-  period: PeriodType
+export interface DashboardFilters {
+  period: 'today' | 'this_week' | 'this_month' | 'custom'
   periodRange?: { start: string; end: string }
   userIds: string[]
 }
 
 interface FilterPanelProps {
-  onFiltersChange: (filters: AnalyticsFilters) => void
-}
-
-interface User {
-  id: string
-  email: string
-  nome?: string
+  onFiltersChange: (filters: DashboardFilters) => void
 }
 
 export function FilterPanel({ onFiltersChange }: FilterPanelProps) {
-  const { toast } = useToast()
-  const [period, setPeriod] = useState<PeriodType>('this_week')
+  const [period, setPeriod] = useState<'today' | 'this_week' | 'this_month' | 'custom'>('this_week')
   const [periodRange, setPeriodRange] = useState<{ start: string; end: string }>({
     start: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     end: new Date().toISOString().split('T')[0],
   })
-  const [users, setUsers] = useState<User[]>([])
+
+  const [users, setUsers] = useState<{ id: string; email: string; nome: string }[]>([])
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState(false)
@@ -44,17 +43,21 @@ export function FilterPanel({ onFiltersChange }: FilterPanelProps) {
         .from('users')
         .select('id, email, nome')
         .in('role', ['captador', 'sdr', 'corretor'])
-        .order('email')
+        .order('nome')
 
-      if (error) {
-        toast({
-          title: 'Erro',
-          description: 'Falha ao carregar usuários.',
-          variant: 'destructive',
+      if (error) throw error
+
+      const loadedUsers = data || []
+      setUsers(loadedUsers)
+
+      if (loadedUsers.length > 0) {
+        const allIds = loadedUsers.map((u) => u.id)
+        setSelectedUserIds(allIds)
+        onFiltersChange({
+          period: 'this_week',
+          userIds: allIds,
         })
-        throw error
       }
-      setUsers(data || [])
     } catch (err) {
       console.error('[FilterPanel] Erro ao carregar usuários:', err)
     } finally {
@@ -64,46 +67,23 @@ export function FilterPanel({ onFiltersChange }: FilterPanelProps) {
 
   const handleApplyFilters = () => {
     if (selectedUserIds.length === 0) {
-      toast({
-        title: 'Filtro inválido',
-        description: 'Selecione pelo menos um usuário',
-        variant: 'destructive',
-      })
+      alert('Selecione pelo menos um usuário')
       return
     }
 
     if (period === 'custom') {
       if (!periodRange.start || !periodRange.end) {
-        toast({
-          title: 'Filtro inválido',
-          description: 'Preencha as datas de início e fim',
-          variant: 'destructive',
-        })
+        alert('Preencha as datas de início e fim')
         return
       }
       if (new Date(periodRange.start) > new Date(periodRange.end)) {
-        toast({
-          title: 'Filtro inválido',
-          description: 'Data de início não pode ser maior que data de fim',
-          variant: 'destructive',
-        })
-        return
-      }
-      const today = new Date().toISOString().split('T')[0]
-      if (periodRange.start > today || periodRange.end > today) {
-        toast({
-          title: 'Filtro inválido',
-          description: 'Não é possível selecionar datas futuras',
-          variant: 'destructive',
-        })
+        alert('Data de início não pode ser maior que a data de fim')
         return
       }
     }
 
     let filterCount = 1
-    if (selectedUserIds.length > 0 && selectedUserIds.length < users.length) {
-      filterCount++
-    }
+    if (selectedUserIds.length < users.length) filterCount++
     setActiveFilters(filterCount)
 
     onFiltersChange({
@@ -115,160 +95,148 @@ export function FilterPanel({ onFiltersChange }: FilterPanelProps) {
 
   const handleClearFilters = () => {
     setPeriod('this_week')
-    setSelectedUserIds([])
+    const allIds = users.map((u) => u.id)
+    setSelectedUserIds(allIds)
     setSearchQuery('')
     setActiveFilters(0)
+
     onFiltersChange({
       period: 'this_week',
-      userIds: [],
+      userIds: allIds,
     })
   }
 
-  const filteredUsers = users.filter(
-    (u) =>
-      (u.email || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (u.nome || '').toLowerCase().includes(searchQuery.toLowerCase()),
+  const filteredUsers = users.filter((u) =>
+    (u.nome || u.email || '').toLowerCase().includes(searchQuery.toLowerCase()),
   )
 
-  const toggleAllUsers = (checked: boolean) => {
-    if (checked) {
-      setSelectedUserIds(filteredUsers.map((u) => u.id))
-    } else {
+  const toggleAll = () => {
+    if (selectedUserIds.length === users.length) {
       setSelectedUserIds([])
+    } else {
+      setSelectedUserIds(users.map((u) => u.id))
     }
   }
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6 shadow-sm">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-lg font-bold text-[#1A3A52]">Filtros de Análise</h2>
-        {activeFilters > 0 && (
-          <span className="bg-blue-100 text-[#1A3A52] text-xs font-bold px-2.5 py-1 rounded">
-            {activeFilters} Filtro(s) Ativo(s)
-          </span>
-        )}
-      </div>
-
-      <div className="mb-6">
-        <label className="block text-sm font-semibold text-gray-700 mb-2">Período</label>
-        <div className="flex gap-2 flex-wrap">
-          {(['today', 'this_week', 'this_month', 'custom'] as PeriodType[]).map((p) => (
-            <button
-              key={p}
-              onClick={() => setPeriod(p)}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors border ${
-                period === p
-                  ? 'bg-[#1A3A52] text-white border-[#1A3A52]'
-                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-              }`}
-            >
-              {p === 'today' && 'Hoje'}
-              {p === 'this_week' && 'Esta Semana'}
-              {p === 'this_month' && 'Este Mês'}
-              {p === 'custom' && 'Personalizado'}
-            </button>
-          ))}
-        </div>
-
-        {period === 'custom' && (
-          <div className="mt-4 flex flex-wrap gap-4 p-4 bg-gray-50 rounded-md border border-gray-100 animate-in fade-in slide-in-from-top-1">
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Data Início</label>
-              <input
-                type="date"
-                value={periodRange.start}
-                onChange={(e) => setPeriodRange({ ...periodRange, start: e.target.value })}
-                className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1A3A52]/20 focus:border-[#1A3A52]"
-                max={new Date().toISOString().split('T')[0]}
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Data Fim</label>
-              <input
-                type="date"
-                value={periodRange.end}
-                onChange={(e) => setPeriodRange({ ...periodRange, end: e.target.value })}
-                className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1A3A52]/20 focus:border-[#1A3A52]"
-                max={new Date().toISOString().split('T')[0]}
-              />
-            </div>
+    <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm p-6">
+      <div className="flex flex-col md:flex-row gap-8">
+        <div className="flex-1 space-y-4">
+          <div className="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
+            <Calendar className="w-4 h-4 text-primary" /> Período de Análise
           </div>
-        )}
-      </div>
-
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-2">
-          <label className="block text-sm font-semibold text-gray-700">Usuários</label>
-          <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer hover:text-gray-900 transition-colors">
-            <input
-              type="checkbox"
-              className="rounded border-gray-300 text-[#1A3A52] focus:ring-[#1A3A52]"
-              onChange={(e) => toggleAllUsers(e.target.checked)}
-              checked={filteredUsers.length > 0 && selectedUserIds.length === filteredUsers.length}
-            />
-            Selecionar Todos
-          </label>
-        </div>
-
-        <input
-          type="text"
-          placeholder="Buscar por email ou nome..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-[#1A3A52]/20 focus:border-[#1A3A52]"
-        />
-
-        {loading ? (
-          <div className="p-4 text-center border border-gray-200 rounded-md bg-gray-50">
-            <div className="inline-block w-5 h-5 border-2 border-[#1A3A52] border-t-transparent rounded-full animate-spin mb-2"></div>
-            <p className="text-gray-500 text-sm">Carregando usuários...</p>
-          </div>
-        ) : filteredUsers.length === 0 ? (
-          <div className="p-4 text-center border border-gray-200 rounded-md bg-gray-50">
-            <p className="text-gray-500 text-sm">Nenhum usuário encontrado</p>
-          </div>
-        ) : (
-          <div className="border border-gray-300 rounded-md max-h-48 overflow-y-auto bg-white divide-y divide-gray-100">
-            {filteredUsers.map((user) => (
-              <label
-                key={user.id}
-                className="flex items-center gap-3 p-3 hover:bg-gray-50 cursor-pointer transition-colors group"
+          <div className="flex flex-wrap gap-2">
+            {[
+              { id: 'today', label: 'Hoje' },
+              { id: 'this_week', label: 'Esta Semana' },
+              { id: 'this_month', label: 'Este Mês' },
+              { id: 'custom', label: 'Personalizado' },
+            ].map((p) => (
+              <Button
+                key={p.id}
+                variant={period === p.id ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setPeriod(p.id as any)}
+                className={cn('rounded-full transition-all', period === p.id && 'shadow-sm')}
               >
-                <input
-                  type="checkbox"
-                  checked={selectedUserIds.includes(user.id)}
-                  onChange={(e) => {
-                    if (e.target.checked) {
-                      setSelectedUserIds([...selectedUserIds, user.id])
-                    } else {
-                      setSelectedUserIds(selectedUserIds.filter((id) => id !== user.id))
-                    }
-                  }}
-                  className="w-4 h-4 rounded border-gray-300 text-[#1A3A52] focus:ring-[#1A3A52]"
-                />
-                <span className="text-sm text-gray-700 font-medium group-hover:text-gray-900 transition-colors">
-                  {user.nome || 'Sem Nome'}{' '}
-                  <span className="text-gray-400 font-normal">({user.email})</span>
-                </span>
-              </label>
+                {p.label}
+              </Button>
             ))}
           </div>
-        )}
+
+          {period === 'custom' && (
+            <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-gray-100 dark:border-gray-800 animate-fade-in-down">
+              <div className="space-y-1.5">
+                <Label className="text-xs text-gray-500">Data Início</Label>
+                <Input
+                  type="date"
+                  value={periodRange.start}
+                  onChange={(e) => setPeriodRange({ ...periodRange, start: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-gray-500">Data Fim</Label>
+                <Input
+                  type="date"
+                  value={periodRange.end}
+                  onChange={(e) => setPeriodRange({ ...periodRange, end: e.target.value })}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="flex-1 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
+              <Users className="w-4 h-4 text-primary" /> Colaboradores
+            </div>
+            <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={toggleAll}>
+              {selectedUserIds.length === users.length ? 'Desmarcar Todos' : 'Selecionar Todos'}
+            </Button>
+          </div>
+
+          <div className="relative">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por nome ou email..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 h-9"
+            />
+          </div>
+
+          <ScrollArea className="h-[140px] rounded-md border border-gray-200 dark:border-gray-800 p-2 bg-gray-50/50 dark:bg-gray-900/50">
+            {loading ? (
+              <p className="text-sm text-muted-foreground p-3 text-center animate-pulse">
+                Carregando...
+              </p>
+            ) : filteredUsers.length === 0 ? (
+              <p className="text-sm text-muted-foreground p-3 text-center">
+                Nenhum usuário encontrado
+              </p>
+            ) : (
+              <div className="space-y-2.5 p-1 pr-3">
+                {filteredUsers.map((user) => (
+                  <div key={user.id} className="flex items-center space-x-2.5 group">
+                    <Checkbox
+                      id={`user-${user.id}`}
+                      checked={selectedUserIds.includes(user.id)}
+                      onCheckedChange={(checked) => {
+                        if (checked) setSelectedUserIds([...selectedUserIds, user.id])
+                        else setSelectedUserIds(selectedUserIds.filter((id) => id !== user.id))
+                      }}
+                      className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                    />
+                    <label
+                      htmlFor={`user-${user.id}`}
+                      className="text-sm font-medium leading-none cursor-pointer text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white transition-colors"
+                    >
+                      {user.nome || user.email}
+                    </label>
+                  </div>
+                ))}
+              </div>
+            )}
+          </ScrollArea>
+        </div>
       </div>
 
-      <div className="flex gap-3 pt-2 border-t border-gray-100">
-        <button
-          onClick={handleApplyFilters}
-          className="px-6 py-2.5 bg-[#1A3A52] text-white rounded-md font-medium hover:bg-[#153045] transition-colors flex items-center justify-center min-w-[140px] shadow-sm"
-        >
+      <div className="mt-6 pt-5 border-t border-gray-100 dark:border-gray-800 flex items-center justify-end gap-3">
+        <Button variant="ghost" size="sm" onClick={handleClearFilters}>
+          Restaurar Padrão
+        </Button>
+        <Button size="sm" onClick={handleApplyFilters} className="min-w-[140px] shadow-sm">
           Aplicar Filtros
-        </button>
-        <button
-          onClick={handleClearFilters}
-          className="px-6 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-md font-medium hover:bg-gray-50 transition-colors shadow-sm"
-        >
-          Limpar
-        </button>
+          {activeFilters > 0 && (
+            <Badge
+              variant="secondary"
+              className="ml-2 bg-white/20 hover:bg-white/30 text-white border-0 font-bold px-1.5 py-0"
+            >
+              {activeFilters}
+            </Badge>
+          )}
+        </Button>
       </div>
     </div>
   )
