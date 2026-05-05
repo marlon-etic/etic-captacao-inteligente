@@ -158,6 +158,7 @@ export function DashboardCaptadores({ filters }: DashboardProps) {
           trend: 0,
           icon: <Package className="w-6 h-6 text-teal-500" />,
           color: 'blue',
+          metricType: 'property_free',
         },
         {
           label: 'Sem Resposta / Perdidos',

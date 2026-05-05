@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase/client'
-import { X, Search, ChevronLeft, ChevronRight } from 'lucide-react'
+import { X, Search, ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface MetricDetailModalProps {
   isOpen: boolean
@@ -14,17 +15,6 @@ interface MetricDetailModalProps {
   }
 }
 
-interface DetailItem {
-  id: string
-  code: string
-  title: string
-  location: string
-  value: number
-  status: string
-  createdAt: string
-  createdBy: string
-}
-
 export function MetricDetailModal({
   isOpen,
   onClose,
@@ -32,9 +22,9 @@ export function MetricDetailModal({
   metricLabel,
   filters,
 }: MetricDetailModalProps) {
-  const [items, setItems] = useState<DetailItem[]>([])
+  const [items, setItems] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
-  const [selectedItem, setSelectedItem] = useState<DetailItem | null>(null)
+  const [selectedItem, setSelectedItem] = useState<any | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 20
@@ -44,119 +34,6 @@ export function MetricDetailModal({
       loadDetails()
     }
   }, [isOpen, filters, metricType])
-
-  const loadDetails = async () => {
-    try {
-      setLoading(true)
-      const dateRange = getDateRange()
-
-      const { data: events, error } = await supabase
-        .from('analytics_events')
-        .select('id, user_id, event_data, created_at, event_type')
-        .eq('event_type', metricType)
-        .in('user_id', filters.userIds)
-        .gte('created_at', dateRange.start)
-        .lt('created_at', dateRange.end)
-        .order('created_at', { ascending: false })
-        .limit(1000)
-
-      if (error) throw error
-
-      const propertyIds = (events || [])
-        .map(
-          (e: any) =>
-            e.event_data?.property_id || e.event_data?.codigo_imovel || e.event_data?.imovel_id,
-        )
-        .filter(Boolean)
-      const demandIds = (events || [])
-        .map((e: any) => e.event_data?.demand_id || e.event_data?.demanda_id)
-        .filter(Boolean)
-      const userIds = Array.from(new Set((events || []).map((e: any) => e.user_id).filter(Boolean)))
-
-      const propertiesMap = new Map()
-      if (propertyIds.length > 0) {
-        const { data: props } = await supabase
-          .from('imoveis_captados')
-          .select('id, codigo_imovel, endereco, preco, status_captacao')
-          .in('id', propertyIds)
-        props?.forEach((p) => propertiesMap.set(p.id, p))
-      }
-
-      const demandsMap = new Map()
-      if (demandIds.length > 0) {
-        const { data: dLoc } = await supabase
-          .from('demandas_locacao')
-          .select('id, nome_cliente, bairros, valor_minimo, valor_maximo')
-          .in('id', demandIds)
-        dLoc?.forEach((d) => demandsMap.set(d.id, d))
-        const { data: dVend } = await supabase
-          .from('demandas_vendas')
-          .select('id, nome_cliente, bairros, valor_minimo, valor_maximo')
-          .in('id', demandIds)
-        dVend?.forEach((d) => demandsMap.set(d.id, d))
-      }
-
-      const usersMap = new Map()
-      if (userIds.length > 0) {
-        const { data: usrs } = await supabase.from('users').select('id, nome').in('id', userIds)
-        usrs?.forEach((u) => usersMap.set(u.id, u.nome))
-      }
-
-      const enrichedItems: DetailItem[] = []
-      for (const event of events || []) {
-        const pId =
-          event.event_data?.property_id ||
-          event.event_data?.codigo_imovel ||
-          event.event_data?.imovel_id
-        const dId = event.event_data?.demand_id || event.event_data?.demanda_id
-
-        const p = propertiesMap.get(pId)
-        const d = demandsMap.get(dId)
-        const createdBy = usersMap.get(event.user_id) || 'Desconhecido'
-
-        if (p && !enrichedItems.some((i) => i.id === p.id)) {
-          enrichedItems.push({
-            id: p.id,
-            code: p.codigo_imovel || p.id.slice(0, 8),
-            title: `Imóvel ${p.codigo_imovel || p.id.slice(0, 8)}`,
-            location: p.endereco || 'Não informado',
-            value: p.preco || 0,
-            status: p.status_captacao || 'N/A',
-            createdAt: event.created_at,
-            createdBy,
-          })
-        } else if (d && !enrichedItems.some((i) => i.id === d.id)) {
-          enrichedItems.push({
-            id: d.id,
-            code: `DEM-${d.id.slice(0, 8)}`,
-            title: d.nome_cliente || 'Cliente',
-            location: (d.bairros || []).join(', ') || 'Não informado',
-            value: d.valor_maximo || d.valor_minimo || 0,
-            status: 'Ativa',
-            createdAt: event.created_at,
-            createdBy,
-          })
-        } else if (!p && !d) {
-          enrichedItems.push({
-            id: event.id,
-            code: `EVT-${event.id.slice(0, 8)}`,
-            title: event.event_type,
-            location: '-',
-            value: 0,
-            status: '-',
-            createdAt: event.created_at,
-            createdBy,
-          })
-        }
-      }
-
-      setItems(enrichedItems)
-    } catch (err) {
-      console.error('[MetricDetailModal] Erro:', err)
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const getDateRange = () => {
     const now = new Date()
@@ -174,8 +51,8 @@ export function MetricDetailModal({
         start = new Date(now.getFullYear(), now.getMonth(), 1)
         break
       case 'custom':
-        start = new Date(filters.periodRange?.start || now)
-        end = new Date(filters.periodRange?.end || now)
+        start = new Date(filters.periodRange?.start || now.toISOString())
+        end = new Date(filters.periodRange?.end || now.toISOString())
         end.setHours(23, 59, 59, 999)
         break
       default:
@@ -188,11 +65,196 @@ export function MetricDetailModal({
     }
   }
 
-  const filteredItems = items.filter(
-    (item) =>
-      item.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.title.toLowerCase().includes(searchQuery.toLowerCase()),
-  )
+  const loadDetails = async () => {
+    try {
+      setLoading(true)
+      const dateRange = getDateRange()
+
+      if (metricType.startsWith('property')) {
+        await loadPropertiesData(dateRange, metricType)
+      } else if (metricType.startsWith('demand')) {
+        await loadDemandsData(dateRange, metricType)
+      }
+    } catch (err) {
+      console.error('[MetricDetailModal] Erro:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const loadPropertiesData = async (dateRange: { start: string; end: string }, type: string) => {
+    try {
+      const { data: properties, error } = await supabase
+        .from('imoveis_captados')
+        .select(
+          'id, codigo_imovel, endereco, preco, tipo, status_captacao, etapa_funil, user_captador_id, captador_id, created_at, demanda_locacao_id, demanda_venda_id',
+        )
+        .gte('created_at', dateRange.start)
+        .lt('created_at', dateRange.end)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+
+      let filtered = (properties || []).filter((p) => {
+        const uId = p.user_captador_id || p.captador_id
+        if (filters.userIds.length > 0 && (!uId || !filters.userIds.includes(uId))) {
+          return false
+        }
+        return true
+      })
+
+      if (type === 'property_linked') {
+        filtered = filtered.filter((p) => p.demanda_locacao_id || p.demanda_venda_id)
+      } else if (type === 'property_free') {
+        filtered = filtered.filter((p) => !p.demanda_locacao_id && !p.demanda_venda_id)
+      } else if (type === 'property_visit_scheduled') {
+        filtered = filtered.filter(
+          (p) => p.status_captacao === 'visitado' || p.etapa_funil === 'visitado',
+        )
+      } else if (type === 'property_deal_closed') {
+        filtered = filtered.filter(
+          (p) => p.status_captacao === 'fechado' || p.etapa_funil === 'fechado',
+        )
+      } else if (type === 'property_marked_lost') {
+        filtered = filtered.filter(
+          (p) => p.status_captacao === 'perdido' || p.etapa_funil === 'perdido',
+        )
+      }
+
+      const userIds = Array.from(
+        new Set(filtered.map((p) => p.user_captador_id || p.captador_id).filter(Boolean)),
+      )
+      const usersMap = new Map()
+      if (userIds.length > 0) {
+        const { data: usersData } = await supabase
+          .from('users')
+          .select('id, nome')
+          .in('id', userIds)
+        usersData?.forEach((u) => usersMap.set(u.id, u.nome))
+      }
+
+      const enrichedItems = filtered.map((prop) => ({
+        id: prop.id,
+        codigo_imovel: prop.codigo_imovel,
+        captador_nome: usersMap.get(prop.user_captador_id || prop.captador_id) || 'Desconhecido',
+        captador_id: prop.user_captador_id || prop.captador_id,
+        data_captacao: prop.created_at,
+        endereco: prop.endereco,
+        preco: prop.preco,
+        tipo: prop.tipo,
+        status: prop.status_captacao || prop.etapa_funil,
+        demanda_locacao_id: prop.demanda_locacao_id,
+        demanda_venda_id: prop.demanda_venda_id,
+      }))
+
+      setItems(enrichedItems)
+    } catch (err) {
+      console.error('[loadPropertiesData] Erro:', err)
+    }
+  }
+
+  const loadDemandsData = async (dateRange: { start: string; end: string }, type: string) => {
+    try {
+      const { data: demandsLoc } = await supabase
+        .from('demandas_locacao')
+        .select(
+          'id, nome_cliente, sdr_id, created_at, valor_minimo, valor_maximo, bairros, nivel_urgencia, urgencia, status_demanda',
+        )
+        .gte('created_at', dateRange.start)
+        .lt('created_at', dateRange.end)
+
+      const { data: demandsVen } = await supabase
+        .from('demandas_vendas')
+        .select(
+          'id, nome_cliente, corretor_id, created_at, valor_minimo, valor_maximo, bairros, nivel_urgencia, urgencia, status_demanda',
+        )
+        .gte('created_at', dateRange.start)
+        .lt('created_at', dateRange.end)
+
+      let allDemands = [...(demandsLoc || []), ...(demandsVen || [])]
+
+      allDemands = allDemands.filter((d) => {
+        const uId = d.sdr_id || d.corretor_id
+        if (filters.userIds.length > 0 && (!uId || !filters.userIds.includes(uId))) {
+          return false
+        }
+        return true
+      })
+
+      if (type === 'demand_deal_closed') {
+        allDemands = allDemands.filter((d) => d.status_demanda === 'ganho')
+      }
+
+      const userIds = Array.from(
+        new Set(allDemands.map((d) => d.sdr_id || d.corretor_id).filter(Boolean)),
+      )
+      const usersMap = new Map()
+      if (userIds.length > 0) {
+        const { data: usersData } = await supabase
+          .from('users')
+          .select('id, nome')
+          .in('id', userIds)
+        usersData?.forEach((u) => usersMap.set(u.id, u.nome))
+      }
+
+      const demandIds = allDemands.map((d) => d.id)
+      const linkedPropsMap = new Map()
+
+      if (demandIds.length > 0) {
+        const { data: linkedProps } = await supabase
+          .from('imoveis_captados')
+          .select('id, demanda_locacao_id, demanda_venda_id')
+          .or(
+            `demanda_locacao_id.in.(${demandIds.join(',')}),demanda_venda_id.in.(${demandIds.join(',')})`,
+          )
+
+        linkedProps?.forEach((lp) => {
+          const dId = lp.demanda_locacao_id || lp.demanda_venda_id
+          if (dId) {
+            linkedPropsMap.set(dId, (linkedPropsMap.get(dId) || 0) + 1)
+          }
+        })
+      }
+
+      let enrichedItems = allDemands.map((demand) => ({
+        id: demand.id,
+        nome_cliente: demand.nome_cliente,
+        corretor_nome: usersMap.get(demand.sdr_id || demand.corretor_id) || 'Desconhecido',
+        corretor_id: demand.sdr_id || demand.corretor_id,
+        data_criacao: demand.created_at,
+        valor_minimo: demand.valor_minimo,
+        valor_maximo: demand.valor_maximo,
+        bairros: demand.bairros || [],
+        urgencia: demand.urgencia || demand.nivel_urgencia || 'Normal',
+        imoveiVinculados: linkedPropsMap.get(demand.id) || 0,
+        type: demand.sdr_id ? 'locacao' : 'venda',
+        status: demand.status_demanda,
+      }))
+
+      if (type === 'demand_linked') {
+        enrichedItems = enrichedItems.filter((d) => d.imoveiVinculados > 0)
+      }
+
+      setItems(
+        enrichedItems.sort(
+          (a, b) => new Date(b.data_criacao).getTime() - new Date(a.data_criacao).getTime(),
+        ),
+      )
+    } catch (err) {
+      console.error('[loadDemandsData] Erro:', err)
+    }
+  }
+
+  const filteredItems = items.filter((item) => {
+    const searchLower = searchQuery.toLowerCase()
+    return (
+      (item.codigo_imovel && item.codigo_imovel.toLowerCase().includes(searchLower)) ||
+      (item.captador_nome && item.captador_nome.toLowerCase().includes(searchLower)) ||
+      (item.nome_cliente && item.nome_cliente.toLowerCase().includes(searchLower)) ||
+      (item.corretor_nome && item.corretor_nome.toLowerCase().includes(searchLower)) ||
+      (item.endereco && item.endereco.toLowerCase().includes(searchLower))
+    )
+  })
 
   const paginatedItems = filteredItems.slice(
     (currentPage - 1) * itemsPerPage,
@@ -204,101 +266,214 @@ export function MetricDetailModal({
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col animate-fade-in-up">
-        <div className="bg-gradient-to-r from-blue-600 to-blue-500 text-white p-6 flex justify-between items-center">
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4 sm:p-6 backdrop-blur-sm animate-fade-in">
+      <div className="bg-white dark:bg-gray-950 rounded-xl shadow-2xl w-full max-w-[1000px] max-h-[80vh] overflow-hidden flex flex-col animate-fade-in-up border border-gray-200 dark:border-gray-800">
+        <div className="bg-gradient-to-r from-blue-600 to-blue-500 text-white p-5 flex justify-between items-center shrink-0">
           <div>
-            <h2 className="text-2xl font-bold">{metricLabel}</h2>
-            <p className="text-blue-100 mt-1 opacity-90">
-              Total: {filteredItems.length} registros no período
+            <h2 className="text-xl sm:text-2xl font-bold tracking-tight">{metricLabel}</h2>
+            <p className="text-blue-100 text-sm mt-0.5 font-medium">
+              Total: {filteredItems.length} registros
             </p>
           </div>
           <button
             onClick={onClose}
-            className="text-white hover:bg-white/20 rounded-full p-2 transition-colors"
+            className="text-white hover:bg-white/20 rounded-full p-2 transition-colors focus:outline-none"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="p-4 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50">
-          <div className="relative">
+        <div className="p-4 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50 shrink-0">
+          <div className="relative max-w-md">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
-              placeholder="Buscar por código ou nome..."
+              placeholder="Buscar por código, nome ou responsável..."
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value)
                 setCurrentPage(1)
               }}
-              className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-lg pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
+              className="w-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 rounded-lg pl-9 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
             />
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto min-h-0 bg-white dark:bg-gray-950 relative">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-20 text-gray-500">
               <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4" />
               <p className="text-sm font-medium">Buscando detalhes...</p>
             </div>
           ) : paginatedItems.length === 0 ? (
-            <div className="text-center py-16 text-gray-500 text-sm border border-dashed border-gray-200 m-8 rounded-xl bg-gray-50/50">
-              Nenhum registro encontrado para esta métrica no período selecionado.
+            <div className="text-center py-16 text-gray-500 text-sm border border-dashed border-gray-200 dark:border-gray-800 m-8 rounded-xl bg-gray-50/50 dark:bg-gray-900/30">
+              Nenhum registro encontrado.
             </div>
           ) : (
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 dark:bg-gray-900/80 sticky top-0 z-10 border-b border-gray-200 dark:border-gray-800">
-                <tr>
-                  <th className="px-6 py-3.5 text-left font-semibold text-gray-700 dark:text-gray-300">
-                    Código
-                  </th>
-                  <th className="px-6 py-3.5 text-left font-semibold text-gray-700 dark:text-gray-300">
-                    Descrição
-                  </th>
-                  <th className="px-6 py-3.5 text-left font-semibold text-gray-700 dark:text-gray-300">
-                    Localização
-                  </th>
-                  <th className="px-6 py-3.5 text-right font-semibold text-gray-700 dark:text-gray-300">
-                    Valor
-                  </th>
-                  <th className="px-6 py-3.5 text-center font-semibold text-gray-700 dark:text-gray-300">
-                    Ação
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                {paginatedItems.map((item) => (
-                  <tr
-                    key={item.id}
-                    className="hover:bg-blue-50/50 dark:hover:bg-blue-900/10 cursor-pointer transition-colors group"
-                    onClick={() => setSelectedItem(item)}
-                  >
-                    <td className="px-6 py-4 font-medium text-gray-900 dark:text-white whitespace-nowrap">
-                      {item.code}
-                    </td>
-                    <td className="px-6 py-4 text-gray-600 dark:text-gray-400">{item.title}</td>
-                    <td className="px-6 py-4 text-gray-600 dark:text-gray-400">
-                      <span className="truncate max-w-[200px] block">{item.location}</span>
-                    </td>
-                    <td className="px-6 py-4 text-right font-medium text-gray-900 dark:text-white whitespace-nowrap">
-                      R$ {item.value.toLocaleString('pt-BR')}
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <span className="text-blue-600 dark:text-blue-400 text-xs font-semibold group-hover:underline">
-                        Ver Mais
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="overflow-x-auto w-full pb-safe">
+              {metricType.startsWith('property') ? (
+                <table className="w-full text-sm text-left whitespace-nowrap">
+                  <thead className="bg-gray-50 dark:bg-gray-900/80 sticky top-0 z-10 border-b border-gray-200 dark:border-gray-800">
+                    <tr>
+                      <th className="px-5 py-3.5 font-semibold text-gray-700 dark:text-gray-300">
+                        Usuário Captador
+                      </th>
+                      <th className="px-5 py-3.5 font-semibold text-gray-700 dark:text-gray-300">
+                        Código do Imóvel
+                      </th>
+                      <th className="px-5 py-3.5 font-semibold text-gray-700 dark:text-gray-300">
+                        Link do Imóvel
+                      </th>
+                      <th className="px-5 py-3.5 font-semibold text-gray-700 dark:text-gray-300 text-center">
+                        Detalhes
+                      </th>
+                      <th className="px-5 py-3.5 font-semibold text-gray-700 dark:text-gray-300">
+                        Data da Captação
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                    {paginatedItems.map((item) => (
+                      <tr
+                        key={item.id}
+                        className="hover:bg-blue-50/50 dark:hover:bg-blue-900/10 cursor-pointer transition-colors"
+                        onClick={() => setSelectedItem(item)}
+                      >
+                        <td className="px-5 py-3 text-gray-900 dark:text-white font-medium">
+                          {item.captador_nome}
+                        </td>
+                        <td className="px-5 py-3 text-gray-600 dark:text-gray-400 font-mono">
+                          {item.codigo_imovel}
+                        </td>
+                        <td className="px-5 py-3">
+                          <a
+                            href={`https://www.eticimoveis.com.br/imovel/${item.codigo_imovel}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1 font-medium"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            Ver no site <ExternalLink className="w-3 h-3" />
+                          </a>
+                        </td>
+                        <td className="px-5 py-3 text-center">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setSelectedItem(item)
+                            }}
+                            className="px-3 py-1.5 bg-blue-600 text-white rounded-md text-xs font-semibold hover:bg-blue-700 transition-colors shadow-sm"
+                          >
+                            Ver Card
+                          </button>
+                        </td>
+                        <td className="px-5 py-3 text-gray-500 dark:text-gray-400">
+                          {new Date(item.data_captacao).toLocaleString('pt-BR', {
+                            dateStyle: 'short',
+                            timeStyle: 'short',
+                          })}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <table className="w-full text-sm text-left whitespace-nowrap">
+                  <thead className="bg-gray-50 dark:bg-gray-900/80 sticky top-0 z-10 border-b border-gray-200 dark:border-gray-800">
+                    <tr>
+                      <th className="px-5 py-3.5 font-semibold text-gray-700 dark:text-gray-300">
+                        Corretor/SDR
+                      </th>
+                      <th className="px-5 py-3.5 font-semibold text-gray-700 dark:text-gray-300">
+                        Data da Demanda
+                      </th>
+                      <th className="px-5 py-3.5 font-semibold text-gray-700 dark:text-gray-300">
+                        Valor
+                      </th>
+                      <th className="px-5 py-3.5 font-semibold text-gray-700 dark:text-gray-300">
+                        Bairro(s)
+                      </th>
+                      <th className="px-5 py-3.5 font-semibold text-gray-700 dark:text-gray-300 text-center">
+                        Urgência
+                      </th>
+                      <th className="px-5 py-3.5 font-semibold text-gray-700 dark:text-gray-300 text-center">
+                        Imóveis Vinculados
+                      </th>
+                      <th className="px-5 py-3.5 font-semibold text-gray-700 dark:text-gray-300 text-center">
+                        Ver Card
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                    {paginatedItems.map((item) => (
+                      <tr
+                        key={item.id}
+                        className="hover:bg-blue-50/50 dark:hover:bg-blue-900/10 cursor-pointer transition-colors"
+                        onClick={() => setSelectedItem(item)}
+                      >
+                        <td className="px-5 py-3 text-gray-900 dark:text-white font-medium">
+                          {item.corretor_nome}
+                        </td>
+                        <td className="px-5 py-3 text-gray-500 dark:text-gray-400">
+                          {new Date(item.data_criacao).toLocaleString('pt-BR', {
+                            dateStyle: 'short',
+                            timeStyle: 'short',
+                          })}
+                        </td>
+                        <td className="px-5 py-3 text-gray-700 dark:text-gray-300 font-medium">
+                          R$ {item.valor_minimo?.toLocaleString('pt-BR') || 0} - R${' '}
+                          {item.valor_maximo?.toLocaleString('pt-BR') || 0}
+                        </td>
+                        <td className="px-5 py-3 text-gray-600 dark:text-gray-400 max-w-[200px] truncate">
+                          {(item.bairros || []).join(', ') || '-'}
+                        </td>
+                        <td className="px-5 py-3 text-center">
+                          <span
+                            className={cn(
+                              'px-2 py-0.5 rounded text-xs font-semibold whitespace-nowrap',
+                              item.urgencia === 'Crítica' || item.urgencia === 'Urgente'
+                                ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                                : item.urgencia === 'Alta'
+                                  ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400'
+                                  : 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+                            )}
+                          >
+                            {item.urgencia}
+                          </span>
+                        </td>
+                        <td className="px-5 py-3 text-center">
+                          {item.imoveiVinculados > 0 ? (
+                            <span className="text-green-600 dark:text-green-400 font-bold bg-green-50 dark:bg-green-500/10 px-2 py-1 rounded">
+                              Sim ({item.imoveiVinculados})
+                            </span>
+                          ) : (
+                            <span className="text-gray-400 dark:text-gray-500 font-medium">
+                              Não
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-5 py-3 text-center">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setSelectedItem(item)
+                            }}
+                            className="px-3 py-1.5 bg-blue-600 text-white rounded-md text-xs font-semibold hover:bg-blue-700 transition-colors shadow-sm"
+                          >
+                            Ver Card
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
           )}
         </div>
 
         {totalPages > 1 && (
-          <div className="bg-gray-50 dark:bg-gray-900 px-6 py-4 flex justify-between items-center border-t border-gray-200 dark:border-gray-800">
+          <div className="bg-gray-50 dark:bg-gray-900/80 px-5 py-3 flex justify-between items-center border-t border-gray-200 dark:border-gray-800 shrink-0">
             <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">
               Página {currentPage} de {totalPages}
             </p>
@@ -306,28 +481,42 @@ export function MetricDetailModal({
               <button
                 onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                 disabled={currentPage === 1}
-                className="p-2 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-white dark:hover:bg-gray-800 disabled:opacity-50 transition-colors"
+                className="px-3 py-1.5 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-md text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
               >
-                <ChevronLeft className="w-4 h-4" />
+                <ChevronLeft className="w-4 h-4" /> Anterior
               </button>
               <button
                 onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
                 disabled={currentPage === totalPages}
-                className="p-2 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-white dark:hover:bg-gray-800 disabled:opacity-50 transition-colors"
+                className="px-3 py-1.5 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-md text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
               >
-                <ChevronRight className="w-4 h-4" />
+                Próxima <ChevronRight className="w-4 h-4" />
               </button>
             </div>
           </div>
         )}
       </div>
 
-      {selectedItem && <DetailDrawer item={selectedItem} onClose={() => setSelectedItem(null)} />}
+      {selectedItem && (
+        <DetailDrawer
+          item={selectedItem}
+          metricType={metricType}
+          onClose={() => setSelectedItem(null)}
+        />
+      )}
     </div>
   )
 }
 
-function DetailDrawer({ item, onClose }: { item: DetailItem; onClose: () => void }) {
+function DetailDrawer({
+  item,
+  metricType,
+  onClose,
+}: {
+  item: any
+  metricType: string
+  onClose: () => void
+}) {
   const [history, setHistory] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -338,14 +527,22 @@ function DetailDrawer({ item, onClose }: { item: DetailItem; onClose: () => void
   const loadHistory = async () => {
     try {
       setLoading(true)
-      const { data: events } = await supabase
+
+      let query = supabase
         .from('analytics_events')
-        .select('event_type, created_at, user_id, users(nome)')
-        .or(
-          `event_data->>property_id.eq.${item.id},event_data->>codigo_imovel.eq.${item.id},event_data->>demand_id.eq.${item.id},event_data->>demanda_id.eq.${item.id}`,
-        )
+        .select('event_type, created_at, user_id, event_data')
         .order('created_at', { ascending: false })
         .limit(50)
+
+      if (metricType.startsWith('property')) {
+        query = query.or(
+          `event_data->>property_id.eq.${item.id},event_data->>codigo_imovel.eq.${item.codigo_imovel}`,
+        )
+      } else {
+        query = query.or(`event_data->>demand_id.eq.${item.id}`)
+      }
+
+      const { data: events } = await query
 
       setHistory(events || [])
     } catch (err) {
@@ -355,117 +552,202 @@ function DetailDrawer({ item, onClose }: { item: DetailItem; onClose: () => void
     }
   }
 
+  const getEventLabel = (eventType: string) => {
+    const labels: Record<string, string> = {
+      property_created: '📦 Imóvel Criado',
+      property_linked: '🔗 Imóvel Vinculado',
+      property_visit_scheduled: '📅 Visita Agendada',
+      property_deal_closed: '✅ Negócio Fechado',
+      demand_created: '📋 Demanda Criada',
+      demand_linked: '🔗 Demanda Vinculada',
+    }
+    return labels[eventType] || eventType
+  }
+
+  const handleEdit = () => {
+    if (metricType.startsWith('property')) {
+      window.location.href = `/app/admin/properties`
+    } else {
+      window.location.href = `/app/demandas`
+    }
+  }
+
   return (
-    <div className="fixed inset-0 bg-black/60 flex justify-end z-[60] animate-fade-in">
-      <div className="bg-white dark:bg-gray-950 w-full max-w-md h-full overflow-y-auto shadow-2xl flex flex-col animate-slide-left">
-        <div className="bg-gradient-to-br from-gray-900 to-gray-800 text-white p-6 flex justify-between items-start sticky top-0 z-10 shadow-sm">
-          <div>
-            <p className="text-xs text-gray-400 font-medium uppercase tracking-wider mb-1">
-              Detalhes do Registro
-            </p>
-            <h3 className="text-xl font-bold">{item.code}</h3>
-          </div>
+    <div className="fixed inset-0 bg-black/60 flex justify-end z-[70] backdrop-blur-sm">
+      <div className="bg-white dark:bg-gray-950 w-full max-w-md h-full overflow-y-auto shadow-2xl animate-slide-in-right flex flex-col">
+        <div className="bg-gradient-to-r from-blue-600 to-blue-500 text-white p-6 flex justify-between items-center sticky top-0 shrink-0 shadow-sm z-10">
+          <h3 className="text-xl font-bold truncate pr-4">
+            {metricType.startsWith('property') ? item.codigo_imovel : item.nome_cliente}
+          </h3>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white bg-white/10 hover:bg-white/20 rounded-full p-2 transition-colors"
+            className="text-white hover:bg-white/20 rounded-full p-2 transition-colors shrink-0"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         <div className="p-6 space-y-6 flex-1">
-          <div className="bg-gray-50 dark:bg-gray-900/50 p-4 rounded-xl space-y-4 border border-gray-100 dark:border-gray-800">
-            <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                Descrição
-              </p>
-              <p className="text-base font-medium text-gray-900 dark:text-white mt-1">
-                {item.title}
-              </p>
-            </div>
+          {metricType.startsWith('property') ? (
+            <div className="space-y-4">
+              <div className="bg-gray-50 dark:bg-gray-900/50 p-4 rounded-xl space-y-4 border border-gray-100 dark:border-gray-800">
+                <div>
+                  <p className="text-xs text-gray-500 uppercase font-semibold">Código</p>
+                  <p className="text-lg font-bold text-gray-900 dark:text-white">
+                    {item.codigo_imovel}
+                  </p>
+                </div>
 
-            <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                Localização
-              </p>
-              <p className="text-sm text-gray-700 dark:text-gray-300 mt-1">{item.location}</p>
-            </div>
+                <div>
+                  <p className="text-xs text-gray-500 uppercase font-semibold">Usuário Captador</p>
+                  <p className="text-gray-700 dark:text-gray-300">{item.captador_nome}</p>
+                </div>
 
-            <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                Valor Registrado
-              </p>
-              <p className="text-xl font-bold text-green-600 dark:text-green-500 mt-1">
-                R$ {item.value.toLocaleString('pt-BR')}
-              </p>
-            </div>
+                <div>
+                  <p className="text-xs text-gray-500 uppercase font-semibold">Localização</p>
+                  <p className="text-gray-700 dark:text-gray-300">{item.endereco}</p>
+                </div>
 
-            <div className="grid grid-cols-2 gap-4 pt-2">
-              <div>
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Status
-                </p>
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 mt-1">
-                  {item.status}
-                </span>
+                <div>
+                  <p className="text-xs text-gray-500 uppercase font-semibold">Valor</p>
+                  <p className="text-2xl font-bold text-green-600 dark:text-green-500">
+                    R$ {item.preco?.toLocaleString('pt-BR') || 0}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-xs text-gray-500 uppercase font-semibold">Tipo</p>
+                  <p className="text-gray-700 dark:text-gray-300">{item.tipo}</p>
+                </div>
+
+                <div>
+                  <p className="text-xs text-gray-500 uppercase font-semibold">Status</p>
+                  <p className="text-gray-700 dark:text-gray-300 capitalize">{item.status}</p>
+                </div>
+
+                <div>
+                  <p className="text-xs text-gray-500 uppercase font-semibold">Link do Imóvel</p>
+                  <a
+                    href={`https://www.eticimoveis.com.br/imovel/${item.codigo_imovel}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 dark:text-blue-400 hover:text-blue-700 hover:underline text-sm inline-flex items-center gap-1 font-medium mt-1"
+                  >
+                    Abrir no site <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
               </div>
-              <div>
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Criado por
-                </p>
-                <p className="text-sm text-gray-700 dark:text-gray-300 mt-1 truncate">
-                  {item.createdBy}
-                </p>
+
+              <button
+                onClick={handleEdit}
+                className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold shadow-sm"
+              >
+                Editar Imóvel
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="bg-gray-50 dark:bg-gray-900/50 p-4 rounded-xl space-y-4 border border-gray-100 dark:border-gray-800">
+                <div>
+                  <p className="text-xs text-gray-500 uppercase font-semibold">Cliente</p>
+                  <p className="text-lg font-bold text-gray-900 dark:text-white">
+                    {item.nome_cliente}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-xs text-gray-500 uppercase font-semibold">Corretor/SDR</p>
+                  <p className="text-gray-700 dark:text-gray-300">{item.corretor_nome}</p>
+                </div>
+
+                <div>
+                  <p className="text-xs text-gray-500 uppercase font-semibold">Data de Criação</p>
+                  <p className="text-gray-700 dark:text-gray-300">
+                    {new Date(item.data_criacao).toLocaleString('pt-BR')}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-xs text-gray-500 uppercase font-semibold">Valor</p>
+                  <p className="text-gray-700 dark:text-gray-300 font-medium">
+                    R$ {item.valor_minimo?.toLocaleString('pt-BR') || 0} - R${' '}
+                    {item.valor_maximo?.toLocaleString('pt-BR') || 0}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-xs text-gray-500 uppercase font-semibold">Bairros</p>
+                  <p className="text-gray-700 dark:text-gray-300">{item.bairros.join(', ')}</p>
+                </div>
+
+                <div>
+                  <p className="text-xs text-gray-500 uppercase font-semibold">Urgência</p>
+                  <p
+                    className={cn(
+                      'inline-block px-2 py-1 rounded text-xs font-semibold mt-1',
+                      item.urgencia === 'Crítica' || item.urgencia === 'Urgente'
+                        ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                        : item.urgencia === 'Alta'
+                          ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400'
+                          : 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+                    )}
+                  >
+                    {item.urgencia}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-xs text-gray-500 uppercase font-semibold">
+                    Imóveis Vinculados
+                  </p>
+                  <p
+                    className={
+                      item.imoveiVinculados > 0
+                        ? 'text-green-600 dark:text-green-500 font-bold mt-1'
+                        : 'text-gray-500 font-medium mt-1'
+                    }
+                  >
+                    {item.imoveiVinculados > 0 ? `Sim (${item.imoveiVinculados})` : 'Não'}
+                  </p>
+                </div>
               </div>
-            </div>
 
-            <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                Data de Criação
-              </p>
-              <p className="text-sm text-gray-700 dark:text-gray-300 mt-1">
-                {new Date(item.createdAt).toLocaleString('pt-BR', {
-                  dateStyle: 'long',
-                  timeStyle: 'short',
-                })}
-              </p>
+              <button
+                onClick={handleEdit}
+                className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold shadow-sm"
+              >
+                Editar Demanda
+              </button>
             </div>
-          </div>
+          )}
 
-          <div>
+          <div className="pt-2">
             <h4 className="text-sm font-bold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-800 pb-2 mb-4">
-              Histórico de Ações (Analytics)
+              Histórico de Ações
             </h4>
 
             {loading ? (
-              <div className="flex justify-center py-6">
-                <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-              </div>
+              <p className="text-gray-500 text-sm text-center py-4">Buscando histórico...</p>
             ) : history.length === 0 ? (
-              <div className="text-center py-8 bg-gray-50 dark:bg-gray-900/30 rounded-xl border border-dashed border-gray-200 dark:border-gray-800">
-                <p className="text-sm text-gray-500">Nenhum evento registrado</p>
+              <div className="text-center py-6 bg-gray-50 dark:bg-gray-900/30 rounded-xl border border-dashed border-gray-200 dark:border-gray-800">
+                <p className="text-sm text-gray-500">Nenhuma ação registrada neste período</p>
               </div>
             ) : (
-              <div className="relative border-l-2 border-gray-200 dark:border-gray-800 ml-3 space-y-6">
+              <div className="space-y-3">
                 {history.map((event, idx) => (
-                  <div key={idx} className="relative pl-6">
-                    <span className="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-white dark:bg-gray-950 border-2 border-blue-500" />
-                    <div>
-                      <p className="font-semibold text-sm text-gray-900 dark:text-white capitalize-first">
-                        {event.event_type.replace(/_/g, ' ')}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-0.5">
-                        {new Date(event.created_at).toLocaleString('pt-BR', {
-                          dateStyle: 'short',
-                          timeStyle: 'short',
-                        })}
-                      </p>
-                      {event.users?.nome && (
-                        <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 bg-gray-100 dark:bg-gray-800 inline-block px-2 py-0.5 rounded">
-                          Por: {event.users.nome}
-                        </p>
-                      )}
-                    </div>
+                  <div
+                    key={idx}
+                    className="bg-gray-50 dark:bg-gray-900/50 p-3.5 rounded-lg text-sm border-l-4 border-blue-500"
+                  >
+                    <p className="font-semibold text-gray-800 dark:text-gray-200">
+                      {getEventLabel(event.event_type)}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      {new Date(event.created_at).toLocaleString('pt-BR', {
+                        dateStyle: 'long',
+                        timeStyle: 'short',
+                      })}
+                    </p>
                   </div>
                 ))}
               </div>

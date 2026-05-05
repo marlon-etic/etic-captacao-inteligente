@@ -184,6 +184,7 @@ export function DashboardCorretores({ filters }: DashboardProps) {
           trend: 0,
           icon: '👆',
           color: 'blue',
+          metricType: 'demand_linked',
         },
         {
           label: 'Visitas Agendadas',
@@ -191,7 +192,7 @@ export function DashboardCorretores({ filters }: DashboardProps) {
           trend: 0,
           icon: '📅',
           color: 'blue',
-          metricType: 'visit_scheduled',
+          metricType: 'demand_visit_scheduled',
         },
         {
           label: 'Taxa de Conversão',
@@ -199,6 +200,7 @@ export function DashboardCorretores({ filters }: DashboardProps) {
           trend: 0,
           icon: '📈',
           color: conversionRate > 50 ? 'green' : 'red',
+          metricType: 'demand_deal_closed',
         },
       ]
 
