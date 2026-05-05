@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { supabase } from '@/lib/supabase/client'
 import { X, Search, ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -265,16 +266,18 @@ export function MetricDetailModal({
 
   if (!isOpen) return null
 
-  return (
+  // Ensure modal renders on top of everything using a Portal
+  const content = (
     <div
-      className="fixed inset-0 bg-black/60 flex items-center justify-center z-[50] p-4 sm:p-6 backdrop-blur-sm animate-fade-in overflow-y-auto"
+      className="fixed inset-0 bg-black/60 flex items-center justify-center z-[9999] p-4 sm:p-6 backdrop-blur-sm animate-fade-in overflow-y-auto"
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-gray-950 rounded-xl shadow-2xl w-[90%] md:w-[80%] lg:w-[1000px] max-w-full max-h-[80vh] flex flex-col animate-fade-in-up border border-gray-200 dark:border-gray-800 z-[51]"
+        className="bg-white dark:bg-gray-950 rounded-xl shadow-2xl w-full max-w-[95vw] md:max-w-[85vw] lg:max-w-[1000px] max-h-[85vh] flex flex-col animate-fade-in-up border border-gray-200 dark:border-gray-800"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="bg-gradient-to-r from-blue-600 to-blue-500 text-white p-5 flex justify-between items-center shrink-0 rounded-t-xl sticky top-0 z-20">
+        {/* Header Sticky */}
+        <div className="bg-gradient-to-r from-blue-600 to-blue-500 text-white p-4 md:p-6 flex justify-between items-center shrink-0 rounded-t-xl sticky top-0 z-30">
           <div>
             <h2 className="text-xl sm:text-2xl font-bold tracking-tight">{metricLabel}</h2>
             <p className="text-blue-100 text-sm mt-0.5 font-medium">
@@ -283,14 +286,16 @@ export function MetricDetailModal({
           </div>
           <button
             onClick={onClose}
-            className="text-white hover:bg-white/20 rounded-full p-2 transition-colors focus:outline-none"
+            className="text-white hover:bg-white/20 rounded-full p-2 transition-colors focus:outline-none flex shrink-0"
+            aria-label="Fechar modal"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="p-4 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50 shrink-0">
-          <div className="relative max-w-md">
+        {/* Search Area */}
+        <div className="p-4 md:p-6 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50 shrink-0 z-20">
+          <div className="relative w-full">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
@@ -300,11 +305,12 @@ export function MetricDetailModal({
                 setSearchQuery(e.target.value)
                 setCurrentPage(1)
               }}
-              className="w-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 rounded-lg pl-9 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
+              className="w-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 rounded-lg pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
             />
           </div>
         </div>
 
+        {/* Table Content Scrollable */}
         <div
           className={cn(
             'flex-1 overflow-y-auto min-h-0 bg-white dark:bg-gray-950 relative',
@@ -318,7 +324,7 @@ export function MetricDetailModal({
             </div>
           ) : paginatedItems.length === 0 ? (
             <div className="text-center py-16 text-gray-500 text-sm border border-dashed border-gray-200 dark:border-gray-800 m-8 rounded-xl bg-gray-50/50 dark:bg-gray-900/30">
-              Nenhum registro encontrado.
+              Nenhum registro encontrado para a sua busca.
             </div>
           ) : (
             <div className="overflow-x-auto w-full pb-safe">
@@ -350,13 +356,13 @@ export function MetricDetailModal({
                         className="hover:bg-blue-50/50 dark:hover:bg-blue-900/10 cursor-pointer transition-colors"
                         onClick={() => setSelectedItem(item)}
                       >
-                        <td className="px-5 py-3 text-gray-900 dark:text-white font-medium">
+                        <td className="px-5 py-3.5 text-gray-900 dark:text-white font-medium">
                           {item.captador_nome}
                         </td>
-                        <td className="px-5 py-3 text-gray-600 dark:text-gray-400 font-mono">
+                        <td className="px-5 py-3.5 text-gray-600 dark:text-gray-400 font-mono">
                           {item.codigo_imovel}
                         </td>
-                        <td className="px-5 py-3">
+                        <td className="px-5 py-3.5">
                           <a
                             href={`https://www.eticimoveis.com.br/imovel/${item.codigo_imovel}`}
                             target="_blank"
@@ -367,7 +373,7 @@ export function MetricDetailModal({
                             Ver no site <ExternalLink className="w-3 h-3" />
                           </a>
                         </td>
-                        <td className="px-5 py-3 text-center">
+                        <td className="px-5 py-3.5 text-center">
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
@@ -378,7 +384,7 @@ export function MetricDetailModal({
                             Ver Card
                           </button>
                         </td>
-                        <td className="px-5 py-3 text-gray-500 dark:text-gray-400">
+                        <td className="px-5 py-3.5 text-gray-500 dark:text-gray-400">
                           {new Date(item.data_captacao).toLocaleString('pt-BR', {
                             dateStyle: 'short',
                             timeStyle: 'short',
@@ -422,26 +428,26 @@ export function MetricDetailModal({
                         className="hover:bg-blue-50/50 dark:hover:bg-blue-900/10 cursor-pointer transition-colors"
                         onClick={() => setSelectedItem(item)}
                       >
-                        <td className="px-5 py-3 text-gray-900 dark:text-white font-medium">
+                        <td className="px-5 py-3.5 text-gray-900 dark:text-white font-medium">
                           {item.corretor_nome}
                         </td>
-                        <td className="px-5 py-3 text-gray-500 dark:text-gray-400">
+                        <td className="px-5 py-3.5 text-gray-500 dark:text-gray-400">
                           {new Date(item.data_criacao).toLocaleString('pt-BR', {
                             dateStyle: 'short',
                             timeStyle: 'short',
                           })}
                         </td>
-                        <td className="px-5 py-3 text-gray-700 dark:text-gray-300 font-medium">
+                        <td className="px-5 py-3.5 text-gray-700 dark:text-gray-300 font-medium">
                           R$ {item.valor_minimo?.toLocaleString('pt-BR') || 0} - R${' '}
                           {item.valor_maximo?.toLocaleString('pt-BR') || 0}
                         </td>
-                        <td className="px-5 py-3 text-gray-600 dark:text-gray-400 max-w-[200px] truncate">
+                        <td className="px-5 py-3.5 text-gray-600 dark:text-gray-400 max-w-[200px] truncate">
                           {(item.bairros || []).join(', ') || '-'}
                         </td>
-                        <td className="px-5 py-3 text-center">
+                        <td className="px-5 py-3.5 text-center">
                           <span
                             className={cn(
-                              'px-2 py-0.5 rounded text-xs font-semibold whitespace-nowrap',
+                              'px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap',
                               item.urgencia === 'Crítica' || item.urgencia === 'Urgente'
                                 ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
                                 : item.urgencia === 'Alta'
@@ -452,7 +458,7 @@ export function MetricDetailModal({
                             {item.urgencia}
                           </span>
                         </td>
-                        <td className="px-5 py-3 text-center">
+                        <td className="px-5 py-3.5 text-center">
                           {item.imoveiVinculados > 0 ? (
                             <span className="text-green-600 dark:text-green-400 font-bold bg-green-50 dark:bg-green-500/10 px-2 py-1 rounded">
                               Sim ({item.imoveiVinculados})
@@ -463,7 +469,7 @@ export function MetricDetailModal({
                             </span>
                           )}
                         </td>
-                        <td className="px-5 py-3 text-center">
+                        <td className="px-5 py-3.5 text-center">
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
@@ -483,8 +489,9 @@ export function MetricDetailModal({
           )}
         </div>
 
+        {/* Pagination Sticky Footer */}
         {totalPages > 1 && (
-          <div className="bg-gray-50 dark:bg-gray-900/80 px-5 py-3 flex justify-between items-center border-t border-gray-200 dark:border-gray-800 shrink-0 rounded-b-xl sticky bottom-0 z-20">
+          <div className="bg-gray-50 dark:bg-gray-900/80 px-4 md:px-6 py-4 flex justify-between items-center border-t border-gray-200 dark:border-gray-800 shrink-0 rounded-b-xl sticky bottom-0 z-30">
             <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">
               Página {currentPage} de {totalPages}
             </p>
@@ -508,6 +515,7 @@ export function MetricDetailModal({
         )}
       </div>
 
+      {/* Drawer */}
       {selectedItem && (
         <DetailDrawer
           item={selectedItem}
@@ -517,6 +525,9 @@ export function MetricDetailModal({
       )}
     </div>
   )
+
+  // Use Portal to break out of any z-index stacking context limitations
+  return typeof document !== 'undefined' ? createPortal(content, document.body) : null
 }
 
 function DetailDrawer({
@@ -585,20 +596,21 @@ function DetailDrawer({
 
   return (
     <div
-      className="fixed inset-0 bg-black/60 flex justify-end z-[70] backdrop-blur-sm"
+      className="fixed inset-0 bg-black/60 flex justify-end z-[10000] backdrop-blur-sm"
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-gray-950 w-full max-w-md h-full overflow-y-auto shadow-2xl animate-slide-in-right flex flex-col z-[71]"
+        className="bg-white dark:bg-gray-950 w-full max-w-md h-full overflow-y-auto shadow-2xl animate-slide-in-right flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="bg-gradient-to-r from-blue-600 to-blue-500 text-white p-6 flex justify-between items-center sticky top-0 shrink-0 shadow-sm z-20">
+        <div className="bg-gradient-to-r from-blue-600 to-blue-500 text-white p-6 flex justify-between items-center sticky top-0 shrink-0 shadow-sm z-30">
           <h3 className="text-xl font-bold truncate pr-4">
             {metricType.startsWith('property') ? item.codigo_imovel : item.nome_cliente}
           </h3>
           <button
             onClick={onClose}
             className="text-white hover:bg-white/20 rounded-full p-2 transition-colors shrink-0"
+            aria-label="Fechar detalhes"
           >
             <X className="w-5 h-5" />
           </button>
@@ -607,7 +619,7 @@ function DetailDrawer({
         <div className="p-6 space-y-6 flex-1">
           {metricType.startsWith('property') ? (
             <div className="space-y-4">
-              <div className="bg-gray-50 dark:bg-gray-900/50 p-4 rounded-xl space-y-4 border border-gray-100 dark:border-gray-800">
+              <div className="bg-gray-50 dark:bg-gray-900/50 p-5 rounded-xl space-y-4 border border-gray-100 dark:border-gray-800">
                 <div>
                   <p className="text-xs text-gray-500 uppercase font-semibold">Código</p>
                   <p className="text-lg font-bold text-gray-900 dark:text-white">
@@ -617,7 +629,9 @@ function DetailDrawer({
 
                 <div>
                   <p className="text-xs text-gray-500 uppercase font-semibold">Usuário Captador</p>
-                  <p className="text-gray-700 dark:text-gray-300">{item.captador_nome}</p>
+                  <p className="text-gray-700 dark:text-gray-300 font-medium">
+                    {item.captador_nome}
+                  </p>
                 </div>
 
                 <div>
@@ -634,12 +648,14 @@ function DetailDrawer({
 
                 <div>
                   <p className="text-xs text-gray-500 uppercase font-semibold">Tipo</p>
-                  <p className="text-gray-700 dark:text-gray-300">{item.tipo}</p>
+                  <p className="text-gray-700 dark:text-gray-300 font-medium">{item.tipo}</p>
                 </div>
 
                 <div>
                   <p className="text-xs text-gray-500 uppercase font-semibold">Status</p>
-                  <p className="text-gray-700 dark:text-gray-300 capitalize">{item.status}</p>
+                  <p className="text-gray-700 dark:text-gray-300 capitalize font-medium">
+                    {item.status}
+                  </p>
                 </div>
 
                 <div>
@@ -664,7 +680,7 @@ function DetailDrawer({
             </div>
           ) : (
             <div className="space-y-4">
-              <div className="bg-gray-50 dark:bg-gray-900/50 p-4 rounded-xl space-y-4 border border-gray-100 dark:border-gray-800">
+              <div className="bg-gray-50 dark:bg-gray-900/50 p-5 rounded-xl space-y-4 border border-gray-100 dark:border-gray-800">
                 <div>
                   <p className="text-xs text-gray-500 uppercase font-semibold">Cliente</p>
                   <p className="text-lg font-bold text-gray-900 dark:text-white">
@@ -674,7 +690,9 @@ function DetailDrawer({
 
                 <div>
                   <p className="text-xs text-gray-500 uppercase font-semibold">Corretor/SDR</p>
-                  <p className="text-gray-700 dark:text-gray-300">{item.corretor_nome}</p>
+                  <p className="text-gray-700 dark:text-gray-300 font-medium">
+                    {item.corretor_nome}
+                  </p>
                 </div>
 
                 <div>
@@ -701,7 +719,7 @@ function DetailDrawer({
                   <p className="text-xs text-gray-500 uppercase font-semibold">Urgência</p>
                   <p
                     className={cn(
-                      'inline-block px-2 py-1 rounded text-xs font-semibold mt-1',
+                      'inline-block px-2.5 py-1 rounded-full text-xs font-semibold mt-1',
                       item.urgencia === 'Crítica' || item.urgencia === 'Urgente'
                         ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
                         : item.urgencia === 'Alta'
@@ -720,7 +738,7 @@ function DetailDrawer({
                   <p
                     className={
                       item.imoveiVinculados > 0
-                        ? 'text-green-600 dark:text-green-500 font-bold mt-1'
+                        ? 'text-green-600 dark:text-green-500 font-bold mt-1 bg-green-50 dark:bg-green-500/10 px-2 py-0.5 rounded inline-block'
                         : 'text-gray-500 font-medium mt-1'
                     }
                   >
@@ -744,7 +762,9 @@ function DetailDrawer({
             </h4>
 
             {loading ? (
-              <p className="text-gray-500 text-sm text-center py-4">Buscando histórico...</p>
+              <div className="flex justify-center py-4">
+                <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+              </div>
             ) : history.length === 0 ? (
               <div className="text-center py-6 bg-gray-50 dark:bg-gray-900/30 rounded-xl border border-dashed border-gray-200 dark:border-gray-800">
                 <p className="text-sm text-gray-500">Nenhuma ação registrada neste período</p>
