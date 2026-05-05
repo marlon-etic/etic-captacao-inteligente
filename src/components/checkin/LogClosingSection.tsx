@@ -7,6 +7,7 @@ import { checkinService, CheckinDemanda } from '@/services/checkinService'
 import { useAuth } from '@/hooks/use-auth'
 import { useToast } from '@/hooks/use-toast'
 import { sendWebhookEvent } from '@/services/n8nService'
+import { trackEvent } from '@/lib/analytics'
 
 import { useEffect } from 'react'
 
@@ -66,6 +67,13 @@ export function LogClosingSection({
       })
 
       toast({ title: 'Fechamento registrado com sucesso!' })
+
+      trackEvent(user.id, 'deal_closed', {
+        demand_id: demanda.id,
+        property_id: selectedProperty || undefined,
+        deal_value: Number(valor),
+      })
+
       setSelectedDemanda('')
       setSelectedProperty('')
       setValor('')

@@ -14,6 +14,7 @@ import { cn, convertTiposToArray } from '@/lib/utils'
 import { supabase } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/use-auth'
 import { vinculacaoService } from '@/services/vinculacaoService'
+import { trackEvent } from '@/lib/analytics'
 
 export interface VinculacaoModalProps {
   isOpen: boolean
@@ -200,6 +201,12 @@ export function VinculacaoModal({ isOpen, onClose, imovelData, onSuccess }: Vinc
         title: '✓ Imóvel vinculado com sucesso!',
         description: `Match: ${scorePercentual}% | ${selectedDemand.nome_cliente || selectedDemand.cliente_nome}`,
         className: 'bg-[#10B981] text-white border-none font-bold',
+      })
+
+      trackEvent(user?.id, 'property_linked', {
+        property_id: imovelNormalizado.id,
+        demand_id: selectedDemand.id,
+        score: scorePercentual,
       })
 
       setTimeout(() => {

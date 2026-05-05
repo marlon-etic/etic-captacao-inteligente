@@ -7,6 +7,7 @@ import { checkinService, CheckinDemanda } from '@/services/checkinService'
 import { useAuth } from '@/hooks/use-auth'
 import { useToast } from '@/hooks/use-toast'
 import { sendWebhookEvent } from '@/services/n8nService'
+import { trackEvent } from '@/lib/analytics'
 
 import { useEffect } from 'react'
 
@@ -72,6 +73,13 @@ export function LogVisitSection({
       })
 
       toast({ title: 'Visita registrada com sucesso!' })
+
+      trackEvent(user.id, 'visit_scheduled', {
+        demand_id: demanda.id,
+        property_id: isNewProperty ? undefined : selectedProperty,
+        qtd: Number(qtd) || 1,
+      })
+
       setSelectedDemanda('')
       setSelectedProperty('')
       setIsNewProperty(false)

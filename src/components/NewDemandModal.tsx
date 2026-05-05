@@ -24,6 +24,7 @@ import { cn, convertTiposToString } from '@/lib/utils'
 import { useKeyboard } from '@/hooks/use-keyboard'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { supabase } from '@/lib/supabase/client'
+import { trackEvent } from '@/lib/analytics'
 
 export const formSchema = z
   .object({
@@ -287,6 +288,12 @@ export function NewDemandModal({
         title: '✅ Demanda cadastrada com sucesso!',
         className: 'bg-emerald-600 text-white border-emerald-600',
         duration: 3000,
+      })
+
+      trackEvent(currentUser?.id || authData?.user?.id, 'demand_created', {
+        type: values.type,
+        min_budget: values.minBudget,
+        max_budget: values.maxBudget,
       })
 
       form.reset()

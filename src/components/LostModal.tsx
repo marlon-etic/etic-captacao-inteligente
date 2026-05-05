@@ -17,6 +17,8 @@ import {
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
+import { trackEvent } from '@/lib/analytics'
+import { useAuth } from '@/hooks/use-auth'
 
 interface Props {
   open: boolean
@@ -28,6 +30,7 @@ export function LostModal({ open, onOpenChange, onConfirm }: Props) {
   const [reason, setReason] = useState('')
   const [obs, setObs] = useState('')
   const [error, setError] = useState('')
+  const { user } = useAuth()
 
   const handleConfirm = () => {
     if (!reason) {
@@ -35,6 +38,12 @@ export function LostModal({ open, onOpenChange, onConfirm }: Props) {
       return
     }
     setError('')
+
+    trackEvent(user?.id, 'property_marked_lost', {
+      reason,
+      obs,
+    })
+
     onConfirm(reason, obs)
     onOpenChange(false)
   }

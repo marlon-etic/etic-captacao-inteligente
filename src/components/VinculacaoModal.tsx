@@ -8,6 +8,7 @@ import { supabase } from '@/lib/supabase/client'
 import { calculateMatching } from '@/lib/matching'
 import { vinculacaoService } from '@/services/vinculacao'
 import { useAuth } from '@/hooks/use-auth'
+import { trackEvent } from '@/lib/analytics'
 
 export interface VinculacaoImovelData {
   id: string
@@ -307,6 +308,11 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
         title: '✓ Imóvel vinculado com sucesso!',
         description: `O imóvel foi vinculado a ${selectedDemand.nome_cliente}.`,
         className: 'bg-[#10B981] text-white border-none font-bold',
+      })
+
+      trackEvent(user?.id, 'property_linked', {
+        property_id: imovelNormalizado.id,
+        demand_id: selectedDemand.id,
       })
 
       setTimeout(() => {

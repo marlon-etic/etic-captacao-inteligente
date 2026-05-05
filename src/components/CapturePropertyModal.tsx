@@ -16,6 +16,7 @@ import { useToast } from '@/hooks/use-toast'
 import useAppStore from '@/stores/useAppStore'
 import { supabase } from '@/lib/supabase/client'
 import { X, CheckCircle2, Image as ImageIcon } from 'lucide-react'
+import { trackEvent } from '@/lib/analytics'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { BairroCombobox } from './BairroCombobox'
 
@@ -273,6 +274,13 @@ export function CapturePropertyModal({ demand, isOpen, onClose, onSuccess }: Pro
         title: '✅ Imóvel Captado com Sucesso!',
         description: `O imóvel ${code.toUpperCase()} foi vinculado à demanda de ${demand.nome_cliente}.`,
         className: 'bg-[#10B981] text-white border-none',
+      })
+
+      trackEvent(currentUser?.id, 'property_created', {
+        codigo_imovel: payload.codigo_imovel,
+        tipo: payload.tipo,
+        preco: payload.preco,
+        demanda_id: demand.id,
       })
 
       onSuccess()

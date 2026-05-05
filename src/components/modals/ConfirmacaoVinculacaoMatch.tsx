@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { linkImovelToDemanda } from '@/services/vinculacaoService'
 import { useToast } from '@/components/ui/use-toast'
 import { useUserRole } from '@/hooks/use-user-role'
+import { useAuth } from '@/hooks/use-auth'
+import { trackEvent } from '@/lib/analytics'
 
 interface ConfirmacaoVinculacaoMatchProps {
   match: {
@@ -25,6 +27,7 @@ export function ConfirmacaoVinculacaoMatch({
   const [loading, setLoading] = useState(false)
   const { role } = useUserRole()
   const { toast } = useToast()
+  const { user } = useAuth()
 
   const handleConfirm = async () => {
     try {
@@ -40,6 +43,12 @@ export function ConfirmacaoVinculacaoMatch({
       toast({
         title: '✅ Vinculação realizada com sucesso!',
         description: 'Imóvel vinculado à demanda',
+      })
+
+      trackEvent(user?.id, 'property_linked', {
+        property_id: match.imovel_id,
+        demand_id: match.demanda_id,
+        score: match.score,
       })
 
       onSuccess()
