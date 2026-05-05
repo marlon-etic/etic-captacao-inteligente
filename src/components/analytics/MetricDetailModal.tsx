@@ -266,9 +266,15 @@ export function MetricDetailModal({
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4 sm:p-6 backdrop-blur-sm animate-fade-in">
-      <div className="bg-white dark:bg-gray-950 rounded-xl shadow-2xl w-full max-w-[1000px] max-h-[80vh] overflow-hidden flex flex-col animate-fade-in-up border border-gray-200 dark:border-gray-800">
-        <div className="bg-gradient-to-r from-blue-600 to-blue-500 text-white p-5 flex justify-between items-center shrink-0">
+    <div
+      className="fixed inset-0 bg-black/60 flex items-center justify-center z-[50] p-4 sm:p-6 backdrop-blur-sm animate-fade-in overflow-y-auto"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white dark:bg-gray-950 rounded-xl shadow-2xl w-[90%] md:w-[80%] lg:w-[1000px] max-w-full max-h-[80vh] flex flex-col animate-fade-in-up border border-gray-200 dark:border-gray-800 z-[51]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="bg-gradient-to-r from-blue-600 to-blue-500 text-white p-5 flex justify-between items-center shrink-0 rounded-t-xl sticky top-0 z-20">
           <div>
             <h2 className="text-xl sm:text-2xl font-bold tracking-tight">{metricLabel}</h2>
             <p className="text-blue-100 text-sm mt-0.5 font-medium">
@@ -299,7 +305,12 @@ export function MetricDetailModal({
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto min-h-0 bg-white dark:bg-gray-950 relative">
+        <div
+          className={cn(
+            'flex-1 overflow-y-auto min-h-0 bg-white dark:bg-gray-950 relative',
+            totalPages <= 1 && 'rounded-b-xl',
+          )}
+        >
           {loading ? (
             <div className="flex flex-col items-center justify-center py-20 text-gray-500">
               <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4" />
@@ -473,7 +484,7 @@ export function MetricDetailModal({
         </div>
 
         {totalPages > 1 && (
-          <div className="bg-gray-50 dark:bg-gray-900/80 px-5 py-3 flex justify-between items-center border-t border-gray-200 dark:border-gray-800 shrink-0">
+          <div className="bg-gray-50 dark:bg-gray-900/80 px-5 py-3 flex justify-between items-center border-t border-gray-200 dark:border-gray-800 shrink-0 rounded-b-xl sticky bottom-0 z-20">
             <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">
               Página {currentPage} de {totalPages}
             </p>
@@ -573,9 +584,15 @@ function DetailDrawer({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex justify-end z-[70] backdrop-blur-sm">
-      <div className="bg-white dark:bg-gray-950 w-full max-w-md h-full overflow-y-auto shadow-2xl animate-slide-in-right flex flex-col">
-        <div className="bg-gradient-to-r from-blue-600 to-blue-500 text-white p-6 flex justify-between items-center sticky top-0 shrink-0 shadow-sm z-10">
+    <div
+      className="fixed inset-0 bg-black/60 flex justify-end z-[70] backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white dark:bg-gray-950 w-full max-w-md h-full overflow-y-auto shadow-2xl animate-slide-in-right flex flex-col z-[71]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="bg-gradient-to-r from-blue-600 to-blue-500 text-white p-6 flex justify-between items-center sticky top-0 shrink-0 shadow-sm z-20">
           <h3 className="text-xl font-bold truncate pr-4">
             {metricType.startsWith('property') ? item.codigo_imovel : item.nome_cliente}
           </h3>
