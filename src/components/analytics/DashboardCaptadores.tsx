@@ -260,7 +260,7 @@ export function DashboardCaptadores({ filters }: DashboardProps) {
   if (filters.userIds.length === 0) {
     return (
       <div className="text-center py-16 border border-dashed border-gray-300 dark:border-gray-800 rounded-xl bg-gray-50/50 dark:bg-gray-900/30 text-gray-500 text-sm">
-        Selecione pelo menos um usuário nos filtros acima para visualizar as métricas.
+        Nenhum usuário selecionado ou encontrado para visualizar as métricas.
       </div>
     )
   }

@@ -36,6 +36,8 @@ export function DashboardCorretores({ filters }: DashboardProps) {
   // Carregar métricas ao mudar filtros
   useEffect(() => {
     if (filters.userIds.length === 0) {
+      setMetrics([])
+      setCorretores([])
       setLoading(false)
       return
     }
@@ -253,12 +255,25 @@ export function DashboardCorretores({ filters }: DashboardProps) {
     }
   }
 
-  if (loading) {
-    return <div className="text-center py-8 text-gray-500">Carregando métricas...</div>
+  if (loading && metrics.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-gray-500 bg-white border border-gray-200 rounded-xl shadow-sm">
+        <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4" />
+        <p className="text-sm font-medium">Analisando dados e compilando métricas...</p>
+      </div>
+    )
   }
 
   if (error) {
     return <div className="text-center py-8 text-red-500">{error}</div>
+  }
+
+  if (filters.userIds.length === 0) {
+    return (
+      <div className="text-center py-16 border border-dashed border-gray-300 rounded-xl bg-gray-50/50 text-gray-500 text-sm">
+        Nenhum usuário selecionado ou encontrado para visualizar as métricas.
+      </div>
+    )
   }
 
   return (

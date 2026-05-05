@@ -50,14 +50,12 @@ export function FilterPanel({ onFiltersChange }: FilterPanelProps) {
       const loadedUsers = data || []
       setUsers(loadedUsers)
 
-      if (loadedUsers.length > 0) {
-        const allIds = loadedUsers.map((u) => u.id)
-        setSelectedUserIds(allIds)
-        onFiltersChange({
-          period: 'this_week',
-          userIds: allIds,
-        })
-      }
+      const allIds = loadedUsers.map((u) => u.id)
+      setSelectedUserIds(allIds)
+      onFiltersChange({
+        period: 'this_week',
+        userIds: allIds,
+      })
     } catch (err) {
       console.error('[FilterPanel] Erro ao carregar usuários:', err)
     } finally {
