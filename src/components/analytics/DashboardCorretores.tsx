@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase/client'
+import { MetricDetailModal } from './MetricDetailModal'
+import { cn } from '@/lib/utils'
 
 interface DashboardProps {
   filters: {
@@ -15,6 +17,7 @@ interface MetricCard {
   trend: number // percentual de mudança
   icon: string
   color: string
+  metricType?: string
 }
 
 interface CorretorRow {
@@ -32,6 +35,11 @@ export function DashboardCorretores({ filters }: DashboardProps) {
   const [corretores, setCorretores] = useState<CorretorRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [detailModal, setDetailModal] = useState<{
+    isOpen: boolean
+    metricType: string
+    metricLabel: string
+  } | null>(null)
 
   // Carregar métricas ao mudar filtros
   useEffect(() => {
@@ -160,6 +168,7 @@ export function DashboardCorretores({ filters }: DashboardProps) {
           trend: trendTotal,
           icon: '📋',
           color: 'blue',
+          metricType: 'demand_created',
         },
         {
           label: 'Com Imóveis Vinculados',
@@ -167,6 +176,7 @@ export function DashboardCorretores({ filters }: DashboardProps) {
           trend: 0,
           icon: '🔗',
           color: 'green',
+          metricType: 'demand_linked',
         },
         {
           label: 'Vinculadas Manualmente',
@@ -181,6 +191,7 @@ export function DashboardCorretores({ filters }: DashboardProps) {
           trend: 0,
           icon: '📅',
           color: 'blue',
+          metricType: 'visit_scheduled',
         },
         {
           label: 'Taxa de Conversão',
@@ -283,7 +294,19 @@ export function DashboardCorretores({ filters }: DashboardProps) {
         {metrics.map((metric, idx) => (
           <div
             key={idx}
-            className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow"
+            className={cn(
+              'bg-white border border-gray-200 rounded-lg p-4 shadow-sm transition-shadow',
+              metric.metricType ? 'cursor-pointer hover:shadow-md hover:border-blue-300' : '',
+            )}
+            onClick={() => {
+              if (metric.metricType) {
+                setDetailModal({
+                  isOpen: true,
+                  metricType: metric.metricType,
+                  metricLabel: metric.label,
+                })
+              }
+            }}
           >
             <div className="flex items-start justify-between">
               <div>
@@ -355,6 +378,16 @@ export function DashboardCorretores({ filters }: DashboardProps) {
           </div>
         )}
       </div>
+
+      {detailModal?.isOpen && (
+        <MetricDetailModal
+          isOpen={detailModal.isOpen}
+          onClose={() => setDetailModal(null)}
+          metricType={detailModal.metricType}
+          metricLabel={detailModal.metricLabel}
+          filters={filters as any}
+        />
+      )}
     </div>
   )
 }

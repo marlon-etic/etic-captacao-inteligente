@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { DashboardFilters } from './FilterPanel'
+import { MetricDetailModal } from './MetricDetailModal'
 
 interface DashboardProps {
   filters: DashboardFilters
@@ -22,6 +23,7 @@ interface MetricCard {
   trend: number
   icon: React.ReactNode
   color: 'green' | 'red' | 'blue' | 'orange'
+  metricType?: string
 }
 
 interface CaptadorRow {
@@ -39,6 +41,11 @@ export function DashboardCaptadores({ filters }: DashboardProps) {
   const [captadores, setCaptadores] = useState<CaptadorRow[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [detailModal, setDetailModal] = useState<{
+    isOpen: boolean
+    metricType: string
+    metricLabel: string
+  } | null>(null)
 
   useEffect(() => {
     if (filters.userIds.length === 0) {
@@ -135,6 +142,7 @@ export function DashboardCaptadores({ filters }: DashboardProps) {
           trend: trendTotal,
           icon: <Home className="w-6 h-6 text-blue-500" />,
           color: 'blue',
+          metricType: 'property_created',
         },
         {
           label: 'Sob Demanda',
@@ -142,6 +150,7 @@ export function DashboardCaptadores({ filters }: DashboardProps) {
           trend: 0,
           icon: <LinkIcon className="w-6 h-6 text-indigo-500" />,
           color: 'blue',
+          metricType: 'property_linked',
         },
         {
           label: 'Imóveis Livres',
@@ -156,6 +165,7 @@ export function DashboardCaptadores({ filters }: DashboardProps) {
           trend: 0,
           icon: <AlertCircle className="w-6 h-6 text-orange-500" />,
           color: 'orange',
+          metricType: 'property_marked_lost',
         },
         {
           label: 'Em Visita',
@@ -163,6 +173,7 @@ export function DashboardCaptadores({ filters }: DashboardProps) {
           trend: 0,
           icon: <Eye className="w-6 h-6 text-purple-500" />,
           color: 'blue',
+          metricType: 'property_visit_scheduled',
         },
         {
           label: 'Fechados',
@@ -170,6 +181,7 @@ export function DashboardCaptadores({ filters }: DashboardProps) {
           trend: 0,
           icon: <CheckCircle className="w-6 h-6 text-green-500" />,
           color: 'green',
+          metricType: 'property_deal_closed',
         },
         {
           label: 'Taxa de Conversão',
@@ -271,7 +283,21 @@ export function DashboardCaptadores({ filters }: DashboardProps) {
         {metrics.map((metric, idx) => (
           <div
             key={idx}
-            className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow duration-200"
+            className={cn(
+              'bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl p-5 shadow-sm transition-shadow duration-200',
+              metric.metricType
+                ? 'cursor-pointer hover:shadow-md hover:border-blue-300 dark:hover:border-blue-800'
+                : '',
+            )}
+            onClick={() => {
+              if (metric.metricType) {
+                setDetailModal({
+                  isOpen: true,
+                  metricType: metric.metricType,
+                  metricLabel: metric.label,
+                })
+              }
+            }}
           >
             <div className="flex items-start justify-between">
               <div>
@@ -383,6 +409,16 @@ export function DashboardCaptadores({ filters }: DashboardProps) {
           )}
         </div>
       </div>
+
+      {detailModal?.isOpen && (
+        <MetricDetailModal
+          isOpen={detailModal.isOpen}
+          onClose={() => setDetailModal(null)}
+          metricType={detailModal.metricType}
+          metricLabel={detailModal.metricLabel}
+          filters={filters as any}
+        />
+      )}
     </div>
   )
 }
