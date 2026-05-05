@@ -1,71 +1,57 @@
-import { useState } from 'react'
-import { FilterPanel, DashboardFilters } from '@/components/analytics/FilterPanel'
+import React, { useState } from 'react'
+import { FilterPanel } from '@/components/analytics/FilterPanel'
 import { DashboardCaptadores } from '@/components/analytics/DashboardCaptadores'
-import { cn } from '@/lib/utils'
+import { DashboardCorretores } from '@/components/analytics/DashboardCorretores'
 
 export function AnalyticsDashboard() {
-  const [filters, setFilters] = useState<DashboardFilters>({
-    period: 'this_week',
-    userIds: [],
-  })
+  const [filters, setFilters] = useState<{
+    period: string
+    periodRange?: { start: string; end: string }
+    userIds: string[]
+  }>({ period: 'this_week', userIds: [] })
 
   const [activeTab, setActiveTab] = useState<'captadores' | 'corretores'>('captadores')
 
+  const handleFiltersChange = (newFilters: any) => {
+    setFilters(newFilters)
+  }
+
   return (
-    <div className="container mx-auto p-4 md:p-8 space-y-6 max-w-7xl animate-fade-in">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
-          Dashboard de Analytics
-        </h1>
-        <p className="text-gray-500 mt-1">
-          Analise as métricas de performance e funil da sua equipe.
-        </p>
+    <div className="p-6 max-w-[1400px] mx-auto">
+      <h1 className="text-3xl font-bold text-gray-800 mb-6">Dashboard de Analytics</h1>
+
+      {/* Componente de filtros */}
+      <FilterPanel onFiltersChange={handleFiltersChange} />
+
+      {/* Abas para diferentes dashboards */}
+      <div className="flex gap-4 mb-6 border-b border-gray-200">
+        <button
+          onClick={() => setActiveTab('captadores')}
+          className={`px-4 py-2 font-medium transition-colors ${
+            activeTab === 'captadores'
+              ? 'text-blue-500 border-b-2 border-blue-500'
+              : 'text-gray-600 hover:text-gray-800'
+          }`}
+        >
+          Captadores
+        </button>
+        <button
+          onClick={() => setActiveTab('corretores')}
+          className={`px-4 py-2 font-medium transition-colors ${
+            activeTab === 'corretores'
+              ? 'text-blue-500 border-b-2 border-blue-500'
+              : 'text-gray-600 hover:text-gray-800'
+          }`}
+        >
+          Corretores/SDRs
+        </button>
       </div>
 
-      <FilterPanel onFiltersChange={setFilters} />
+      {/* Dashboard de Captadores */}
+      {activeTab === 'captadores' && <DashboardCaptadores filters={filters as any} />}
 
-      <div className="border-b border-gray-200 dark:border-gray-800">
-        <nav className="-mb-px flex space-x-6" aria-label="Tabs">
-          <button
-            onClick={() => setActiveTab('captadores')}
-            className={cn(
-              'whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm transition-colors',
-              activeTab === 'captadores'
-                ? 'border-primary text-primary'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
-            )}
-          >
-            Captadores
-          </button>
-          <button
-            onClick={() => setActiveTab('corretores')}
-            className={cn(
-              'whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm transition-colors',
-              activeTab === 'corretores'
-                ? 'border-primary text-primary'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
-            )}
-          >
-            Corretores / SDRs
-          </button>
-        </nav>
-      </div>
-
-      <div className="mt-6">
-        {activeTab === 'captadores' && <DashboardCaptadores filters={filters} />}
-        {activeTab === 'corretores' && (
-          <div className="flex flex-col items-center justify-center py-24 px-4 text-center border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-xl bg-gray-50 dark:bg-gray-900/50">
-            <h3 className="mt-2 text-sm font-semibold text-gray-900 dark:text-white">
-              Em Desenvolvimento
-            </h3>
-            <p className="mt-1 text-sm text-gray-500">
-              O dashboard de métricas para Corretores e SDRs estará disponível em breve.
-            </p>
-          </div>
-        )}
-      </div>
+      {/* Dashboard de Corretores */}
+      {activeTab === 'corretores' && <DashboardCorretores filters={filters as any} />}
     </div>
   )
 }
-
-export default AnalyticsDashboard
