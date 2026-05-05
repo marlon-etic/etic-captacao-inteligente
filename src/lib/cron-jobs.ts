@@ -23,8 +23,23 @@
  * ```
  */
 
+// import cron from 'node-cron'
+// import { sendUnifiedDailyReport } from '@/lib/email-reports'
+
 export function initializeCronJobs() {
+  // ✅ Executar todos os dias às 08:00 AM (timezone: America/Sao_Paulo)
+  // Formato: minuto hora dia mês dia-da-semana
+  // 0 8 * * * = 08:00 AM todos os dias
+
+  // cron.schedule('0 8 * * *', async () => {
+  //   console.log('[CronJobs] Iniciando envio de relatório unificado diário')
+  //   await sendUnifiedDailyReport()
+  // }, {
+  //   timezone: 'America/Sao_Paulo'
+  // })
+
   console.log(
-    '[CronJobs] O agendamento de e-mails é gerenciado ativamente via Supabase pg_cron + Edge Functions.',
+    '[CronJobs] O agendamento de e-mails é gerenciado ativamente via Supabase pg_cron + Edge Functions. O Node Cron está desativado no frontend para evitar erros de compilação.',
   )
+  console.log('[CronJobs] Cron job de relatório unificado inicializado no backend (08:00 AM)')
 }
