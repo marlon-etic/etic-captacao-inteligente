@@ -4,19 +4,15 @@ import { corsHeaders } from '../_shared/cors.ts'
 
 // Interface mock para simular o serviço de email (ex: SendGrid, Resend)
 async function sendEmailMock(options: { to: string; subject: string; html: string }) {
-  console.log(`[EMAIL SENT] To: ${options.to} | Subject: ${options.subject}`)
-  return true
+  console.log(`[EMAIL SENT] To: ${options.to} | Subject: ${options.subject}`);
+  return true;
 }
 
 async function calculateYesterdayMetrics(supabase: any, userId: string, role: string) {
   const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000)
   const today = new Date()
 
-  const startOfYesterday = new Date(
-    yesterday.getFullYear(),
-    yesterday.getMonth(),
-    yesterday.getDate(),
-  )
+  const startOfYesterday = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate())
   const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate())
 
   const dateRange = {
@@ -65,8 +61,7 @@ async function calculateYesterdayMetrics(supabase: any, userId: string, role: st
       metrics.freeProperties = (created?.length || 0) - (linked?.length || 0)
       metrics.visitedProperties = visited?.length || 0
       metrics.closedDeals = closed?.length || 0
-      metrics.conversionRate =
-        metrics.totalCaptured > 0 ? (metrics.closedDeals / metrics.totalCaptured) * 100 : 0
+      metrics.conversionRate = metrics.totalCaptured > 0 ? (metrics.closedDeals / metrics.totalCaptured) * 100 : 0
     } else if (role === 'sdr' || role === 'corretor') {
       const { data: created } = await supabase
         .from('analytics_events')
@@ -104,8 +99,7 @@ async function calculateYesterdayMetrics(supabase: any, userId: string, role: st
       metrics.linkedDemands = linked?.length || 0
       metrics.visitedProperties = visited?.length || 0
       metrics.closedDeals = closed?.length || 0
-      metrics.conversionRate =
-        metrics.totalDemands > 0 ? (metrics.closedDeals / metrics.totalDemands) * 100 : 0
+      metrics.conversionRate = metrics.totalDemands > 0 ? (metrics.closedDeals / metrics.totalDemands) * 100 : 0
     }
     return metrics
   } catch (err) {
@@ -114,12 +108,7 @@ async function calculateYesterdayMetrics(supabase: any, userId: string, role: st
   }
 }
 
-function generateEmailHTML(
-  name: string,
-  role: string,
-  metrics: Record<string, number>,
-  baseUrl: string,
-): string {
+function generateEmailHTML(name: string, role: string, metrics: Record<string, number>, baseUrl: string): string {
   const dashboardUrl = `${baseUrl}/app/analytics`
 
   let metricsHTML = ''
@@ -233,12 +222,12 @@ Deno.serve(async (req: Request) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-
+    
     const supabase = createClient(supabaseUrl, supabaseServiceKey, {
       auth: {
         autoRefreshToken: false,
-        persistSession: false,
-      },
+        persistSession: false
+      }
     })
 
     console.log('[sendDailyReports] Iniciando envio de relatórios diários')
@@ -276,26 +265,22 @@ Deno.serve(async (req: Request) => {
         })
 
         // Registrar sucesso
-        await supabase.from('analytics_email_logs').insert([
-          {
-            user_id: user.id,
-            status: 'sent',
-            metrics_data: metrics,
-          },
-        ])
+        await supabase.from('analytics_email_logs').insert([{
+          user_id: user.id,
+          status: 'sent',
+          metrics_data: metrics,
+        }])
 
         successCount++
       } catch (err: any) {
         console.error(`[sendDailyReports] Erro ao enviar para ${user.email}:`, err)
 
         // Registrar falha
-        await supabase.from('analytics_email_logs').insert([
-          {
-            user_id: user.id,
-            status: 'failed',
-            error_message: err.message,
-          },
-        ])
+        await supabase.from('analytics_email_logs').insert([{
+          user_id: user.id,
+          status: 'failed',
+          error_message: err.message,
+        }])
 
         failureCount++
       }
@@ -303,19 +288,16 @@ Deno.serve(async (req: Request) => {
 
     console.log(`[sendDailyReports] Concluído. Sucesso: ${successCount}, Falhas: ${failureCount}`)
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        results: { successCount, failureCount },
-      }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      },
-    )
+    return new Response(JSON.stringify({ 
+      success: true, 
+      results: { successCount, failureCount }
+    }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
   } catch (error: any) {
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 500,
+      status: 500
     })
   }
 })

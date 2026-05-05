@@ -76,6 +76,36 @@ export type Database = {
           },
         ]
       }
+      analytics_email_logs: {
+        Row: {
+          created_at: string | null
+          error_message: string | null
+          id: string
+          metrics_data: Json | null
+          sent_at: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          metrics_data?: Json | null
+          sent_at?: string | null
+          status: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          metrics_data?: Json | null
+          sent_at?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       analytics_events: {
         Row: {
           created_at: string | null
@@ -1654,6 +1684,7 @@ export type Database = {
         Returns: Json
       }
       cleanup_old_analytics: { Args: never; Returns: undefined }
+      cleanup_old_email_logs: { Args: never; Returns: undefined }
       fn_auto_fix_test_users: { Args: never; Returns: Json }
       fn_calcular_tenant_score: {
         Args: { p_renda_mensal: number; p_valor_aluguel: number }
@@ -1899,6 +1930,14 @@ export const Constants = {
 //   observacoes: text (nullable)
 //   created_at: timestamp with time zone (nullable, default: now())
 //   updated_at: timestamp with time zone (nullable, default: now())
+// Table: analytics_email_logs
+//   id: uuid (not null, default: gen_random_uuid())
+//   user_id: uuid (not null)
+//   sent_at: timestamp with time zone (nullable, default: now())
+//   status: character varying (not null)
+//   error_message: text (nullable)
+//   metrics_data: jsonb (nullable)
+//   created_at: timestamp with time zone (nullable, default: now())
 // Table: analytics_events
 //   id: uuid (not null, default: gen_random_uuid())
 //   user_id: uuid (not null)
@@ -2275,6 +2314,9 @@ export const Constants = {
 //   PRIMARY KEY acompanhamento_diario_pkey: PRIMARY KEY (id)
 //   UNIQUE acompanhamento_diario_user_id_data_checkin_key: UNIQUE (user_id, data_checkin)
 //   FOREIGN KEY acompanhamento_diario_user_id_fkey: FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+// Table: analytics_email_logs
+//   PRIMARY KEY analytics_email_logs_pkey: PRIMARY KEY (id)
+//   FOREIGN KEY analytics_email_logs_user_id_fkey: FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
 // Table: analytics_events
 //   PRIMARY KEY analytics_events_pkey: PRIMARY KEY (id)
 //   FOREIGN KEY analytics_events_user_id_fkey: FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
@@ -2412,6 +2454,13 @@ export const Constants = {
 //   Policy "Users manage own checkin" (ALL, PERMISSIVE) roles={public}
 //     USING: (user_id = auth.uid())
 //     WITH CHECK: (user_id = auth.uid())
+// Table: analytics_email_logs
+//   Policy "Admin can read all email logs" (SELECT, PERMISSIVE) roles={authenticated}
+//     USING: (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND (users.role = ANY (ARRAY['admin'::user_role, 'gestor'::user_role])))))
+//   Policy "System can insert email logs" (INSERT, PERMISSIVE) roles={authenticated}
+//     WITH CHECK: true
+//   Policy "Users can read own email logs" (SELECT, PERMISSIVE) roles={authenticated}
+//     USING: (user_id = auth.uid())
 // Table: analytics_events
 //   Policy "Enable insert for authenticated users only" (INSERT, PERMISSIVE) roles={authenticated}
 //     WITH CHECK: (auth.uid() = user_id)
@@ -2899,6 +2948,17 @@ export const Constants = {
 //   BEGIN
 //     DELETE FROM public.analytics_events
 //     WHERE created_at < NOW() - INTERVAL '90 days';
+//   END;
+//   $function$
+//   
+// FUNCTION cleanup_old_email_logs()
+//   CREATE OR REPLACE FUNCTION public.cleanup_old_email_logs()
+//    RETURNS void
+//    LANGUAGE plpgsql
+//   AS $function$
+//   BEGIN
+//     DELETE FROM public.analytics_email_logs
+//     WHERE created_at < NOW() - INTERVAL '30 days';
 //   END;
 //   $function$
 //   
@@ -4161,6 +4221,9 @@ export const Constants = {
 //   CREATE INDEX idx_acompanhamento_user_data ON public.acompanhamento_diario USING btree (user_id, data_checkin DESC)
 // Table: admin_dashboard_summary
 //   CREATE UNIQUE INDEX idx_admin_dashboard_id ON public.admin_dashboard_summary USING btree (id)
+// Table: analytics_email_logs
+//   CREATE INDEX idx_email_logs_sent_at ON public.analytics_email_logs USING btree (sent_at DESC)
+//   CREATE INDEX idx_email_logs_user_id ON public.analytics_email_logs USING btree (user_id)
 // Table: analytics_events
 //   CREATE INDEX idx_analytics_created_at ON public.analytics_events USING btree (created_at DESC)
 //   CREATE INDEX idx_analytics_event_type ON public.analytics_events USING btree (event_type)
