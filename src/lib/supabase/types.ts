@@ -76,6 +76,33 @@ export type Database = {
           },
         ]
       }
+      analytics_events: {
+        Row: {
+          created_at: string | null
+          event_data: Json | null
+          event_type: string
+          id: string
+          period: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          event_data?: Json | null
+          event_type: string
+          id?: string
+          period?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          event_data?: Json | null
+          event_type?: string
+          id?: string
+          period?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       api_error_logs: {
         Row: {
           api_name: string
@@ -1626,6 +1653,7 @@ export type Database = {
         }
         Returns: Json
       }
+      cleanup_old_analytics: { Args: never; Returns: undefined }
       fn_auto_fix_test_users: { Args: never; Returns: Json }
       fn_calcular_tenant_score: {
         Args: { p_renda_mensal: number; p_valor_aluguel: number }
@@ -1871,6 +1899,13 @@ export const Constants = {
 //   observacoes: text (nullable)
 //   created_at: timestamp with time zone (nullable, default: now())
 //   updated_at: timestamp with time zone (nullable, default: now())
+// Table: analytics_events
+//   id: uuid (not null, default: gen_random_uuid())
+//   user_id: uuid (not null)
+//   event_type: character varying (not null)
+//   event_data: jsonb (nullable)
+//   created_at: timestamp with time zone (nullable, default: now())
+//   period: character varying (nullable)
 // Table: api_error_logs
 //   id: uuid (not null, default: gen_random_uuid())
 //   api_name: text (not null)
@@ -2240,6 +2275,9 @@ export const Constants = {
 //   PRIMARY KEY acompanhamento_diario_pkey: PRIMARY KEY (id)
 //   UNIQUE acompanhamento_diario_user_id_data_checkin_key: UNIQUE (user_id, data_checkin)
 //   FOREIGN KEY acompanhamento_diario_user_id_fkey: FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+// Table: analytics_events
+//   PRIMARY KEY analytics_events_pkey: PRIMARY KEY (id)
+//   FOREIGN KEY analytics_events_user_id_fkey: FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
 // Table: api_error_logs
 //   PRIMARY KEY api_error_logs_pkey: PRIMARY KEY (id)
 // Table: audit_log
@@ -2374,6 +2412,11 @@ export const Constants = {
 //   Policy "Users manage own checkin" (ALL, PERMISSIVE) roles={public}
 //     USING: (user_id = auth.uid())
 //     WITH CHECK: (user_id = auth.uid())
+// Table: analytics_events
+//   Policy "Enable insert for authenticated users only" (INSERT, PERMISSIVE) roles={authenticated}
+//     WITH CHECK: (auth.uid() = user_id)
+//   Policy "Enable read for admin users only" (SELECT, PERMISSIVE) roles={authenticated}
+//     USING: (EXISTS ( SELECT 1    FROM users   WHERE ((users.id = auth.uid()) AND (users.role = ANY (ARRAY['admin'::user_role, 'gestor'::user_role])))))
 // Table: api_error_logs
 //   Policy "Admins can read api_error_logs" (SELECT, PERMISSIVE) roles={authenticated}
 //     USING: true
@@ -2845,6 +2888,17 @@ export const Constants = {
 //           END IF;
 //       END IF;
 //       RETURN NEW;
+//   END;
+//   $function$
+//   
+// FUNCTION cleanup_old_analytics()
+//   CREATE OR REPLACE FUNCTION public.cleanup_old_analytics()
+//    RETURNS void
+//    LANGUAGE plpgsql
+//   AS $function$
+//   BEGIN
+//     DELETE FROM public.analytics_events
+//     WHERE created_at < NOW() - INTERVAL '90 days';
 //   END;
 //   $function$
 //   
@@ -4107,6 +4161,11 @@ export const Constants = {
 //   CREATE INDEX idx_acompanhamento_user_data ON public.acompanhamento_diario USING btree (user_id, data_checkin DESC)
 // Table: admin_dashboard_summary
 //   CREATE UNIQUE INDEX idx_admin_dashboard_id ON public.admin_dashboard_summary USING btree (id)
+// Table: analytics_events
+//   CREATE INDEX idx_analytics_created_at ON public.analytics_events USING btree (created_at DESC)
+//   CREATE INDEX idx_analytics_event_type ON public.analytics_events USING btree (event_type)
+//   CREATE INDEX idx_analytics_user_event ON public.analytics_events USING btree (user_id, event_type, created_at DESC)
+//   CREATE INDEX idx_analytics_user_id ON public.analytics_events USING btree (user_id)
 // Table: demandas_locacao
 //   CREATE INDEX idx_demandas_grouping_criteria ON public.demandas_locacao USING btree (tipo_demanda, valor_maximo, dormitorios, vagas_estacionamento)
 //   CREATE INDEX idx_demandas_locacao_bairros ON public.demandas_locacao USING gin (bairros)
