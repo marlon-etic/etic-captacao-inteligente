@@ -109,7 +109,7 @@ export function AppSidebar() {
       {
         title: 'Minhas Demandas',
         icon: Users,
-        url: '/app/demandas',
+        url: '/app/sdr-corretor/dashboard?tab=minhas-demandas',
         badge: myActiveDemandsCount > 0 ? myActiveDemandsCount : undefined,
       },
       {
@@ -188,7 +188,19 @@ export function AppSidebar() {
     if (itemUrl === '/app') {
       return location.pathname === '/app'
     }
-    return location.pathname.startsWith(itemUrl)
+
+    const [path, query] = itemUrl.split('?')
+
+    if (query) {
+      return location.pathname === path && location.search.includes(query)
+    }
+
+    if (path === '/app/sdr-corretor/dashboard' && location.pathname === path) {
+      const isSpecificTab = location.search.includes('tab=')
+      return !isSpecificTab
+    }
+
+    return location.pathname.startsWith(path)
   }
 
   return (

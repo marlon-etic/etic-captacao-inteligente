@@ -31,7 +31,7 @@ export default function DashboardRedirect() {
   switch (currentUser.role) {
     case 'sdr':
     case 'corretor':
-      return <Navigate to="/app/demandas" replace />
+      return <Navigate to="/app/sdr-corretor/dashboard" replace />
     case 'gestor':
     case 'admin':
       return <GestorDashboard />

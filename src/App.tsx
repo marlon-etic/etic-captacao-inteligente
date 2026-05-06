@@ -49,6 +49,7 @@ import DisponivelGeralPage from '@/pages/dashboard/DisponivelGeralPage'
 import TodosCaptadosPage from '@/pages/dashboard/TodosCaptadosPage'
 import MeusCaptadosPage from '@/pages/MeusCaptadosPage'
 import MatchInteligentes from '@/pages/MatchInteligentes'
+import { SDRDashboard } from '@/pages/dashboard/SDRDashboard'
 
 // Landlord Panel Imports
 import LandlordLogin from '@/pages/auth/LandlordLogin'
@@ -319,6 +320,7 @@ const AppRoutes = () => {
         <Route path="notificacoes" element={<Notificacoes />} />
         <Route path="ajuda" element={<Ajuda />} />
         <Route path="gestor-dashboard" element={<GestorDashboard />} />
+        <Route path="sdr-corretor/dashboard" element={<SDRDashboard />} />
         <Route path="analytics" element={<AnalyticsDashboard />} />
         <Route path="performance" element={<PerformanceDashboard />} />
         <Route

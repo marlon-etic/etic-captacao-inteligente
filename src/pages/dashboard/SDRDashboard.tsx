@@ -4,10 +4,14 @@ import { MyDemandsView } from '@/components/MyDemandsView'
 import { CapturedPropertiesView } from '@/components/CapturedPropertiesView'
 import { ScrollableTabs } from '@/components/ScrollableTabs'
 import { UltimosImoveisTab } from '@/components/UltimosImoveisTab'
+import useAppStore from '@/stores/useAppStore'
 
 export function SDRDashboard() {
   const [searchParams, setSearchParams] = useSearchParams()
   const currentTab = searchParams.get('tab') || 'minhas-demandas'
+  const { currentUser } = useAppStore()
+
+  const filterType = currentUser?.role === 'corretor' ? 'Venda' : 'Aluguel'
 
   const handleTabChange = (val: string) => {
     setSearchParams({ tab: val })
@@ -31,12 +35,12 @@ export function SDRDashboard() {
 
         <div className="mt-4 transition-opacity duration-300 ease-in animate-in fade-in">
           <TabsContent value="minhas-demandas" className="m-0 border-none">
-            <MyDemandsView filterType="Aluguel" />
+            <MyDemandsView filterType={filterType} />
           </TabsContent>
 
           <TabsContent value="cadastrados" className="m-0 border-none">
             <CapturedPropertiesView
-              filterType="Aluguel"
+              filterType={filterType}
               source="linked"
               emptyStateText="Nenhum imóvel cadastrado para seus clientes no momento."
             />

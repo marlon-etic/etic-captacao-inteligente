@@ -72,7 +72,7 @@ export default function Demandas() {
   // If it's an SDR/Corretor, redirect to dashboard which now acts as the main hub
   if (isSDRCorretor) {
     const tab = searchParams.get('tab') || 'minhas-demandas'
-    return <Navigate to={`/app?tab=${tab}`} replace />
+    return <Navigate to={`/app/sdr-corretor/dashboard?tab=${tab}`} replace />
   }
 
   // If it's a Captador, redirect to Meus Captados since Demandas Abertas is deprecated in the sidebar
