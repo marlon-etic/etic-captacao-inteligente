@@ -115,82 +115,84 @@ export function MetricDetailModal({
 
   const loadPropertiesData = async (dateRange: { start: string; end: string }, type: string) => {
     try {
-      console.group('[loadPropertiesData] 🔍 INICIANDO COM FILTROS')
-      console.log('📋 FILTROS APLICADOS:')
-      console.log('  userIds:', filters.userIds)
-      console.log('  dateRange:', dateRange)
-      console.log('  type:', type)
+      console.group(`[Modal] 🔍 CARREGANDO LISTA - Tipo: ${type}`)
+      console.log('Filtros:', { userIds: filters.userIds, dateRange })
 
-      // ✅ VALIDAÇÃO CRÍTICA
       if (!filters.userIds || filters.userIds.length === 0) {
-        console.error('❌ ERRO: Nenhum usuário selecionado')
         setItems([])
-        setLoading(false)
         return
       }
 
-      // ✅ QUERY COM FILTROS APLICADOS - CRÍTICO
-      console.log('🔄 Executando query com filtros...')
-
-      const userIdsStr = filters.userIds.join(',')
-      let query = supabase
+      // ✅ MESMA QUERY BASE DO DASHBOARD (PROMPT 1)
+      const { data: allProps, error } = await supabase
         .from('imoveis_captados')
         .select(
-          'id, codigo_imovel, endereco, preco, tipo, status_captacao, etapa_funil, user_captador_id, captador_id, created_at, demanda_locacao_id, demanda_venda_id, dormitorios, vagas, observacoes',
+          'id, codigo_imovel, endereco, preco, tipo, status_captacao, etapa_funil, user_captador_id, created_at, demanda_locacao_id, demanda_venda_id, dormitorios, vagas, observacoes',
         )
-        .or(`user_captador_id.in.(${userIdsStr}),captador_id.in.(${userIdsStr})`) // ✅ FILTRO DE USUÁRIOS
-        .gte('created_at', dateRange.start) // ✅ FILTRO DE DATA INÍCIO
-        .lt('created_at', dateRange.end) // ✅ FILTRO DE DATA FIM
+        .in('user_captador_id', filters.userIds)
+        .gte('created_at', dateRange.start)
+        .lt('created_at', dateRange.end)
         .order('created_at', { ascending: false })
 
-      const { data: properties, error } = await query
+      if (error) throw error
 
-      if (error) {
-        console.error('❌ Erro na query:', error)
-        throw error
+      console.log(`Total bruto: ${allProps?.length || 0}`)
+
+      // ✅ FILTRAR POR TIPO DE MÉTRICA
+      let filtered = allProps || []
+
+      switch (type) {
+        case 'property_created':
+          // Todos os captados (sem filtro adicional)
+          break
+        case 'property_linked':
+          filtered = filtered.filter((p) => p.demanda_locacao_id || p.demanda_venda_id)
+          break
+        case 'property_free':
+          filtered = filtered.filter((p) => !p.demanda_locacao_id && !p.demanda_venda_id)
+          break
+        case 'property_visit_scheduled':
+        case 'property_visit':
+          filtered = filtered.filter((p) => {
+            const s = (p.status_captacao || p.etapa_funil || '').toLowerCase()
+            return (
+              s === 'visita' ||
+              s === 'em visita' ||
+              s === 'em_visita' ||
+              s.includes('visita') ||
+              s === 'visitado'
+            )
+          })
+          break
+        case 'property_deal_closed':
+        case 'property_closed':
+          filtered = filtered.filter((p) => {
+            const s = (p.status_captacao || p.etapa_funil || '').toLowerCase()
+            return (
+              s === 'fechado' || s === 'concluído' || s === 'concluido' || s.includes('fechado')
+            )
+          })
+          break
+        case 'property_marked_lost':
+        case 'property_lost':
+          filtered = filtered.filter((p) => {
+            const s = (p.status_captacao || p.etapa_funil || '').toLowerCase()
+            return (
+              s === 'perdido' ||
+              s === 'sem resposta' ||
+              s === 'sem_resposta' ||
+              s.includes('perdido') ||
+              s.includes('sem resposta')
+            )
+          })
+          break
       }
 
-      console.log(`✅ Query retornou ${properties?.length || 0} imóveis`)
+      console.log(`✅ Após filtro de tipo: ${filtered.length}`)
 
-      // ✅ FILTRAR POR TIPO
-      let filtered = properties || []
-
-      if (type === 'property_linked') {
-        filtered = filtered.filter((p) => p.demanda_locacao_id || p.demanda_venda_id)
-        console.log(`✅ Após filtro "linked": ${filtered.length} imóveis`)
-      } else if (type === 'property_free') {
-        filtered = filtered.filter((p) => !p.demanda_locacao_id && !p.demanda_venda_id)
-        console.log(`✅ Após filtro "free": ${filtered.length} imóveis`)
-      } else if (type === 'property_visit_scheduled') {
-        filtered = filtered.filter((p) => {
-          const status = (p.status_captacao || p.etapa_funil || '').toLowerCase()
-          return status.includes('visita') || status === 'visitado'
-        })
-        console.log(`✅ Após filtro "visit scheduled": ${filtered.length} imóveis`)
-      } else if (type === 'property_deal_closed') {
-        filtered = filtered.filter((p) => {
-          const status = (p.status_captacao || p.etapa_funil || '').toLowerCase()
-          return (
-            status.includes('fechado') ||
-            status.includes('concluído') ||
-            status.includes('concluido')
-          )
-        })
-        console.log(`✅ Após filtro "deal closed": ${filtered.length} imóveis`)
-      } else if (type === 'property_marked_lost') {
-        filtered = filtered.filter((p) => {
-          const status = (p.status_captacao || p.etapa_funil || '').toLowerCase()
-          return status.includes('perdido') || status.includes('sem resposta')
-        })
-        console.log(`✅ Após filtro "marked lost": ${filtered.length} imóveis`)
-      } else {
-        console.log(
-          `✅ Tipo "created" ou "${type}" - sem filtro adicional: ${filtered.length} imóveis`,
-        )
-      }
-
+      // ✅ ENRIQUECER COM DADOS DO CAPTADOR
       const allUserIds = Array.from(
-        new Set(filtered.map((p) => p.user_captador_id || p.captador_id).filter(Boolean)),
+        new Set(filtered.map((p) => p.user_captador_id).filter(Boolean)),
       )
       const usersMap = new Map()
       if (allUserIds.length > 0) {
@@ -201,31 +203,30 @@ export function MetricDetailModal({
         usersData?.forEach((u) => usersMap.set(u.id, u.nome))
       }
 
-      // ✅ ENRIQUECER COM DADOS DO CAPTADOR
-      const enrichedItems = filtered.map((prop) => ({
+      const enriched = filtered.map((prop) => ({
         id: prop.id,
         codigo_imovel: prop.codigo_imovel,
-        captador_nome: usersMap.get(prop.user_captador_id || prop.captador_id) || 'Desconhecido',
-        captador_id: prop.user_captador_id || prop.captador_id,
+        captador_nome: usersMap.get(prop.user_captador_id) || 'Desconhecido',
+        captador_id: prop.user_captador_id,
         data_captacao: prop.created_at,
         endereco: prop.endereco,
         preco: prop.preco,
         tipo: prop.tipo,
         status: prop.status_captacao || prop.etapa_funil,
-        demanda_locacao_id: prop.demanda_locacao_id,
-        demanda_venda_id: prop.demanda_venda_id,
         dormitorios: prop.dormitorios,
         vagas: prop.vagas,
         observacoes: prop.observacoes,
+        demanda_locacao_id: prop.demanda_locacao_id,
+        demanda_venda_id: prop.demanda_venda_id,
       }))
 
-      console.log(`✅ TOTAL FINAL: ${enrichedItems.length} imóveis`)
-      console.log('📝 Códigos dos imóveis:', enrichedItems.map((i) => i.codigo_imovel).join(', '))
+      console.log(`✅ TOTAL FINAL DA LISTA: ${enriched.length}`)
+      console.log('Códigos:', enriched.map((e) => e.codigo_imovel).join(', '))
       console.groupEnd()
 
-      setItems(enrichedItems)
+      setItems(enriched)
     } catch (err) {
-      console.error('[loadPropertiesData] ❌ Erro:', err)
+      console.error('[Modal] ❌ Erro:', err)
       setItems([])
       console.groupEnd()
     }
@@ -313,7 +314,7 @@ export function MetricDetailModal({
           .from('imoveis_captados')
           .select('id, demanda_locacao_id, demanda_venda_id')
           .or(`demanda_locacao_id.in.(${demandIdsStr}),demanda_venda_id.in.(${demandIdsStr})`)
-          .or(`user_captador_id.in.(${userIdsStr}),captador_id.in.(${userIdsStr})`) // ✅ RESPEITAR FILTRO DE USUÁRIOS
+          .in('user_captador_id', filters.userIds) // ✅ RESPEITAR FILTRO DE USUÁRIOS
           .gte('created_at', dateRange.start) // ✅ RESPEITAR FILTRO DE DATA
           .lt('created_at', dateRange.end)
 
@@ -392,7 +393,7 @@ export function MetricDetailModal({
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-gray-950 rounded-xl shadow-2xl w-full max-w-[95vw] md:max-w-[85vw] lg:max-w-[1000px] max-h-[80vh] flex flex-col animate-fade-in-up border border-gray-200 dark:border-gray-800 z-51 relative my-8"
+        className="bg-white dark:bg-gray-950 rounded-xl shadow-2xl w-full max-w-[95vw] md:max-w-[85vw] lg:max-w-[1000px] max-h-[80vh] flex flex-col animate-fade-in-up border border-gray-200 dark:border-gray-800 z-[51] relative my-8"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="bg-gradient-to-r from-blue-600 to-blue-500 text-white p-4 md:p-6 flex flex-col shrink-0 rounded-t-xl sticky top-0 z-30">
