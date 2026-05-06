@@ -162,19 +162,26 @@ export function MetricDetailModal({
         filtered = filtered.filter((p) => !p.demanda_locacao_id && !p.demanda_venda_id)
         console.log(`✅ Após filtro "free": ${filtered.length} imóveis`)
       } else if (type === 'property_visit_scheduled') {
-        filtered = filtered.filter(
-          (p) => p.status_captacao === 'visitado' || p.etapa_funil === 'visitado',
-        )
+        filtered = filtered.filter((p) => {
+          const status = (p.status_captacao || p.etapa_funil || '').toLowerCase()
+          return status.includes('visita') || status === 'visitado'
+        })
         console.log(`✅ Após filtro "visit scheduled": ${filtered.length} imóveis`)
       } else if (type === 'property_deal_closed') {
-        filtered = filtered.filter(
-          (p) => p.status_captacao === 'fechado' || p.etapa_funil === 'fechado',
-        )
+        filtered = filtered.filter((p) => {
+          const status = (p.status_captacao || p.etapa_funil || '').toLowerCase()
+          return (
+            status.includes('fechado') ||
+            status.includes('concluído') ||
+            status.includes('concluido')
+          )
+        })
         console.log(`✅ Após filtro "deal closed": ${filtered.length} imóveis`)
       } else if (type === 'property_marked_lost') {
-        filtered = filtered.filter(
-          (p) => p.status_captacao === 'perdido' || p.etapa_funil === 'perdido',
-        )
+        filtered = filtered.filter((p) => {
+          const status = (p.status_captacao || p.etapa_funil || '').toLowerCase()
+          return status.includes('perdido') || status.includes('sem resposta')
+        })
         console.log(`✅ Após filtro "marked lost": ${filtered.length} imóveis`)
       } else {
         console.log(

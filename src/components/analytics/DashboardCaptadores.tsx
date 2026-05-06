@@ -105,40 +105,100 @@ export function DashboardCaptadores({ filters }: DashboardProps) {
 
       const dateRange = getDateRange()
 
-      const fetchEvents = async (eventType: string, range: { start: string; end: string }) => {
-        const { count, error } = await supabase
-          .from('analytics_events')
-          .select('id', { count: 'exact', head: true })
-          .eq('event_type', eventType)
-          .in('user_id', filters.userIds)
-          .gte('created_at', range.start)
-          .lte('created_at', range.end)
+      console.group('[DashboardCaptadores] 📊 CARREGANDO MÉTRICAS REAIS')
+      console.log('Filtros:', { userIds: filters.userIds, dateRange })
 
-        if (error) throw error
-        return count || 0
+      if (!filters.userIds || filters.userIds.length === 0) {
+        console.warn('Nenhum usuário selecionado')
+        setMetrics([])
+        setLoading(false)
+        console.groupEnd()
+        return
       }
 
-      const [totalCount, linkedCount, visitCount, closedCount, lostCount] = await Promise.all([
-        fetchEvents('property_created', dateRange),
-        fetchEvents('property_linked', dateRange),
-        fetchEvents('property_visit_scheduled', dateRange),
-        fetchEvents('property_deal_closed', dateRange),
-        fetchEvents('property_marked_lost', dateRange),
-      ])
+      // ✅ 1️⃣ TOTAL DE IMÓVEIS CAPTADOS
+      const {
+        data: allProps,
+        count: totalCount,
+        error,
+      } = await supabase
+        .from('imoveis_captados')
+        .select('id, demanda_locacao_id, demanda_venda_id, status_captacao, etapa_funil', {
+          count: 'exact',
+        })
+        .in('user_captador_id', filters.userIds)
+        .gte('created_at', dateRange.start)
+        .lt('created_at', dateRange.end)
 
-      const freeCount = Math.max(0, totalCount - linkedCount)
-      const conversionRate = totalCount > 0 ? (closedCount / totalCount) * 100 : 0
+      if (error) throw error
 
+      const total = totalCount || 0
+      console.log(`✅ Imóveis Captados: ${total}`)
+
+      // ✅ 2️⃣ SOB DEMANDA (vinculados)
+      const linkedCount = (allProps || []).filter(
+        (p) => p.demanda_locacao_id || p.demanda_venda_id,
+      ).length
+      console.log(`✅ Sob Demanda: ${linkedCount}`)
+
+      // ✅ 3️⃣ IMÓVEIS LIVRES (sem vinculação)
+      const freeCount = (allProps || []).filter(
+        (p) => !p.demanda_locacao_id && !p.demanda_venda_id,
+      ).length
+      console.log(`✅ Imóveis Livres: ${freeCount}`)
+
+      // ✅ VALIDAÇÃO: Sob Demanda + Livres = Total
+      if (linkedCount + freeCount !== total) {
+        console.warn(`⚠️ Inconsistência: ${linkedCount} + ${freeCount} ≠ ${total}`)
+      }
+
+      // ✅ 4️⃣ SEM RESPOSTA / PERDIDOS
+      const lostCount = (allProps || []).filter((p) => {
+        const status = (p.status_captacao || p.etapa_funil || '').toLowerCase()
+        return status.includes('perdido') || status.includes('sem resposta')
+      }).length
+      console.log(`✅ Sem Resposta/Perdidos: ${lostCount}`)
+
+      // ✅ 5️⃣ EM VISITA
+      const visitCount = (allProps || []).filter((p) => {
+        const status = (p.status_captacao || p.etapa_funil || '').toLowerCase()
+        return status.includes('visita') || status === 'visitado'
+      }).length
+      console.log(`✅ Em Visita: ${visitCount}`)
+
+      // ✅ 6️⃣ FECHADOS
+      const closedCount = (allProps || []).filter((p) => {
+        const status = (p.status_captacao || p.etapa_funil || '').toLowerCase()
+        return (
+          status.includes('fechado') || status.includes('concluído') || status.includes('concluido')
+        )
+      }).length
+      console.log(`✅ Fechados: ${closedCount}`)
+
+      // ✅ 7️⃣ TAXA DE CONVERSÃO
+      const conversionRate = total > 0 ? (closedCount / total) * 100 : 0
+      console.log(`✅ Taxa de Conversão: ${conversionRate}%`)
+
+      // Cálculo de Trend para o Total
       const previousDateRange = getPreviousDateRange(dateRange)
-      const previousTotalCount = await fetchEvents('property_created', previousDateRange)
+      const { count: previousTotalCount } = await supabase
+        .from('imoveis_captados')
+        .select('id', { count: 'exact', head: true })
+        .in('user_captador_id', filters.userIds)
+        .gte('created_at', previousDateRange.start)
+        .lt('created_at', previousDateRange.end)
 
       const trendTotal =
-        previousTotalCount > 0 ? ((totalCount - previousTotalCount) / previousTotalCount) * 100 : 0
+        (previousTotalCount || 0) > 0
+          ? ((total - (previousTotalCount || 0)) / (previousTotalCount || 0)) * 100
+          : 0
+
+      console.groupEnd()
 
       const metricsCards: MetricCard[] = [
         {
           label: 'Imóveis Captados',
-          value: totalCount,
+          value: total,
           trend: trendTotal,
           icon: <Home className="w-6 h-6 text-blue-500" />,
           color: 'blue',
@@ -218,22 +278,33 @@ export function DashboardCaptadores({ filters }: DashboardProps) {
 
       const captadorRows: CaptadorRow[] = []
 
-      const { data: events, error: eventsError } = await supabase
-        .from('analytics_events')
-        .select('user_id, event_type')
-        .in('user_id', userIds)
-        .in('event_type', ['property_created', 'property_linked'])
+      const { data: properties, error: propsError } = await supabase
+        .from('imoveis_captados')
+        .select(
+          'user_captador_id, demanda_locacao_id, demanda_venda_id, status_captacao, etapa_funil',
+        )
+        .in('user_captador_id', userIds)
         .gte('created_at', dateRange.start)
-        .lte('created_at', dateRange.end)
+        .lt('created_at', dateRange.end)
 
-      if (eventsError) throw eventsError
+      if (propsError) throw propsError
 
       for (const user of users || []) {
-        const userEvents = events?.filter((e) => e.user_id === user.id) || []
-        const total = userEvents.filter((e) => e.event_type === 'property_created').length
-        const linked = userEvents.filter((e) => e.event_type === 'property_linked').length
+        const userProps = properties?.filter((p) => p.user_captador_id === user.id) || []
+        const total = userProps.length
+        const linked = userProps.filter((p) => p.demanda_locacao_id || p.demanda_venda_id).length
         const free = Math.max(0, total - linked)
-        const conversionRate = total > 0 ? (linked / total) * 100 : 0
+
+        const closed = userProps.filter((p) => {
+          const status = (p.status_captacao || p.etapa_funil || '').toLowerCase()
+          return (
+            status.includes('fechado') ||
+            status.includes('concluído') ||
+            status.includes('concluido')
+          )
+        }).length
+
+        const conversionRate = total > 0 ? (closed / total) * 100 : 0
 
         captadorRows.push({
           id: user.id,
