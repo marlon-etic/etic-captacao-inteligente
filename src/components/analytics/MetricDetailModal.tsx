@@ -67,13 +67,14 @@ export function MetricDetailModal({
         start.setHours(0, 0, 0, 0)
         end.setHours(23, 59, 59, 999)
         break
-      case 'this_week':
+      case 'this_week': {
         const day = now.getDay()
         const diff = now.getDate() - day + (day === 0 ? -6 : 1) // ajusta para segunda
         start = new Date(now.setDate(diff))
         start.setHours(0, 0, 0, 0)
         end.setHours(23, 59, 59, 999)
         break
+      }
       case 'this_month':
         start = new Date(now.getFullYear(), now.getMonth(), 1)
         start.setHours(0, 0, 0, 0)
