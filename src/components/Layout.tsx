@@ -91,16 +91,30 @@ export default function Layout() {
   }, [currentUser, enqueueMutation])
 
   useEffect(() => {
-    // Only logout if auth is completely resolved, session is invalid, and user was previously logged in
-    if (!loading && !isRestoringUser && !session && currentUser) {
-      toast({
-        title: 'Sessão inválida',
-        description: 'Sua sessão expirou ou foi desconectada. Faça login novamente.',
-        variant: 'destructive',
-      })
-      logout()
+    let isMounted = true
+    const verifySession = async () => {
+      if (!loading && !isRestoringUser && currentUser) {
+        const {
+          data: { session: activeSession },
+        } = await supabase.auth.getSession()
+        if (!activeSession && isMounted) {
+          toast({
+            title: 'Sessão inválida',
+            description: 'Sua sessão expirou ou foi desconectada. Faça login novamente.',
+            variant: 'destructive',
+          })
+          logout()
+        }
+      }
     }
-  }, [loading, isRestoringUser, session, currentUser, logout, toast])
+
+    // Delay check to avoid race conditions right after login
+    const timer = setTimeout(verifySession, 1000)
+    return () => {
+      isMounted = false
+      clearTimeout(timer)
+    }
+  }, [loading, isRestoringUser, currentUser, logout, toast])
 
   useEffect(() => {
     if (!isRestoringUser && currentUser && sessionExpiresAt && Date.now() > sessionExpiresAt) {
@@ -136,17 +150,8 @@ export default function Layout() {
     )
   }
 
-  // Prevent infinite loop by not checking session explicitly here - trust currentUser
-  if (!currentUser && location.pathname !== '/') {
-    return <Navigate to="/" replace />
-  }
-
   if (!currentUser) {
-    return (
-      <main className="min-h-screen bg-[#F5F5F5]">
-        <Outlet />
-      </main>
-    )
+    return <Navigate to="/" replace state={{ from: location }} />
   }
 
   const canCreateDemand =

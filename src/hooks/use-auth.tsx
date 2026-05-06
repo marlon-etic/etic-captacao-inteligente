@@ -1,7 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import { User, Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase/client'
-import { findNewMatches } from '@/services/matchingService'
 
 interface AuthContextType {
   user: User | null
@@ -28,50 +27,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     let mounted = true
 
-    const initAuth = async () => {
-      try {
-        const { data, error } = await supabase.auth.getSession()
+    supabase.auth.getSession().then(({ data: { session: initialSession }, error }) => {
+      if (mounted) {
         if (error) {
-          console.warn('[useAuth] Session error:', error.message)
-          if (error.message.toLowerCase().includes('refresh token')) {
-            await supabase.auth.signOut().catch(() => {})
-          }
+          console.error('[useAuth] Error getting session:', error.message)
         }
-
-        if (mounted) {
-          setSession(error ? null : (data?.session ?? null))
-          setUser(error ? null : (data?.session?.user ?? null))
-          setLoading(false)
-        }
-      } catch (err: any) {
-        console.warn('[useAuth] Unexpected init error:', err)
-        if (err?.message?.toLowerCase().includes('refresh token')) {
-          await supabase.auth.signOut().catch(() => {})
-        }
-        if (mounted) {
-          if (
-            !err?.message?.toLowerCase().includes('stole it') &&
-            !err?.message?.toLowerCase().includes('auth-token')
-          ) {
-            setSession(null)
-            setUser(null)
-          }
-          setLoading(false)
-        }
+        setSession(initialSession)
+        setUser(initialSession?.user ?? null)
+        setLoading(false)
       }
-    }
-
-    initAuth()
+    })
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
+    } = supabase.auth.onAuthStateChange((event, currentSession) => {
       if (mounted) {
-        setSession(session)
-        setUser(session?.user ?? null)
-        if (event !== 'INITIAL_SESSION') {
-          setLoading(false)
-        }
+        setSession(currentSession)
+        setUser(currentSession?.user ?? null)
+        setLoading(false)
       }
     })
 
@@ -82,67 +55,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [])
 
   const signUp = async (email: string, password: string) => {
-    try {
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: { emailRedirectTo: `${window.location.origin}/` },
-      })
-      return { error }
-    } catch (error: any) {
-      return { error }
-    }
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { emailRedirectTo: `${window.location.origin}/` },
+    })
+    return { error }
   }
 
   const signIn = async (email: string, password: string) => {
-    try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password })
-      return { error }
-    } catch (error: any) {
-      return { error }
-    }
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    return { error }
   }
 
-  useEffect(() => {
-    const handlePostLogin = async () => {
-      try {
-        console.log('[AUTH] Executando busca automática de matches...')
-        await findNewMatches()
-        console.log('[AUTH] Busca de matches concluída')
-      } catch (error) {
-        console.error('[AUTH] Erro na busca de matches:', error)
-      }
-    }
-
-    if (user) {
-      handlePostLogin()
-    }
-  }, [user])
-
-  useEffect(() => {
-    if (!user) return
-
-    const interval = setInterval(
-      async () => {
-        try {
-          await findNewMatches()
-        } catch (error) {
-          console.error('[MATCHING] Erro na busca periódica:', error)
-        }
-      },
-      60 * 60 * 1000,
-    )
-
-    return () => clearInterval(interval)
-  }, [user])
-
   const signOut = async () => {
-    try {
-      const { error } = await supabase.auth.signOut()
-      return { error }
-    } catch (error: any) {
-      return { error }
-    }
+    const { error } = await supabase.auth.signOut()
+    return { error }
   }
 
   return (

@@ -35,7 +35,14 @@ export default function Index() {
     if (currentUser && session) {
       navigate('/app', { replace: true })
     } else if (currentUser && !session) {
-      logout()
+      // Prevent race conditions where session is momentarily null during login
+      supabase.auth.getSession().then(({ data: { session: activeSession } }) => {
+        if (!activeSession) {
+          logout()
+        } else {
+          navigate('/app', { replace: true })
+        }
+      })
     }
   }, [currentUser, session, authLoading, isRestoringUser, navigate, logout])
 
