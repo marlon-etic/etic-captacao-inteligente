@@ -111,9 +111,9 @@ export function MetricDetailModal({
         .select(
           'id, codigo_imovel, endereco, preco, tipo, status_captacao, etapa_funil, user_captador_id, captador_id, created_at, demanda_locacao_id, demanda_venda_id, dormitorios, vagas, observacoes',
         )
-        .in('user_captador_id', filters.userIds)
-        .gte('created_at', dateRange.start)
-        .lt('created_at', dateRange.end)
+        .in('user_captador_id', filters.userIds) // ✅ FILTRO DE USUÁRIOS
+        .gte('created_at', dateRange.start) // ✅ FILTRO DE DATA INÍCIO
+        .lt('created_at', dateRange.end) // ✅ FILTRO DE DATA FIM
         .order('created_at', { ascending: false })
 
       if (error) {
@@ -147,7 +147,9 @@ export function MetricDetailModal({
         )
         console.log(`✅ Após filtro "marked lost": ${filtered.length} imóveis`)
       } else {
-        console.log(`✅ Tipo "${type}" - sem filtro adicional: ${filtered.length} imóveis`)
+        console.log(
+          `✅ Tipo "created" ou "${type}" - sem filtro adicional: ${filtered.length} imóveis`,
+        )
       }
 
       const userIds = Array.from(
@@ -197,7 +199,6 @@ export function MetricDetailModal({
       console.log('📋 FILTROS APLICADOS:')
       console.log('  userIds:', filters.userIds)
       console.log('  dateRange:', { start: dateRange.start, end: dateRange.end })
-      console.log('  type:', type)
 
       if (!filters.userIds || filters.userIds.length === 0) {
         console.error('❌ ERRO: Nenhum usuário selecionado')
@@ -212,9 +213,9 @@ export function MetricDetailModal({
         .select(
           'id, nome_cliente, sdr_id, created_at, valor_minimo, valor_maximo, bairros, nivel_urgencia, urgencia, status_demanda',
         )
-        .in('sdr_id', filters.userIds)
-        .gte('created_at', dateRange.start)
-        .lt('created_at', dateRange.end)
+        .in('sdr_id', filters.userIds) // ✅ FILTRO DE USUÁRIOS
+        .gte('created_at', dateRange.start) // ✅ FILTRO DE DATA INÍCIO
+        .lt('created_at', dateRange.end) // ✅ FILTRO DE DATA FIM
 
       if (errLoc) {
         console.error('❌ Erro ao buscar demandas de locação:', errLoc)
@@ -229,9 +230,9 @@ export function MetricDetailModal({
         .select(
           'id, nome_cliente, corretor_id, created_at, valor_minimo, valor_maximo, bairros, nivel_urgencia, urgencia, status_demanda',
         )
-        .in('corretor_id', filters.userIds)
-        .gte('created_at', dateRange.start)
-        .lt('created_at', dateRange.end)
+        .in('corretor_id', filters.userIds) // ✅ FILTRO DE USUÁRIOS
+        .gte('created_at', dateRange.start) // ✅ FILTRO DE DATA INÍCIO
+        .lt('created_at', dateRange.end) // ✅ FILTRO DE DATA FIM
 
       if (errVen) {
         console.error('❌ Erro ao buscar demandas de venda:', errVen)
@@ -270,8 +271,8 @@ export function MetricDetailModal({
           .from('imoveis_captados')
           .select('id, demanda_locacao_id, demanda_venda_id')
           .or(`demanda_locacao_id.in.(${demandIdsStr}),demanda_venda_id.in.(${demandIdsStr})`)
-          .in('user_captador_id', filters.userIds)
-          .gte('created_at', dateRange.start)
+          .in('user_captador_id', filters.userIds) // ✅ RESPEITAR FILTRO DE USUÁRIOS
+          .gte('created_at', dateRange.start) // ✅ RESPEITAR FILTRO DE DATA
           .lt('created_at', dateRange.end)
 
         if (errLinked) {
@@ -344,11 +345,11 @@ export function MetricDetailModal({
 
   const content = (
     <div
-      className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 sm:p-6 backdrop-blur-sm animate-fade-in overflow-auto"
+      className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 sm:p-6 backdrop-blur-sm animate-fade-in overflow-y-auto"
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-gray-950 rounded-xl shadow-2xl w-full max-w-[95vw] md:max-w-[85vw] lg:max-w-[1000px] max-h-[80vh] flex flex-col animate-fade-in-up border border-gray-200 dark:border-gray-800 z-51"
+        className="bg-white dark:bg-gray-950 rounded-xl shadow-2xl w-full max-w-[95vw] md:max-w-[85vw] lg:max-w-[1000px] max-h-[80vh] flex flex-col animate-fade-in-up border border-gray-200 dark:border-gray-800 z-51 relative my-8"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="bg-gradient-to-r from-blue-600 to-blue-500 text-white p-4 md:p-6 flex flex-col shrink-0 rounded-t-xl sticky top-0 z-30">
