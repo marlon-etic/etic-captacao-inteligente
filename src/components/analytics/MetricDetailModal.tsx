@@ -30,6 +30,7 @@ export function MetricDetailModal({
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 20
 
+  // ✅ VALIDAR FILTROS ANTES DE CARREGAR
   useEffect(() => {
     if (isOpen) {
       if (!filters.userIds || filters.userIds.length === 0) {
@@ -43,27 +44,49 @@ export function MetricDetailModal({
   }, [isOpen, filters, metricType])
 
   const getDateRange = () => {
+    // ✅ Se o dashboard enviou periodRange, respeitar ele acima de tudo
+    if (filters.periodRange?.start && filters.periodRange?.end) {
+      const start = new Date(filters.periodRange.start)
+      const end = new Date(filters.periodRange.end)
+      // Garante que pega até o final do último dia
+      if (start.toDateString() === end.toDateString() && end.getHours() === 0) {
+        end.setHours(23, 59, 59, 999)
+      }
+      return {
+        start: start.toISOString(),
+        end: end.toISOString(),
+      }
+    }
+
     const now = new Date()
-    let start: Date
-    let end = now
+    let start = new Date()
+    let end = new Date()
 
     switch (filters.period) {
       case 'today':
-        start = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+        start.setHours(0, 0, 0, 0)
+        end.setHours(23, 59, 59, 999)
         break
       case 'this_week':
-        start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+        const day = now.getDay()
+        const diff = now.getDate() - day + (day === 0 ? -6 : 1) // ajusta para segunda
+        start = new Date(now.setDate(diff))
+        start.setHours(0, 0, 0, 0)
+        end.setHours(23, 59, 59, 999)
         break
       case 'this_month':
         start = new Date(now.getFullYear(), now.getMonth(), 1)
+        start.setHours(0, 0, 0, 0)
+        end.setHours(23, 59, 59, 999)
         break
       case 'custom':
-        start = new Date(filters.periodRange?.start || now.toISOString())
-        end = new Date(filters.periodRange?.end || now.toISOString())
+        if (filters.periodRange?.start) start = new Date(filters.periodRange.start)
+        if (filters.periodRange?.end) end = new Date(filters.periodRange.end)
         end.setHours(23, 59, 59, 999)
         break
       default:
         start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+        end.setHours(23, 59, 59, 999)
     }
 
     return {
@@ -94,9 +117,10 @@ export function MetricDetailModal({
       console.group('[loadPropertiesData] 🔍 INICIANDO COM FILTROS')
       console.log('📋 FILTROS APLICADOS:')
       console.log('  userIds:', filters.userIds)
-      console.log('  dateRange:', { start: dateRange.start, end: dateRange.end })
+      console.log('  dateRange:', dateRange)
       console.log('  type:', type)
 
+      // ✅ VALIDAÇÃO CRÍTICA
       if (!filters.userIds || filters.userIds.length === 0) {
         console.error('❌ ERRO: Nenhum usuário selecionado')
         setItems([])
@@ -104,17 +128,21 @@ export function MetricDetailModal({
         return
       }
 
+      // ✅ QUERY COM FILTROS APLICADOS - CRÍTICO
       console.log('🔄 Executando query com filtros...')
 
-      const { data: properties, error } = await supabase
+      const userIdsStr = filters.userIds.join(',')
+      let query = supabase
         .from('imoveis_captados')
         .select(
           'id, codigo_imovel, endereco, preco, tipo, status_captacao, etapa_funil, user_captador_id, captador_id, created_at, demanda_locacao_id, demanda_venda_id, dormitorios, vagas, observacoes',
         )
-        .in('user_captador_id', filters.userIds) // ✅ FILTRO DE USUÁRIOS
+        .or(`user_captador_id.in.(${userIdsStr}),captador_id.in.(${userIdsStr})`) // ✅ FILTRO DE USUÁRIOS
         .gte('created_at', dateRange.start) // ✅ FILTRO DE DATA INÍCIO
         .lt('created_at', dateRange.end) // ✅ FILTRO DE DATA FIM
         .order('created_at', { ascending: false })
+
+      const { data: properties, error } = await query
 
       if (error) {
         console.error('❌ Erro na query:', error)
@@ -123,6 +151,7 @@ export function MetricDetailModal({
 
       console.log(`✅ Query retornou ${properties?.length || 0} imóveis`)
 
+      // ✅ FILTRAR POR TIPO
       let filtered = properties || []
 
       if (type === 'property_linked') {
@@ -152,18 +181,19 @@ export function MetricDetailModal({
         )
       }
 
-      const userIds = Array.from(
+      const allUserIds = Array.from(
         new Set(filtered.map((p) => p.user_captador_id || p.captador_id).filter(Boolean)),
       )
       const usersMap = new Map()
-      if (userIds.length > 0) {
+      if (allUserIds.length > 0) {
         const { data: usersData } = await supabase
           .from('users')
           .select('id, nome')
-          .in('id', userIds)
+          .in('id', allUserIds)
         usersData?.forEach((u) => usersMap.set(u.id, u.nome))
       }
 
+      // ✅ ENRIQUECER COM DADOS DO CAPTADOR
       const enrichedItems = filtered.map((prop) => ({
         id: prop.id,
         codigo_imovel: prop.codigo_imovel,
@@ -198,8 +228,9 @@ export function MetricDetailModal({
       console.group('[loadDemandsData] 🔍 INICIANDO COM FILTROS')
       console.log('📋 FILTROS APLICADOS:')
       console.log('  userIds:', filters.userIds)
-      console.log('  dateRange:', { start: dateRange.start, end: dateRange.end })
+      console.log('  dateRange:', dateRange)
 
+      // ✅ VALIDAÇÃO CRÍTICA
       if (!filters.userIds || filters.userIds.length === 0) {
         console.error('❌ ERRO: Nenhum usuário selecionado')
         setItems([])
@@ -207,6 +238,7 @@ export function MetricDetailModal({
         return
       }
 
+      // ✅ BUSCAR DEMANDAS DE LOCAÇÃO COM FILTROS
       console.log('🔄 Buscando demandas de locação...')
       const { data: demandsLoc, error: errLoc } = await supabase
         .from('demandas_locacao')
@@ -224,6 +256,7 @@ export function MetricDetailModal({
 
       console.log(`✅ Demandas de locação encontradas: ${demandsLoc?.length || 0}`)
 
+      // ✅ BUSCAR DEMANDAS DE VENDA COM FILTROS
       console.log('🔄 Buscando demandas de venda...')
       const { data: demandsVen, error: errVen } = await supabase
         .from('demandas_vendas')
@@ -249,21 +282,22 @@ export function MetricDetailModal({
         console.log(`✅ Após filtro "deal closed": ${allDemands.length} demandas`)
       }
 
-      const userIds = Array.from(
+      const allUserIds = Array.from(
         new Set(allDemands.map((d) => d.sdr_id || d.corretor_id).filter(Boolean)),
       )
       const usersMap = new Map()
-      if (userIds.length > 0) {
+      if (allUserIds.length > 0) {
         const { data: usersData } = await supabase
           .from('users')
           .select('id, nome')
-          .in('id', userIds)
+          .in('id', allUserIds)
         usersData?.forEach((u) => usersMap.set(u.id, u.nome))
       }
 
       const demandIds = allDemands.map((d) => d.id)
       const linkedPropsMap = new Map()
 
+      // ✅ CONTAR IMÓVEIS VINCULADOS (RESPEITANDO FILTROS)
       if (demandIds.length > 0) {
         const demandIdsStr = demandIds.join(',')
         const userIdsStr = filters.userIds.join(',')
@@ -271,7 +305,7 @@ export function MetricDetailModal({
           .from('imoveis_captados')
           .select('id, demanda_locacao_id, demanda_venda_id')
           .or(`demanda_locacao_id.in.(${demandIdsStr}),demanda_venda_id.in.(${demandIdsStr})`)
-          .in('user_captador_id', filters.userIds) // ✅ RESPEITAR FILTRO DE USUÁRIOS
+          .or(`user_captador_id.in.(${userIdsStr}),captador_id.in.(${userIdsStr})`) // ✅ RESPEITAR FILTRO DE USUÁRIOS
           .gte('created_at', dateRange.start) // ✅ RESPEITAR FILTRO DE DATA
           .lt('created_at', dateRange.end)
 
@@ -287,6 +321,7 @@ export function MetricDetailModal({
         })
       }
 
+      // ✅ ENRIQUECER COM DADOS DO CORRETOR/SDR
       let enrichedItems = allDemands.map((demand) => ({
         id: demand.id,
         nome_cliente: demand.nome_cliente,
@@ -370,6 +405,7 @@ export function MetricDetailModal({
           </div>
         </div>
 
+        {/* ✅ INDICADOR DE FILTROS APLICADOS */}
         <div className="bg-blue-700 text-blue-100 px-4 md:px-6 py-2 text-xs flex gap-2 shrink-0 z-20">
           <span className="font-semibold">🔍 Filtros:</span>
           <span>
