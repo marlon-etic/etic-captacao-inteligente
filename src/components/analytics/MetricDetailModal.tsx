@@ -91,65 +91,63 @@ export function MetricDetailModal({
 
   const loadPropertiesData = async (dateRange: { start: string; end: string }, type: string) => {
     try {
-      console.group('[loadPropertiesData] Iniciando carregamento com filtros')
-      console.log('[loadPropertiesData] Filtros aplicados:')
-      console.log('  - userIds:', filters.userIds)
-      console.log('  - dateRange:', dateRange)
-      console.log('  - type:', type)
+      console.group('[loadPropertiesData] 🔍 INICIANDO COM FILTROS')
+      console.log('📋 FILTROS APLICADOS:')
+      console.log('  userIds:', filters.userIds)
+      console.log('  dateRange:', { start: dateRange.start, end: dateRange.end })
+      console.log('  type:', type)
 
       if (!filters.userIds || filters.userIds.length === 0) {
-        console.error('[loadPropertiesData] Nenhum usuário selecionado')
+        console.error('❌ ERRO: Nenhum usuário selecionado')
         setItems([])
-        console.groupEnd()
+        setLoading(false)
         return
       }
 
-      const userIdsString = filters.userIds.join(',')
+      console.log('🔄 Executando query com filtros...')
 
-      let query = supabase
+      const { data: properties, error } = await supabase
         .from('imoveis_captados')
         .select(
           'id, codigo_imovel, endereco, preco, tipo, status_captacao, etapa_funil, user_captador_id, captador_id, created_at, demanda_locacao_id, demanda_venda_id, dormitorios, vagas, observacoes',
         )
+        .in('user_captador_id', filters.userIds)
         .gte('created_at', dateRange.start)
         .lt('created_at', dateRange.end)
-        .or(`user_captador_id.in.(${userIdsString}),captador_id.in.(${userIdsString})`)
         .order('created_at', { ascending: false })
 
-      const { data: properties, error } = await query
-
       if (error) {
-        console.error('[loadPropertiesData] Erro na query:', error)
+        console.error('❌ Erro na query:', error)
         throw error
       }
 
-      console.log('[loadPropertiesData] Total de imóveis retornados:', properties?.length || 0)
+      console.log(`✅ Query retornou ${properties?.length || 0} imóveis`)
 
       let filtered = properties || []
 
       if (type === 'property_linked') {
         filtered = filtered.filter((p) => p.demanda_locacao_id || p.demanda_venda_id)
-        console.log('[loadPropertiesData] Após filtro "linked":', filtered.length)
+        console.log(`✅ Após filtro "linked": ${filtered.length} imóveis`)
       } else if (type === 'property_free') {
         filtered = filtered.filter((p) => !p.demanda_locacao_id && !p.demanda_venda_id)
-        console.log('[loadPropertiesData] Após filtro "free":', filtered.length)
+        console.log(`✅ Após filtro "free": ${filtered.length} imóveis`)
       } else if (type === 'property_visit_scheduled') {
         filtered = filtered.filter(
           (p) => p.status_captacao === 'visitado' || p.etapa_funil === 'visitado',
         )
-        console.log('[loadPropertiesData] Após filtro "visit scheduled":', filtered.length)
+        console.log(`✅ Após filtro "visit scheduled": ${filtered.length} imóveis`)
       } else if (type === 'property_deal_closed') {
         filtered = filtered.filter(
           (p) => p.status_captacao === 'fechado' || p.etapa_funil === 'fechado',
         )
-        console.log('[loadPropertiesData] Após filtro "deal closed":', filtered.length)
+        console.log(`✅ Após filtro "deal closed": ${filtered.length} imóveis`)
       } else if (type === 'property_marked_lost') {
         filtered = filtered.filter(
           (p) => p.status_captacao === 'perdido' || p.etapa_funil === 'perdido',
         )
-        console.log('[loadPropertiesData] Após filtro "marked lost":', filtered.length)
-      } else if (type === 'property_created') {
-        console.log('[loadPropertiesData] Tipo "created" - sem filtro adicional')
+        console.log(`✅ Após filtro "marked lost": ${filtered.length} imóveis`)
+      } else {
+        console.log(`✅ Tipo "${type}" - sem filtro adicional: ${filtered.length} imóveis`)
       }
 
       const userIds = Array.from(
@@ -181,12 +179,13 @@ export function MetricDetailModal({
         observacoes: prop.observacoes,
       }))
 
-      console.log('[loadPropertiesData] Total final após enriquecimento:', enrichedItems.length)
+      console.log(`✅ TOTAL FINAL: ${enrichedItems.length} imóveis`)
+      console.log('📝 Códigos dos imóveis:', enrichedItems.map((i) => i.codigo_imovel).join(', '))
       console.groupEnd()
 
       setItems(enrichedItems)
     } catch (err) {
-      console.error('[loadPropertiesData] Erro:', err)
+      console.error('[loadPropertiesData] ❌ Erro:', err)
       setItems([])
       console.groupEnd()
     }
@@ -194,57 +193,59 @@ export function MetricDetailModal({
 
   const loadDemandsData = async (dateRange: { start: string; end: string }, type: string) => {
     try {
-      console.group('[loadDemandsData] Iniciando carregamento com filtros')
-      console.log('[loadDemandsData] Filtros aplicados:')
-      console.log('  - userIds:', filters.userIds)
-      console.log('  - dateRange:', dateRange)
-      console.log('  - type:', type)
+      console.group('[loadDemandsData] 🔍 INICIANDO COM FILTROS')
+      console.log('📋 FILTROS APLICADOS:')
+      console.log('  userIds:', filters.userIds)
+      console.log('  dateRange:', { start: dateRange.start, end: dateRange.end })
+      console.log('  type:', type)
 
       if (!filters.userIds || filters.userIds.length === 0) {
-        console.error('[loadDemandsData] Nenhum usuário selecionado')
+        console.error('❌ ERRO: Nenhum usuário selecionado')
         setItems([])
-        console.groupEnd()
+        setLoading(false)
         return
       }
 
+      console.log('🔄 Buscando demandas de locação...')
       const { data: demandsLoc, error: errLoc } = await supabase
         .from('demandas_locacao')
         .select(
           'id, nome_cliente, sdr_id, created_at, valor_minimo, valor_maximo, bairros, nivel_urgencia, urgencia, status_demanda',
         )
+        .in('sdr_id', filters.userIds)
         .gte('created_at', dateRange.start)
         .lt('created_at', dateRange.end)
-        .in('sdr_id', filters.userIds)
 
       if (errLoc) {
-        console.error('[loadDemandsData] Erro ao buscar demandas de locação:', errLoc)
+        console.error('❌ Erro ao buscar demandas de locação:', errLoc)
         throw errLoc
       }
 
-      console.log('[loadDemandsData] Demandas de locação encontradas:', demandsLoc?.length || 0)
+      console.log(`✅ Demandas de locação encontradas: ${demandsLoc?.length || 0}`)
 
+      console.log('🔄 Buscando demandas de venda...')
       const { data: demandsVen, error: errVen } = await supabase
         .from('demandas_vendas')
         .select(
           'id, nome_cliente, corretor_id, created_at, valor_minimo, valor_maximo, bairros, nivel_urgencia, urgencia, status_demanda',
         )
+        .in('corretor_id', filters.userIds)
         .gte('created_at', dateRange.start)
         .lt('created_at', dateRange.end)
-        .in('corretor_id', filters.userIds)
 
       if (errVen) {
-        console.error('[loadDemandsData] Erro ao buscar demandas de venda:', errVen)
+        console.error('❌ Erro ao buscar demandas de venda:', errVen)
         throw errVen
       }
 
-      console.log('[loadDemandsData] Demandas de venda encontradas:', demandsVen?.length || 0)
+      console.log(`✅ Demandas de venda encontradas: ${demandsVen?.length || 0}`)
 
       let allDemands = [...(demandsLoc || []), ...(demandsVen || [])]
-      console.log('[loadDemandsData] Total de demandas:', allDemands.length)
+      console.log(`✅ TOTAL DE DEMANDAS: ${allDemands.length}`)
 
       if (type === 'demand_deal_closed') {
         allDemands = allDemands.filter((d) => d.status_demanda === 'ganho')
-        console.log('[loadDemandsData] Após filtro "deal closed":', allDemands.length)
+        console.log(`✅ Após filtro "deal closed": ${allDemands.length} demandas`)
       }
 
       const userIds = Array.from(
@@ -269,9 +270,9 @@ export function MetricDetailModal({
           .from('imoveis_captados')
           .select('id, demanda_locacao_id, demanda_venda_id')
           .or(`demanda_locacao_id.in.(${demandIdsStr}),demanda_venda_id.in.(${demandIdsStr})`)
+          .in('user_captador_id', filters.userIds)
           .gte('created_at', dateRange.start)
           .lt('created_at', dateRange.end)
-          .or(`user_captador_id.in.(${userIdsStr}),captador_id.in.(${userIdsStr})`)
 
         if (errLinked) {
           console.warn('[loadDemandsData] Erro ao contar imóveis vinculados:', errLinked)
@@ -302,10 +303,11 @@ export function MetricDetailModal({
 
       if (type === 'demand_linked') {
         enrichedItems = enrichedItems.filter((d) => d.imoveiVinculados > 0)
-        console.log('[loadDemandsData] Após filtro "linked":', enrichedItems.length)
+        console.log(`✅ Após filtro "linked": ${enrichedItems.length} demandas`)
       }
 
-      console.log('[loadDemandsData] Total final após enriquecimento:', enrichedItems.length)
+      console.log(`✅ TOTAL FINAL: ${enrichedItems.length} demandas`)
+      console.log('📝 Clientes das demandas:', enrichedItems.map((i) => i.nome_cliente).join(', '))
       console.groupEnd()
 
       setItems(
@@ -314,7 +316,7 @@ export function MetricDetailModal({
         ),
       )
     } catch (err) {
-      console.error('[loadDemandsData] Erro:', err)
+      console.error('[loadDemandsData] ❌ Erro:', err)
       setItems([])
       console.groupEnd()
     }
@@ -342,11 +344,11 @@ export function MetricDetailModal({
 
   const content = (
     <div
-      className="fixed inset-0 bg-black/60 z-[50] flex items-center justify-center p-4 sm:p-6 backdrop-blur-sm animate-fade-in overflow-auto"
+      className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 sm:p-6 backdrop-blur-sm animate-fade-in overflow-auto"
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-gray-950 rounded-xl shadow-2xl w-full max-w-[95vw] md:max-w-[85vw] lg:max-w-[1000px] max-h-[80vh] flex flex-col animate-fade-in-up border border-gray-200 dark:border-gray-800 z-[51]"
+        className="bg-white dark:bg-gray-950 rounded-xl shadow-2xl w-full max-w-[95vw] md:max-w-[85vw] lg:max-w-[1000px] max-h-[80vh] flex flex-col animate-fade-in-up border border-gray-200 dark:border-gray-800 z-51"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="bg-gradient-to-r from-blue-600 to-blue-500 text-white p-4 md:p-6 flex flex-col shrink-0 rounded-t-xl sticky top-0 z-30">

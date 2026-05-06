@@ -25,6 +25,11 @@ export default {
       },
     },
     extend: {
+      zIndex: {
+        '50': '50',
+        '51': '51',
+        '52': '52',
+      },
       fontFamily: {
         sans: ['Inter', 'sans-serif'],
       },
