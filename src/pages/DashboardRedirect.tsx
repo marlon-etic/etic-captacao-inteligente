@@ -31,13 +31,13 @@ export default function DashboardRedirect() {
   switch (currentUser.role) {
     case 'sdr':
     case 'corretor':
-      return <Navigate to="/app/sdr-corretor/dashboard" replace />
+      return <Navigate to="/app/demandas" replace />
     case 'gestor':
     case 'admin':
       return <GestorDashboard />
     case 'captador':
       return <CaptadorDashboard />
     default:
-      return <Navigate to="/app/sdr-corretor/dashboard" replace />
+      return <Navigate to="/app/demandas" replace />
   }
 }
