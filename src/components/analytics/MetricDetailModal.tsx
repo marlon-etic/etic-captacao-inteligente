@@ -30,6 +30,18 @@ export function MetricDetailModal({
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 20
 
+  // ✅ BLOQUEAR SCROLL DO BODY QUANDO MODAL ABERTO
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [isOpen])
+
   // ✅ VALIDAR FILTROS ANTES DE CARREGAR
   useEffect(() => {
     if (isOpen) {
@@ -389,11 +401,13 @@ export function MetricDetailModal({
 
   const content = (
     <div
-      className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 sm:p-6 backdrop-blur-sm animate-fade-in overflow-y-auto"
+      className="fixed inset-0 flex items-center justify-center p-4 sm:p-6 backdrop-blur-sm animate-fade-in overflow-y-auto"
+      style={{ zIndex: 9998, backgroundColor: 'rgba(0, 0, 0, 0.6)' }}
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-gray-950 rounded-xl shadow-2xl w-full max-w-[95vw] md:max-w-[85vw] lg:max-w-[1000px] max-h-[80vh] flex flex-col animate-fade-in-up border border-gray-200 dark:border-gray-800 z-[51] relative my-8"
+        className="bg-white dark:bg-gray-950 rounded-xl shadow-2xl w-full max-w-[95vw] md:max-w-[85vw] lg:max-w-[1000px] max-h-[80vh] flex flex-col animate-fade-in-up border border-gray-200 dark:border-gray-800 relative my-8"
+        style={{ zIndex: 9999 }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="bg-gradient-to-r from-blue-600 to-blue-500 text-white p-4 md:p-6 flex flex-col shrink-0 rounded-t-xl sticky top-0 z-30">
@@ -722,13 +736,15 @@ function DetailDrawer({
     }
   }
 
-  return (
+  const drawerContent = (
     <div
-      className="fixed inset-0 bg-black/60 flex justify-end z-[10000] backdrop-blur-sm"
+      className="fixed inset-0 flex justify-end backdrop-blur-sm"
+      style={{ zIndex: 10000, backgroundColor: 'rgba(0, 0, 0, 0.6)' }}
       onClick={onClose}
     >
       <div
         className="bg-white dark:bg-gray-950 w-full max-w-md h-full overflow-y-auto shadow-2xl animate-slide-in-right flex flex-col"
+        style={{ zIndex: 10001 }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="bg-gradient-to-r from-blue-600 to-blue-500 text-white p-6 flex justify-between items-center sticky top-0 shrink-0 shadow-sm z-30">
@@ -922,4 +938,6 @@ function DetailDrawer({
       </div>
     </div>
   )
+
+  return typeof document !== 'undefined' ? createPortal(drawerContent, document.body) : null
 }
