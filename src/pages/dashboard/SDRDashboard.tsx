@@ -8,7 +8,7 @@ import { MetricsCardsSdr } from '@/components/sdr-dashboard/MetricsCardsSdr'
 import { ChartsSdr } from '@/components/sdr-dashboard/ChartsSdr'
 import { ListasSdr } from '@/components/sdr-dashboard/ListasSdr'
 import { useSdrQueries } from '@/hooks/use-sdr-queries'
-import { useSdrStore } from '@/hooks/use-sdr-store'
+import { useSdrStore, SdrStoreProvider } from '@/hooks/use-sdr-store'
 import useAppStore from '@/stores/useAppStore'
 import {
   Select,
@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 
-export function SDRDashboard() {
+function SDRDashboardContent() {
   const [searchParams, setSearchParams] = useSearchParams()
   const currentTab = searchParams.get('tab') || 'visao-geral'
   const { currentUser } = useAppStore()
@@ -92,5 +92,13 @@ export function SDRDashboard() {
         </div>
       </Tabs>
     </div>
+  )
+}
+
+export function SDRDashboard() {
+  return (
+    <SdrStoreProvider>
+      <SDRDashboardContent />
+    </SdrStoreProvider>
   )
 }
