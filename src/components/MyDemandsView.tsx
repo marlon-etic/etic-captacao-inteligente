@@ -156,11 +156,7 @@ export function MyDemandsView({ filterType }: Props) {
 
   const filteredDemands = useMemo(() => {
     return demands.filter((d) => {
-      if (currentUser?.role !== 'admin' && currentUser?.role !== 'gestor') {
-        if (d.sdr_id !== currentUser?.id && d.corretor_id !== currentUser?.id) {
-          return false
-        }
-      }
+      // Visibility is already global by role (Venda/Locação) in backend and hook
 
       if (filters.prioridade && filters.prioridade !== 'Todos') {
         const isPrio = filters.prioridade === 'prioritaria'

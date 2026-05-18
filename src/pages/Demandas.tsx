@@ -71,7 +71,8 @@ export default function Demandas() {
 
   // If it's an SDR/Corretor, redirect to dashboard which now acts as the main hub
   if (isSDRCorretor) {
-    const tab = searchParams.get('tab') || 'minhas-demandas'
+    let tab = searchParams.get('tab') || 'demandas'
+    if (tab === 'minhas-demandas') tab = 'demandas'
     return <Navigate to={`/app/sdr-corretor/dashboard?tab=${tab}`} replace />
   }
 

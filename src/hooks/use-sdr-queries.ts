@@ -22,6 +22,8 @@ export function useSdrQueries() {
       try {
         let start = new Date()
         let end = new Date()
+        let applyDateFilter = true
+
         if (periodo === 'hoje') {
           start.setHours(0, 0, 0, 0)
         } else if (periodo === 'semana') {
@@ -32,6 +34,8 @@ export function useSdrQueries() {
         } else if (periodo === 'mes') {
           start.setDate(1)
           start.setHours(0, 0, 0, 0)
+        } else if (periodo === 'sempre') {
+          applyDateFilter = false
         } else if (periodo === 'custom' && dataCustomStart) {
           start = new Date(dataCustomStart)
           if (dataCustomEnd) end = new Date(dataCustomEnd)
@@ -40,34 +44,42 @@ export function useSdrQueries() {
         const startIso = start.toISOString()
         const endIso = end.toISOString()
 
-        const { data: demandas } = await supabase
+        let demandasQuery = supabase
           .from(demandasTable)
           .select('*, imovel_demand_match(*)')
-          .eq(ownerField, user.id)
-          .gte('created_at', startIso)
-          .lte('created_at', endIso)
           .order('created_at', { ascending: false })
+
+        if (applyDateFilter) {
+          demandasQuery = demandasQuery.gte('created_at', startIso).lte('created_at', endIso)
+        }
 
         const seteDiasAtras = new Date()
         seteDiasAtras.setDate(seteDiasAtras.getDate() - 7)
-        const { data: demandasInativas } = await supabase
+        let demandasInativasQuery = supabase
           .from(demandasTable)
           .select('*')
-          .eq(ownerField, user.id)
           .in('status_demanda', ['aberta', 'em busca', 'em visita'])
           .not('updated_at', 'is', null)
           .lt('updated_at', seteDiasAtras.toISOString())
 
-        const { data: imoveisLivres } = await supabase
+        const { data: demandas } = await demandasQuery
+        const { data: demandasInativas } = await demandasInativasQuery
+
+        let imoveisLivresQuery = supabase
           .from('imoveis_captados')
           .select('*, imovel_demand_match(*)')
           .eq('tipo', tipoTransacao)
           .is('demanda_locacao_id', null)
           .is('demanda_venda_id', null)
-          .gte('created_at', startIso)
-          .lte('created_at', endIso)
           .order('created_at', { ascending: false })
           .limit(200)
+
+        if (applyDateFilter) {
+          imoveisLivresQuery = imoveisLivresQuery
+            .gte('created_at', startIso)
+            .lte('created_at', endIso)
+        }
+        const { data: imoveisLivres } = await imoveisLivresQuery
 
         const imoveisLivresFiltered =
           imoveisLivres?.filter(
@@ -84,23 +96,25 @@ export function useSdrQueries() {
           imoveisSobDemanda = imV?.map((m: any) => ({ ...m.imoveis_captados, match_info: m })) || []
         }
 
-        const { data: visitas } = await supabase
+        let visitasQuery = supabase
           .from('visitas_imovel')
           .select('*')
-          .eq('user_sdr_id', user.id)
           .eq('tipo_demanda', tipoTransacao)
-          .gte('created_at', startIso)
-          .lte('created_at', endIso)
           .order('data_visita', { ascending: false })
 
-        const { data: fechados } = await supabase
+        let fechadosQuery = supabase
           .from('fechamentos')
           .select('*')
-          .eq('user_sdr_id', user.id)
           .eq('tipo_demanda', tipoTransacao)
-          .gte('created_at', startIso)
-          .lte('created_at', endIso)
           .order('created_at', { ascending: false })
+
+        if (applyDateFilter) {
+          visitasQuery = visitasQuery.gte('created_at', startIso).lte('created_at', endIso)
+          fechadosQuery = fechadosQuery.gte('created_at', startIso).lte('created_at', endIso)
+        }
+
+        const { data: visitas } = await visitasQuery
+        const { data: fechados } = await fechadosQuery
 
         setData({
           demandas: demandas || [],
