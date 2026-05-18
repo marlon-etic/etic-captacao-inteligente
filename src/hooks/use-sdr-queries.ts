@@ -46,7 +46,7 @@ export function useSdrQueries() {
 
         let demandasQuery = supabase
           .from(demandasTable)
-          .select('*, imovel_demand_match(*)')
+          .select('*')
           .order('created_at', { ascending: false })
 
         if (applyDateFilter) {
@@ -87,13 +87,24 @@ export function useSdrQueries() {
           ) || []
 
         const sdrDemandaIds = demandas?.map((d: any) => d.id) || []
-        let imoveisSobDemanda = []
+        let imoveisSobDemanda: any[] = []
         if (sdrDemandaIds.length > 0) {
           const { data: imV } = await supabase
             .from('imovel_demand_match')
             .select('*, imoveis_captados(*)')
             .in('demanda_id', sdrDemandaIds)
+
           imoveisSobDemanda = imV?.map((m: any) => ({ ...m.imoveis_captados, match_info: m })) || []
+
+          if (demandas && imV) {
+            for (const d of demandas) {
+              d.imovel_demand_match = imV.filter((m: any) => m.demanda_id === d.id)
+            }
+          }
+        } else if (demandas) {
+          for (const d of demandas) {
+            d.imovel_demand_match = []
+          }
         }
 
         let visitasQuery = supabase
