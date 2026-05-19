@@ -27,25 +27,26 @@ export interface SupabaseCapturedPropertyWithDemand {
   data_fechamento?: string
 }
 
-export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel' | 'Ambos') {
+export function useSupabaseProperties(
+  filterType?: 'Venda' | 'Aluguel' | 'Ambos',
+  options?: { onlyMine?: boolean; pageSize?: number },
+) {
   const [properties, setProperties] = useState<SupabaseCapturedPropertyWithDemand[]>([])
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
-  const { users, currentUser } = useAppStore()
-  const { fetchWithResilience } = useSmartSync()
-  const usersRef = useRef(users)
+  const [hasMore, setHasMore] = useState(false)
+  const [page, setPage] = useState(1)
 
-  useEffect(() => {
-    usersRef.current = users
-  }, [users])
+  const { currentUser } = useAppStore()
+  const { fetchWithResilience } = useSmartSync()
 
   const formatProperty = useCallback((p: any) => {
-    const userMap = new Map((usersRef.current || []).map((u: any) => [u.id, u.name]))
     const d_loc = p.demanda_locacao
     const d_ven = p.demanda_venda
     const demanda = d_loc || d_ven
 
     const normalizedTipo = normalizeTipo(p.tipo, p.preco, p.valor)
+    const captador_nome = p.captador_rel?.nome || p.captador_rel?.email || 'Captador'
 
     return {
       id: p.id,
@@ -54,7 +55,7 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel' | 'Ambos'
       preco: p.preco || 0,
       valor: p.valor || 0,
       user_captador_id: p.user_captador_id || p.captador_id,
-      captador_nome: userMap.get(p.user_captador_id || p.captador_id) || 'Captador',
+      captador_nome: captador_nome,
       created_at: p.created_at,
       status_captacao: p.status_captacao,
       bairros: demanda?.bairros || [],
@@ -77,7 +78,7 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel' | 'Ambos'
   }, [])
 
   const fetchProperties = useCallback(
-    async (isBackground = false) => {
+    async (isBackground = false, currentPage = 1) => {
       try {
         if (!isBackground) setLoading(true)
 
@@ -88,25 +89,39 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel' | 'Ambos'
 
         let finalData: any[] = []
 
-        const { data: directData, error: directError } = await supabase
+        const pageSize = options?.pageSize || 20
+        const limit = pageSize * currentPage
+
+        let query = supabase
           .from('imoveis_captados')
-          .select('*, demanda_locacao:demandas_locacao(*), demanda_venda:demandas_vendas(*)')
+          .select(
+            '*, demanda_locacao:demandas_locacao(*), demanda_venda:demandas_vendas(*), captador_rel:users!fk_imoveis_captador(nome, email)',
+            { count: 'exact' },
+          )
           .order('created_at', { ascending: false })
-          .limit(200)
+
+        if (options?.onlyMine && currentUser?.id) {
+          query = query.eq('user_captador_id', currentUser.id)
+        }
+
+        query = query.range(0, limit - 1)
+
+        const { data: directData, error: directError, count } = await query
 
         if (!directError && directData) {
           finalData = directData
+          setHasMore(count !== null && count > finalData.length)
         } else {
-          const data = await fetchWithResilience(`properties_${filterType || 'all'}`, async () => {
-            const { data: resData, error } = await supabase
-              .from('imoveis_captados')
-              .select('*, demanda_locacao:demandas_locacao(*), demanda_venda:demandas_vendas(*)')
-              .order('created_at', { ascending: false })
-              .limit(200)
-            if (error) throw error
-            return resData
-          })
-          finalData = data || []
+          const res = await fetchWithResilience(
+            `properties_${filterType || 'all'}_${currentPage}_${options?.onlyMine}`,
+            async () => {
+              const fallback = await query
+              if (fallback.error) throw fallback.error
+              return fallback
+            },
+          )
+          finalData = res?.data || []
+          setHasMore(res?.count !== null && res?.count > finalData.length)
         }
 
         let formatted = finalData.map(formatProperty)
@@ -149,8 +164,23 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel' | 'Ambos'
         if (!isBackground) setLoading(false)
       }
     },
-    [filterType, formatProperty, fetchWithResilience, currentUser?.role],
+    [
+      filterType,
+      formatProperty,
+      fetchWithResilience,
+      currentUser?.role,
+      currentUser?.id,
+      options?.onlyMine,
+      options?.pageSize,
+    ],
   )
+
+  const loadMore = useCallback(() => {
+    if (!hasMore || loading) return
+    const nextPage = page + 1
+    setPage(nextPage)
+    fetchProperties(true, nextPage)
+  }, [hasMore, loading, page, fetchProperties])
 
   const fetchSingleProperty = useCallback(
     async (id: string) => {
@@ -159,7 +189,9 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel' | 'Ambos'
 
         const { data: resData, error } = await supabase
           .from('imoveis_captados')
-          .select('*, demanda_locacao:demandas_locacao(*), demanda_venda:demandas_vendas(*)')
+          .select(
+            '*, demanda_locacao:demandas_locacao(*), demanda_venda:demandas_vendas(*), captador_rel:users!fk_imoveis_captador(nome, email)',
+          )
           .eq('id', id)
           .single()
 
@@ -171,7 +203,9 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel' | 'Ambos'
           data = await fetchWithResilience(`property_${id}`, async () => {
             const { data: fallbackData, error: fallbackError } = await supabase
               .from('imoveis_captados')
-              .select('*, demanda_locacao:demandas_locacao(*), demanda_venda:demandas_vendas(*)')
+              .select(
+                '*, demanda_locacao:demandas_locacao(*), demanda_venda:demandas_vendas(*), captador_rel:users!fk_imoveis_captador(nome, email)',
+              )
               .eq('id', id)
               .single()
             if (fallbackError) throw fallbackError
@@ -213,7 +247,7 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel' | 'Ambos'
 
   useEffect(() => {
     let mounted = true
-    if (mounted) fetchProperties()
+    if (mounted) fetchProperties(false, page)
 
     const handleGlobalDelete = (e: CustomEvent) => {
       const deletedId = e.detail?.id
@@ -315,5 +349,12 @@ export function useSupabaseProperties(filterType?: 'Venda' | 'Aluguel' | 'Ambos'
     onFallbackPoll: () => fetchProperties(true),
   })
 
-  return { properties, loading, syncing, refresh: () => fetchProperties(false) }
+  return {
+    properties,
+    loading,
+    syncing,
+    refresh: () => fetchProperties(false, page),
+    hasMore,
+    loadMore,
+  }
 }

@@ -12,7 +12,10 @@ export default function MeusCaptadosPage() {
           necessário.
         </p>
       </div>
-      <CapturedPropertiesView emptyStateText="Você ainda não captou nenhum imóvel." />
+      <CapturedPropertiesView
+        emptyStateText="Você ainda não captou nenhum imóvel."
+        onlyMine={true}
+      />
     </div>
   )
 }

@@ -1,12 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase/client'
-import { useAuth } from '@/hooks/use-auth'
-import { useToast } from '@/hooks/use-toast'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Search, MapPin, Loader2, Home, Building, Clock, CheckCircle2, User } from 'lucide-react'
-import { DemandDetailModal } from '@/components/DemandDetailModal'
 
 interface Demand {
   id: string
@@ -15,13 +9,12 @@ interface Demand {
   valor_minimo: number
   valor_maximo: number
   bairros: string[]
+  urgencia: string
+  status: string
   created_at: string
   imoveiVinculados: number
   criador_nome: string
   criador_id: string
-  urgencia: string
-  status: string
-  raw_demand: any
 }
 
 export function BuscarDemandas() {
@@ -30,15 +23,12 @@ export function BuscarDemandas() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Filtros
-  const [filterType, setFilterType] = useState<string>('todos')
-  const [filterUrgency, setFilterUrgency] = useState<string>('todos')
+  const [filterType, setFilterType] = useState<'todos' | 'locacao' | 'venda'>('todos')
+  const [filterUrgency, setFilterUrgency] = useState<'todos' | 'Normal' | 'Alta' | 'Crítica'>(
+    'todos',
+  )
   const [filterBairro, setFilterBairro] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
-
-  // Modals
-  const [selectedDemandDetail, setSelectedDemandDetail] = useState<Demand | null>(null)
-  const [selectedDemandLink, setSelectedDemandLink] = useState<Demand | null>(null)
 
   useEffect(() => {
     loadDemands()
@@ -52,24 +42,21 @@ export function BuscarDemandas() {
     }
 
     if (filterUrgency !== 'todos') {
-      if (filterUrgency === 'Urgente') {
-        filtered = filtered.filter((d) => d.urgencia === 'Urgente' || d.urgencia === 'Crítica')
-      } else if (filterUrgency === 'Normal') {
-        filtered = filtered.filter((d) => d.urgencia === 'Normal' || d.urgencia === 'Baixa')
-      } else {
-        filtered = filtered.filter((d) => d.urgencia === filterUrgency)
-      }
+      filtered = filtered.filter(
+        (d) =>
+          d.urgencia === filterUrgency || (filterUrgency === 'Crítica' && d.urgencia === 'Urgente'),
+      )
     }
 
     if (filterBairro) {
       filtered = filtered.filter((d) =>
-        (d.bairros || []).some((b) => b.toLowerCase().includes(filterBairro.toLowerCase())),
+        d.bairros.some((b) => b.toLowerCase().includes(filterBairro.toLowerCase())),
       )
     }
 
     if (searchQuery) {
       filtered = filtered.filter((d) =>
-        (d.nome_cliente || '').toLowerCase().includes(searchQuery.toLowerCase()),
+        d.nome_cliente.toLowerCase().includes(searchQuery.toLowerCase()),
       )
     }
 
@@ -81,68 +68,78 @@ export function BuscarDemandas() {
       setLoading(true)
       setError(null)
 
-      const [resLoc, resVen] = await Promise.all([
-        supabase
-          .from('demandas_locacao')
-          .select(`
-            *,
-            imoveis_captados(*),
-            sdr:users!demandas_locacao_sdr_id_fkey(nome)
-          `)
-          .in('status_demanda', ['aberta', 'prioritaria', 'sem_resposta_24h', 'Pausada']),
-        supabase
-          .from('demandas_vendas')
-          .select(`
-            *,
-            imoveis_captados(*),
-            corretor:users!demandas_vendas_corretor_id_fkey(nome)
-          `)
-          .in('status_demanda', ['aberta', 'prioritaria', 'sem_resposta_24h', 'Pausada']),
-      ])
+      const { data: demandsLoc, error: errLoc } = await supabase
+        .from('demandas_locacao')
+        .select(`
+          id, nome_cliente, sdr_id, created_at, valor_minimo, valor_maximo, bairros, urgencia, status_demanda,
+          criador:users!fk_demandas_locacao_sdr(nome, email),
+          imoveis_captados!imoveis_captados_demanda_locacao_id_fkey(id)
+        `)
+        .in('status_demanda', ['aberta', 'em busca'])
+        .order('created_at', { ascending: false })
 
-      if (resLoc.error) throw resLoc.error
-      if (resVen.error) throw resVen.error
+      if (errLoc) throw errLoc
 
-      const formattedLoc: Demand[] = (resLoc.data || []).map((d: any) => ({
-        id: d.id,
-        nome_cliente: d.nome_cliente || d.cliente_nome || 'Cliente',
-        tipo: 'locacao' as const,
-        valor_minimo: d.valor_minimo || 0,
-        valor_maximo: d.valor_maximo || d.orcamento_max || 0,
-        bairros: d.bairros || d.localizacoes || [],
-        urgencia: d.nivel_urgencia || d.urgencia || 'Normal',
-        status: d.status_demanda || 'aberta',
-        created_at: d.created_at || new Date().toISOString(),
-        imoveiVinculados: d.imoveis_captados?.length || 0,
-        criador_nome: d.sdr?.nome || 'SDR',
-        criador_id: d.sdr_id,
-        raw_demand: { ...d, tipo: 'Aluguel' },
-      }))
+      const { data: demandsVen, error: errVen } = await supabase
+        .from('demandas_vendas')
+        .select(`
+          id, nome_cliente, corretor_id, created_at, valor_minimo, valor_maximo, bairros, urgencia, status_demanda,
+          criador:users!demandas_vendas_corretor_id_fkey(nome, email),
+          imoveis_captados!imoveis_captados_demanda_venda_id_fkey(id)
+        `)
+        .in('status_demanda', ['aberta', 'em busca'])
+        .order('created_at', { ascending: false })
 
-      const formattedVen: Demand[] = (resVen.data || []).map((d: any) => ({
-        id: d.id,
-        nome_cliente: d.nome_cliente || d.cliente_nome || 'Cliente',
-        tipo: 'venda' as const,
-        valor_minimo: d.valor_minimo || 0,
-        valor_maximo: d.valor_maximo || d.orcamento_max || 0,
-        bairros: d.bairros || d.localizacoes || [],
-        urgencia: d.nivel_urgencia || d.urgencia || 'Normal',
-        status: d.status_demanda || 'aberta',
-        created_at: d.created_at || new Date().toISOString(),
-        imoveiVinculados: d.imoveis_captados?.length || 0,
-        criador_nome: d.corretor?.nome || 'Corretor',
-        criador_id: d.corretor_id,
-        raw_demand: { ...d, tipo: 'Venda' },
-      }))
+      if (errVen) throw errVen
 
-      const allDemands = [...formattedLoc, ...formattedVen].sort(
-        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-      )
+      const enriched: Demand[] = []
 
-      setDemands(allDemands)
-    } catch (err: any) {
-      console.error('[BuscarDemandas] Erro:', err)
-      setError('Erro ao carregar demandas')
+      for (const demand of demandsLoc || []) {
+        enriched.push({
+          id: demand.id,
+          nome_cliente: demand.nome_cliente || 'Cliente não identificado',
+          tipo: 'locacao',
+          valor_minimo: demand.valor_minimo || 0,
+          valor_maximo: demand.valor_maximo || 0,
+          bairros: demand.bairros || [],
+          urgencia: demand.urgencia || 'Normal',
+          status: demand.status_demanda || 'aberta',
+          created_at: demand.created_at || new Date().toISOString(),
+          imoveiVinculados: Array.isArray(demand.imoveis_captados)
+            ? demand.imoveis_captados.length
+            : 0,
+          criador_nome:
+            (demand.criador as any)?.nome || (demand.criador as any)?.email || 'Desconhecido',
+          criador_id: demand.sdr_id || '',
+        })
+      }
+
+      for (const demand of demandsVen || []) {
+        enriched.push({
+          id: demand.id,
+          nome_cliente: demand.nome_cliente || 'Cliente não identificado',
+          tipo: 'venda',
+          valor_minimo: demand.valor_minimo || 0,
+          valor_maximo: demand.valor_maximo || 0,
+          bairros: demand.bairros || [],
+          urgencia: demand.urgencia || 'Normal',
+          status: demand.status_demanda || 'aberta',
+          created_at: demand.created_at || new Date().toISOString(),
+          imoveiVinculados: Array.isArray(demand.imoveis_captados)
+            ? demand.imoveis_captados.length
+            : 0,
+          criador_nome:
+            (demand.criador as any)?.nome || (demand.criador as any)?.email || 'Desconhecido',
+          criador_id: demand.corretor_id || '',
+        })
+      }
+
+      enriched.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+
+      setDemands(enriched)
+    } catch (err) {
+      console.error('[BuscarDemandas] ❌ Erro:', err)
+      setError('Erro ao carregar demandas. Verifique a conexão ou tente novamente.')
     } finally {
       setLoading(false)
     }
@@ -150,38 +147,40 @@ export function BuscarDemandas() {
 
   const getUrgencyColor = (urgencia: string) => {
     switch (urgencia) {
-      case 'Urgente':
       case 'Crítica':
-      case 'Alta':
+      case 'Urgente':
         return 'bg-red-100 text-red-800 border-red-300'
-      case 'Média':
+      case 'Alta':
         return 'bg-orange-100 text-orange-800 border-orange-300'
       default:
-        return 'bg-emerald-100 text-emerald-800 border-emerald-300'
+        return 'bg-green-100 text-green-800 border-green-300'
     }
   }
 
+  const getStatusColor = (imoveiVinculados: number) => {
+    return imoveiVinculados > 0 ? 'border-green-300 bg-green-50' : 'border-red-300 bg-red-50'
+  }
+
   return (
-    <div className="space-y-6 animate-in fade-in duration-500 pb-24">
-      {/* HEADER E FILTROS */}
-      <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5 space-y-4">
-        <h3 className="font-bold text-gray-800 flex items-center gap-2 text-lg">
-          <Search className="w-5 h-5 text-blue-600" /> Explorar Oportunidades
+    <div className="space-y-6 animate-fade-in">
+      <div className="bg-white border rounded-xl p-5 space-y-4 shadow-[0_2px_8px_rgba(26,58,82,0.05)] border-[#E5E5E5]">
+        <h3 className="font-bold text-[#1A3A52] flex items-center gap-2 text-[18px]">
+          <span>🔍</span> Filtros de Busca
         </h3>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <input
             type="text"
-            placeholder="Buscar por cliente..."
+            placeholder="Buscar cliente..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="border border-[#E5E5E5] rounded-lg px-4 py-2.5 text-[14px] focus:outline-none focus:border-[#2E5F8A] focus:ring-1 focus:ring-[#2E5F8A] w-full"
           />
 
           <select
             value={filterType}
-            onChange={(e) => setFilterType(e.target.value)}
-            className="border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            onChange={(e) => setFilterType(e.target.value as any)}
+            className="border border-[#E5E5E5] rounded-lg px-4 py-2.5 text-[14px] focus:outline-none focus:border-[#2E5F8A] focus:ring-1 focus:ring-[#2E5F8A] w-full bg-white"
           >
             <option value="todos">Todos os tipos</option>
             <option value="locacao">Locação</option>
@@ -190,13 +189,13 @@ export function BuscarDemandas() {
 
           <select
             value={filterUrgency}
-            onChange={(e) => setFilterUrgency(e.target.value)}
-            className="border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            onChange={(e) => setFilterUrgency(e.target.value as any)}
+            className="border border-[#E5E5E5] rounded-lg px-4 py-2.5 text-[14px] focus:outline-none focus:border-[#2E5F8A] focus:ring-1 focus:ring-[#2E5F8A] w-full bg-white"
           >
             <option value="todos">Todas urgências</option>
-            <option value="Normal">Normal / Baixa</option>
-            <option value="Média">Média</option>
-            <option value="Urgente">Alta / Urgente</option>
+            <option value="Normal">Normal</option>
+            <option value="Alta">Alta</option>
+            <option value="Crítica">Crítica / Urgente</option>
           </select>
 
           <input
@@ -204,342 +203,131 @@ export function BuscarDemandas() {
             placeholder="Filtrar por bairro..."
             value={filterBairro}
             onChange={(e) => setFilterBairro(e.target.value)}
-            className="border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="border border-[#E5E5E5] rounded-lg px-4 py-2.5 text-[14px] focus:outline-none focus:border-[#2E5F8A] focus:ring-1 focus:ring-[#2E5F8A] w-full"
           />
         </div>
 
-        <div className="text-xs font-bold text-gray-500 uppercase tracking-wider flex justify-between items-center">
-          <span>{filteredDemands.length} demanda(s) encontrada(s)</span>
+        <div className="text-[13px] font-medium text-[#666666]">
+          {filteredDemands.length} demanda(s) encontrada(s)
         </div>
       </div>
 
-      {/* LISTA */}
       {loading ? (
-        <div className="flex flex-col items-center justify-center py-16 text-gray-500 bg-white border border-gray-200 rounded-xl">
-          <Loader2 className="w-8 h-8 animate-spin mb-4 text-blue-500" />
-          <p className="font-medium">Carregando oportunidades...</p>
+        <div className="text-center py-16 bg-white rounded-xl border border-dashed border-[#E5E5E5] flex flex-col items-center">
+          <div className="animate-spin inline-block w-8 h-8 border-4 border-[#2E5F8A] border-t-transparent rounded-full mb-4"></div>
+          <p className="text-[15px] font-medium text-[#333333]">Buscando oportunidades...</p>
         </div>
       ) : error ? (
-        <div className="bg-red-50 border border-red-200 text-red-600 p-6 rounded-xl text-center">
-          <p className="font-bold">{error}</p>
+        <div className="text-center py-10 text-red-500 bg-red-50 rounded-xl border border-red-200">
+          <p className="font-bold text-[15px]">{error}</p>
           <Button
             onClick={loadDemands}
             variant="outline"
-            className="mt-4 border-red-200 text-red-700 hover:bg-red-100"
+            className="mt-4 border-red-200 hover:bg-red-100"
           >
-            Tentar Novamente
+            Tentar novamente
           </Button>
         </div>
       ) : filteredDemands.length === 0 ? (
-        <div className="text-center py-16 border-2 border-dashed border-gray-200 rounded-xl bg-gray-50">
-          <Search className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-          <p className="text-gray-500 font-medium">Nenhuma demanda atende aos critérios.</p>
-          <Button
-            onClick={() => {
-              setSearchQuery('')
-              setFilterType('todos')
-              setFilterUrgency('todos')
-              setFilterBairro('')
-            }}
-            variant="link"
-            className="mt-2 text-blue-600"
-          >
-            Limpar filtros
-          </Button>
+        <div className="text-center py-16 bg-white rounded-xl border border-dashed border-[#E5E5E5] flex flex-col items-center">
+          <span className="text-5xl mb-4 opacity-70">🔍</span>
+          <p className="font-bold text-[16px] text-[#333333]">Nenhuma demanda encontrada</p>
+          <p className="text-[14px] text-[#999999] mt-1">
+            Tente ajustar seus filtros para encontrar mais resultados.
+          </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {filteredDemands.map((demand) => (
             <div
               key={demand.id}
-              className={`bg-white border-2 rounded-xl p-5 transition-all hover:shadow-md ${
-                demand.imoveiVinculados > 0
-                  ? 'border-emerald-200'
-                  : 'border-red-200 hover:border-red-300'
+              className={`border-2 rounded-xl p-5 transition-all shadow-[0_2px_12px_rgba(0,0,0,0.03)] flex flex-col h-full bg-white hover:shadow-md hover:-translate-y-1 duration-200 ${
+                demand.imoveiVinculados > 0 ? 'border-green-100/80' : 'border-orange-100/80'
               }`}
             >
-              <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-                <div className="flex-1 min-w-0 w-full">
-                  <div className="flex flex-wrap items-center gap-2 mb-3">
-                    <h4
-                      className="font-black text-lg text-gray-900 truncate max-w-full"
-                      title={demand.nome_cliente}
-                    >
-                      {demand.nome_cliente}
-                    </h4>
-                    <Badge
-                      className={
-                        demand.tipo === 'locacao'
-                          ? 'bg-blue-100 text-blue-800 hover:bg-blue-100'
-                          : 'bg-purple-100 text-purple-800 hover:bg-purple-100'
-                      }
-                    >
-                      {demand.tipo === 'locacao' ? (
-                        <Home className="w-3 h-3 mr-1" />
-                      ) : (
-                        <Building className="w-3 h-3 mr-1" />
-                      )}
-                      {demand.tipo === 'locacao' ? 'Locação' : 'Venda'}
-                    </Badge>
-                    <Badge
-                      variant="outline"
-                      className={`font-bold ${getUrgencyColor(demand.urgencia)}`}
-                    >
-                      {demand.urgencia}
-                    </Badge>
-                  </div>
+              <div className="flex-1 flex flex-col">
+                <div className="flex items-center gap-2 mb-3 flex-wrap">
+                  <h4
+                    className="font-black text-[#1A3A52] text-[17px] truncate flex-1"
+                    title={demand.nome_cliente}
+                  >
+                    {demand.nome_cliente}
+                  </h4>
+                </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
-                    <div className="flex items-center gap-2 text-sm">
-                      <span className="bg-gray-100 p-1.5 rounded-md text-gray-500">
-                        <MapPin className="w-4 h-4" />
-                      </span>
-                      <span
-                        className="font-medium text-gray-700 truncate"
-                        title={(demand.bairros || []).join(', ')}
-                      >
-                        {(demand.bairros || []).join(', ') || 'Indiferente'}
-                      </span>
+                <div className="flex gap-2 mb-4 flex-wrap">
+                  <span className="text-[11px] font-bold px-2.5 py-1 bg-[#F5F5F5] border border-[#E5E5E5] text-[#333333] rounded-md">
+                    {demand.tipo === 'locacao' ? '🏠 Locação' : '🏢 Venda'}
+                  </span>
+                  <span
+                    className={`text-[11px] font-bold px-2.5 py-1 rounded-md border ${getUrgencyColor(demand.urgencia)}`}
+                  >
+                    ⚡ {demand.urgencia}
+                  </span>
+                  <span className="text-[11px] font-bold px-2.5 py-1 bg-white border border-[#E5E5E5] text-[#666666] rounded-md uppercase">
+                    {demand.status}
+                  </span>
+                </div>
+
+                <div className="bg-[#F8F9FA] p-3.5 rounded-lg border border-[#E5E5E5] mb-5 space-y-2.5 text-sm flex-1">
+                  <div className="flex items-start gap-2.5">
+                    <span className="text-[#999999] text-[15px] mt-0.5">💰</span>
+                    <span className="font-bold text-[#333333]">
+                      R$ {demand.valor_minimo.toLocaleString('pt-BR')}{' '}
+                      <span className="text-[#999999] font-normal mx-1">até</span> R${' '}
+                      {demand.valor_maximo.toLocaleString('pt-BR')}
+                    </span>
+                  </div>
+                  <div className="flex items-start gap-2.5">
+                    <span className="text-[#999999] text-[15px] mt-0.5">📍</span>
+                    <span className="text-[#333333] font-medium leading-tight">
+                      {demand.bairros.length > 0 ? demand.bairros.join(', ') : 'Qualquer bairro'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between mt-auto pt-4 border-t border-[#E5E5E5]">
+                  <div className="text-[12px] text-[#666666] space-y-0.5">
+                    <div>
+                      De: <strong className="text-[#333333]">{demand.criador_nome}</strong>
                     </div>
-                    <div className="flex items-center gap-2 text-sm">
-                      <span className="bg-emerald-50 p-1.5 rounded-md text-emerald-600 font-black">
-                        R$
-                      </span>
-                      <span className="font-bold text-emerald-700 truncate">
-                        {demand.valor_minimo > 0
-                          ? `${demand.valor_minimo.toLocaleString('pt-BR')} - `
-                          : ''}
-                        {demand.valor_maximo.toLocaleString('pt-BR')}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm">
-                      <span className="bg-gray-100 p-1.5 rounded-md text-gray-500">
-                        <User className="w-4 h-4" />
-                      </span>
-                      <span className="text-gray-600 text-xs leading-tight">
-                        Por <strong className="text-gray-800">{demand.criador_nome}</strong>
-                        <br />
+                    <div>
+                      Em:{' '}
+                      <span className="font-medium">
                         {new Date(demand.created_at).toLocaleDateString('pt-BR')}
                       </span>
                     </div>
                   </div>
-                </div>
-
-                <div className="flex items-center md:flex-col gap-4 w-full md:w-auto shrink-0 md:pl-4 md:border-l border-gray-100">
-                  <div className="text-center bg-gray-50 p-3 rounded-lg min-w-[100px] border border-gray-100">
+                  <div
+                    className={`text-center px-3 py-1.5 rounded-lg ${demand.imoveiVinculados > 0 ? 'bg-green-50' : 'bg-orange-50'}`}
+                  >
                     <div
-                      className={`text-2xl font-black ${
-                        demand.imoveiVinculados > 0 ? 'text-emerald-600' : 'text-red-500'
-                      }`}
+                      className={`text-[20px] font-black leading-none ${demand.imoveiVinculados > 0 ? 'text-green-600' : 'text-orange-500'}`}
                     >
                       {demand.imoveiVinculados}
                     </div>
-                    <p className="text-[10px] font-bold text-gray-500 uppercase">Imóveis Vinc.</p>
-                  </div>
-
-                  <div className="flex flex-col gap-2 flex-1 md:w-full">
-                    <Button
-                      className="w-full bg-blue-600 hover:bg-blue-700 font-bold shadow-md shadow-blue-500/20"
-                      onClick={() => setSelectedDemandLink(demand)}
-                    >
-                      <CheckCircle2 className="w-4 h-4 mr-2" /> Vincular Imóvel
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="w-full font-bold border-gray-300 text-gray-700 hover:bg-gray-50"
-                      onClick={() => setSelectedDemandDetail(demand)}
-                    >
-                      Ver Detalhes
-                    </Button>
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-[#666666] mt-1">
+                      Imóveis
+                    </div>
                   </div>
                 </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 mt-5">
+                <Button className="w-full text-[13px] h-[38px] font-bold bg-[#2E5F8A] hover:bg-[#1A3A52] text-white shadow-sm transition-colors">
+                  Vincular Imóvel
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full text-[13px] h-[38px] font-bold border-[#E5E5E5] text-[#333333] hover:bg-[#F5F5F5] shadow-sm transition-colors"
+                >
+                  Ver Detalhes
+                </Button>
               </div>
             </div>
           ))}
         </div>
       )}
-
-      {selectedDemandDetail && (
-        <DemandDetailModal
-          demand={selectedDemandDetail.raw_demand}
-          isOpen={true}
-          onClose={() => setSelectedDemandDetail(null)}
-        />
-      )}
-
-      {selectedDemandLink && (
-        <VincularImovelModal
-          isOpen={true}
-          onClose={() => setSelectedDemandLink(null)}
-          demand={selectedDemandLink}
-          onSuccess={loadDemands}
-        />
-      )}
     </div>
-  )
-}
-
-function VincularImovelModal({
-  isOpen,
-  onClose,
-  demand,
-  onSuccess,
-}: {
-  isOpen: boolean
-  onClose: () => void
-  demand: Demand
-  onSuccess: () => void
-}) {
-  const { user } = useAuth()
-  const { toast } = useToast()
-  const [imoveis, setImoveis] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
-  const [linking, setLinking] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (isOpen && user) {
-      loadImoveis()
-    }
-  }, [isOpen, user])
-
-  const loadImoveis = async () => {
-    try {
-      setLoading(true)
-      const { data, error } = await supabase
-        .from('imoveis_captados')
-        .select(
-          'id, codigo_imovel, endereco, preco, valor, tipo_imovel, demanda_locacao_id, demanda_venda_id, fotos',
-        )
-        .eq('user_captador_id', user?.id)
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
-
-      // Filtrar imóveis que já não estejam vinculados a essa demanda específica
-      const available = (data || []).filter((i) => {
-        if (demand.tipo === 'locacao') return i.demanda_locacao_id !== demand.id
-        return i.demanda_venda_id !== demand.id
-      })
-
-      setImoveis(available)
-    } catch (err) {
-      console.error('Erro ao carregar imóveis:', err)
-      toast({ title: 'Erro ao carregar seus imóveis', variant: 'destructive' })
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleLink = async (imovelId: string) => {
-    try {
-      setLinking(imovelId)
-      const isLocacao = demand.tipo === 'locacao'
-      const updateData = isLocacao
-        ? { demanda_locacao_id: demand.id }
-        : { demanda_venda_id: demand.id }
-
-      const { error } = await supabase
-        .from('imoveis_captados')
-        .update(updateData)
-        .eq('id', imovelId)
-
-      if (error) throw error
-
-      toast({
-        title: '✓ Imóvel vinculado com sucesso!',
-        className: 'bg-emerald-500 text-white border-none font-bold',
-      })
-      onSuccess()
-      onClose()
-    } catch (err: any) {
-      console.error(err)
-      toast({ title: 'Erro ao vincular', description: err.message, variant: 'destructive' })
-    } finally {
-      setLinking(null)
-    }
-  }
-
-  return (
-    <Dialog open={isOpen} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col bg-white overflow-hidden p-0 rounded-2xl">
-        <DialogHeader className="p-6 border-b border-gray-100 bg-gray-50/50">
-          <DialogTitle className="text-xl font-black text-gray-900">
-            Vincular Imóvel à Demanda
-          </DialogTitle>
-          <p className="text-sm text-gray-500 mt-1">
-            Selecione um dos seus imóveis captados para atender ao cliente{' '}
-            <strong className="text-blue-600">{demand.nome_cliente}</strong>.
-          </p>
-        </DialogHeader>
-
-        <div className="flex-1 overflow-y-auto p-6 bg-white">
-          {loading ? (
-            <div className="flex flex-col items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-blue-500 mb-2" />
-              <p className="text-sm text-gray-500 font-medium">Buscando seus imóveis...</p>
-            </div>
-          ) : imoveis.length === 0 ? (
-            <div className="text-center py-12 text-gray-500 border-2 border-dashed border-gray-200 rounded-xl">
-              <Building className="w-12 h-12 mx-auto text-gray-300 mb-3" />
-              <p className="font-medium text-gray-700">Nenhum imóvel disponível</p>
-              <p className="text-sm mt-1">
-                Você não tem imóveis captados que possam ser vinculados a esta demanda.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {imoveis.map((imovel) => (
-                <div
-                  key={imovel.id}
-                  className="bg-white border border-gray-200 hover:border-blue-300 rounded-xl p-4 flex items-center justify-between gap-4 transition-all hover:shadow-sm group"
-                >
-                  <div className="flex items-center gap-4 flex-1 min-w-0">
-                    <div className="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden shrink-0 flex items-center justify-center border border-gray-200">
-                      {imovel.fotos?.[0] ? (
-                        <img
-                          src={imovel.fotos[0]}
-                          alt="Imóvel"
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                        />
-                      ) : (
-                        <Home className="w-6 h-6 text-gray-400" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-bold text-gray-900 truncate" title={imovel.endereco}>
-                        {imovel.endereco || 'Endereço não informado'}
-                      </p>
-                      <div className="flex items-center gap-2 mt-1.5 text-sm text-gray-600">
-                        <Badge
-                          variant="secondary"
-                          className="text-[10px] bg-gray-100 font-bold tracking-wider"
-                        >
-                          {imovel.codigo_imovel}
-                        </Badge>
-                        <span className="font-black text-emerald-600">
-                          R$ {(imovel.preco || imovel.valor || 0).toLocaleString('pt-BR')}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <Button
-                    onClick={() => handleLink(imovel.id)}
-                    disabled={linking === imovel.id}
-                    className="shrink-0 bg-[#1A3A52] hover:bg-[#2E5F8A] font-bold"
-                  >
-                    {linking === imovel.id ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      'Vincular'
-                    )}
-                  </Button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
   )
 }

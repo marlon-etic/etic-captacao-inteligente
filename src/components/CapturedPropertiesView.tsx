@@ -14,17 +14,20 @@ import { VinculacaoModal } from './VinculacaoModal'
 import { PropertyDetailsModal } from './PropertyDetailsModal'
 import { useDeletedProperties } from '@/hooks/useDeletedProperties'
 import { normalizeTipo } from '@/lib/roleFilters'
+import { Button } from '@/components/ui/button'
 
 interface Props {
   filterType?: 'Venda' | 'Aluguel'
   source?: 'linked' | 'loose'
   emptyStateText?: string
+  onlyMine?: boolean
 }
 
 export function CapturedPropertiesView({
   filterType,
   source,
   emptyStateText = 'Nenhum imóvel captado no momento.',
+  onlyMine,
 }: Props) {
   const deletedIds = useDeletedProperties()
   const {
@@ -35,7 +38,16 @@ export function CapturedPropertiesView({
     markPropertyLost,
   } = useAppStore()
 
-  const { properties: supabaseProps, loading, syncing } = useSupabaseProperties(filterType as any)
+  const {
+    properties: supabaseProps,
+    loading,
+    syncing,
+    hasMore,
+    loadMore,
+  } = useSupabaseProperties(filterType as any, {
+    onlyMine,
+    pageSize: 20,
+  })
 
   const [filters, setFilters] = useViewFilters('captados_view_' + (filterType || 'all'), {
     status: 'Todos',
@@ -282,6 +294,19 @@ export function CapturedPropertiesView({
                 <CapturedPropertyCard demand={demand} property={property} onAction={handleAction} />
               </div>
             ))}
+
+            {hasMore && (
+              <div className="col-span-1 md:col-span-2 2xl:col-span-3 flex justify-center py-6 mt-4">
+                <Button
+                  onClick={loadMore}
+                  disabled={loading}
+                  variant="outline"
+                  className="w-full md:w-auto min-w-[250px] border-[#E5E5E5] text-[#333333] hover:bg-[#F5F5F5] font-bold shadow-sm"
+                >
+                  {loading ? 'Carregando...' : 'Carregar mais imóveis'}
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </div>
