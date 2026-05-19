@@ -1,14 +1,21 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
+import { ModalDetalhes } from './ModalDetalhes'
+import { ModalVinculador } from './ModalVinculador'
 
-interface Demand {
+export interface Demand {
   id: string
   nome_cliente: string
+  telefone?: string
+  email?: string
   tipo: 'locacao' | 'venda'
   valor_minimo: number
   valor_maximo: number
   bairros: string[]
+  dormitorios?: number
+  banheiros?: number
+  vagas?: number
   urgencia: string
   status: string
   created_at: string
@@ -30,9 +37,122 @@ export function BuscarDemandas() {
   const [filterBairro, setFilterBairro] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
 
+  // Modals state
+  const [selectedDetalhes, setSelectedDetalhes] = useState<Demand | null>(null)
+  const [selectedVinculador, setSelectedVinculador] = useState<Demand | null>(null)
+
+  const loadDemands = useCallback(async () => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      const { data: demandsLoc, error: errLoc } = await supabase
+        .from('demandas_locacao')
+        .select(`
+          id, nome_cliente, telefone, email, sdr_id, created_at, valor_minimo, valor_maximo, bairros, dormitorios, banheiros, vagas_estacionamento, urgencia, status_demanda,
+          criador:users!fk_demandas_locacao_sdr(nome, email),
+          imoveis_captados!imoveis_captados_demanda_locacao_id_fkey(id)
+        `)
+        .in('status_demanda', ['aberta', 'em busca'])
+        .order('created_at', { ascending: false })
+
+      if (errLoc) throw errLoc
+
+      const { data: demandsVen, error: errVen } = await supabase
+        .from('demandas_vendas')
+        .select(`
+          id, nome_cliente, telefone, email, corretor_id, created_at, valor_minimo, valor_maximo, bairros, dormitorios, banheiros, vagas_estacionamento, urgencia, status_demanda,
+          criador:users!demandas_vendas_corretor_id_fkey(nome, email),
+          imoveis_captados!imoveis_captados_demanda_venda_id_fkey(id)
+        `)
+        .in('status_demanda', ['aberta', 'em busca'])
+        .order('created_at', { ascending: false })
+
+      if (errVen) throw errVen
+
+      const enriched: Demand[] = []
+
+      for (const demand of demandsLoc || []) {
+        enriched.push({
+          id: demand.id,
+          nome_cliente: demand.nome_cliente || 'Cliente não identificado',
+          telefone: demand.telefone || '',
+          email: demand.email || '',
+          tipo: 'locacao',
+          valor_minimo: demand.valor_minimo || 0,
+          valor_maximo: demand.valor_maximo || 0,
+          bairros: demand.bairros || [],
+          dormitorios: demand.dormitorios || 0,
+          banheiros: demand.banheiros || 0,
+          vagas: demand.vagas_estacionamento || 0,
+          urgencia: demand.urgencia || 'Normal',
+          status: demand.status_demanda || 'aberta',
+          created_at: demand.created_at || new Date().toISOString(),
+          imoveiVinculados: Array.isArray(demand.imoveis_captados)
+            ? demand.imoveis_captados.length
+            : 0,
+          criador_nome:
+            (demand.criador as any)?.nome || (demand.criador as any)?.email || 'Desconhecido',
+          criador_id: demand.sdr_id || '',
+        })
+      }
+
+      for (const demand of demandsVen || []) {
+        enriched.push({
+          id: demand.id,
+          nome_cliente: demand.nome_cliente || 'Cliente não identificado',
+          telefone: demand.telefone || '',
+          email: demand.email || '',
+          tipo: 'venda',
+          valor_minimo: demand.valor_minimo || 0,
+          valor_maximo: demand.valor_maximo || 0,
+          bairros: demand.bairros || [],
+          dormitorios: demand.dormitorios || 0,
+          banheiros: demand.banheiros || 0,
+          vagas: demand.vagas_estacionamento || 0,
+          urgencia: demand.urgencia || 'Normal',
+          status: demand.status_demanda || 'aberta',
+          created_at: demand.created_at || new Date().toISOString(),
+          imoveiVinculados: Array.isArray(demand.imoveis_captados)
+            ? demand.imoveis_captados.length
+            : 0,
+          criador_nome:
+            (demand.criador as any)?.nome || (demand.criador as any)?.email || 'Desconhecido',
+          criador_id: demand.corretor_id || '',
+        })
+      }
+
+      enriched.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+
+      setDemands(enriched)
+    } catch (err) {
+      console.error('[BuscarDemandas] ❌ Erro:', err)
+      setError('Erro ao carregar demandas. Verifique a conexão ou tente novamente.')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
   useEffect(() => {
     loadDemands()
-  }, [])
+  }, [loadDemands])
+
+  // Realtime subscription para atualizar contadores
+  useEffect(() => {
+    const channel = supabase
+      .channel('public:imoveis_captados')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'imoveis_captados' }, () => {
+        console.log(
+          '[REALTIME] Imóvel atualizado, recarregando demandas para atualizar contadores...',
+        )
+        loadDemands()
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [loadDemands])
 
   useEffect(() => {
     let filtered = demands
@@ -63,88 +183,6 @@ export function BuscarDemandas() {
     setFilteredDemands(filtered)
   }, [demands, filterType, filterUrgency, filterBairro, searchQuery])
 
-  const loadDemands = async () => {
-    try {
-      setLoading(true)
-      setError(null)
-
-      const { data: demandsLoc, error: errLoc } = await supabase
-        .from('demandas_locacao')
-        .select(`
-          id, nome_cliente, sdr_id, created_at, valor_minimo, valor_maximo, bairros, urgencia, status_demanda,
-          criador:users!fk_demandas_locacao_sdr(nome, email),
-          imoveis_captados!imoveis_captados_demanda_locacao_id_fkey(id)
-        `)
-        .in('status_demanda', ['aberta', 'em busca'])
-        .order('created_at', { ascending: false })
-
-      if (errLoc) throw errLoc
-
-      const { data: demandsVen, error: errVen } = await supabase
-        .from('demandas_vendas')
-        .select(`
-          id, nome_cliente, corretor_id, created_at, valor_minimo, valor_maximo, bairros, urgencia, status_demanda,
-          criador:users!demandas_vendas_corretor_id_fkey(nome, email),
-          imoveis_captados!imoveis_captados_demanda_venda_id_fkey(id)
-        `)
-        .in('status_demanda', ['aberta', 'em busca'])
-        .order('created_at', { ascending: false })
-
-      if (errVen) throw errVen
-
-      const enriched: Demand[] = []
-
-      for (const demand of demandsLoc || []) {
-        enriched.push({
-          id: demand.id,
-          nome_cliente: demand.nome_cliente || 'Cliente não identificado',
-          tipo: 'locacao',
-          valor_minimo: demand.valor_minimo || 0,
-          valor_maximo: demand.valor_maximo || 0,
-          bairros: demand.bairros || [],
-          urgencia: demand.urgencia || 'Normal',
-          status: demand.status_demanda || 'aberta',
-          created_at: demand.created_at || new Date().toISOString(),
-          imoveiVinculados: Array.isArray(demand.imoveis_captados)
-            ? demand.imoveis_captados.length
-            : 0,
-          criador_nome:
-            (demand.criador as any)?.nome || (demand.criador as any)?.email || 'Desconhecido',
-          criador_id: demand.sdr_id || '',
-        })
-      }
-
-      for (const demand of demandsVen || []) {
-        enriched.push({
-          id: demand.id,
-          nome_cliente: demand.nome_cliente || 'Cliente não identificado',
-          tipo: 'venda',
-          valor_minimo: demand.valor_minimo || 0,
-          valor_maximo: demand.valor_maximo || 0,
-          bairros: demand.bairros || [],
-          urgencia: demand.urgencia || 'Normal',
-          status: demand.status_demanda || 'aberta',
-          created_at: demand.created_at || new Date().toISOString(),
-          imoveiVinculados: Array.isArray(demand.imoveis_captados)
-            ? demand.imoveis_captados.length
-            : 0,
-          criador_nome:
-            (demand.criador as any)?.nome || (demand.criador as any)?.email || 'Desconhecido',
-          criador_id: demand.corretor_id || '',
-        })
-      }
-
-      enriched.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-
-      setDemands(enriched)
-    } catch (err) {
-      console.error('[BuscarDemandas] ❌ Erro:', err)
-      setError('Erro ao carregar demandas. Verifique a conexão ou tente novamente.')
-    } finally {
-      setLoading(false)
-    }
-  }
-
   const getUrgencyColor = (urgencia: string) => {
     switch (urgencia) {
       case 'Crítica':
@@ -155,10 +193,6 @@ export function BuscarDemandas() {
       default:
         return 'bg-green-100 text-green-800 border-green-300'
     }
-  }
-
-  const getStatusColor = (imoveiVinculados: number) => {
-    return imoveiVinculados > 0 ? 'border-green-300 bg-green-50' : 'border-red-300 bg-red-50'
   }
 
   return (
@@ -314,10 +348,14 @@ export function BuscarDemandas() {
               </div>
 
               <div className="grid grid-cols-2 gap-3 mt-5">
-                <Button className="w-full text-[13px] h-[38px] font-bold bg-[#2E5F8A] hover:bg-[#1A3A52] text-white shadow-sm transition-colors">
+                <Button
+                  onClick={() => setSelectedVinculador(demand)}
+                  className="w-full text-[13px] h-[38px] font-bold bg-[#2E5F8A] hover:bg-[#1A3A52] text-white shadow-sm transition-colors"
+                >
                   Vincular Imóvel
                 </Button>
                 <Button
+                  onClick={() => setSelectedDetalhes(demand)}
                   variant="outline"
                   className="w-full text-[13px] h-[38px] font-bold border-[#E5E5E5] text-[#333333] hover:bg-[#F5F5F5] shadow-sm transition-colors"
                 >
@@ -327,6 +365,22 @@ export function BuscarDemandas() {
             </div>
           ))}
         </div>
+      )}
+
+      {/* Modals rendering */}
+      {selectedDetalhes && (
+        <ModalDetalhes demanda={selectedDetalhes} onClose={() => setSelectedDetalhes(null)} />
+      )}
+
+      {selectedVinculador && (
+        <ModalVinculador
+          demanda={selectedVinculador}
+          onClose={() => setSelectedVinculador(null)}
+          onVinculoSucesso={() => {
+            setSelectedVinculador(null)
+            loadDemands()
+          }}
+        />
       )}
     </div>
   )
