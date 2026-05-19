@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, createElement } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import useAppStore from '@/stores/useAppStore'
 import { useSmartSync, useConsolidatedSync } from '@/hooks/useSmartSync'
@@ -68,18 +68,29 @@ export function useNotificacoes() {
                   title: newNotif.titulo,
                   description: newNotif.mensagem,
                   duration: 5000,
-                  action: demandaId ? (
-                    <button
-                      onClick={() => {
-                        console.log(`[NOTIFICACAO] Redirecionando para demanda: ${demandaId}`)
-                        supabase.from('notificacoes').update({ lido: true }).eq('id', newNotif.id).then()
-                        window.dispatchEvent(new CustomEvent('navigate-to', { detail: `/app/buscar-imoveis?demanda_id=${demandaId}` }))
-                      }}
-                      className="px-3 py-1.5 bg-blue-500 text-white rounded-md hover:bg-blue-600 text-xs font-bold transition-colors"
-                    >
-                      Ver Demanda
-                    </button>
-                  ) : undefined
+                  action: demandaId
+                    ? createElement(
+                        'button',
+                        {
+                          onClick: () => {
+                            console.log(`[NOTIFICACAO] Redirecionando para demanda: ${demandaId}`)
+                            supabase
+                              .from('notificacoes')
+                              .update({ lido: true })
+                              .eq('id', newNotif.id)
+                              .then()
+                            window.dispatchEvent(
+                              new CustomEvent('navigate-to', {
+                                detail: `/app/buscar-imoveis?demanda_id=${demandaId}`,
+                              }),
+                            )
+                          },
+                          className:
+                            'px-3 py-1.5 bg-blue-500 text-white rounded-md hover:bg-blue-600 text-xs font-bold transition-colors',
+                        },
+                        'Ver Demanda',
+                      )
+                    : undefined,
                 })
               }
             },
@@ -123,21 +134,32 @@ export function useNotificacoes() {
 
   const handleNotificationClick = async (notif: Notificacao, navigate: (path: string) => void) => {
     await markAsRead(notif.id)
-    if (notif.tipo === 'nova_demanda' || notif.tipo === 'busca_iniciada_admin' || notif.tipo === 'busca_iniciada_outros' || notif.tipo === 'busca_iniciada_responsavel') {
-        const demandaId = notif.dados_relacionados?.demanda_id
-        if (demandaId) {
-            console.log(`[NOTIFICACAO] Redirecionando para demanda: ${demandaId}`)
-            navigate(`/app/buscar-imoveis?demanda_id=${demandaId}`)
-        }
-    } else if (notif.tipo === 'novo_imovel' || notif.tipo === 'imovel_capturado' || notif.tipo === 'status_atualizado') {
-        const imovelId = notif.dados_relacionados?.imovel_id
-        if (imovelId) {
-            console.log(`[NOTIFICACAO] Redirecionando para imovel: ${imovelId}`)
-            navigate(`/app/buscar-imoveis?imovel_id=${imovelId}&modal=aberto`)
-        } else if (notif.dados_relacionados?.demanda_id) {
-            console.log(`[NOTIFICACAO] Redirecionando para demanda a partir de status: ${notif.dados_relacionados.demanda_id}`)
-            navigate(`/app/buscar-imoveis?demanda_id=${notif.dados_relacionados.demanda_id}`)
-        }
+    if (
+      notif.tipo === 'nova_demanda' ||
+      notif.tipo === 'busca_iniciada_admin' ||
+      notif.tipo === 'busca_iniciada_outros' ||
+      notif.tipo === 'busca_iniciada_responsavel'
+    ) {
+      const demandaId = notif.dados_relacionados?.demanda_id
+      if (demandaId) {
+        console.log(`[NOTIFICACAO] Redirecionando para demanda: ${demandaId}`)
+        navigate(`/app/buscar-imoveis?demanda_id=${demandaId}`)
+      }
+    } else if (
+      notif.tipo === 'novo_imovel' ||
+      notif.tipo === 'imovel_capturado' ||
+      notif.tipo === 'status_atualizado'
+    ) {
+      const imovelId = notif.dados_relacionados?.imovel_id
+      if (imovelId) {
+        console.log(`[NOTIFICACAO] Redirecionando para imovel: ${imovelId}`)
+        navigate(`/app/buscar-imoveis?imovel_id=${imovelId}&modal=aberto`)
+      } else if (notif.dados_relacionados?.demanda_id) {
+        console.log(
+          `[NOTIFICACAO] Redirecionando para demanda a partir de status: ${notif.dados_relacionados.demanda_id}`,
+        )
+        navigate(`/app/buscar-imoveis?demanda_id=${notif.dados_relacionados.demanda_id}`)
+      }
     }
   }
 
