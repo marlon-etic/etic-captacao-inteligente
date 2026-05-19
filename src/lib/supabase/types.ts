@@ -2576,11 +2576,12 @@ export const Constants = {
 //     USING: true
 //     WITH CHECK: true
 // Table: notificacoes
-//   Policy "System can insert notifications" (INSERT, PERMISSIVE) roles={public}
+//   Policy "System can insert notifications" (INSERT, PERMISSIVE) roles={authenticated}
 //     WITH CHECK: true
-//   Policy "Users can update own notifications" (UPDATE, PERMISSIVE) roles={public}
+//   Policy "Users can update own notifications" (UPDATE, PERMISSIVE) roles={authenticated}
 //     USING: (auth.uid() = usuario_id)
-//   Policy "Users can view own notifications" (SELECT, PERMISSIVE) roles={public}
+//     WITH CHECK: (auth.uid() = usuario_id)
+//   Policy "Users can view own notifications" (SELECT, PERMISSIVE) roles={authenticated}
 //     USING: (auth.uid() = usuario_id)
 // Table: pontuacao_captador
 //   Policy "Authenticated users can read pontuacao" (SELECT, PERMISSIVE) roles={authenticated}
