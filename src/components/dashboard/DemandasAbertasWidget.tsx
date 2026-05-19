@@ -18,14 +18,18 @@ export function DemandasAbertasWidget() {
 
       const { data: locacaoData, error: errLocacao } = await supabase
         .from('demandas_locacao')
-        .select('*, imoveis_captados(id), users!demandas_locacao_sdr_id_fkey(nome)')
+        .select(
+          'id, nome_cliente, cliente_nome, nivel_urgencia, valor_minimo, valor_maximo, bairros, created_at, imoveis_captados(id), users!demandas_locacao_sdr_id_fkey(nome)',
+        )
         .eq('status_demanda', 'aberta')
         .order('created_at', { ascending: false })
         .limit(20)
 
       const { data: vendasData, error: errVendas } = await supabase
         .from('demandas_vendas')
-        .select('*, imoveis_captados(id), users!demandas_vendas_corretor_id_fkey(nome)')
+        .select(
+          'id, nome_cliente, cliente_nome, nivel_urgencia, valor_minimo, valor_maximo, bairros, created_at, imoveis_captados(id), users!demandas_vendas_corretor_id_fkey(nome)',
+        )
         .eq('status_demanda', 'aberta')
         .order('created_at', { ascending: false })
         .limit(20)

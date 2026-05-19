@@ -2,8 +2,14 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
-import { ModalDetalhes } from './ModalDetalhes'
-import { ModalVinculador } from './ModalVinculador'
+import React, { Suspense, lazy } from 'react'
+
+const ModalDetalhes = lazy(() =>
+  import('./ModalDetalhes').then((m) => ({ default: m.ModalDetalhes })),
+)
+const ModalVinculador = lazy(() =>
+  import('./ModalVinculador').then((m) => ({ default: m.ModalVinculador })),
+)
 import useAppStore from '@/stores/useAppStore'
 import { useTimeElapsed } from '@/hooks/use-time-elapsed'
 import { useToast } from '@/hooks/use-toast'
@@ -30,7 +36,7 @@ export interface Demand {
   criador_id: string
 }
 
-function DemandCard({
+const DemandCard = React.memo(function DemandCard({
   demand,
   onVerDetalhes,
   onVincular,
@@ -222,7 +228,7 @@ function DemandCard({
       </div>
     </div>
   )
-}
+})
 
 function ModalDarPerdido({
   demanda,
@@ -291,6 +297,39 @@ function ModalDarPerdido({
   )
 }
 
+const DemandCardWrapper = React.memo(function DemandCardWrapper({
+  demand,
+  setSelectedDetalhes,
+  setSelectedVinculador,
+  setSelectedPerdido,
+  currentUser,
+  onReload,
+}: any) {
+  const handleVerDetalhes = useCallback(
+    () => setSelectedDetalhes(demand),
+    [demand, setSelectedDetalhes],
+  )
+  const handleVincular = useCallback(
+    () => setSelectedVinculador(demand),
+    [demand, setSelectedVinculador],
+  )
+  const handleDarPerdido = useCallback(
+    () => setSelectedPerdido(demand),
+    [demand, setSelectedPerdido],
+  )
+
+  return (
+    <DemandCard
+      demand={demand}
+      onVerDetalhes={handleVerDetalhes}
+      onVincular={handleVincular}
+      onDarPerdido={handleDarPerdido}
+      currentUser={currentUser}
+      onReload={onReload}
+    />
+  )
+})
+
 export function BuscarDemandas() {
   const [demands, setDemands] = useState<Demand[]>([])
   const [filteredDemands, setFilteredDemands] = useState<Demand[]>([])
@@ -315,9 +354,19 @@ export function BuscarDemandas() {
   const { toast } = useToast()
   const [searchParams, setSearchParams] = useSearchParams()
 
-  const loadDemands = useCallback(async () => {
+  const loadDemands = useCallback(async (useCache = true) => {
     try {
-      setLoading(true)
+      if (useCache) {
+        const cached = sessionStorage.getItem('buscar_demandas_cache')
+        if (cached) {
+          setDemands(JSON.parse(cached))
+          setLoading(false)
+        } else {
+          setLoading(true)
+        }
+      } else {
+        setLoading(true)
+      }
       setError(null)
 
       const { data: demandsLoc, error: errLoc } = await supabase
@@ -328,7 +377,7 @@ export function BuscarDemandas() {
           imoveis_captados!imoveis_captados_demanda_locacao_id_fkey(id, codigo_imovel, user_captador_id, captador_id)
         `)
         .order('created_at', { ascending: false })
-        .limit(300)
+        .limit(100)
 
       if (errLoc) throw errLoc
 
@@ -340,7 +389,7 @@ export function BuscarDemandas() {
           imoveis_captados!imoveis_captados_demanda_venda_id_fkey(id, codigo_imovel, user_captador_id, captador_id)
         `)
         .order('created_at', { ascending: false })
-        .limit(300)
+        .limit(100)
 
       if (errVen) throw errVen
 
@@ -400,6 +449,7 @@ export function BuscarDemandas() {
 
       enriched.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
       setDemands(enriched)
+      sessionStorage.setItem('buscar_demandas_cache', JSON.stringify(enriched))
     } catch (err) {
       console.error('[BuscarDemandas] ❌ Erro:', err)
       setError('Erro ao carregar demandas. Verifique a conexão ou tente novamente.')
@@ -409,7 +459,7 @@ export function BuscarDemandas() {
   }, [])
 
   useEffect(() => {
-    loadDemands()
+    loadDemands(true)
   }, [loadDemands])
 
   // Realtime subscription para atualizar contadores e status
@@ -417,17 +467,17 @@ export function BuscarDemandas() {
     const channel1 = supabase
       .channel('public:imoveis_captados_bd')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'imoveis_captados' }, () => {
-        loadDemands()
+        loadDemands(false)
       })
       .subscribe()
 
     const channel2 = supabase
       .channel('public:demandas_bd')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'demandas_locacao' }, () => {
-        loadDemands()
+        loadDemands(false)
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'demandas_vendas' }, () => {
-        loadDemands()
+        loadDemands(false)
       })
       .subscribe()
 
@@ -625,7 +675,7 @@ export function BuscarDemandas() {
         className: 'bg-[#10B981] text-white border-none',
       })
       setSelectedPerdido(null)
-      loadDemands()
+      loadDemands(false)
     } catch (err: any) {
       toast({ title: 'Erro ao dar perdido', description: err.message, variant: 'destructive' })
     }
@@ -701,7 +751,7 @@ export function BuscarDemandas() {
         <div className="text-center py-10 text-red-500 bg-red-50 rounded-xl border border-red-200">
           <p className="font-bold text-[15px]">{error}</p>
           <Button
-            onClick={loadDemands}
+            onClick={() => loadDemands(false)}
             variant="outline"
             className="mt-4 border-red-200 hover:bg-red-100"
           >
@@ -719,42 +769,46 @@ export function BuscarDemandas() {
       ) : (
         <div className="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3 gap-5">
           {filteredDemands.map((demand) => (
-            <DemandCard
+            <DemandCardWrapper
               key={demand.id}
               demand={demand}
-              onVerDetalhes={() => setSelectedDetalhes(demand)}
-              onVincular={() => setSelectedVinculador(demand)}
-              onDarPerdido={() => setSelectedPerdido(demand)}
+              setSelectedDetalhes={setSelectedDetalhes}
+              setSelectedVinculador={setSelectedVinculador}
+              setSelectedPerdido={setSelectedPerdido}
               currentUser={currentUser}
-              onReload={loadDemands}
+              onReload={() => loadDemands(false)}
             />
           ))}
         </div>
       )}
 
       {/* Modals rendering */}
-      {selectedDetalhes && (
-        <ModalDetalhes
-          demanda={selectedDetalhes}
-          onClose={() => setSelectedDetalhes(null)}
-          onReload={loadDemands}
-          onVincular={() => {
-            setSelectedDetalhes(null)
-            setSelectedVinculador(selectedDetalhes)
-          }}
-        />
-      )}
+      <Suspense fallback={null}>
+        {selectedDetalhes && (
+          <ModalDetalhes
+            demanda={selectedDetalhes}
+            onClose={() => setSelectedDetalhes(null)}
+            onReload={() => loadDemands(false)}
+            onVincular={() => {
+              setSelectedDetalhes(null)
+              setSelectedVinculador(selectedDetalhes)
+            }}
+          />
+        )}
+      </Suspense>
 
-      {selectedVinculador && (
-        <ModalVinculador
-          demanda={selectedVinculador}
-          onClose={() => setSelectedVinculador(null)}
-          onVinculoSucesso={() => {
-            setSelectedVinculador(null)
-            loadDemands()
-          }}
-        />
-      )}
+      <Suspense fallback={null}>
+        {selectedVinculador && (
+          <ModalVinculador
+            demanda={selectedVinculador}
+            onClose={() => setSelectedVinculador(null)}
+            onVinculoSucesso={() => {
+              setSelectedVinculador(null)
+              loadDemands(false)
+            }}
+          />
+        )}
+      </Suspense>
 
       {selectedPerdido && (
         <ModalDarPerdido

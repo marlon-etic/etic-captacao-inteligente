@@ -21,7 +21,9 @@ import { useMatchCount } from '@/hooks/use-match-count'
 import { useNavigate } from 'react-router-dom'
 import { Zap } from 'lucide-react'
 
-export function CapturedPropertyCard({
+import React from 'react'
+
+export const CapturedPropertyCard = React.memo(function CapturedPropertyCard({
   demand,
   property,
   onAction,
@@ -453,4 +455,4 @@ export function CapturedPropertyCard({
       </div>
     </Card>
   )
-}
+})

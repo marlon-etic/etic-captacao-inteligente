@@ -46,7 +46,9 @@ export function useSdrQueries() {
 
         let demandasQuery = supabase
           .from(demandasTable)
-          .select('*')
+          .select(
+            'id, created_at, status_demanda, updated_at, nome_cliente, cliente_nome, valor_maximo, bairros, sdr_id, corretor_id, is_prioritaria, nivel_urgencia',
+          )
           .order('created_at', { ascending: false })
 
         if (applyDateFilter) {
@@ -57,7 +59,9 @@ export function useSdrQueries() {
         seteDiasAtras.setDate(seteDiasAtras.getDate() - 7)
         let demandasInativasQuery = supabase
           .from(demandasTable)
-          .select('*')
+          .select(
+            'id, created_at, status_demanda, updated_at, nome_cliente, cliente_nome, valor_maximo, bairros, sdr_id, corretor_id, is_prioritaria, nivel_urgencia',
+          )
           .in('status_demanda', ['aberta', 'em busca', 'em visita'])
           .not('updated_at', 'is', null)
           .lt('updated_at', seteDiasAtras.toISOString())
@@ -67,7 +71,9 @@ export function useSdrQueries() {
 
         let imoveisLivresQuery = supabase
           .from('imoveis_captados')
-          .select('*, imovel_demand_match(*)')
+          .select(
+            'id, codigo_imovel, endereco, preco, valor, created_at, tipo, etapa_funil, status_captacao, imovel_demand_match(id, demanda_id, tipo_vinculacao)',
+          )
           .eq('tipo', tipoTransacao)
           .is('demanda_locacao_id', null)
           .is('demanda_venda_id', null)
@@ -91,7 +97,9 @@ export function useSdrQueries() {
         if (sdrDemandaIds.length > 0) {
           const { data: imV } = await supabase
             .from('imovel_demand_match')
-            .select('*, imoveis_captados(*)')
+            .select(
+              'id, demanda_id, tipo_vinculacao, compatibilidade_pct, imovel_id, imoveis_captados(id, codigo_imovel, endereco, preco, valor, created_at)',
+            )
             .in('demanda_id', sdrDemandaIds)
 
           imoveisSobDemanda = imV?.map((m: any) => ({ ...m.imoveis_captados, match_info: m })) || []
@@ -109,13 +117,17 @@ export function useSdrQueries() {
 
         let visitasQuery = supabase
           .from('visitas_imovel')
-          .select('*')
+          .select(
+            'id, demanda_id, imovel_id, novo_imovel_endereco, novo_imovel_valor, user_sdr_id, data_visita, created_at',
+          )
           .eq('tipo_demanda', tipoTransacao)
           .order('data_visita', { ascending: false })
 
         let fechadosQuery = supabase
           .from('fechamentos')
-          .select('*')
+          .select(
+            'id, demanda_id, imovel_id, user_sdr_id, valor, data_prevista, status, created_at',
+          )
           .eq('tipo_demanda', tipoTransacao)
           .order('created_at', { ascending: false })
 

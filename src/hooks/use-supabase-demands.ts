@@ -169,10 +169,22 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
 
         const table = type === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
 
+        const cacheKey = `demands_cache_${type}`
+        if (!isBackground) {
+          const cached = sessionStorage.getItem(cacheKey)
+          if (cached) {
+            const parsed = JSON.parse(cached)
+            setDemands(sortDemands(formatData(parsed)))
+            setLoading(false)
+          }
+        }
+
         const data = await fetchWithResilience(`demands_${type}`, async () => {
           const { data: resData, error } = await supabase
             .from(table)
-            .select('*, imoveis_captados(*), respostas_captador(*), prazos_captacao(*)')
+            .select(
+              'id, nome_cliente, cliente_nome, telefone, email, bairros, localizacoes, valor_minimo, valor_maximo, orcamento_max, dormitorios, vagas_estacionamento, observacoes, necessidades_especificas, tipo_imovel, nivel_urgencia, urgencia, status_demanda, is_prioritaria, created_at, sdr_id, corretor_id, vinculacao_captador_id, captadores_busca, imoveis_captados(id, codigo_imovel, user_captador_id, captador_id, etapa_funil, data_visita, data_fechamento, dormitorios, vagas, observacoes, localizacao_texto, created_at), respostas_captador(id, captador_id, resposta, motivo, observacao, created_at), prazos_captacao(id, prazo_resposta, prorrogacoes_usadas, status)',
+            )
             .order('created_at', { ascending: false })
             .limit(100)
           if (error) throw error
@@ -180,6 +192,7 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
         })
 
         if (data) {
+          sessionStorage.setItem(cacheKey, JSON.stringify(data))
           setDemands((prev) => {
             const fetchedFormatted = formatData(data)
             const fetchedIds = new Set(fetchedFormatted.map((f) => f.id))

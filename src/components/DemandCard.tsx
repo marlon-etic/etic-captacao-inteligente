@@ -9,8 +9,16 @@ import { cn } from '@/lib/utils'
 import useAppStore from '@/stores/useAppStore'
 import { supabase } from '@/lib/supabase/client'
 import { toast } from '@/hooks/use-toast'
-import { DemandDetailsModal } from '@/components/DemandDetailsModal'
-import { LostModal } from '@/components/LostModal'
+import React, { Suspense, lazy } from 'react'
+
+const DemandDetailsModal = lazy(() =>
+  import('@/components/DemandDetailsModal').then((module) => ({
+    default: module.DemandDetailsModal,
+  })),
+)
+const LostModal = lazy(() =>
+  import('@/components/LostModal').then((module) => ({ default: module.LostModal })),
+)
 import { useSlaCountdown, useTimeElapsed } from '@/hooks/useTimeElapsed'
 import { useMatchCount } from '@/hooks/use-match-count'
 import { RespostasBadge, RespostasHistory } from './RespostasHistory'
@@ -45,7 +53,11 @@ const InfoItem = ({ label, value }: { label: string; value: React.ReactNode }) =
   </div>
 )
 
-export function DemandCard({ demand, index, onAction }: DemandCardProps) {
+export const DemandCard = React.memo(function DemandCard({
+  demand,
+  index,
+  onAction,
+}: DemandCardProps) {
   const { users, logSolicitorContactAttempt, markDemandLost, currentUser } = useAppStore()
   const [showDetails, setShowDetails] = useState(false)
   const navigate = useNavigate()
@@ -626,37 +638,49 @@ export function DemandCard({ demand, index, onAction }: DemandCardProps) {
         </div>
       </Card>
 
-      <DemandDetailsModal open={showDetails} onOpenChange={setShowDetails} demand={demand as any} />
+      <Suspense fallback={null}>
+        {showDetails && (
+          <DemandDetailsModal
+            open={showDetails}
+            onOpenChange={setShowDetails}
+            demand={demand as any}
+          />
+        )}
+      </Suspense>
 
-      <LostModal
-        open={showLostModal}
-        onOpenChange={setShowLostModal}
-        onConfirm={async (reason, obs) => {
-          try {
-            const table = demand.type === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
-            const { error } = await supabase
-              .from(table)
-              .update({ status_demanda: 'impossivel' })
-              .eq('id', demand.id)
+      <Suspense fallback={null}>
+        {showLostModal && (
+          <LostModal
+            open={showLostModal}
+            onOpenChange={setShowLostModal}
+            onConfirm={async (reason, obs) => {
+              try {
+                const table = demand.type === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
+                const { error } = await supabase
+                  .from(table)
+                  .update({ status_demanda: 'impossivel' })
+                  .eq('id', demand.id)
 
-            if (error) throw error
+                if (error) throw error
 
-            markDemandLost(demand.id, reason, obs)
-            toast({
-              title: 'Sucesso',
-              description: 'Demanda marcada como perdida com sucesso.',
-              className: 'bg-[#10B981] text-white border-none',
-            })
-          } catch (err: any) {
-            toast({
-              title: 'Falha ao marcar como perdido',
-              description: err.message,
-              variant: 'destructive',
-            })
-            console.error(err)
-          }
-        }}
-      />
+                markDemandLost(demand.id, reason, obs)
+                toast({
+                  title: 'Sucesso',
+                  description: 'Demanda marcada como perdida com sucesso.',
+                  className: 'bg-[#10B981] text-white border-none',
+                })
+              } catch (err: any) {
+                toast({
+                  title: 'Falha ao marcar como perdido',
+                  description: err.message,
+                  variant: 'destructive',
+                })
+                console.error(err)
+              }
+            }}
+          />
+        )}
+      </Suspense>
     </div>
   )
-}
+})

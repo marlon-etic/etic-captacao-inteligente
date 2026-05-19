@@ -39,7 +39,7 @@ export function useUltimosImoveis(
       let query = supabase
         .from('imoveis_captados')
         .select(
-          '*, demanda_locacao:demandas_locacao(sdr_id), demanda_venda:demandas_vendas(corretor_id)',
+          'id, codigo_imovel, endereco, preco, valor, dormitorios, vagas, user_captador_id, captador_id, created_at, tipo, demanda_locacao:demandas_locacao(sdr_id), demanda_venda:demandas_vendas(corretor_id)',
         )
         .order('created_at', { ascending: false })
         .limit(100)

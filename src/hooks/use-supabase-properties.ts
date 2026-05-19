@@ -95,7 +95,7 @@ export function useSupabaseProperties(
         let query = supabase
           .from('imoveis_captados')
           .select(
-            '*, demanda_locacao:demandas_locacao(*), demanda_venda:demandas_vendas(*), captador_rel:users!fk_imoveis_captador(nome, email)',
+            'id, codigo_imovel, endereco, preco, valor, user_captador_id, captador_id, created_at, status_captacao, dormitorios, vagas, observacoes, localizacao_texto, tipo, etapa_funil, data_visita, data_fechamento, demanda_locacao:demandas_locacao(id, nome_cliente, cliente_nome, sdr_id, bairros, dormitorios, vagas_estacionamento), demanda_venda:demandas_vendas(id, nome_cliente, cliente_nome, corretor_id, bairros, dormitorios, vagas_estacionamento), captador_rel:users!fk_imoveis_captador(nome, email)',
             { count: 'exact' },
           )
           .order('created_at', { ascending: false })
@@ -204,7 +204,7 @@ export function useSupabaseProperties(
             const { data: fallbackData, error: fallbackError } = await supabase
               .from('imoveis_captados')
               .select(
-                '*, demanda_locacao:demandas_locacao(*), demanda_venda:demandas_vendas(*), captador_rel:users!fk_imoveis_captador(nome, email)',
+                'id, codigo_imovel, endereco, preco, valor, user_captador_id, captador_id, created_at, status_captacao, dormitorios, vagas, observacoes, localizacao_texto, tipo, etapa_funil, data_visita, data_fechamento, demanda_locacao:demandas_locacao(id, nome_cliente, cliente_nome, sdr_id, bairros, dormitorios, vagas_estacionamento), demanda_venda:demandas_vendas(id, nome_cliente, cliente_nome, corretor_id, bairros, dormitorios, vagas_estacionamento), captador_rel:users!fk_imoveis_captador(nome, email)',
               )
               .eq('id', id)
               .single()

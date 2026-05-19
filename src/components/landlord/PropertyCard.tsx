@@ -17,6 +17,7 @@ export const PropertyCard = ({
             src={property.photoUrl}
             alt={property.address}
             className="w-full h-full object-cover"
+            loading="lazy"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-gray-300">

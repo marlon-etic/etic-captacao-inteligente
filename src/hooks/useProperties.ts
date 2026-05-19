@@ -31,7 +31,9 @@ export const useProperties = (landlordId: string | undefined) => {
 
       const { data, error } = await supabase
         .from('imoveis_captados')
-        .select('*')
+        .select(
+          'id, landlord_id, codigo_imovel, endereco, preco, valor, dormitorios, vagas, created_at, updated_at, localizacao_texto, fotos, status_captacao',
+        )
         .eq('landlord_id', id)
         .order('created_at', { ascending: false })
 

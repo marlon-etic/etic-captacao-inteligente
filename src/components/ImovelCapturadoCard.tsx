@@ -6,7 +6,9 @@ import { cn } from '@/lib/utils'
 import { useMatchCount } from '@/hooks/use-match-count'
 import { useNavigate } from 'react-router-dom'
 
-export function ImovelCapturadoCard({
+import React from 'react'
+
+export const ImovelCapturadoCard = React.memo(function ImovelCapturadoCard({
   property,
   demand,
   isOwnerOrAdmin,
@@ -110,4 +112,4 @@ export function ImovelCapturadoCard({
       </div>
     </div>
   )
-}
+})
