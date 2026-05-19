@@ -7,6 +7,7 @@ import { DemandasAbertasTable } from '@/components/dashboard/DemandasAbertasTabl
 import { ImoveisPerdidosTable } from '@/components/dashboard/ImoveisPerdidosTable'
 import { ModalDetalhesImovel } from '@/components/dashboard/ModalDetalhesImovel'
 import { BuscarDemandas } from '@/components/captador/BuscarDemandas'
+import { DemandasAbertasWidget } from '@/components/dashboard/DemandasAbertasWidget'
 import { useCaptadorDashboard } from '@/hooks/use-captador-dashboard'
 import { CaptadorEngajamentoModal } from '@/components/dashboard/CaptadorEngajamentoModal'
 import { usePeriodStore } from '@/stores/use-period-store'
@@ -106,6 +107,13 @@ export function CaptadorDashboard() {
         <p className="text-gray-500 font-medium">
           Acompanhe o funil de captação, matches automáticos e métricas em tempo real.
         </p>
+      </div>
+
+      <div className="mb-6 animate-in fade-in duration-500 delay-100">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-black text-[#1A3A52]">🔥 Demandas Abertas (Real-time)</h2>
+        </div>
+        <DemandasAbertasWidget />
       </div>
 
       <div className="mb-6">

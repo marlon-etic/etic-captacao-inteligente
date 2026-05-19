@@ -8,15 +8,21 @@ import {
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ExpandableDemandCardCaptador } from '@/components/ExpandableDemandCardCaptador'
+import { useEffect, useRef } from 'react'
+import { useLocation } from 'react-router-dom'
 import { useAllDemands } from '@/hooks/use-all-demands'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { RefreshCw, Search } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 export function DemandasAbertasView() {
+  const location = useLocation()
   const { demands, loading, refresh } = useAllDemands()
   const [statusFilter, setStatusFilter] = useState('Todas')
   const [searchTerm, setSearchTerm] = useState('')
+  const [highlightedId, setHighlightedId] = useState<string | null>(null)
+  const itemRefs = useRef<Record<string, HTMLDivElement | null>>({})
 
   const filteredDemands = useMemo(() => {
     return demands
@@ -44,6 +50,33 @@ export function DemandasAbertasView() {
       })
       .slice(0, 50)
   }, [demands, statusFilter, searchTerm])
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    const demandaId = params.get('demanda_id')
+
+    if (demandaId && !loading && filteredDemands.length > 0) {
+      setHighlightedId(demandaId)
+      console.log('[DEMANDAS_ABERTAS] Highlighting demand:', demandaId)
+
+      setTimeout(() => {
+        const el = itemRefs.current[demandaId]
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+
+          const buttonToClick = el.querySelector('button') as HTMLButtonElement | null
+          if (buttonToClick) {
+            buttonToClick.click()
+          } else {
+            const firstChild = el.firstElementChild as HTMLElement
+            if (firstChild) firstChild.click()
+          }
+        }
+      }, 500)
+
+      window.history.replaceState({}, document.title, window.location.pathname)
+    }
+  }, [location.search, loading, filteredDemands])
 
   if (loading) {
     return (
@@ -111,15 +144,23 @@ export function DemandasAbertasView() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-[16px]">
-          {filteredDemands.map((demand, index) => (
-            <div
-              key={demand.id}
-              className="opacity-0 animate-cascade-fade h-full"
-              style={{ animationDelay: `${index * 50}ms` }}
-            >
-              <ExpandableDemandCardCaptador demand={demand} />
-            </div>
-          ))}
+          {filteredDemands.map((demand, index) => {
+            const isHighlighted = highlightedId === demand.id
+            return (
+              <div
+                key={demand.id}
+                ref={(el) => (itemRefs.current[demand.id] = el)}
+                className={cn(
+                  'opacity-0 animate-cascade-fade h-full transition-all duration-500 rounded-xl',
+                  isHighlighted &&
+                    'ring-4 ring-blue-500 ring-offset-2 bg-blue-50/50 scale-[1.02] shadow-xl z-10',
+                )}
+                style={{ animationDelay: `${index * 50}ms` }}
+              >
+                <ExpandableDemandCardCaptador demand={demand} />
+              </div>
+            )
+          })}
         </div>
       )}
     </div>
