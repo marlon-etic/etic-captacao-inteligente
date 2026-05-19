@@ -233,6 +233,50 @@ export const processRealtimeNotification = async (
           await Promise.all(promises)
         }
 
+        const wasUnlinkedLocacao = oldImovel?.demanda_locacao_id && !imovel.demanda_locacao_id
+        const wasUnlinkedVenda = oldImovel?.demanda_venda_id && !imovel.demanda_venda_id
+
+        if (wasUnlinkedLocacao || wasUnlinkedVenda) {
+          const oldDemandaId = oldImovel.demanda_locacao_id || oldImovel.demanda_venda_id
+          let ownerId = null
+
+          if (wasUnlinkedLocacao) {
+            const { data: d } = await supabase
+              .from('demandas_locacao')
+              .select('sdr_id')
+              .eq('id', oldImovel.demanda_locacao_id)
+              .single()
+            ownerId = d?.sdr_id
+          } else if (wasUnlinkedVenda) {
+            const { data: d } = await supabase
+              .from('demandas_vendas')
+              .select('corretor_id')
+              .eq('id', oldImovel.demanda_venda_id)
+              .single()
+            ownerId = d?.corretor_id
+          }
+
+          usersToNotify.clear()
+          admins.forEach((id) => usersToNotify.add(id))
+          if (captadorId) usersToNotify.add(captadorId)
+          if (ownerId) usersToNotify.add(ownerId)
+
+          const promises = Array.from(usersToNotify).map((userId) =>
+            createNotification(
+              userId,
+              'status_atualizado',
+              'Imóvel Desvinculado',
+              `O imóvel ${imovel.codigo_imovel || 'S/C'} foi desvinculado da demanda.`,
+              {
+                imovel_id: imovel.id,
+                demanda_id: oldDemandaId,
+              },
+              'baixa',
+            ),
+          )
+          await Promise.all(promises)
+        }
+
         const visitado = imovel.etapa_funil === 'visitado' && oldImovel.etapa_funil !== 'visitado'
         if (visitado) {
           usersToNotify.clear()

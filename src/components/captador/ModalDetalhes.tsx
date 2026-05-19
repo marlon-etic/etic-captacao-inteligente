@@ -1,16 +1,47 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Demand } from './BuscarDemandas'
 import { Button } from '@/components/ui/button'
-import { X } from 'lucide-react'
+import { X, Unlink } from 'lucide-react'
+import useAppStore from '@/stores/useAppStore'
+import { unlinkImovelFromDemanda } from '@/services/vinculacaoService'
+import { useToast } from '@/hooks/use-toast'
 
 export function ModalDetalhes({
   demanda,
   onClose,
+  onReload,
 }: {
   demanda: Demand | null
   onClose: () => void
+  onReload?: () => void
 }) {
+  const { currentUser } = useAppStore()
+  const { toast } = useToast()
+  const [isUnlinking, setIsUnlinking] = useState<string | null>(null)
+
   if (!demanda) return null
+
+  const handleUnlink = async (imovelId: string) => {
+    try {
+      setIsUnlinking(imovelId)
+      await unlinkImovelFromDemanda(imovelId, demanda.tipo === 'locacao')
+      toast({
+        title: 'Imóvel desvinculado',
+        description: 'O imóvel foi desvinculado da demanda com sucesso.',
+        className: 'bg-[#10B981] text-white border-none',
+      })
+      if (onReload) onReload()
+      onClose()
+    } catch (error: any) {
+      toast({
+        title: 'Erro',
+        description: error.message || 'Falha ao desvincular imóvel.',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsUnlinking(null)
+    }
+  }
 
   const getUrgencyColor = (urgencia: string) => {
     switch (urgencia) {
@@ -104,6 +135,53 @@ export function ModalDetalhes({
               </div>
             </div>
           </div>
+
+          {/* Imóveis Vinculados */}
+          {demanda.imoveis && demanda.imoveis.length > 0 && (
+            <div>
+              <h3 className="mb-3 text-sm font-bold tracking-wider text-gray-500 uppercase">
+                Imóveis Vinculados
+              </h3>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {demanda.imoveis.map((imv) => {
+                  const isMine =
+                    imv.captador_id === currentUser?.id || imv.user_captador_id === currentUser?.id
+                  const canUnlink =
+                    isMine || currentUser?.role === 'admin' || currentUser?.role === 'gestor'
+
+                  return (
+                    <div
+                      key={imv.id}
+                      className={`flex items-center justify-between p-3 rounded-lg border ${
+                        isMine ? 'bg-blue-50 border-blue-100' : 'bg-gray-50 border-gray-100'
+                      }`}
+                    >
+                      <div className="flex flex-col">
+                        <span className="text-sm font-bold text-gray-900">
+                          {imv.codigo_imovel || 'Sem Código'}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          {isMine ? 'Vinculado por você' : 'Vinculado por outro captador'}
+                        </span>
+                      </div>
+                      {canUnlink && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleUnlink(imv.id)}
+                          disabled={isUnlinking === imv.id}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50 h-8 px-2"
+                        >
+                          <Unlink className="w-4 h-4 mr-1" />
+                          Desvincular
+                        </Button>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Status & Meta */}
           <div>

@@ -723,7 +723,11 @@ export function BuscarDemandas() {
 
       {/* Modals rendering */}
       {selectedDetalhes && (
-        <ModalDetalhes demanda={selectedDetalhes} onClose={() => setSelectedDetalhes(null)} />
+        <ModalDetalhes
+          demanda={selectedDetalhes}
+          onClose={() => setSelectedDetalhes(null)}
+          onReload={loadDemands}
+        />
       )}
 
       {selectedVinculador && (

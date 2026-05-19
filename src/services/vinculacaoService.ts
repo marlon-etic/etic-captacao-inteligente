@@ -1,6 +1,18 @@
 import { supabase } from '@/lib/supabase/client'
 import { isImovelVisivelParaRole } from '@/lib/roleFilters'
 
+export async function unlinkImovelFromDemanda(imovelId: string, isLocacao: boolean): Promise<void> {
+  const updateData = isLocacao
+    ? { demanda_locacao_id: null, status_captacao: 'capturado', etapa_funil: 'capturado' }
+    : { demanda_venda_id: null, status_captacao: 'capturado', etapa_funil: 'capturado' }
+
+  const { error } = await supabase.from('imoveis_captados').update(updateData).eq('id', imovelId)
+
+  if (error) {
+    throw error
+  }
+}
+
 export async function linkImovelToDemanda(
   imovelId: string,
   demandaId: string,
