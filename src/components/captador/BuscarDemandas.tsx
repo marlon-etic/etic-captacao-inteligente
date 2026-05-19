@@ -1,8 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, Suspense, lazy } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
-import React, { Suspense, lazy } from 'react'
 
 const ModalDetalhes = lazy(() =>
   import('./ModalDetalhes').then((m) => ({ default: m.ModalDetalhes })),

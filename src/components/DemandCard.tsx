@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, Suspense, lazy } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -9,7 +9,6 @@ import { cn } from '@/lib/utils'
 import useAppStore from '@/stores/useAppStore'
 import { supabase } from '@/lib/supabase/client'
 import { toast } from '@/hooks/use-toast'
-import React, { Suspense, lazy } from 'react'
 
 const DemandDetailsModal = lazy(() =>
   import('@/components/DemandDetailsModal').then((module) => ({
