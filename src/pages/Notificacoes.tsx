@@ -96,19 +96,28 @@ export default function Notificacoes() {
               onClick={() => {
                 if (!n.lido) markAsRead(n.id)
 
-                // Priorizar demanda_id para direcionar ao card correto
-                if (n.dados_relacionados?.demanda_id) {
-                  const isCaptador =
-                    currentUser?.role === 'captador' ||
-                    currentUser?.role?.toLowerCase() === 'captador'
-                  if (isCaptador) {
-                    navigate(`/app/buscar-imoveis?id=${n.dados_relacionados.demanda_id}`)
-                  } else {
-                    navigate(`/app/demandas?id=${n.dados_relacionados.demanda_id}`)
+                let relatedData = n.dados_relacionados
+                if (typeof relatedData === 'string') {
+                  try {
+                    relatedData = JSON.parse(relatedData)
+                  } catch {
+                    /* intentionally ignored */
                   }
-                } else if (n.dados_relacionados?.status === 'perdido') {
+                }
+
+                // Priorizar demanda_id para direcionar ao card correto
+                if (relatedData?.demanda_id) {
+                  const isCaptadorFlow = ['captador', 'admin', 'gestor'].includes(
+                    currentUser?.role?.toLowerCase() || '',
+                  )
+                  if (isCaptadorFlow) {
+                    navigate(`/app/buscar-imoveis?id=${relatedData.demanda_id}`)
+                  } else {
+                    navigate(`/app/demandas?id=${relatedData.demanda_id}`)
+                  }
+                } else if (relatedData?.status === 'perdido') {
                   navigate(`/app/perdidos`)
-                } else if (n.dados_relacionados?.imovel_id) {
+                } else if (relatedData?.imovel_id) {
                   navigate(`/app/disponivel-geral`)
                 }
               }}

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import {
   Bell,
   Menu,
@@ -32,6 +33,7 @@ export function AppHeader({ onAddPropertyClick }: AppHeaderProps) {
   const location = useLocation()
   const { isMobile, setOpenMobile } = useSidebar()
   const { notificacoes, markAsRead, markAllAsRead } = useNotificacoes()
+  const [popoverOpen, setPopoverOpen] = useState(false)
 
   if (!currentUser) return null
 
@@ -104,7 +106,7 @@ export function AppHeader({ onAddPropertyClick }: AppHeaderProps) {
           </span>
         </Badge>
 
-        <Popover>
+        <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
           <PopoverTrigger asChild>
             <Button
               variant="ghost"
@@ -156,20 +158,30 @@ export function AppHeader({ onAddPropertyClick }: AppHeaderProps) {
                       )}
                       onClick={() => {
                         if (!n.lido) markAsRead(n.id)
+                        setPopoverOpen(false)
+
+                        let relatedData = n.dados_relacionados
+                        if (typeof relatedData === 'string') {
+                          try {
+                            relatedData = JSON.parse(relatedData)
+                          } catch {
+                            /* intentionally ignored */
+                          }
+                        }
 
                         // Priorizar demanda_id
-                        if (n.dados_relacionados?.demanda_id) {
-                          const isCaptador =
-                            currentUser?.role === 'captador' ||
-                            currentUser?.role?.toLowerCase() === 'captador'
-                          if (isCaptador) {
-                            navigate(`/app/buscar-imoveis?id=${n.dados_relacionados.demanda_id}`)
+                        if (relatedData?.demanda_id) {
+                          const isCaptadorFlow = ['captador', 'admin', 'gestor'].includes(
+                            currentUser?.role?.toLowerCase() || '',
+                          )
+                          if (isCaptadorFlow) {
+                            navigate(`/app/buscar-imoveis?id=${relatedData.demanda_id}`)
                           } else {
-                            navigate(`/app/demandas?id=${n.dados_relacionados.demanda_id}`)
+                            navigate(`/app/demandas?id=${relatedData.demanda_id}`)
                           }
-                        } else if (n.dados_relacionados?.status === 'perdido') {
+                        } else if (relatedData?.status === 'perdido') {
                           navigate(`/app/perdidos`)
-                        } else if (n.dados_relacionados?.imovel_id) {
+                        } else if (relatedData?.imovel_id) {
                           navigate(`/app/disponivel-geral`)
                         }
                       }}
@@ -239,7 +251,10 @@ export function AppHeader({ onAddPropertyClick }: AppHeaderProps) {
               <Button
                 variant="outline"
                 className="w-full text-[13px] font-bold h-9"
-                onClick={() => navigate('/app/notificacoes')}
+                onClick={() => {
+                  setPopoverOpen(false)
+                  navigate('/app/notificacoes')
+                }}
               >
                 Ver Todas
               </Button>
