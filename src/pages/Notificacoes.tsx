@@ -9,9 +9,11 @@ import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { cn } from '@/lib/utils'
 import { useNavigate } from 'react-router-dom'
+import useAppStore from '@/stores/useAppStore'
 
 export default function Notificacoes() {
   const { notificacoes, markAsRead, markAllAsRead } = useNotificacoes()
+  const { currentUser } = useAppStore()
   const navigate = useNavigate()
 
   const [filterStatus, setFilterStatus] = useState<'todas' | 'nao_lidas' | 'lidas'>('todas')
@@ -93,8 +95,14 @@ export default function Notificacoes() {
               )}
               onClick={() => {
                 if (!n.lido) markAsRead(n.id)
-                if (n.dados_relacionados?.demanda_id) {
-                  navigate(`/app/demandas?id=${n.dados_relacionados.demanda_id}`)
+                if (n.dados_relacionados?.status === 'perdido') {
+                  navigate(`/app/perdidos`)
+                } else if (n.dados_relacionados?.demanda_id) {
+                  if (currentUser?.role === 'captador') {
+                    navigate(`/app/buscar-imoveis?id=${n.dados_relacionados.demanda_id}`)
+                  } else {
+                    navigate(`/app/demandas?id=${n.dados_relacionados.demanda_id}`)
+                  }
                 } else if (n.dados_relacionados?.imovel_id) {
                   navigate(`/app/disponivel-geral`)
                 }

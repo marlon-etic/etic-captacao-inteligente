@@ -159,7 +159,11 @@ export function AppHeader({ onAddPropertyClick }: AppHeaderProps) {
                         if (n.dados_relacionados?.status === 'perdido') {
                           navigate(`/app/perdidos`)
                         } else if (n.dados_relacionados?.demanda_id) {
-                          navigate(`/app/demandas?id=${n.dados_relacionados.demanda_id}`)
+                          if (currentUser?.role === 'captador') {
+                            navigate(`/app/buscar-imoveis?id=${n.dados_relacionados.demanda_id}`)
+                          } else {
+                            navigate(`/app/demandas?id=${n.dados_relacionados.demanda_id}`)
+                          }
                         } else if (n.dados_relacionados?.imovel_id) {
                           navigate(`/app/disponivel-geral`)
                         }

@@ -59,9 +59,11 @@ export function GlobalNotificationListener() {
               if (data?.status === 'perdido') {
                 window.dispatchEvent(new CustomEvent('navigate-to', { detail: `/app/perdidos` }))
               } else if (data?.demanda_id) {
-                window.dispatchEvent(
-                  new CustomEvent('navigate-to', { detail: `/app/demandas?id=${data.demanda_id}` }),
-                )
+                const path =
+                  currentUserRef.current?.role === 'captador'
+                    ? `/app/buscar-imoveis?id=${data.demanda_id}`
+                    : `/app/demandas?id=${data.demanda_id}`
+                window.dispatchEvent(new CustomEvent('navigate-to', { detail: path }))
               } else if (data?.imovel_id) {
                 window.dispatchEvent(
                   new CustomEvent('navigate-to', { detail: `/app/disponivel-geral` }),
