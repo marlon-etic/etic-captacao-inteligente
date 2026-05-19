@@ -63,8 +63,8 @@ export function ModalVinculador({
     try {
       const updateData =
         demanda.tipo === 'locacao'
-          ? { demanda_locacao_id: demanda.id, status_captacao: 'encontrado' }
-          : { demanda_venda_id: demanda.id, status_captacao: 'encontrado' }
+          ? { demanda_locacao_id: demanda.id, status_captacao: 'capturado' }
+          : { demanda_venda_id: demanda.id, status_captacao: 'capturado' }
 
       const { error } = await supabase
         .from('imoveis_captados')
