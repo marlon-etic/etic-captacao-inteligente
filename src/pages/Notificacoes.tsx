@@ -95,14 +95,19 @@ export default function Notificacoes() {
               )}
               onClick={() => {
                 if (!n.lido) markAsRead(n.id)
-                if (n.dados_relacionados?.status === 'perdido') {
-                  navigate(`/app/perdidos`)
-                } else if (n.dados_relacionados?.demanda_id) {
-                  if (currentUser?.role === 'captador') {
+
+                // Priorizar demanda_id para direcionar ao card correto
+                if (n.dados_relacionados?.demanda_id) {
+                  const isCaptador =
+                    currentUser?.role === 'captador' ||
+                    currentUser?.role?.toLowerCase() === 'captador'
+                  if (isCaptador) {
                     navigate(`/app/buscar-imoveis?id=${n.dados_relacionados.demanda_id}`)
                   } else {
                     navigate(`/app/demandas?id=${n.dados_relacionados.demanda_id}`)
                   }
+                } else if (n.dados_relacionados?.status === 'perdido') {
+                  navigate(`/app/perdidos`)
                 } else if (n.dados_relacionados?.imovel_id) {
                   navigate(`/app/disponivel-geral`)
                 }

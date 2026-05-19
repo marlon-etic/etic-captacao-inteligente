@@ -86,6 +86,7 @@ function DemandCard({
 
   return (
     <div
+      id={`demand-card-${demand.id}`}
       className={`border-2 rounded-xl p-5 transition-all shadow-[0_2px_12px_rgba(0,0,0,0.03)] flex flex-col h-full bg-white hover:shadow-md hover:-translate-y-1 duration-200 ${demand.imoveiVinculados > 0 ? 'border-green-100/80' : 'border-blue-100/50'}`}
     >
       <div className="flex-1 flex flex-col">
@@ -430,17 +431,135 @@ export function BuscarDemandas() {
   // Lidar com o click na notificação (redirect para o card)
   useEffect(() => {
     const id = searchParams.get('id')
-    if (id && demands.length > 0) {
-      const targetDemand = demands.find((d) => d.id === id)
-      if (targetDemand && !selectedDetalhes) {
-        setSelectedDetalhes(targetDemand)
-        // Limpar param para não reabrir se recarregar
-        const newParams = new URLSearchParams(searchParams)
-        newParams.delete('id')
-        setSearchParams(newParams, { replace: true })
+    if (!id || loading) return
+
+    const openAndScroll = (demand: Demand) => {
+      // 1. Limpar filtros para garantir que a demanda seja visível
+      setFilterStatusDemanda('todas')
+      setFilterType('todos')
+      setFilterUrgency('todos')
+      setSearchQuery('')
+      setFilterBairro('')
+
+      // 2. Abrir Modal de Detalhes
+      if (!selectedDetalhes || selectedDetalhes.id !== demand.id) {
+        setSelectedDetalhes(demand)
       }
+
+      // 3. Limpar param da URL
+      const newParams = new URLSearchParams(searchParams)
+      newParams.delete('id')
+      setSearchParams(newParams, { replace: true })
+
+      // 4. Scroll para o card
+      setTimeout(() => {
+        const el = document.getElementById(`demand-card-${demand.id}`)
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          el.classList.add(
+            'ring-4',
+            'ring-[#2E5F8A]',
+            'ring-offset-2',
+            'transition-all',
+            'duration-500',
+          )
+          setTimeout(() => {
+            el.classList.remove('ring-4', 'ring-[#2E5F8A]', 'ring-offset-2')
+          }, 3000)
+        }
+      }, 500)
     }
-  }, [searchParams, demands, selectedDetalhes, setSearchParams])
+
+    const targetDemand = demands.find((d) => d.id === id)
+    if (targetDemand) {
+      openAndScroll(targetDemand)
+    } else {
+      // Buscar do banco caso não esteja na listagem inicial (paginação/limite)
+      const fetchMissingDemand = async () => {
+        try {
+          const { data: locData } = await supabase
+            .from('demandas_locacao')
+            .select(`
+              id, nome_cliente, telefone, email, sdr_id, created_at, valor_minimo, valor_maximo, bairros, dormitorios, banheiros, vagas_estacionamento, urgencia, status_demanda, captadores_busca,
+              criador:users!fk_demandas_locacao_sdr(nome, email),
+              imoveis_captados!imoveis_captados_demanda_locacao_id_fkey(id, codigo_imovel, user_captador_id, captador_id)
+            `)
+            .eq('id', id)
+            .single()
+
+          if (locData) {
+            const imoveis = Array.isArray(locData.imoveis_captados) ? locData.imoveis_captados : []
+            const newDemand: Demand = {
+              id: locData.id,
+              nome_cliente: locData.nome_cliente || 'Cliente',
+              telefone: locData.telefone || '',
+              email: locData.email || '',
+              tipo: 'locacao',
+              valor_minimo: locData.valor_minimo || 0,
+              valor_maximo: locData.valor_maximo || 0,
+              bairros: locData.bairros || [],
+              dormitorios: locData.dormitorios || 0,
+              banheiros: locData.banheiros || 0,
+              vagas: locData.vagas_estacionamento || 0,
+              urgencia: locData.urgencia || 'Normal',
+              status: locData.status_demanda || 'aberta',
+              created_at: locData.created_at || new Date().toISOString(),
+              imoveiVinculados: imoveis.length,
+              imoveis: imoveis as any,
+              captadores_busca: locData.captadores_busca || [],
+              criador_nome:
+                (locData.criador as any)?.nome || (locData.criador as any)?.email || 'Desconhecido',
+              criador_id: locData.sdr_id || '',
+            }
+            setDemands((prev) => [newDemand, ...prev])
+            openAndScroll(newDemand)
+            return
+          }
+
+          const { data: venData } = await supabase
+            .from('demandas_vendas')
+            .select(`
+              id, nome_cliente, telefone, email, corretor_id, created_at, valor_minimo, valor_maximo, bairros, dormitorios, banheiros, vagas_estacionamento, urgencia, status_demanda, captadores_busca,
+              criador:users!demandas_vendas_corretor_id_fkey(nome, email),
+              imoveis_captados!imoveis_captados_demanda_venda_id_fkey(id, codigo_imovel, user_captador_id, captador_id)
+            `)
+            .eq('id', id)
+            .single()
+
+          if (venData) {
+            const imoveis = Array.isArray(venData.imoveis_captados) ? venData.imoveis_captados : []
+            const newDemand: Demand = {
+              id: venData.id,
+              nome_cliente: venData.nome_cliente || 'Cliente',
+              telefone: venData.telefone || '',
+              email: venData.email || '',
+              tipo: 'venda',
+              valor_minimo: venData.valor_minimo || 0,
+              valor_maximo: venData.valor_maximo || 0,
+              bairros: venData.bairros || [],
+              dormitorios: venData.dormitorios || 0,
+              banheiros: venData.banheiros || 0,
+              vagas: venData.vagas_estacionamento || 0,
+              urgencia: venData.urgencia || 'Normal',
+              status: venData.status_demanda || 'aberta',
+              created_at: venData.created_at || new Date().toISOString(),
+              imoveiVinculados: imoveis.length,
+              imoveis: imoveis as any,
+              captadores_busca: venData.captadores_busca || [],
+              criador_nome:
+                (venData.criador as any)?.nome || (venData.criador as any)?.email || 'Desconhecido',
+              criador_id: venData.corretor_id || '',
+            }
+            setDemands((prev) => [newDemand, ...prev])
+            openAndScroll(newDemand)
+          }
+        } catch (e) {
+          console.error('[BuscarDemandas] Erro ao buscar demanda via param id:', e)
+        }
+      }
+      fetchMissingDemand()
+    }
+  }, [searchParams, demands, loading, selectedDetalhes, setSearchParams])
 
   useEffect(() => {
     let filtered = demands

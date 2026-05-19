@@ -414,6 +414,7 @@ export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDeman
   return (
     <>
       <Card
+        id={`demand-card-${demand.id}`}
         className={cn(
           'w-full relative overflow-hidden rounded-[16px] border shadow-sm hover:shadow-md transition-all duration-200 bg-gradient-to-b flex flex-col h-full z-0',
           demand.is_prioritaria
