@@ -56,14 +56,15 @@ export function GlobalNotificationListener() {
             className: customColor,
             onClick: () => {
               const data = notif.dados_relacionados
-              if (data?.status === 'perdido') {
-                window.dispatchEvent(new CustomEvent('navigate-to', { detail: `/app/perdidos` }))
-              } else if (data?.demanda_id) {
-                const path =
-                  currentUserRef.current?.role === 'captador'
-                    ? `/app/buscar-imoveis?id=${data.demanda_id}`
-                    : `/app/demandas?id=${data.demanda_id}`
+              if (data?.demanda_id) {
+                const role = currentUserRef.current?.role?.toLowerCase() || ''
+                const isCaptadorFlow = ['captador', 'admin', 'gestor'].includes(role)
+                const path = isCaptadorFlow
+                  ? `/app/buscar-imoveis?id=${data.demanda_id}`
+                  : `/app/demandas?id=${data.demanda_id}`
                 window.dispatchEvent(new CustomEvent('navigate-to', { detail: path }))
+              } else if (data?.status === 'perdido') {
+                window.dispatchEvent(new CustomEvent('navigate-to', { detail: `/app/perdidos` }))
               } else if (data?.imovel_id) {
                 window.dispatchEvent(
                   new CustomEvent('navigate-to', { detail: `/app/disponivel-geral` }),

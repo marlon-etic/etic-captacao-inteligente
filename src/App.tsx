@@ -202,6 +202,17 @@ const AppRoutes = () => {
   }, [])
 
   useEffect(() => {
+    const handleNavigate = (e: Event) => {
+      const customEvent = e as CustomEvent<string>
+      if (customEvent.detail) {
+        navigate(customEvent.detail)
+      }
+    }
+    window.addEventListener('navigate-to', handleNavigate)
+    return () => window.removeEventListener('navigate-to', handleNavigate)
+  }, [navigate])
+
+  useEffect(() => {
     const handleNewMatch = (match: any) => {
       toast({
         title: '⚡ Novo Match Encontrado!',

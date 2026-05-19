@@ -107,6 +107,7 @@ export function ExpandableDemandCardSDR({
 
   return (
     <Card
+      id={`demand-card-${demand.id}`}
       className={cn(
         'w-full h-full relative overflow-hidden rounded-[16px] border shadow-sm hover:shadow-md transition-all duration-200 bg-gradient-to-b flex flex-col z-0',
         isPrioritized

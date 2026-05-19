@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { FilterSidebar } from '@/components/FilterSidebar'
 import { StickyFilterBar, FilterDef } from '@/components/StickyFilterBar'
 import { useViewFilters } from '@/hooks/useViewFilters'
@@ -68,6 +69,7 @@ const FILTERS: FilterDef[] = [
 export function MyDemandsView({ filterType }: Props) {
   const { currentUser } = useAppStore()
   const { toast } = useToast()
+  const [searchParams, setSearchParams] = useSearchParams()
 
   const activeType = filterType || (currentUser?.role === 'corretor' ? 'Venda' : 'Aluguel')
   const { demands, loading, syncing, refresh } = useSupabaseDemands(activeType)
@@ -97,6 +99,44 @@ export function MyDemandsView({ filterType }: Props) {
 
   const [actionDemand, setActionDemand] = useState<SupabaseDemand | null>(null)
   const [modalType, setModalType] = useState<'details' | 'edit' | 'lost' | null>(null)
+
+  useEffect(() => {
+    const id = searchParams.get('id')
+    if (!id || loading) return
+
+    const targetDemand = demands.find((d) => d.id === id)
+    if (targetDemand) {
+      setFilters({
+        prioridade: 'Todos',
+        status: 'Todos',
+        urgencia: 'Todos',
+        data: 'Todos',
+        bairro: '',
+      })
+
+      setActionDemand(targetDemand)
+      setModalType('details')
+
+      const newParams = new URLSearchParams(searchParams)
+      newParams.delete('id')
+      setSearchParams(newParams, { replace: true })
+
+      setTimeout(() => {
+        const el = document.getElementById(`demand-card-${id}`)
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          el.classList.add(
+            'ring-4',
+            'ring-[#2E5F8A]',
+            'ring-offset-2',
+            'transition-all',
+            'duration-500',
+          )
+          setTimeout(() => el.classList.remove('ring-4', 'ring-[#2E5F8A]', 'ring-offset-2'), 3000)
+        }
+      }, 500)
+    }
+  }, [searchParams, demands, loading, setFilters, setSearchParams])
 
   const handleAction = async (
     action: 'details' | 'edit' | 'lost' | 'prioritize',
