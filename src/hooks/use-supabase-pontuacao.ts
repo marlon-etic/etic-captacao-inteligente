@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { useToast } from '@/hooks/use-toast'
 import useAppStore from '@/stores/useAppStore'
-import { useSmartSync, useConsolidatedSync } from '@/hooks/useSmartSync'
+import { useSmartSync } from '@/hooks/useSmartSync'
 
 export interface Pontuacao {
   id: string
@@ -42,15 +42,10 @@ export function useSupabasePontuacao() {
   useEffect(() => {
     mounted.current = true
     fetchPontuacoes()
-    return () => {
-      mounted.current = false
-    }
-  }, [fetchPontuacoes])
 
-  useConsolidatedSync({
-    channelName: 'realtime_pontuacao_sync',
-    setupRealtime: (channel) => {
-      channel.on(
+    const channel = supabase
+      .channel('realtime_pontuacao_sync')
+      .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'pontuacao_captador' },
         (payload) => {
@@ -87,9 +82,13 @@ export function useSupabasePontuacao() {
           }
         },
       )
-    },
-    onFallbackPoll: fetchPontuacoes,
-  })
+      .subscribe()
+
+    return () => {
+      mounted.current = false
+      supabase.removeChannel(channel)
+    }
+  }, [fetchPontuacoes, currentUser, toast])
 
   return { pontuacoes, refresh: fetchPontuacoes }
 }
