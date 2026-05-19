@@ -54,6 +54,7 @@ function DemandCard({
 
   const handleBuscando = async () => {
     try {
+      console.log(`[NOTIFICACAO] Atualizando status para Estou Buscando na demanda ${demand.id}`)
       await supabase.rpc('append_captador_busca', {
         p_demanda_id: demand.id,
         p_tipo_demanda: demand.tipo === 'locacao' ? 'Aluguel' : 'Venda',
@@ -61,6 +62,14 @@ function DemandCard({
         p_nome: currentUser?.name || currentUser?.nome || 'Captador',
         p_regiao: demand.bairros[0] || 'Geral',
       })
+
+      const updateData = { status_demanda: 'em busca' }
+      if (demand.tipo === 'locacao') {
+        await supabase.from('demandas_locacao').update(updateData).eq('id', demand.id)
+      } else {
+        await supabase.from('demandas_vendas').update(updateData).eq('id', demand.id)
+      }
+
       toast({
         title: 'Status Atualizado',
         description: 'O criador da demanda foi notificado que você está buscando.',
@@ -430,7 +439,7 @@ export function BuscarDemandas() {
 
   // Lidar com o click na notificação (redirect para o card)
   useEffect(() => {
-    const id = searchParams.get('id')
+    const id = searchParams.get('demanda_id') || searchParams.get('id')
     if (!id || loading) return
 
     const openAndScroll = (demand: Demand) => {
@@ -449,6 +458,7 @@ export function BuscarDemandas() {
       // 3. Limpar param da URL
       const newParams = new URLSearchParams(searchParams)
       newParams.delete('id')
+      newParams.delete('demanda_id')
       setSearchParams(newParams, { replace: true })
 
       // 4. Scroll para o card
@@ -458,14 +468,14 @@ export function BuscarDemandas() {
           el.scrollIntoView({ behavior: 'smooth', block: 'center' })
           el.classList.add(
             'ring-4',
-            'ring-[#2E5F8A]',
-            'ring-offset-2',
+            'ring-blue-500',
+            'bg-blue-50',
             'transition-all',
             'duration-500',
           )
           setTimeout(() => {
-            el.classList.remove('ring-4', 'ring-[#2E5F8A]', 'ring-offset-2')
-          }, 3000)
+            el.classList.remove('ring-4', 'ring-blue-500', 'bg-blue-50')
+          }, 4000)
         }
       }, 500)
     }
@@ -566,7 +576,7 @@ export function BuscarDemandas() {
 
     if (filterStatusDemanda !== 'todas') {
       filtered = filtered.filter((d) => {
-        const isActive = ['aberta', 'em busca', 'sem_resposta_24h'].includes(d.status)
+        const isActive = ['aberta', 'atendida', 'em busca', 'sem_resposta_24h'].includes(d.status)
         return filterStatusDemanda === 'ativas' ? isActive : !isActive
       })
     }
@@ -600,6 +610,7 @@ export function BuscarDemandas() {
   const handleDarPerdidoConfirm = async (motivo: string) => {
     if (!selectedPerdido || !currentUser) return
     try {
+      console.log(`[NOTIFICACAO] Atualizando status para Perdido na demanda ${selectedPerdido.id}`)
       const { error } = await supabase.from('respostas_captador').insert({
         captador_id: currentUser.id,
         resposta: 'nao_encontrei',
@@ -727,6 +738,10 @@ export function BuscarDemandas() {
           demanda={selectedDetalhes}
           onClose={() => setSelectedDetalhes(null)}
           onReload={loadDemands}
+          onVincular={() => {
+            setSelectedDetalhes(null)
+            setSelectedVinculador(selectedDetalhes)
+          }}
         />
       )}
 

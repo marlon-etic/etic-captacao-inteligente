@@ -14,6 +14,13 @@ export interface LinkResponse {
   errorType?: 'validation' | 'permission' | 'server'
 }
 
+export const unlinkImovelFromDemanda = async (imovelId: string, isLocacao: boolean) => {
+  const updateData = isLocacao ? { demanda_locacao_id: null } : { demanda_venda_id: null }
+  const { error } = await supabase.from('imoveis_captados').update(updateData).eq('id', imovelId)
+  if (error) throw error
+  return true
+}
+
 export const vinculacaoService = {
   async linkImovelToDemanda(
     { imovelId, demandaId, usuarioId, isLocacao }: LinkParams,

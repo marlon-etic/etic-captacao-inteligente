@@ -73,7 +73,7 @@ export function ModalVinculador({
 
       if (error) throw error
 
-      console.log('[VINCULAR] Sucesso na vinculação!')
+      console.log(`[NOTIFICACAO] Imóveis vinculados à demanda ${demanda.id}`)
       toast({
         title: 'Sucesso!',
         description: `${selectedIds.size} imóvel(is) vinculado(s) com sucesso!`,

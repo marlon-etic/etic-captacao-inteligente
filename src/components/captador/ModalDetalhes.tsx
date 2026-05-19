@@ -3,17 +3,19 @@ import { Demand } from './BuscarDemandas'
 import { Button } from '@/components/ui/button'
 import { X, Unlink } from 'lucide-react'
 import useAppStore from '@/stores/useAppStore'
-import { unlinkImovelFromDemanda } from '@/services/vinculacaoService'
+import { unlinkImovelFromDemanda } from '@/services/vinculacao'
 import { useToast } from '@/hooks/use-toast'
 
 export function ModalDetalhes({
   demanda,
   onClose,
   onReload,
+  onVincular,
 }: {
   demanda: Demand | null
   onClose: () => void
   onReload?: () => void
+  onVincular?: () => void
 }) {
   const { currentUser } = useAppStore()
   const { toast } = useToast()
@@ -23,6 +25,7 @@ export function ModalDetalhes({
 
   const handleUnlink = async (imovelId: string) => {
     try {
+      console.log(`[NOTIFICACAO] Imóvel ${imovelId} desvinculado da demanda ${demanda.id}`)
       setIsUnlinking(imovelId)
       await unlinkImovelFromDemanda(imovelId, demanda.tipo === 'locacao')
       toast({
@@ -139,9 +142,20 @@ export function ModalDetalhes({
           {/* Imóveis Vinculados */}
           {demanda.imoveis && demanda.imoveis.length > 0 && (
             <div>
-              <h3 className="mb-3 text-sm font-bold tracking-wider text-gray-500 uppercase">
-                Imóveis Vinculados
-              </h3>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-bold tracking-wider text-gray-500 uppercase">
+                  Imóveis Vinculados
+                </h3>
+                {onVincular && (
+                  <Button
+                    onClick={onVincular}
+                    size="sm"
+                    className="bg-[#2E5F8A] hover:bg-[#1A3A52] text-white text-xs h-8"
+                  >
+                    + Vincular Novo Imóvel
+                  </Button>
+                )}
+              </div>{' '}
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {demanda.imoveis.map((imv) => {
                   const isMine =
