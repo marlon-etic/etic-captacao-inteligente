@@ -44,7 +44,7 @@ export function useSupabasePontuacao() {
     fetchPontuacoes()
 
     const channel = supabase
-      .channel('realtime_pontuacao_sync')
+      .channel(`realtime_pontuacao_sync_${Date.now()}_${Math.random()}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'pontuacao_captador' },

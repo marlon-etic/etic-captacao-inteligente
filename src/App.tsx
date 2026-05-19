@@ -223,7 +223,7 @@ const AppRoutes = () => {
       }, 60000)
 
       const channel = supabase
-        .channel('app_routes_matches')
+        .channel(`app_routes_matches_${Date.now()}_${Math.random()}`)
         .on(
           'postgres_changes',
           { event: 'INSERT', schema: 'public', table: 'matches_sugestoes' },
