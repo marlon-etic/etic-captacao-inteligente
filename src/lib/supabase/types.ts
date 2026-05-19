@@ -3816,6 +3816,42 @@ export const Constants = {
 //   END;
 //   $function$
 //   
+// FUNCTION notify_imovel_desvinculado()
+//   CREATE OR REPLACE FUNCTION public.notify_imovel_desvinculado()
+//    RETURNS trigger
+//    LANGUAGE plpgsql
+//    SECURITY DEFINER
+//   AS $function$
+//   DECLARE
+//       demanda_owner UUID;
+//       cliente_nome TEXT;
+//   BEGIN
+//       -- Desvinculação de Locação
+//       IF OLD.demanda_locacao_id IS NOT NULL AND NEW.demanda_locacao_id IS NULL THEN
+//           SELECT sdr_id, nome_cliente INTO demanda_owner, cliente_nome FROM public.demandas_locacao WHERE id = OLD.demanda_locacao_id;
+//           IF demanda_owner IS NOT NULL THEN
+//               INSERT INTO public.notificacoes (usuario_id, tipo, titulo, mensagem, dados_relacionados, prioridade)
+//               VALUES (demanda_owner, 'status_atualizado', 'Imóvel Desvinculado',
+//                       'O imóvel ' || COALESCE(OLD.codigo_imovel, 'S/C') || ' foi desvinculado da demanda de ' || COALESCE(cliente_nome, 'Cliente'),
+//                       jsonb_build_object('imovel_id', OLD.id, 'demanda_id', OLD.demanda_locacao_id), 'normal');
+//           END IF;
+//       END IF;
+//   
+//       -- Desvinculação de Venda
+//       IF OLD.demanda_venda_id IS NOT NULL AND NEW.demanda_venda_id IS NULL THEN
+//           SELECT corretor_id, nome_cliente INTO demanda_owner, cliente_nome FROM public.demandas_vendas WHERE id = OLD.demanda_venda_id;
+//           IF demanda_owner IS NOT NULL THEN
+//               INSERT INTO public.notificacoes (usuario_id, tipo, titulo, mensagem, dados_relacionados, prioridade)
+//               VALUES (demanda_owner, 'status_atualizado', 'Imóvel Desvinculado',
+//                       'O imóvel ' || COALESCE(OLD.codigo_imovel, 'S/C') || ' foi desvinculado da demanda de ' || COALESCE(cliente_nome, 'Cliente'),
+//                       jsonb_build_object('imovel_id', OLD.id, 'demanda_id', OLD.demanda_venda_id), 'normal');
+//           END IF;
+//       END IF;
+//   
+//       RETURN NEW;
+//   END;
+//   $function$
+//   
 // FUNCTION notify_nova_demanda()
 //   CREATE OR REPLACE FUNCTION public.notify_nova_demanda()
 //    RETURNS trigger
@@ -4191,6 +4227,7 @@ export const Constants = {
 //   marcar_prazo_imovel_trigger: CREATE TRIGGER marcar_prazo_imovel_trigger AFTER INSERT ON public.imoveis_captados FOR EACH ROW EXECUTE FUNCTION marcar_prazo_respondido_imovel()
 //   pontuacao_imovel_trigger: CREATE TRIGGER pontuacao_imovel_trigger AFTER INSERT ON public.imoveis_captados FOR EACH ROW EXECUTE FUNCTION fn_calculate_points_on_insert()
 //   trg_notify_imovel_atualizado: CREATE TRIGGER trg_notify_imovel_atualizado AFTER UPDATE ON public.imoveis_captados FOR EACH ROW EXECUTE FUNCTION notify_imovel_atualizado()
+//   trg_notify_imovel_desvinculado: CREATE TRIGGER trg_notify_imovel_desvinculado AFTER UPDATE OF demanda_locacao_id, demanda_venda_id ON public.imoveis_captados FOR EACH ROW EXECUTE FUNCTION notify_imovel_desvinculado()
 //   trg_notify_novo_imovel: CREATE TRIGGER trg_notify_novo_imovel AFTER INSERT ON public.imoveis_captados FOR EACH ROW EXECUTE FUNCTION notify_novo_imovel()
 //   trg_primeira_resposta_imovel: CREATE TRIGGER trg_primeira_resposta_imovel AFTER INSERT ON public.imoveis_captados FOR EACH ROW EXECUTE FUNCTION fn_registrar_primeira_resposta()
 //   trg_set_tipo_imovel: CREATE TRIGGER trg_set_tipo_imovel BEFORE INSERT OR UPDATE ON public.imoveis_captados FOR EACH ROW EXECUTE FUNCTION fn_set_tipo_imovel()
