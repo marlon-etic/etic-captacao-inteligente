@@ -49,6 +49,7 @@ import DisponivelGeralPage from '@/pages/dashboard/DisponivelGeralPage'
 import TodosCaptadosPage from '@/pages/dashboard/TodosCaptadosPage'
 import MeusCaptadosPage from '@/pages/MeusCaptadosPage'
 import MatchInteligentes from '@/pages/MatchInteligentes'
+import BuscarImoveisPage from '@/pages/dashboard/BuscarImoveisPage'
 import { SDRDashboard } from '@/pages/dashboard/SDRDashboard'
 
 // Landlord Panel Imports
@@ -310,6 +311,7 @@ const AppRoutes = () => {
       <Route path="/notificacoes" element={<Navigate to="/app/notificacoes" replace />} />
       <Route path="/ajuda" element={<Navigate to="/app/ajuda" replace />} />
       <Route path="/admin/properties" element={<Navigate to="/app/admin/properties" replace />} />
+      <Route path="/buscar-imoveis" element={<Navigate to="/app/buscar-imoveis" replace />} />
 
       <Route path="/app" element={<Layout />}>
         <Route index element={<DashboardRedirect />} />
@@ -434,6 +436,7 @@ const AppRoutes = () => {
         <Route path="disponivel-geral" element={<DisponivelGeralPage />} />
         <Route path="todos-captados" element={<TodosCaptadosPage />} />
         <Route path="match-inteligentes" element={<MatchInteligentes />} />
+        <Route path="buscar-imoveis" element={<BuscarImoveisPage />} />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>

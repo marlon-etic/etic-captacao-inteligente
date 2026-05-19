@@ -3,7 +3,7 @@ import { Tabs, TabsContent } from '@/components/ui/tabs'
 import { MyDemandsView } from '@/components/MyDemandsView'
 import { CapturedPropertiesView } from '@/components/CapturedPropertiesView'
 import { ScrollableTabs } from '@/components/ScrollableTabs'
-import { UltimosImoveisTab } from '@/components/UltimosImoveisTab'
+import { BuscarImoveisTab } from '@/components/BuscarImoveisTab'
 import { MetricsCardsSdr } from '@/components/sdr-dashboard/MetricsCardsSdr'
 import { ChartsSdr } from '@/components/sdr-dashboard/ChartsSdr'
 import { ListasSdr } from '@/components/sdr-dashboard/ListasSdr'
@@ -31,7 +31,7 @@ export function CorretorDashboard() {
     { value: 'visao-geral', label: 'Visão Geral' },
     { value: 'demandas', label: 'Demandas' },
     { value: 'cadastrados', label: 'Imóveis Vinculados' },
-    { value: 'ultimos-imoveis', label: 'Últimos Imóveis' },
+    { value: 'buscar-imoveis', label: 'Buscar Imóveis' },
   ]
 
   return (
@@ -81,8 +81,8 @@ export function CorretorDashboard() {
             />
           </TabsContent>
 
-          <TabsContent value="ultimos-imoveis" className="m-0 border-none">
-            <UltimosImoveisTab />
+          <TabsContent value="buscar-imoveis" className="m-0 border-none">
+            <BuscarImoveisTab />
           </TabsContent>
         </div>
       </Tabs>

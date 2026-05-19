@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { FilterSidebar } from '@/components/FilterSidebar'
 import { StickyFilterBar, FilterDef } from '@/components/StickyFilterBar'
 import { useViewFilters } from '@/hooks/useViewFilters'
@@ -71,6 +71,21 @@ export function MyDemandsView({ filterType }: Props) {
 
   const activeType = filterType || (currentUser?.role === 'corretor' ? 'Venda' : 'Aluguel')
   const { demands, loading, syncing, refresh } = useSupabaseDemands(activeType)
+
+  useEffect(() => {
+    const channelName =
+      activeType === 'Venda' ? 'demandas_vendas_changes' : 'demandas_locacao_changes'
+    const table = activeType === 'Venda' ? 'demandas_vendas' : 'demandas_locacao'
+    const sub = supabase
+      .channel(channelName)
+      .on('postgres_changes', { event: '*', schema: 'public', table }, () => {
+        refresh()
+      })
+      .subscribe()
+    return () => {
+      supabase.removeChannel(sub)
+    }
+  }, [activeType, refresh])
 
   const [filters, setFilters] = useViewFilters('my_demands_view_supabase_' + activeType, {
     prioridade: 'Todos',
