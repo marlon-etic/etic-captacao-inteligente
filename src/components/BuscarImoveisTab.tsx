@@ -45,6 +45,7 @@ export function BuscarImoveisTab() {
   })
   const [imovelSelecionado, setImovelSelecionado] = useState<any>(null)
   const [isVinculadorOpen, setIsVinculadorOpen] = useState(false)
+  const [openedFromDetalhes, setOpenedFromDetalhes] = useState(false)
   const [demandasAtivas, setDemandasAtivas] = useState<any[]>([])
   const [isNovaDemanda, setIsNovaDemanda] = useState(false)
   const [novaDemandaForm, setNovaDemandaForm] = useState({
@@ -141,6 +142,22 @@ export function BuscarImoveisTab() {
   }
 
   const openVinculador = () => {
+    setOpenedFromDetalhes(true)
+    loadDemandasAtivas()
+    setIsVinculadorOpen(true)
+  }
+
+  const handleAbrirDetalhes = (im: any, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation()
+    console.log('handleAbrirDetalhes chamado com id:', im.id)
+    setImovelSelecionado(im)
+  }
+
+  const handleVincularClick = (im: any, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation()
+    console.log('handleVincular chamado com id:', im.id)
+    setImovelSelecionado(im)
+    setOpenedFromDetalhes(false)
     loadDemandasAtivas()
     setIsVinculadorOpen(true)
   }
@@ -150,13 +167,13 @@ export function BuscarImoveisTab() {
     const updateData = isVenda
       ? {
           demanda_venda_id: demanda.id,
-          tipo_vinculacao: 'vinculado',
-          status_captacao: 'encontrado',
+          status_captacao: 'capturado',
+          etapa_funil: 'vinculado',
         }
       : {
           demanda_locacao_id: demanda.id,
-          tipo_vinculacao: 'vinculado',
-          status_captacao: 'encontrado',
+          status_captacao: 'capturado',
+          etapa_funil: 'vinculado',
         }
 
     const { error } = await supabase
@@ -165,12 +182,24 @@ export function BuscarImoveisTab() {
       .eq('id', imovelSelecionado.id)
 
     if (!error) {
+      await supabase.from('imovel_demand_match').insert({
+        imovel_id: imovelSelecionado.id,
+        demanda_id: demanda.id,
+        tipo_demanda: isVenda ? 'Venda' : 'Locação',
+        captador_id: imovelSelecionado.user_captador_id || imovelSelecionado.captador_id,
+        tipo_vinculacao: 'manual',
+        compatibilidade_pct: 100,
+      })
+
       toast({
         title: `Imóvel vinculado a ${demanda.nome_cliente || demanda.cliente_nome}! ✅`,
         className: 'bg-green-600 text-white border-green-700',
       })
       setIsVinculadorOpen(false)
-      setImovelSelecionado(null)
+      setIsNovaDemanda(false)
+      if (!openedFromDetalhes) {
+        setImovelSelecionado(null)
+      }
 
       await sendWebhookEvent({
         event_type: 'imovel_vinculado',
@@ -355,12 +384,35 @@ export function BuscarImoveisTab() {
                   </div>
                 )}
 
-                <div className="flex items-center justify-between text-xs text-gray-400 mt-auto pt-4 border-t border-gray-100 font-medium">
+                <div className="flex items-center justify-between text-xs text-gray-400 mt-auto pt-4 border-t border-gray-100 font-medium mb-3">
                   <div className="flex items-center">
                     <Clock className="w-3.5 h-3.5 mr-1.5" />
                     Há {formatDistanceToNow(new Date(im.created_at), { locale: ptBR })}
                   </div>
                   <div>{im.users?.nome || im.users?.email?.split('@')[0] || 'Captador'}</div>
+                </div>
+
+                <div
+                  className="flex gap-2 pt-3 border-t border-gray-100"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Button
+                    variant="outline"
+                    className="flex-1 font-bold text-gray-600 border-gray-300"
+                    onClick={(e) => handleAbrirDetalhes(im, e)}
+                    data-testid="btn-detalhes"
+                  >
+                    Detalhes
+                  </Button>
+                  {!demanda && (
+                    <Button
+                      className="flex-1 bg-emerald-600 hover:bg-emerald-700 font-bold text-white shadow-sm"
+                      onClick={(e) => handleVincularClick(im, e)}
+                      data-testid="btn-vincular"
+                    >
+                      Vincular
+                    </Button>
+                  )}
                 </div>
               </div>
             )
@@ -532,7 +584,18 @@ export function BuscarImoveisTab() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={isVinculadorOpen} onOpenChange={(o) => !o && setIsVinculadorOpen(false)}>
+      <Dialog
+        open={isVinculadorOpen}
+        onOpenChange={(o) => {
+          if (!o) {
+            setIsVinculadorOpen(false)
+            setIsNovaDemanda(false)
+            if (!openedFromDetalhes) {
+              setImovelSelecionado(null)
+            }
+          }
+        }}
+      >
         <DialogContent className="max-w-2xl p-0 bg-gray-50 border-none shadow-2xl rounded-2xl overflow-hidden flex flex-col h-[85vh] w-[95vw] md:w-full">
           <DialogHeader className="p-6 border-b border-gray-200 bg-white shrink-0 shadow-sm z-10">
             <DialogTitle className="text-xl font-black text-[#1A3A52]">
