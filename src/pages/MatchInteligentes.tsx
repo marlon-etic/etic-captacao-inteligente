@@ -37,7 +37,22 @@ export default function MatchInteligentes() {
       setLoading(true)
       setError(null)
 
-      const pendingMatches = await getPendingMatches(50, role)
+      let pendingMatches
+      try {
+        pendingMatches = await getPendingMatches(50, role)
+      } catch (err: any) {
+        if (err.message === 'TIMEOUT') {
+          toast({
+            title: 'Servidor ocupado',
+            description:
+              'A busca de matches demorou muito. Mostrando resultados em cache ou tente novamente.',
+            variant: 'destructive',
+          })
+          setLoading(false)
+          return
+        }
+        throw err
+      }
 
       if (!pendingMatches || pendingMatches.length === 0) {
         setMatches([])
@@ -59,16 +74,35 @@ export default function MatchInteligentes() {
         ),
       ]
 
-      const promises = [supabase.from('imoveis_captados').select('*').in('id', imovelIds)]
+      const promises = [
+        supabase
+          .from('imoveis_captados')
+          .select('id, codigo_imovel, localizacao_texto, preco, valor, dormitorios, vagas, tipo')
+          .in('id', imovelIds),
+      ]
 
       if (demandaVendaIds.length > 0) {
-        promises.push(supabase.from('demandas_vendas').select('*').in('id', demandaVendaIds))
+        promises.push(
+          supabase
+            .from('demandas_vendas')
+            .select(
+              'id, nome_cliente, cliente_nome, valor_minimo, valor_maximo, dormitorios, quartos, vagas_estacionamento, vagas',
+            )
+            .in('id', demandaVendaIds),
+        )
       } else {
         promises.push(Promise.resolve({ data: [] } as any))
       }
 
       if (demandaLocacaoIds.length > 0) {
-        promises.push(supabase.from('demandas_locacao').select('*').in('id', demandaLocacaoIds))
+        promises.push(
+          supabase
+            .from('demandas_locacao')
+            .select(
+              'id, nome_cliente, cliente_nome, valor_minimo, valor_maximo, dormitorios, quartos, vagas_estacionamento, vagas',
+            )
+            .in('id', demandaLocacaoIds),
+        )
       } else {
         promises.push(Promise.resolve({ data: [] } as any))
       }

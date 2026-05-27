@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import useAppStore from '@/stores/useAppStore'
 import { getTiposVisiveis } from '@/lib/roleFilters'
+import { useEffect, useState, useRef } from 'react'
 
 interface Props {
   filters: any
@@ -17,6 +18,30 @@ interface Props {
 }
 
 export function PropertyFilters({ filters, onChange }: Props) {
+  const [localBairro, setLocalBairro] = useState(filters.bairro || '')
+  const [localMaxValor, setLocalMaxValor] = useState(filters.maxValor || '')
+  const timerRef = useRef<NodeJS.Timeout | null>(null)
+
+  useEffect(() => {
+    setLocalBairro(filters.bairro || '')
+    setLocalMaxValor(filters.maxValor || '')
+  }, [filters.bairro, filters.maxValor])
+
+  const handleBairroChange = (val: string) => {
+    setLocalBairro(val)
+    if (timerRef.current) clearTimeout(timerRef.current)
+    timerRef.current = setTimeout(() => {
+      onChange({ ...filters, bairro: val })
+    }, 500)
+  }
+
+  const handleMaxValorChange = (val: string) => {
+    setLocalMaxValor(val)
+    if (timerRef.current) clearTimeout(timerRef.current)
+    timerRef.current = setTimeout(() => {
+      onChange({ ...filters, maxValor: val })
+    }, 500)
+  }
   const { currentUser } = useAppStore()
   const tiposVisiveis = getTiposVisiveis(currentUser?.role)
 
@@ -92,8 +117,8 @@ export function PropertyFilters({ filters, onChange }: Props) {
           </Label>
           <Input
             placeholder="Buscar imóveis..."
-            value={filters.bairro}
-            onChange={(e) => update('bairro', e.target.value)}
+            value={localBairro}
+            onChange={(e) => handleBairroChange(e.target.value)}
             className="h-[44px] text-sm border-[#E5E5E5] focus-visible:ring-[#1A3A52]"
           />
         </div>
@@ -143,8 +168,8 @@ export function PropertyFilters({ filters, onChange }: Props) {
           <Input
             type="number"
             placeholder="Ex: 5000"
-            value={filters.maxValor}
-            onChange={(e) => update('maxValor', e.target.value)}
+            value={localMaxValor}
+            onChange={(e) => handleMaxValorChange(e.target.value)}
             className="h-[44px] text-sm border-[#E5E5E5] focus-visible:ring-[#1A3A52]"
           />
         </div>

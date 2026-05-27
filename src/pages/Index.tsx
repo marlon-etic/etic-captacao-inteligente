@@ -86,6 +86,14 @@ export default function Index() {
 
       if (supaError) {
         if (
+          supaError.status === 504 ||
+          supaError.message.toLowerCase().includes('timeout') ||
+          supaError.message.toLowerCase().includes('upstream request')
+        ) {
+          throw new Error(
+            'O servidor demorou muito para responder. Por favor, tente novamente em alguns instantes.',
+          )
+        } else if (
           supaError.message.toLowerCase().includes('banned') ||
           supaError.message.toLowerCase().includes('disabled') ||
           supaError.message.toLowerCase().includes('suspended')

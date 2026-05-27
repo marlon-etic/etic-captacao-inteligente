@@ -64,8 +64,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    return { error }
+    try {
+      const timeoutPromise = new Promise<{ error: any }>((_, reject) =>
+        setTimeout(() => reject(new Error('TIMEOUT')), 15000),
+      )
+      const authPromise = supabase.auth.signInWithPassword({ email, password })
+      const result = (await Promise.race([authPromise, timeoutPromise])) as any
+      return { error: result.error }
+    } catch (err: any) {
+      if (err.message === 'TIMEOUT' || err.message?.includes('fetch')) {
+        return { error: { message: 'Upstream Request Timeout', status: 504 } as any }
+      }
+      return { error: err }
+    }
   }
 
   const signOut = async () => {

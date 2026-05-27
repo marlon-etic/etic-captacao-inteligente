@@ -1,163 +1,72 @@
 import { supabase } from '@/lib/supabase/client'
-import { getTiposVisiveis } from '@/lib/roleFilters'
 
-async function executeWithRetry<T>(
-  operation: () => Promise<T>,
-  retries = 2,
-  delay = 1000,
-): Promise<T> {
-  let lastError: any
-  for (let i = 0; i < retries; i++) {
-    try {
-      return await operation()
-    } catch (error: any) {
-      lastError = error
-      const errorMsg = error?.message || error?.toString() || ''
-      const isNetworkError =
-        errorMsg.includes('Failed to fetch') ||
-        errorMsg.includes('NetworkError') ||
-        errorMsg.includes('fetch') ||
-        errorMsg.toLowerCase().includes('timeout') ||
-        errorMsg.toLowerCase().includes('aborted') ||
-        error instanceof TypeError ||
-        errorMsg.includes('TypeError')
+let cachedMatches: any[] | null = null
+let lastRole: string | null = null
+let lastFetchTime: number = 0
+const CACHE_TTL = 30000 // 30 seconds
 
-      if (!isNetworkError) {
-        throw error
-      }
-
-      console.warn(
-        `[MATCHING SERVICE] Erro de rede detectado. Tentativa ${i + 1} de ${retries}...`,
-        errorMsg,
-      )
-      if (i < retries - 1) {
-        await new Promise((res) => setTimeout(res, delay * (i + 1)))
-      }
-    }
+export async function getPendingMatches(limit: number = 50, role?: string | null) {
+  // Intelligent Local Caching
+  if (cachedMatches && role === lastRole && Date.now() - lastFetchTime < CACHE_TTL) {
+    return cachedMatches
   }
-  throw lastError
-}
 
-export interface MatchSugestao {
-  id: string
-  imovel_id: string
-  demanda_id: string
-  demanda_tipo: 'Venda' | 'Locação'
-  score: number
-  status: 'pendente' | 'aceito' | 'rejeitado' | 'vinculado'
-  created_at: string
-}
+  const { data, error } = await supabase
+    .from('matches_sugestoes')
+    .select('id, imovel_id, demanda_id, demanda_tipo, score, status')
+    .eq('status', 'pendente')
+    .order('score', { ascending: false })
+    .limit(limit)
 
-export async function getPendingMatches(limit = 50, role?: string): Promise<MatchSugestao[]> {
-  try {
-    const tipos = getTiposVisiveis(role)
-
-    let result
-    try {
-      result = await executeWithRetry(() =>
-        supabase
-          .from('matches_sugestoes')
-          .select(`
-          *,
-          imoveis_captados!inner(id, tipo)
-        `)
-          .eq('status', 'pendente')
-          .in('imoveis_captados.tipo', tipos)
-          .order('score', { ascending: false })
-          .order('created_at', { ascending: false })
-          .limit(limit),
-      )
-    } catch (retryError) {
-      console.warn('[MATCHING SERVICE] Falha de rede ao buscar matches pendentes:', retryError)
-      return []
+  if (error) {
+    if (
+      error.code === '504' ||
+      error.message?.toLowerCase().includes('timeout') ||
+      error.message?.toLowerCase().includes('upstream')
+    ) {
+      throw new Error('TIMEOUT')
     }
-
-    const { data, error } = result
-
-    if (error) {
-      console.warn('[MATCHING SERVICE] Erro retornado pelo Supabase em matches pendentes:', error)
-      return []
-    }
-
-    return (data as any) || []
-  } catch (error) {
-    console.error('[MATCHING SERVICE] Erro fatal ao buscar matches pendentes:', error)
-    return [] // Return empty to prevent infinite loading state or runtime crashes
-  }
-}
-
-export async function findNewMatches(
-  onNewMatch?: (match: any) => void,
-  role?: string,
-): Promise<MatchSugestao[]> {
-  try {
-    console.log('[MATCHING SERVICE] Verificando novos matches...')
-    const tipos = getTiposVisiveis(role)
-
-    let result
-    try {
-      result = await executeWithRetry(() =>
-        supabase
-          .from('matches_sugestoes')
-          .select(`
-          *,
-          imoveis_captados!inner(id, codigo_imovel, localizacao_texto, preco, valor, tipo)
-        `)
-          .eq('status', 'pendente')
-          .in('imoveis_captados.tipo', tipos)
-          .order('created_at', { ascending: false })
-          .limit(10),
-      )
-    } catch (retryError) {
-      console.warn('[MATCHING SERVICE] Falha de rede ao consultar novos matches:', retryError)
-      return []
-    }
-
-    const { data, error } = result
-
-    if (error) {
-      console.warn('[MATCHING SERVICE] Erro retornado pelo Supabase em novos matches:', error)
-      return []
-    }
-
-    const matches = (data || []).map((d: any) => ({
-      ...d,
-      imovel: d.imoveis_captados,
-    }))
-
-    for (const match of matches) {
-      if (onNewMatch) {
-        try {
-          onNewMatch(match)
-        } catch (cbErr) {
-          console.error('[MATCHING SERVICE] Erro no callback onNewMatch:', cbErr)
-        }
-      }
-    }
-
-    return matches as any
-  } catch (error) {
-    console.error('[MATCHING SERVICE] Erro fatal ao verificar novos matches:', error)
-    return []
-  }
-}
-
-export async function updateMatchStatus(
-  matchId: string,
-  status: 'aceito' | 'rejeitado' | 'vinculado',
-): Promise<void> {
-  try {
-    const { error } = await executeWithRetry(() =>
-      supabase
-        .from('matches_sugestoes')
-        .update({ status, updated_at: new Date().toISOString() })
-        .eq('id', matchId),
-    )
-
-    if (error) throw error
-    console.log('[MATCHING SERVICE] Match atualizado:', { matchId, status })
-  } catch (error) {
-    console.error('[MATCHING SERVICE] Erro ao atualizar match:', error)
     throw error
+  }
+
+  cachedMatches = data || []
+  lastRole = role || null
+  lastFetchTime = Date.now()
+
+  return data || []
+}
+
+export async function updateMatchStatus(matchId: string, status: string) {
+  const { error } = await supabase.from('matches_sugestoes').update({ status }).eq('id', matchId)
+
+  if (error) throw error
+
+  if (cachedMatches) {
+    cachedMatches = cachedMatches.filter((m) => m.id !== matchId)
+  }
+  return true
+}
+
+export async function findNewMatches(onMatchFound: (match: any) => void, role?: string | null) {
+  try {
+    const { data, error } = await supabase
+      .from('matches_sugestoes')
+      .select('id, score, imovel_id, imoveis_captados!inner(id, codigo_imovel)')
+      .eq('status', 'pendente')
+      .order('created_at', { ascending: false })
+      .limit(1)
+
+    if (error) return
+
+    if (data && data.length > 0) {
+      const match = data[0]
+      onMatchFound({
+        id: match.id,
+        score: match.score,
+        imovel: match.imoveis_captados,
+      })
+    }
+  } catch (err) {
+    // Ignore silent errors for background polling
   }
 }
