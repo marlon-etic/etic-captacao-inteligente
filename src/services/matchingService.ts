@@ -12,10 +12,15 @@ async function executeWithRetry<T>(
       return await operation()
     } catch (error: any) {
       lastError = error
+      const errorMsg = error?.message || error?.toString() || ''
       const isNetworkError =
-        error?.message?.includes('Failed to fetch') ||
-        error?.message?.includes('NetworkError') ||
-        error?.toString().includes('fetch')
+        errorMsg.includes('Failed to fetch') ||
+        errorMsg.includes('NetworkError') ||
+        errorMsg.includes('fetch') ||
+        errorMsg.toLowerCase().includes('timeout') ||
+        errorMsg.toLowerCase().includes('aborted') ||
+        error instanceof TypeError ||
+        errorMsg.includes('TypeError')
 
       if (!isNetworkError) {
         throw error
@@ -23,7 +28,7 @@ async function executeWithRetry<T>(
 
       console.warn(
         `[MATCHING SERVICE] Erro de rede detectado. Tentativa ${i + 1} de ${retries}...`,
-        error?.message,
+        errorMsg,
       )
       if (i < retries - 1) {
         await new Promise((res) => setTimeout(res, delay * (i + 1)))
@@ -47,24 +52,36 @@ export async function getPendingMatches(limit = 50, role?: string): Promise<Matc
   try {
     const tipos = getTiposVisiveis(role)
 
-    const { data, error } = await executeWithRetry(() =>
-      supabase
-        .from('matches_sugestoes')
-        .select(`
-        *,
-        imoveis_captados!inner(id, tipo)
-      `)
-        .eq('status', 'pendente')
-        .in('imoveis_captados.tipo', tipos)
-        .order('score', { ascending: false })
-        .order('created_at', { ascending: false })
-        .limit(limit),
-    )
+    let result
+    try {
+      result = await executeWithRetry(() =>
+        supabase
+          .from('matches_sugestoes')
+          .select(`
+          *,
+          imoveis_captados!inner(id, tipo)
+        `)
+          .eq('status', 'pendente')
+          .in('imoveis_captados.tipo', tipos)
+          .order('score', { ascending: false })
+          .order('created_at', { ascending: false })
+          .limit(limit),
+      )
+    } catch (retryError) {
+      console.warn('[MATCHING SERVICE] Falha de rede ao buscar matches pendentes:', retryError)
+      return []
+    }
 
-    if (error) throw error
+    const { data, error } = result
+
+    if (error) {
+      console.warn('[MATCHING SERVICE] Erro retornado pelo Supabase em matches pendentes:', error)
+      return []
+    }
+
     return (data as any) || []
   } catch (error) {
-    console.error('[MATCHING SERVICE] Erro ao buscar matches pendentes:', error)
+    console.error('[MATCHING SERVICE] Erro fatal ao buscar matches pendentes:', error)
     return [] // Return empty to prevent infinite loading state or runtime crashes
   }
 }
@@ -77,21 +94,29 @@ export async function findNewMatches(
     console.log('[MATCHING SERVICE] Verificando novos matches...')
     const tipos = getTiposVisiveis(role)
 
-    const { data, error } = await executeWithRetry(() =>
-      supabase
-        .from('matches_sugestoes')
-        .select(`
-        *,
-        imoveis_captados!inner(id, codigo_imovel, localizacao_texto, preco, valor, tipo)
-      `)
-        .eq('status', 'pendente')
-        .in('imoveis_captados.tipo', tipos)
-        .order('created_at', { ascending: false })
-        .limit(10),
-    )
+    let result
+    try {
+      result = await executeWithRetry(() =>
+        supabase
+          .from('matches_sugestoes')
+          .select(`
+          *,
+          imoveis_captados!inner(id, codigo_imovel, localizacao_texto, preco, valor, tipo)
+        `)
+          .eq('status', 'pendente')
+          .in('imoveis_captados.tipo', tipos)
+          .order('created_at', { ascending: false })
+          .limit(10),
+      )
+    } catch (retryError) {
+      console.warn('[MATCHING SERVICE] Falha de rede ao consultar novos matches:', retryError)
+      return []
+    }
+
+    const { data, error } = result
 
     if (error) {
-      console.warn('[MATCHING SERVICE] Falha ao consultar novos matches:', error)
+      console.warn('[MATCHING SERVICE] Erro retornado pelo Supabase em novos matches:', error)
       return []
     }
 
@@ -112,7 +137,7 @@ export async function findNewMatches(
 
     return matches as any
   } catch (error) {
-    console.error('[MATCHING SERVICE] Erro ao verificar novos matches:', error)
+    console.error('[MATCHING SERVICE] Erro fatal ao verificar novos matches:', error)
     return []
   }
 }
