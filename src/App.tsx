@@ -229,9 +229,13 @@ const AppRoutes = () => {
     }
 
     if (role) {
-      findNewMatches(handleNewMatch, role).catch(console.error)
+      findNewMatches(handleNewMatch, role).catch((err) => {
+        console.warn('[AppRoutes] Falha não crítica ao buscar matches iniciais:', err)
+      })
       const interval = setInterval(() => {
-        findNewMatches(handleNewMatch, role).catch(console.error)
+        findNewMatches(handleNewMatch, role).catch((err) => {
+          console.warn('[AppRoutes] Falha não crítica ao buscar matches no intervalo:', err)
+        })
       }, 60000)
 
       const channel = supabase

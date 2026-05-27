@@ -37,7 +37,10 @@ export function GlobalMatchListener() {
       try {
         await findNewMatches(handleNewMatch)
       } catch (err) {
-        console.error('[GlobalMatchListener] Erro:', err)
+        console.warn(
+          '[GlobalMatchListener] Falha silenciosa ao verificar matches (possível erro de rede):',
+          err,
+        )
       }
     }
 

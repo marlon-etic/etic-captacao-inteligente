@@ -36,13 +36,22 @@ export default function Index() {
       navigate('/app', { replace: true })
     } else if (currentUser && !session) {
       // Prevent race conditions where session is momentarily null during login
-      supabase.auth.getSession().then(({ data: { session: activeSession } }) => {
-        if (!activeSession) {
+      supabase.auth
+        .getSession()
+        .then(({ data: { session: activeSession } }) => {
+          if (!activeSession) {
+            logout()
+          } else {
+            navigate('/app', { replace: true })
+          }
+        })
+        .catch((err) => {
+          console.error(
+            '[Index] Erro de rede ao recuperar sessão. Forçando logout para prevenir Infinite Loading.',
+            err,
+          )
           logout()
-        } else {
-          navigate('/app', { replace: true })
-        }
-      })
+        })
     }
   }, [currentUser, session, authLoading, isRestoringUser, navigate, logout])
 
