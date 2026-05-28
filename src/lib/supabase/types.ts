@@ -4271,23 +4271,30 @@ export const Constants = {
 //   CREATE INDEX idx_demandas_vendas_prazo ON public.demandas_vendas USING btree (data_prazo_resposta) WHERE (marcada_sem_resposta = false)
 //   CREATE INDEX idx_demandas_vendas_status_demanda ON public.demandas_vendas USING btree (status_demanda)
 // Table: fechamentos
+//   CREATE INDEX idx_fechamentos_demanda_id ON public.fechamentos USING btree (demanda_id)
 //   CREATE INDEX idx_fechamentos_user ON public.fechamentos USING btree (user_sdr_id)
 // Table: imoveis_captados
 //   CREATE INDEX idx_imoveis_captados_captador_id ON public.imoveis_captados USING btree (captador_id)
 //   CREATE INDEX idx_imoveis_captados_created_at_desc ON public.imoveis_captados USING btree (created_at DESC)
 //   CREATE INDEX idx_imoveis_captados_demanda_locacao_id ON public.imoveis_captados USING btree (demanda_locacao_id)
 //   CREATE INDEX idx_imoveis_captados_demanda_venda_id ON public.imoveis_captados USING btree (demanda_venda_id)
+//   CREATE INDEX idx_imoveis_captados_etapa_funil ON public.imoveis_captados USING btree (etapa_funil)
 //   CREATE INDEX idx_imoveis_captados_landlord_id ON public.imoveis_captados USING btree (landlord_id)
 //   CREATE INDEX idx_imoveis_captados_status_captacao ON public.imoveis_captados USING btree (status_captacao)
 //   CREATE INDEX idx_imoveis_captados_user_captador_id ON public.imoveis_captados USING btree (user_captador_id)
 //   CREATE INDEX idx_imoveis_captados_user_captador_id_perf ON public.imoveis_captados USING btree (user_captador_id)
 //   CREATE INDEX idx_imoveis_tipo ON public.imoveis_captados USING btree (tipo)
 //   CREATE UNIQUE INDEX imoveis_captados_codigo_imovel_key ON public.imoveis_captados USING btree (codigo_imovel)
+// Table: imovel_demand_match
+//   CREATE INDEX idx_imovel_demand_match_demanda_id ON public.imovel_demand_match USING btree (demanda_id)
+//   CREATE INDEX idx_imovel_demand_match_imovel_id ON public.imovel_demand_match USING btree (imovel_id)
 // Table: landlord_profiles
 //   CREATE INDEX idx_landlord_profiles_user_id ON public.landlord_profiles USING btree (user_id)
 // Table: matches_sugestoes
 //   CREATE INDEX idx_matches_sugestoes_demanda ON public.matches_sugestoes USING btree (demanda_id)
+//   CREATE INDEX idx_matches_sugestoes_demanda_id ON public.matches_sugestoes USING btree (demanda_id)
 //   CREATE INDEX idx_matches_sugestoes_imovel ON public.matches_sugestoes USING btree (imovel_id)
+//   CREATE INDEX idx_matches_sugestoes_imovel_id ON public.matches_sugestoes USING btree (imovel_id)
 //   CREATE INDEX idx_matches_sugestoes_score ON public.matches_sugestoes USING btree (score DESC)
 //   CREATE INDEX idx_matches_sugestoes_status ON public.matches_sugestoes USING btree (status)
 //   CREATE UNIQUE INDEX matches_sugestoes_imovel_id_demanda_id_demanda_tipo_key ON public.matches_sugestoes USING btree (imovel_id, demanda_id, demanda_tipo)
@@ -4313,6 +4320,7 @@ export const Constants = {
 //   CREATE INDEX idx_users_status ON public.users USING btree (status)
 //   CREATE UNIQUE INDEX users_email_key ON public.users USING btree (email)
 // Table: visitas_imovel
+//   CREATE INDEX idx_visitas_imovel_demanda_id ON public.visitas_imovel USING btree (demanda_id)
 //   CREATE INDEX idx_visitas_imovel_user ON public.visitas_imovel USING btree (user_sdr_id)
 // Table: vistasoft_cache
 //   CREATE INDEX idx_vistasoft_cache_expires_at ON public.vistasoft_cache USING btree (expires_at)

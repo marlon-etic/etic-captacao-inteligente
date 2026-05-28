@@ -46,9 +46,17 @@ export function GlobalNotificationListener() {
           const notif = payload.new
 
           let customColor = ''
-          if (notif.prioridade === 'alta') customColor = 'bg-[#EF4444] text-white border-none'
-          else if (notif.prioridade === 'baixa') customColor = 'bg-[#6B7280] text-white border-none'
-          else customColor = 'bg-[#3B82F6] text-white border-none'
+          const data = notif.dados_relacionados
+
+          if (data?.is_match) {
+            customColor = 'bg-[#10B981] text-white border-none shadow-lg' // Success/Green for Match
+          } else if (notif.prioridade === 'alta') {
+            customColor = 'bg-[#EF4444] text-white border-none shadow-lg'
+          } else if (notif.prioridade === 'baixa') {
+            customColor = 'bg-[#6B7280] text-white border-none shadow-lg'
+          } else {
+            customColor = 'bg-[#3B82F6] text-white border-none shadow-lg'
+          }
 
           toast({
             title: notif.titulo,
