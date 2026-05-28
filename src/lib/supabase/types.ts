@@ -4274,6 +4274,9 @@ export const Constants = {
 //   CREATE INDEX idx_fechamentos_user ON public.fechamentos USING btree (user_sdr_id)
 // Table: imoveis_captados
 //   CREATE INDEX idx_imoveis_captados_captador_id ON public.imoveis_captados USING btree (captador_id)
+//   CREATE INDEX idx_imoveis_captados_created_at_desc ON public.imoveis_captados USING btree (created_at DESC)
+//   CREATE INDEX idx_imoveis_captados_demanda_locacao_id ON public.imoveis_captados USING btree (demanda_locacao_id)
+//   CREATE INDEX idx_imoveis_captados_demanda_venda_id ON public.imoveis_captados USING btree (demanda_venda_id)
 //   CREATE INDEX idx_imoveis_captados_landlord_id ON public.imoveis_captados USING btree (landlord_id)
 //   CREATE INDEX idx_imoveis_captados_status_captacao ON public.imoveis_captados USING btree (status_captacao)
 //   CREATE INDEX idx_imoveis_captados_user_captador_id ON public.imoveis_captados USING btree (user_captador_id)
@@ -4290,8 +4293,10 @@ export const Constants = {
 //   CREATE UNIQUE INDEX matches_sugestoes_imovel_id_demanda_id_demanda_tipo_key ON public.matches_sugestoes USING btree (imovel_id, demanda_id, demanda_tipo)
 // Table: notificacoes
 //   CREATE INDEX idx_notificacoes_created ON public.notificacoes USING btree (created_at DESC)
+//   CREATE INDEX idx_notificacoes_created_at_desc ON public.notificacoes USING btree (created_at DESC)
 //   CREATE INDEX idx_notificacoes_lido ON public.notificacoes USING btree (usuario_id, lido)
 //   CREATE INDEX idx_notificacoes_usuario ON public.notificacoes USING btree (usuario_id)
+//   CREATE INDEX idx_notificacoes_usuario_id ON public.notificacoes USING btree (usuario_id)
 //   CREATE INDEX idx_notificacoes_usuario_lido ON public.notificacoes USING btree (usuario_id, lido)
 // Table: respostas_captador
 //   CREATE INDEX idx_respostas_captador_cap_id ON public.respostas_captador USING btree (captador_id)

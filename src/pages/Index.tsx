@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState, useContext, ReactNode, FormEvent } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import { z } from 'zod'
 
 import { Mail, Lock, LogIn, Building2, Loader2, AlertTriangle } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -11,6 +12,11 @@ import { useToast } from '@/hooks/use-toast'
 import useAppStore from '@/stores/useAppStore'
 import { useAuth } from '@/hooks/use-auth'
 import { supabase } from '@/lib/supabase/client'
+
+const loginSchema = z.object({
+  email: z.string().email('E-mail inválido. Verifique o formato.'),
+  password: z.string().min(6, 'A senha deve ter no mínimo 6 caracteres.'),
+})
 
 export default function Index() {
   const [email, setEmail] = useState('')
@@ -55,34 +61,48 @@ export default function Index() {
     }
   }, [currentUser, session, authLoading, isRestoringUser, navigate, logout])
 
+  const attemptSignIn = async (
+    cleanEmail: string,
+    cleanPassword: string,
+    attempts = 3,
+  ): Promise<any> => {
+    try {
+      const { error } = await signIn(cleanEmail, cleanPassword)
+      if (error && (error.status === 504 || error.message.toLowerCase().includes('fetch'))) {
+        if (attempts > 1) {
+          await new Promise((resolve) => setTimeout(resolve, 1000 * (4 - attempts)))
+          return attemptSignIn(cleanEmail, cleanPassword, attempts - 1)
+        }
+      }
+      return { error }
+    } catch (e: any) {
+      if (attempts > 1) {
+        await new Promise((resolve) => setTimeout(resolve, 1000 * (4 - attempts)))
+        return attemptSignIn(cleanEmail, cleanPassword, attempts - 1)
+      }
+      return { error: e }
+    }
+  }
+
   const handleLogin = async (e: FormEvent) => {
     e.preventDefault()
 
-    let cleanEmail = email.trim().toLowerCase()
-    let cleanPassword = password.trim()
+    const cleanEmail = email.trim().toLowerCase()
+    const cleanPassword = password.trim()
 
-    // Auto-fix common typo for this specific user
-    if (cleanEmail === 'marlonjmoro@hotrmail.com') {
-      cleanEmail = 'marlonjmoro@hotmail.com'
-    }
-
-    if (/^[\d\s\-()]+$/.test(cleanPassword)) {
-      cleanPassword = cleanPassword.replace(/[\s\-()]/g, '')
-    }
-
-    if (!cleanEmail || !cleanPassword) {
-      toast({
-        title: 'Atenção',
-        description: 'Preencha todos os campos.',
-        variant: 'destructive',
-      })
-      return
+    try {
+      loginSchema.parse({ email: cleanEmail, password: cleanPassword })
+    } catch (err: any) {
+      if (err instanceof z.ZodError) {
+        setInitError({ title: 'Atenção', message: err.errors[0].message })
+        return
+      }
     }
 
     setIsLoading(true)
     setInitError(null)
     try {
-      const { error: supaError } = await signIn(cleanEmail, cleanPassword)
+      const { error: supaError } = await attemptSignIn(cleanEmail, cleanPassword)
 
       if (supaError) {
         if (
@@ -113,6 +133,15 @@ export default function Index() {
       }
 
       await login(cleanEmail, cleanPassword)
+
+      // Trigger data validation if user is admin
+      supabase.auth.getUser().then(async ({ data }) => {
+        const role = data.user?.user_metadata?.role || data.user?.app_metadata?.role
+        if (role === 'admin' || role === 'gestor') {
+          import('@/lib/data-validation').then((m) => m.validateDataIntegrity())
+        }
+      })
+
       navigate('/app', { replace: true })
     } catch (err: any) {
       setInitError({ title: 'Erro de Autenticação', message: err.message })
@@ -175,6 +204,15 @@ export default function Index() {
       }
 
       await login(mockEmail, pass)
+
+      // Trigger data validation if user is admin
+      supabase.auth.getUser().then(async ({ data }) => {
+        const role = data.user?.user_metadata?.role || data.user?.app_metadata?.role
+        if (role === 'admin' || role === 'gestor') {
+          import('@/lib/data-validation').then((m) => m.validateDataIntegrity())
+        }
+      })
+
       navigate('/app', { replace: true })
     } catch (err: any) {
       toast({

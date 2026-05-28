@@ -1,0 +1,10 @@
+CREATE INDEX IF NOT EXISTS idx_demandas_locacao_status_demanda ON public.demandas_locacao (status_demanda);
+CREATE INDEX IF NOT EXISTS idx_demandas_vendas_status_demanda ON public.demandas_vendas (status_demanda);
+CREATE INDEX IF NOT EXISTS idx_imoveis_captados_etapa_funil ON public.imoveis_captados (etapa_funil);
+CREATE INDEX IF NOT EXISTS idx_imovel_demand_match_imovel_id ON public.imovel_demand_match (imovel_id);
+CREATE INDEX IF NOT EXISTS idx_imovel_demand_match_demanda_id ON public.imovel_demand_match (demanda_id);
+CREATE INDEX IF NOT EXISTS idx_visitas_imovel_demanda_id ON public.visitas_imovel (demanda_id);
+CREATE INDEX IF NOT EXISTS idx_fechamentos_demanda_id ON public.fechamentos (demanda_id);
+CREATE INDEX IF NOT EXISTS idx_matches_sugestoes_imovel_id ON public.matches_sugestoes (imovel_id);
+CREATE INDEX IF NOT EXISTS idx_matches_sugestoes_demanda_id ON public.matches_sugestoes (demanda_id);
+CREATE INDEX IF NOT EXISTS idx_tenant_proposals_property_id ON public.tenant_proposals (property_id);

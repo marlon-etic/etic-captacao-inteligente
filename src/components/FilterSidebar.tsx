@@ -17,6 +17,20 @@ interface Props {
 
 export function FilterSidebar({ filters, values, onChange, resultsCount }: Props) {
   const [isCollapsed, setIsCollapsed] = useState(false)
+  const [localValues, setLocalValues] = useState(values)
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null)
+
+  useEffect(() => {
+    setLocalValues(values)
+  }, [values])
+
+  const debouncedOnChange = (newVals: Record<string, string>) => {
+    setLocalValues(newVals)
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current)
+    debounceTimerRef.current = setTimeout(() => {
+      onChange(newVals)
+    }, 500)
+  }
 
   const defaultValues = filters.reduce(
     (acc, f) => {
@@ -26,9 +40,11 @@ export function FilterSidebar({ filters, values, onChange, resultsCount }: Props
     {} as Record<string, string>,
   )
 
-  const activeCount = Object.keys(values).filter((k) => values[k] !== defaultValues[k]).length
+  const activeCount = Object.keys(localValues).filter(
+    (k) => localValues[k] !== defaultValues[k],
+  ).length
 
-  const handleClearAll = () => onChange(defaultValues)
+  const handleClearAll = () => debouncedOnChange(defaultValues)
 
   if (isCollapsed) {
     return (
@@ -93,20 +109,20 @@ export function FilterSidebar({ filters, values, onChange, resultsCount }: Props
               {f.isSearch ? (
                 <LocationSelector
                   value={
-                    values[f.id] && values[f.id] !== '' && values[f.id] !== 'all'
-                      ? values[f.id].split(',')
+                    localValues[f.id] && localValues[f.id] !== '' && localValues[f.id] !== 'all'
+                      ? localValues[f.id].split(',')
                       : []
                   }
-                  onChange={(val) => onChange({ ...values, [f.id]: val.join(',') })}
+                  onChange={(val) => debouncedOnChange({ ...localValues, [f.id]: val.join(',') })}
                 />
               ) : (
                 <div className="flex flex-col gap-1.5">
                   {f.options.map((o) => {
-                    const isSelected = values[f.id] === o.value
+                    const isSelected = localValues[f.id] === o.value
                     return (
                       <button
                         key={o.value}
-                        onClick={() => onChange({ ...values, [f.id]: o.value })}
+                        onClick={() => debouncedOnChange({ ...localValues, [f.id]: o.value })}
                         className={cn(
                           'flex items-center gap-2 w-full text-left px-3 min-h-[44px] rounded-[8px] transition-colors text-[13px] font-bold border border-transparent',
                           isSelected

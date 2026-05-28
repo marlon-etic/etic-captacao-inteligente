@@ -222,7 +222,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         if (session?.user && !currentUser) {
           const { data: supaUser } = await supabase
             .from('users')
-            .select('*')
+            .select('id, nome, email, role, status, created_at')
             .eq('id', session.user.id)
             .single()
 
@@ -304,7 +304,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         while (retryCount < 3 && !supaUser && mounted) {
           const { data } = await supabase
             .from('users')
-            .select('*')
+            .select('id, nome, email, role, status, created_at')
             .eq('id', session.user.id)
             .single()
 
@@ -386,7 +386,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         } = await supabase.auth.getSession()
         if (!session) return
 
-        const { data, error } = await supabase.from('users').select('*')
+        const { data, error } = await supabase
+          .from('users')
+          .select('id, nome, email, role, status, created_at')
         if (data && !error && mounted) {
           const dbUsers: User[] = data.map((u: any) => ({
             id: u.id,
@@ -838,7 +840,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         try {
           const { data: supaUser, error } = await supabase
             .from('users')
-            .select('*')
+            .select('id, nome, email, role, status, created_at')
             .eq('email', cleanEmail)
             .single()
 
@@ -1041,7 +1043,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
             const { data: locData } = await supabase
               .from('demandas_locacao')
-              .select('*')
+              .select('id, orcamento_max, valor_maximo, localizacoes, bairros')
               .eq('id', id)
               .single()
 
@@ -1050,7 +1052,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
             } else {
               const { data: venData } = await supabase
                 .from('demandas_vendas')
-                .select('*')
+                .select('id, orcamento_max, valor_maximo, localizacoes, bairros')
                 .eq('id', id)
                 .single()
               if (venData) {

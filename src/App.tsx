@@ -66,89 +66,41 @@ import { useAuth } from '@/hooks/use-auth'
 
 import { enableDebugLogging } from '@/debug'
 
-// --- ROOT-KILL: Supressão Global de Alertas de Conexão (Sandbox) ---
+enableDebugLogging()
+
+// Global error logging
 if (typeof window !== 'undefined') {
-  const originalConsoleError = console.error
-  console.error = function (...args) {
-    const msg = args
-      .map((a) => String(a))
-      .join(' ')
-      .toLowerCase()
-    if (msg.includes('stole it') || msg.includes('auth-token')) return
-    originalConsoleError.apply(console, args)
+  const logErrorToDB = async (message: string, stack?: string) => {
+    try {
+      await supabase.rpc('fn_logar_falhas_api', {
+        p_api: 'frontend',
+        p_endpoint: window.location.pathname,
+        p_message: message,
+        p_payload: { stack },
+      })
+    } catch (e) {
+      console.error('Failed to log error to DB', e)
+    }
   }
 
   window.addEventListener('unhandledrejection', (event) => {
-    const msg = (event.reason?.message || String(event.reason)).toLowerCase()
-    if (msg.includes('stole it') || msg.includes('auth-token')) {
-      event.preventDefault()
-      event.stopPropagation()
+    const msg = event.reason?.message || String(event.reason)
+    if (
+      !msg.includes('stole it') &&
+      !msg.includes('auth-token') &&
+      !msg.includes('Failed to fetch')
+    ) {
+      logErrorToDB(msg, event.reason?.stack)
     }
   })
 
   window.addEventListener('error', (event) => {
-    const msg = (event.message || '').toLowerCase()
-    if (msg.includes('stole it') || msg.includes('auth-token')) {
-      event.preventDefault()
-      event.stopPropagation()
+    const msg = event.message || ''
+    if (!msg.includes('stole it') && !msg.includes('auth-token')) {
+      logErrorToDB(msg, event.error?.stack)
     }
   })
-
-  const originalAddEventListener = window.addEventListener
-  window.addEventListener = function (type: string, listener: any, options?: any) {
-    if (type === 'offline' || type === 'online') return
-    return originalAddEventListener.call(this, type, listener, options)
-  }
-
-  const killConnectionAlerts = () => {
-    if (!document.body) return
-    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null)
-    let node
-    while ((node = walker.nextNode())) {
-      const text = node.nodeValue?.toLowerCase() || ''
-      if (
-        text.includes('conexão perdida') ||
-        text.includes('conexao perdida') ||
-        text.includes('reconectando')
-      ) {
-        let el = node.parentElement
-        if (el && el.tagName !== 'SCRIPT' && el.tagName !== 'STYLE') {
-          let alertWrapper = el.closest(
-            '[role="alert"], [role="status"], .toast, [data-sonner-toast]',
-          )
-          if (alertWrapper) {
-            ;(alertWrapper as HTMLElement).style.setProperty('display', 'none', 'important')
-          } else {
-            el.style.setProperty('display', 'none', 'important')
-          }
-        }
-      }
-    }
-  }
-
-  const observer = new MutationObserver((mutations) => {
-    let shouldCheck = false
-    for (const m of mutations) {
-      if (m.addedNodes.length > 0 || m.type === 'characterData') {
-        shouldCheck = true
-        break
-      }
-    }
-    if (shouldCheck) killConnectionAlerts()
-  })
-
-  const startObserver = () => {
-    if (document.body) {
-      observer.observe(document.body, { childList: true, subtree: true, characterData: true })
-    } else {
-      setTimeout(startObserver, 10)
-    }
-  }
-  startObserver()
 }
-// -------------------------------------------------------------------
-
-enableDebugLogging()
 
 const LandlordProtectedRoute: FC<{ children: ReactNode }> = ({ children }) => {
   const { session, loading } = useLandlordAuth()
@@ -211,51 +163,6 @@ const AppRoutes = () => {
     window.addEventListener('navigate-to', handleNavigate)
     return () => window.removeEventListener('navigate-to', handleNavigate)
   }, [navigate])
-
-  useEffect(() => {
-    const handleNewMatch = (match: any) => {
-      toast({
-        title: '⚡ Novo Match Encontrado!',
-        description: `Imóvel ${match.imovel?.codigo_imovel} altamente compatível`,
-        action: (
-          <button
-            onClick={() => navigate('/app/match-inteligentes')}
-            className="px-3 py-1.5 bg-blue-500 text-white rounded-md hover:bg-blue-600 text-xs font-bold transition-colors"
-          >
-            Ver Match
-          </button>
-        ),
-      })
-    }
-
-    if (role) {
-      findNewMatches(handleNewMatch, role).catch((err) => {
-        console.warn('[AppRoutes] Falha não crítica ao buscar matches iniciais:', err)
-      })
-      const interval = setInterval(() => {
-        findNewMatches(handleNewMatch, role).catch((err) => {
-          console.warn('[AppRoutes] Falha não crítica ao buscar matches no intervalo:', err)
-        })
-      }, 60000)
-
-      const channel = supabase
-        .channel(`app_routes_matches_${Date.now()}_${Math.random()}`)
-        .on(
-          'postgres_changes',
-          { event: 'INSERT', schema: 'public', table: 'matches_sugestoes' },
-          (payload) => {
-            console.log('[REALTIME] Novo match em AppRoutes:', payload)
-            findNewMatches(handleNewMatch, role).catch(console.error)
-          },
-        )
-        .subscribe()
-
-      return () => {
-        clearInterval(interval)
-        supabase.removeChannel(channel)
-      }
-    }
-  }, [navigate, toast, role])
 
   useEffect(() => {
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {

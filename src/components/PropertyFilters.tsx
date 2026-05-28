@@ -18,34 +18,27 @@ interface Props {
 }
 
 export function PropertyFilters({ filters, onChange }: Props) {
-  const [localBairro, setLocalBairro] = useState(filters.bairro || '')
-  const [localMaxValor, setLocalMaxValor] = useState(filters.maxValor || '')
+  const [localFilters, setLocalFilters] = useState(filters)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
-    setLocalBairro(filters.bairro || '')
-    setLocalMaxValor(filters.maxValor || '')
-  }, [filters.bairro, filters.maxValor])
+    setLocalFilters(filters)
+  }, [filters])
 
-  const handleBairroChange = (val: string) => {
-    setLocalBairro(val)
+  const update = (key: string, val: string) => {
+    const newFilters = { ...localFilters, [key]: val }
+    setLocalFilters(newFilters)
     if (timerRef.current) clearTimeout(timerRef.current)
     timerRef.current = setTimeout(() => {
-      onChange({ ...filters, bairro: val })
+      onChange(newFilters)
     }, 500)
   }
 
-  const handleMaxValorChange = (val: string) => {
-    setLocalMaxValor(val)
-    if (timerRef.current) clearTimeout(timerRef.current)
-    timerRef.current = setTimeout(() => {
-      onChange({ ...filters, maxValor: val })
-    }, 500)
-  }
+  const handleBairroChange = (val: string) => update('bairro', val)
+  const handleMaxValorChange = (val: string) => update('maxValor', val)
+
   const { currentUser } = useAppStore()
   const tiposVisiveis = getTiposVisiveis(currentUser?.role)
-
-  const update = (key: string, val: string) => onChange({ ...filters, [key]: val })
 
   const activeCount = Object.entries(filters).filter(([k, v]) => {
     if (k === 'tipo' && v === 'Todos') return false
@@ -79,7 +72,7 @@ export function PropertyFilters({ filters, onChange }: Props) {
           <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide ml-0.5">
             Tipo
           </Label>
-          <Select value={filters.tipo} onValueChange={(v) => update('tipo', v)}>
+          <Select value={localFilters.tipo} onValueChange={(v) => update('tipo', v)}>
             <SelectTrigger className="h-[44px] text-sm font-medium border-[#E5E5E5] focus:ring-[#1A3A52]">
               <SelectValue />
             </SelectTrigger>
@@ -97,7 +90,7 @@ export function PropertyFilters({ filters, onChange }: Props) {
           <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide ml-0.5">
             Status
           </Label>
-          <Select value={filters.status || 'Todos'} onValueChange={(v) => update('status', v)}>
+          <Select value={localFilters.status || 'Todos'} onValueChange={(v) => update('status', v)}>
             <SelectTrigger className="h-[44px] text-sm font-medium border-[#E5E5E5] focus:ring-[#1A3A52]">
               <SelectValue placeholder="Todos" />
             </SelectTrigger>
@@ -117,7 +110,7 @@ export function PropertyFilters({ filters, onChange }: Props) {
           </Label>
           <Input
             placeholder="Buscar imóveis..."
-            value={localBairro}
+            value={localFilters.bairro || ''}
             onChange={(e) => handleBairroChange(e.target.value)}
             className="h-[44px] text-sm border-[#E5E5E5] focus-visible:ring-[#1A3A52]"
           />
@@ -127,7 +120,7 @@ export function PropertyFilters({ filters, onChange }: Props) {
             Dormitórios
           </Label>
           <Select
-            value={filters.dormitorios}
+            value={localFilters.dormitorios}
             onValueChange={(v) => update('dormitorios', v === 'all' ? '' : v)}
           >
             <SelectTrigger className="h-[44px] text-sm font-medium border-[#E5E5E5] focus:ring-[#1A3A52]">
@@ -147,7 +140,7 @@ export function PropertyFilters({ filters, onChange }: Props) {
             Vagas
           </Label>
           <Select
-            value={filters.vagas}
+            value={localFilters.vagas}
             onValueChange={(v) => update('vagas', v === 'all' ? '' : v)}
           >
             <SelectTrigger className="h-[44px] text-sm font-medium border-[#E5E5E5] focus:ring-[#1A3A52]">
@@ -168,7 +161,7 @@ export function PropertyFilters({ filters, onChange }: Props) {
           <Input
             type="number"
             placeholder="Ex: 5000"
-            value={localMaxValor}
+            value={localFilters.maxValor || ''}
             onChange={(e) => handleMaxValorChange(e.target.value)}
             className="h-[44px] text-sm border-[#E5E5E5] focus-visible:ring-[#1A3A52]"
           />

@@ -8,6 +8,7 @@ import { supabase } from '@/lib/supabase/client'
 export function GlobalMatchListener() {
   const navigate = useNavigate()
   const notifiedMatches = useRef<Set<string>>(new Set())
+  const isChecking = useRef(false)
 
   useEffect(() => {
     const handleNewMatch = (match: any) => {
@@ -34,6 +35,8 @@ export function GlobalMatchListener() {
     }
 
     const checkMatches = async () => {
+      if (isChecking.current) return
+      isChecking.current = true
       try {
         await findNewMatches(handleNewMatch)
       } catch (err) {
@@ -41,6 +44,8 @@ export function GlobalMatchListener() {
           '[GlobalMatchListener] Falha silenciosa ao verificar matches (possível erro de rede):',
           err,
         )
+      } finally {
+        isChecking.current = false
       }
     }
 

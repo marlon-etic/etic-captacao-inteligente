@@ -44,12 +44,27 @@ export function StickyFilterBar({
 }: Props) {
   const isMobile = useIsMobile()
   const [isOpen, setIsOpen] = useState(false)
+  const [localValues, setLocalValues] = useState(values)
   const [mobileValues, setMobileValues] = useState(values)
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null)
+
   const [selectedLocations, setSelectedLocations] = useState<string[]>(() => {
     return values.bairro && values.bairro !== '' && values.bairro !== 'all'
       ? values.bairro.split(',')
       : []
   })
+
+  useEffect(() => {
+    setLocalValues(values)
+  }, [values])
+
+  const debouncedOnChange = (newVals: Record<string, string>) => {
+    setLocalValues(newVals)
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current)
+    debounceTimerRef.current = setTimeout(() => {
+      onChange(newVals)
+    }, 500)
+  }
 
   useEffect(() => {
     if (isOpen) {
@@ -71,7 +86,7 @@ export function StickyFilterBar({
   )
 
   const activeCount =
-    Object.keys(values).filter((k) => values[k] !== defaultValues[k]).length +
+    Object.keys(localValues).filter((k) => localValues[k] !== defaultValues[k]).length +
     (selectedLocations.length > 0 ? 1 : 0)
 
   const handleMobileApply = () => {
@@ -81,12 +96,12 @@ export function StickyFilterBar({
     } else {
       finalVals.bairro = ''
     }
-    onChange(finalVals)
+    debouncedOnChange(finalVals)
     setIsOpen(false)
   }
 
   const handleClearAll = () => {
-    onChange(defaultValues)
+    debouncedOnChange(defaultValues)
     setMobileValues(defaultValues)
     setSelectedLocations([])
   }
@@ -94,15 +109,15 @@ export function StickyFilterBar({
   const removeFilter = (id: string) => {
     if (id === 'bairro') {
       setSelectedLocations([])
-      onChange({ ...values, bairro: '' })
+      debouncedOnChange({ ...localValues, bairro: '' })
     } else {
-      onChange({ ...values, [id]: defaultValues[id] })
+      debouncedOnChange({ ...localValues, [id]: defaultValues[id] })
     }
   }
 
   const renderActiveChips = () => {
-    const active = Object.keys(values).filter(
-      (k) => k !== 'bairro' && values[k] !== defaultValues[k],
+    const active = Object.keys(localValues).filter(
+      (k) => k !== 'bairro' && localValues[k] !== defaultValues[k],
     )
     if (selectedLocations.length > 0) active.push('bairro')
     if (active.length === 0) return null
@@ -130,7 +145,7 @@ export function StickyFilterBar({
             )
           }
 
-          const val = values[id]
+          const val = localValues[id]
           const def = filters.find((f) => f.id === id)
           const opt = def?.options.find((o) => o.value === val)
           const displayLabel = opt ? `${opt.icon ? opt.icon + ' ' : ''}${opt.label}` : val
@@ -257,18 +272,18 @@ export function StickyFilterBar({
               <div key={f.id} className="w-[300px]">
                 <LocationSelector
                   value={
-                    values.bairro && values.bairro !== '' && values.bairro !== 'all'
-                      ? values.bairro.split(',')
+                    localValues.bairro && localValues.bairro !== '' && localValues.bairro !== 'all'
+                      ? localValues.bairro.split(',')
                       : []
                   }
-                  onChange={(val) => onChange({ ...values, bairro: val.join(',') })}
+                  onChange={(val) => debouncedOnChange({ ...localValues, bairro: val.join(',') })}
                 />
               </div>
             )
           }
 
-          const currentOpt = f.options.find((o) => o.value === values[f.id]) || f.options[0]
-          const isActive = values[f.id] !== f.options[0]?.value
+          const currentOpt = f.options.find((o) => o.value === localValues[f.id]) || f.options[0]
+          const isActive = localValues[f.id] !== f.options[0]?.value
 
           return (
             <DropdownMenu key={f.id}>
@@ -295,11 +310,11 @@ export function StickyFilterBar({
                     key={o.value}
                     className={cn(
                       'font-medium cursor-pointer rounded-[8px] py-2.5 mb-1 last:mb-0',
-                      values[f.id] === o.value
+                      localValues[f.id] === o.value
                         ? 'bg-[#1A3A52] text-white font-bold'
                         : 'hover:bg-[#F5F5F5] text-[#333333]',
                     )}
-                    onClick={() => onChange({ ...values, [f.id]: o.value })}
+                    onClick={() => debouncedOnChange({ ...localValues, [f.id]: o.value })}
                   >
                     {o.icon && <span className="mr-2 text-[16px]">{o.icon}</span>}
                     {o.label}
