@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { FilterDef } from './StickyFilterBar'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'

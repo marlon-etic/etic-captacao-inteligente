@@ -3783,6 +3783,65 @@ export const Constants = {
 //   END;
 //   $function$
 //   
+// FUNCTION notify_high_score_match()
+//   CREATE OR REPLACE FUNCTION public.notify_high_score_match()
+//    RETURNS trigger
+//    LANGUAGE plpgsql
+//    SECURITY DEFINER
+//   AS $function$
+//   DECLARE
+//     v_demanda_owner uuid;
+//     v_captador_id uuid;
+//     v_cliente_nome text;
+//     v_codigo_imovel text;
+//   BEGIN
+//     IF NEW.score >= 70 THEN
+//       -- Get property details
+//       SELECT codigo_imovel, COALESCE(user_captador_id, captador_id) INTO v_codigo_imovel, v_captador_id
+//       FROM public.imoveis_captados
+//       WHERE id = NEW.imovel_id;
+//   
+//       -- Get demand details
+//       IF NEW.demanda_tipo = 'Locação' OR NEW.demanda_tipo = 'Aluguel' THEN
+//         SELECT sdr_id, COALESCE(nome_cliente, cliente_nome) INTO v_demanda_owner, v_cliente_nome
+//         FROM public.demandas_locacao
+//         WHERE id = NEW.demanda_id;
+//       ELSE
+//         SELECT corretor_id, COALESCE(nome_cliente, cliente_nome) INTO v_demanda_owner, v_cliente_nome
+//         FROM public.demandas_vendas
+//         WHERE id = NEW.demanda_id;
+//       END IF;
+//   
+//       -- Notify Demand Owner (SDR/Corretor)
+//       IF v_demanda_owner IS NOT NULL THEN
+//         INSERT INTO public.notificacoes (usuario_id, tipo, titulo, mensagem, dados_relacionados, prioridade)
+//         VALUES (
+//           v_demanda_owner,
+//           'status_atualizado',
+//           'Novo Match Encontrado!',
+//           'Cliente: ' || COALESCE(v_cliente_nome, 'N/D') || ' | Imóvel: ' || COALESCE(v_codigo_imovel, 'S/C') || ' | ' || NEW.score || '% de Compatibilidade.',
+//           jsonb_build_object('demanda_id', NEW.demanda_id, 'imovel_id', NEW.imovel_id, 'score', NEW.score, 'is_match', true),
+//           'alta'
+//         );
+//       END IF;
+//   
+//       -- Notify Captador (if different from Demand Owner and not null)
+//       IF v_captador_id IS NOT NULL AND v_captador_id != v_demanda_owner THEN
+//         INSERT INTO public.notificacoes (usuario_id, tipo, titulo, mensagem, dados_relacionados, prioridade)
+//         VALUES (
+//           v_captador_id,
+//           'status_atualizado',
+//           'Novo Match Encontrado!',
+//           'Cliente: ' || COALESCE(v_cliente_nome, 'N/D') || ' | Imóvel: ' || COALESCE(v_codigo_imovel, 'S/C') || ' | ' || NEW.score || '% de Compatibilidade.',
+//           jsonb_build_object('demanda_id', NEW.demanda_id, 'imovel_id', NEW.imovel_id, 'score', NEW.score, 'is_match', true),
+//           'alta'
+//         );
+//       END IF;
+//     END IF;
+//     RETURN NEW;
+//   END;
+//   $function$
+//   
 // FUNCTION notify_imovel_atualizado()
 //   CREATE OR REPLACE FUNCTION public.notify_imovel_atualizado()
 //    RETURNS trigger
@@ -4021,6 +4080,97 @@ export const Constants = {
 //   END;
 //   $function$
 //   
+// FUNCTION trg_generate_matches_imovel()
+//   CREATE OR REPLACE FUNCTION public.trg_generate_matches_imovel()
+//    RETURNS trigger
+//    LANGUAGE plpgsql
+//    SECURITY DEFINER
+//   AS $function$
+//   DECLARE
+//     v_demanda RECORD;
+//     v_match jsonb;
+//     v_score int;
+//   BEGIN
+//     IF NEW.tipo = 'Ambos' OR NEW.tipo = 'Locação' THEN
+//       FOR v_demanda IN SELECT * FROM public.demandas_locacao WHERE status_demanda IN ('aberta', 'em busca')
+//       LOOP
+//         v_match := public.calculate_imovel_demand_match(NEW.id, v_demanda.id, 'Locação');
+//         v_score := (v_match->>'compatibilidade_pct')::INTEGER;
+//         IF v_score >= 70 THEN
+//           INSERT INTO public.matches_sugestoes (imovel_id, demanda_id, demanda_tipo, score, status)
+//           VALUES (NEW.id, v_demanda.id, 'Locação', v_score, 'pendente')
+//           ON CONFLICT (imovel_id, demanda_id, demanda_tipo) DO NOTHING;
+//         END IF;
+//       END LOOP;
+//     END IF;
+//   
+//     IF NEW.tipo = 'Ambos' OR NEW.tipo = 'Venda' THEN
+//       FOR v_demanda IN SELECT * FROM public.demandas_vendas WHERE status_demanda IN ('aberta', 'em busca')
+//       LOOP
+//         v_match := public.calculate_imovel_demand_match(NEW.id, v_demanda.id, 'Venda');
+//         v_score := (v_match->>'compatibilidade_pct')::INTEGER;
+//         IF v_score >= 70 THEN
+//           INSERT INTO public.matches_sugestoes (imovel_id, demanda_id, demanda_tipo, score, status)
+//           VALUES (NEW.id, v_demanda.id, 'Venda', v_score, 'pendente')
+//           ON CONFLICT (imovel_id, demanda_id, demanda_tipo) DO NOTHING;
+//         END IF;
+//       END LOOP;
+//     END IF;
+//   
+//     RETURN NEW;
+//   END;
+//   $function$
+//   
+// FUNCTION trg_generate_matches_locacao()
+//   CREATE OR REPLACE FUNCTION public.trg_generate_matches_locacao()
+//    RETURNS trigger
+//    LANGUAGE plpgsql
+//    SECURITY DEFINER
+//   AS $function$
+//   DECLARE
+//     v_imovel RECORD;
+//     v_match jsonb;
+//     v_score int;
+//   BEGIN
+//     FOR v_imovel IN SELECT * FROM public.imoveis_captados WHERE tipo = 'Ambos' OR tipo = 'Locação'
+//     LOOP
+//       v_match := public.calculate_imovel_demand_match(v_imovel.id, NEW.id, 'Locação');
+//       v_score := (v_match->>'compatibilidade_pct')::INTEGER;
+//       IF v_score >= 70 THEN
+//         INSERT INTO public.matches_sugestoes (imovel_id, demanda_id, demanda_tipo, score, status)
+//         VALUES (v_imovel.id, NEW.id, 'Locação', v_score, 'pendente')
+//         ON CONFLICT (imovel_id, demanda_id, demanda_tipo) DO NOTHING;
+//       END IF;
+//     END LOOP;
+//     RETURN NEW;
+//   END;
+//   $function$
+//   
+// FUNCTION trg_generate_matches_venda()
+//   CREATE OR REPLACE FUNCTION public.trg_generate_matches_venda()
+//    RETURNS trigger
+//    LANGUAGE plpgsql
+//    SECURITY DEFINER
+//   AS $function$
+//   DECLARE
+//     v_imovel RECORD;
+//     v_match jsonb;
+//     v_score int;
+//   BEGIN
+//     FOR v_imovel IN SELECT * FROM public.imoveis_captados WHERE tipo = 'Ambos' OR tipo = 'Venda'
+//     LOOP
+//       v_match := public.calculate_imovel_demand_match(v_imovel.id, NEW.id, 'Venda');
+//       v_score := (v_match->>'compatibilidade_pct')::INTEGER;
+//       IF v_score >= 70 THEN
+//         INSERT INTO public.matches_sugestoes (imovel_id, demanda_id, demanda_tipo, score, status)
+//         VALUES (v_imovel.id, NEW.id, 'Venda', v_score, 'pendente')
+//         ON CONFLICT (imovel_id, demanda_id, demanda_tipo) DO NOTHING;
+//       END IF;
+//     END LOOP;
+//     RETURN NEW;
+//   END;
+//   $function$
+//   
 // FUNCTION trg_notify_busca_iniciada_multipla()
 //   CREATE OR REPLACE FUNCTION public.trg_notify_busca_iniciada_multipla()
 //    RETURNS trigger
@@ -4210,6 +4360,7 @@ export const Constants = {
 // Table: demandas_locacao
 //   audit_demandas_locacao: CREATE TRIGGER audit_demandas_locacao AFTER INSERT OR DELETE OR UPDATE ON public.demandas_locacao FOR EACH ROW EXECUTE FUNCTION audit_log_function()
 //   criar_prazo_locacao_trigger: CREATE TRIGGER criar_prazo_locacao_trigger AFTER INSERT ON public.demandas_locacao FOR EACH ROW EXECUTE FUNCTION criar_prazo_captacao()
+//   on_demanda_locacao_created_matches: CREATE TRIGGER on_demanda_locacao_created_matches AFTER INSERT ON public.demandas_locacao FOR EACH ROW EXECUTE FUNCTION trg_generate_matches_locacao()
 //   pontuacao_ganho_locacao_trigger: CREATE TRIGGER pontuacao_ganho_locacao_trigger AFTER UPDATE ON public.demandas_locacao FOR EACH ROW EXECUTE FUNCTION trg_pontuacao_ganho_locacao()
 //   trg_agrupar_demanda_automaticamente: CREATE TRIGGER trg_agrupar_demanda_automaticamente BEFORE INSERT ON public.demandas_locacao FOR EACH ROW EXECUTE FUNCTION fn_agrupar_demandas_automaticamente()
 //   trg_atualizar_tenant_score: CREATE TRIGGER trg_atualizar_tenant_score BEFORE INSERT OR UPDATE OF renda_mensal_estimada, valor_maximo ON public.demandas_locacao FOR EACH ROW EXECUTE FUNCTION fn_atualizar_tenant_score()
@@ -4219,6 +4370,7 @@ export const Constants = {
 // Table: demandas_vendas
 //   audit_demandas_vendas: CREATE TRIGGER audit_demandas_vendas AFTER INSERT OR DELETE OR UPDATE ON public.demandas_vendas FOR EACH ROW EXECUTE FUNCTION audit_log_function()
 //   criar_prazo_vendas_trigger: CREATE TRIGGER criar_prazo_vendas_trigger AFTER INSERT ON public.demandas_vendas FOR EACH ROW EXECUTE FUNCTION criar_prazo_captacao()
+//   on_demanda_venda_created_matches: CREATE TRIGGER on_demanda_venda_created_matches AFTER INSERT ON public.demandas_vendas FOR EACH ROW EXECUTE FUNCTION trg_generate_matches_venda()
 //   pontuacao_ganho_vendas_trigger: CREATE TRIGGER pontuacao_ganho_vendas_trigger AFTER UPDATE ON public.demandas_vendas FOR EACH ROW EXECUTE FUNCTION trg_pontuacao_ganho_vendas()
 //   trg_notify_busca_iniciada_vendas: CREATE TRIGGER trg_notify_busca_iniciada_vendas AFTER UPDATE OF captadores_busca ON public.demandas_vendas FOR EACH ROW EXECUTE FUNCTION trg_notify_busca_iniciada_multipla()
 //   trg_notify_nova_demanda_vendas: CREATE TRIGGER trg_notify_nova_demanda_vendas AFTER INSERT ON public.demandas_vendas FOR EACH ROW EXECUTE FUNCTION notify_nova_demanda()
@@ -4226,6 +4378,7 @@ export const Constants = {
 // Table: imoveis_captados
 //   audit_imoveis_captados: CREATE TRIGGER audit_imoveis_captados AFTER INSERT OR DELETE OR UPDATE ON public.imoveis_captados FOR EACH ROW EXECUTE FUNCTION audit_log_function()
 //   marcar_prazo_imovel_trigger: CREATE TRIGGER marcar_prazo_imovel_trigger AFTER INSERT ON public.imoveis_captados FOR EACH ROW EXECUTE FUNCTION marcar_prazo_respondido_imovel()
+//   on_imovel_created_matches: CREATE TRIGGER on_imovel_created_matches AFTER INSERT ON public.imoveis_captados FOR EACH ROW EXECUTE FUNCTION trg_generate_matches_imovel()
 //   pontuacao_imovel_trigger: CREATE TRIGGER pontuacao_imovel_trigger AFTER INSERT ON public.imoveis_captados FOR EACH ROW EXECUTE FUNCTION fn_calculate_points_on_insert()
 //   trg_notify_imovel_atualizado: CREATE TRIGGER trg_notify_imovel_atualizado AFTER UPDATE ON public.imoveis_captados FOR EACH ROW EXECUTE FUNCTION notify_imovel_atualizado()
 //   trg_notify_imovel_desvinculado: CREATE TRIGGER trg_notify_imovel_desvinculado AFTER UPDATE OF demanda_locacao_id, demanda_venda_id ON public.imoveis_captados FOR EACH ROW EXECUTE FUNCTION notify_imovel_desvinculado()
@@ -4233,6 +4386,8 @@ export const Constants = {
 //   trg_primeira_resposta_imovel: CREATE TRIGGER trg_primeira_resposta_imovel AFTER INSERT ON public.imoveis_captados FOR EACH ROW EXECUTE FUNCTION fn_registrar_primeira_resposta()
 //   trg_set_tipo_imovel: CREATE TRIGGER trg_set_tipo_imovel BEFORE INSERT OR UPDATE ON public.imoveis_captados FOR EACH ROW EXECUTE FUNCTION fn_set_tipo_imovel()
 //   update_imoveis_captados_updated_at: CREATE TRIGGER update_imoveis_captados_updated_at BEFORE UPDATE ON public.imoveis_captados FOR EACH ROW EXECUTE FUNCTION set_updated_at()
+// Table: matches_sugestoes
+//   trg_notify_high_score_match: CREATE TRIGGER trg_notify_high_score_match AFTER INSERT ON public.matches_sugestoes FOR EACH ROW EXECUTE FUNCTION notify_high_score_match()
 // Table: respostas_captador
 //   marcar_prazo_resposta_trigger: CREATE TRIGGER marcar_prazo_resposta_trigger AFTER INSERT ON public.respostas_captador FOR EACH ROW EXECUTE FUNCTION marcar_prazo_respondido_resposta()
 //   trg_auto_close_demand: CREATE TRIGGER trg_auto_close_demand AFTER INSERT OR UPDATE ON public.respostas_captador FOR EACH ROW EXECUTE FUNCTION check_demand_auto_close()
