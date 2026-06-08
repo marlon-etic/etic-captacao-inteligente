@@ -43,8 +43,10 @@ export function SdrStoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const savedPeriodo = localStorage.getItem('sdr_periodo')
     if (savedPeriodo) setPeriodoState(savedPeriodo as Periodo)
-    const savedCard = localStorage.getItem('sdr_card_filtrado')
-    if (savedCard) setCardFiltradoState(savedCard as CardFiltrado)
+
+    // Automatic Default View: Always load Visão Geral ('nenhum') upon login/access
+    setCardFiltradoState('nenhum')
+    localStorage.setItem('sdr_card_filtrado', 'nenhum')
   }, [])
 
   const setPeriodo = (p: Periodo) => {

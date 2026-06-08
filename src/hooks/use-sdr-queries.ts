@@ -50,6 +50,7 @@ export function useSdrQueries() {
         let demandasQuery = supabase
           .from(demandasTable)
           .select(fieldsToSelect)
+          .neq('status_demanda', 'impossivel')
           .order('updated_at', { ascending: false, nullsFirst: false })
 
         if (applyDateFilter) {
@@ -101,7 +102,13 @@ export function useSdrQueries() {
             )
             .in('demanda_id', sdrDemandaIds)
 
-          imoveisSobDemanda = imV?.map((m: any) => ({ ...m.imoveis_captados, match_info: m })) || []
+          imoveisSobDemanda = (
+            imV?.map((m: any) => ({ ...m.imoveis_captados, match_info: m })) || []
+          ).sort(
+            (a: any, b: any) =>
+              new Date(b.updated_at || b.created_at).getTime() -
+              new Date(a.updated_at || a.created_at).getTime(),
+          )
 
           if (demandas && imV) {
             for (const d of demandas) {

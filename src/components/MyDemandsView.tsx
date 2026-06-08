@@ -99,6 +99,7 @@ export function MyDemandsView({ filterType }: Props) {
 
   const [actionDemand, setActionDemand] = useState<SupabaseDemand | null>(null)
   const [modalType, setModalType] = useState<'details' | 'edit' | 'lost' | null>(null)
+  const [hiddenDemands, setHiddenDemands] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     const id = searchParams.get('id')
@@ -194,6 +195,13 @@ export function MyDemandsView({ filterType }: Props) {
     try {
       const { error } = await supabase.from(table).update(updateData).eq('id', actionDemand.id)
       if (error) throw error
+
+      setHiddenDemands((prev) => {
+        const next = new Set(prev)
+        next.add(actionDemand.id)
+        return next
+      })
+
       toast({
         title: 'Demanda Marcada como Perdida',
         description: `Motivo: ${reason}`,
@@ -211,6 +219,8 @@ export function MyDemandsView({ filterType }: Props) {
 
   const filteredDemands = useMemo(() => {
     return demands.filter((d) => {
+      if (hiddenDemands.has(d.id)) return false
+
       // Visibility is already global by role (Venda/Locação) in backend and hook
 
       if (filters.prioridade && filters.prioridade !== 'Todos') {
@@ -236,17 +246,13 @@ export function MyDemandsView({ filterType }: Props) {
         if (dDate < dateLimit) return false
       }
 
-      if (
-        filters.status !== 'impossivel' &&
-        filters.status !== 'Todos' &&
-        d.status_demanda === 'impossivel'
-      ) {
+      if (filters.status !== 'impossivel' && d.status_demanda === 'impossivel') {
         return false
       }
 
       return true
     })
-  }, [demands, filters, currentUser])
+  }, [demands, filters, currentUser, hiddenDemands])
 
   const handleClear = () =>
     handleFilterChange({

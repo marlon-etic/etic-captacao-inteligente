@@ -70,6 +70,7 @@ export function useSupabaseProperties(
             clientName: demanda.nome_cliente || demanda.cliente_nome,
             type: d_loc ? 'Aluguel' : 'Venda',
             createdBy: demanda.sdr_id || demanda.corretor_id,
+            status_demanda: demanda.status_demanda,
           }
         : null,
       tipo: normalizedTipo,
@@ -97,7 +98,7 @@ export function useSupabaseProperties(
         let query = supabase
           .from('imoveis_captados')
           .select(
-            'id, codigo_imovel, endereco, preco, valor, user_captador_id, captador_id, created_at, updated_at, status_captacao, dormitorios, vagas, observacoes, localizacao_texto, tipo, etapa_funil, data_visita, data_fechamento, demanda_locacao:demandas_locacao(id, nome_cliente, cliente_nome, sdr_id, bairros, dormitorios, vagas_estacionamento), demanda_venda:demandas_vendas(id, nome_cliente, cliente_nome, corretor_id, bairros, dormitorios, vagas_estacionamento), captador_rel:users!fk_imoveis_captador(nome, email)',
+            'id, codigo_imovel, endereco, preco, valor, user_captador_id, captador_id, created_at, updated_at, status_captacao, dormitorios, vagas, observacoes, localizacao_texto, tipo, etapa_funil, data_visita, data_fechamento, demanda_locacao:demandas_locacao(id, nome_cliente, cliente_nome, sdr_id, bairros, dormitorios, vagas_estacionamento, status_demanda), demanda_venda:demandas_vendas(id, nome_cliente, cliente_nome, corretor_id, bairros, dormitorios, vagas_estacionamento, status_demanda), captador_rel:users!fk_imoveis_captador(nome, email)',
             { count: 'exact' },
           )
           .order('updated_at', { ascending: false, nullsFirst: false })
@@ -206,7 +207,7 @@ export function useSupabaseProperties(
             const { data: fallbackData, error: fallbackError } = await supabase
               .from('imoveis_captados')
               .select(
-                'id, codigo_imovel, endereco, preco, valor, user_captador_id, captador_id, created_at, updated_at, status_captacao, dormitorios, vagas, observacoes, localizacao_texto, tipo, etapa_funil, data_visita, data_fechamento, demanda_locacao:demandas_locacao(id, nome_cliente, cliente_nome, sdr_id, bairros, dormitorios, vagas_estacionamento), demanda_venda:demandas_vendas(id, nome_cliente, cliente_nome, corretor_id, bairros, dormitorios, vagas_estacionamento), captador_rel:users!fk_imoveis_captador(nome, email)',
+                'id, codigo_imovel, endereco, preco, valor, user_captador_id, captador_id, created_at, updated_at, status_captacao, dormitorios, vagas, observacoes, localizacao_texto, tipo, etapa_funil, data_visita, data_fechamento, demanda_locacao:demandas_locacao(id, nome_cliente, cliente_nome, sdr_id, bairros, dormitorios, vagas_estacionamento, status_demanda), demanda_venda:demandas_vendas(id, nome_cliente, cliente_nome, corretor_id, bairros, dormitorios, vagas_estacionamento, status_demanda), captador_rel:users!fk_imoveis_captador(nome, email)',
               )
               .eq('id', id)
               .single()

@@ -32,6 +32,10 @@ export function DemandasAbertasView() {
 
         // Ensure we only show ACTIVE demands in this view
         // Lost demands (impossivel / PERDIDA_BAIXA) should never show here
+        if (d.status_demanda === 'impossivel' || d.status_demanda === 'PERDIDA_BAIXA') {
+          return false
+        }
+
         if (!isAberta && !isPrioritizada) {
           return false
         }
