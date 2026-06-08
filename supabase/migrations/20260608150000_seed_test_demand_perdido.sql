@@ -3,7 +3,10 @@ DECLARE
   v_sdr_id uuid;
 BEGIN
   -- Get SDR user ID safely to ensure the foreign key doesn't fail
-  SELECT id INTO v_sdr_id FROM auth.users WHERE email = 'sdr@etic.com' LIMIT 1;
+  SELECT id INTO v_sdr_id FROM public.users WHERE email = 'sdr@etic.com' LIMIT 1;
+  IF v_sdr_id IS NULL THEN
+    SELECT id INTO v_sdr_id FROM public.users LIMIT 1;
+  END IF;
   
   -- Insert a mock demand for testing "Perdido" flow in Locacao safely
   IF v_sdr_id IS NOT NULL THEN
