@@ -11,6 +11,7 @@ export interface SupabaseCapturedProperty {
   preco: number
   user_captador_id: string
   created_at: string
+  updated_at?: string
   status_captacao: string
   captador_nome?: string
   etapa_funil?: string
@@ -39,6 +40,7 @@ export interface SupabaseDemand {
   status_demanda: string
   db_status_demanda?: string
   created_at: string
+  updated_at?: string
   tipo: 'Aluguel' | 'Venda'
   imoveis_captados: SupabaseCapturedProperty[]
   respostas_captador?: any[]
@@ -56,7 +58,7 @@ export interface SupabaseDemand {
   captadores_busca?: any[]
 }
 
-export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
+export function useSupabaseDemands(type: 'Aluguel' | 'Venda', options?: { onlyMine?: boolean }) {
   const [demands, setDemands] = useState<SupabaseDemand[]>([])
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
@@ -78,7 +80,10 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
     return [...list].sort((a, b) => {
       if (a.is_prioritaria && !b.is_prioritaria) return -1
       if (!a.is_prioritaria && b.is_prioritaria) return 1
-      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      return (
+        new Date(b.updated_at || b.created_at).getTime() -
+        new Date(a.updated_at || a.created_at).getTime()
+      )
     })
   }, [])
 
@@ -131,6 +136,7 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
           status_demanda: st,
           is_prioritaria: d.is_prioritaria || false,
           created_at: d.created_at || new Date().toISOString(),
+          updated_at: d.updated_at,
           tipo: type,
           sdr_id: d.sdr_id,
           corretor_id: d.corretor_id,
@@ -142,6 +148,7 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
             .map((i: any) => ({
               ...i,
               captador_nome: userMap.get(i.user_captador_id || i.captador_id) || 'Captador',
+              updated_at: i.updated_at,
               etapa_funil: i.etapa_funil || 'capturado',
               data_visita: i.data_visita,
               data_fechamento: i.data_fechamento,
@@ -151,7 +158,8 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
             }))
             .sort(
               (a: any, b: any) =>
-                new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+                new Date(b.updated_at || b.created_at).getTime() -
+                new Date(a.updated_at || a.created_at).getTime(),
             ),
         }
       })
@@ -179,17 +187,27 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
           }
         }
 
-        const data = await fetchWithResilience(`demands_${type}`, async () => {
+        const data = await fetchWithResilience(`demands_${type}_${options?.onlyMine}`, async () => {
           const selectFields =
             type === 'Aluguel'
-              ? 'id, nome_cliente, cliente_nome, telefone, email, bairros, localizacoes, valor_minimo, valor_maximo, orcamento_max, dormitorios, vagas_estacionamento, observacoes, tipo_imovel, nivel_urgencia, urgencia, status_demanda, is_prioritaria, created_at, sdr_id, vinculacao_captador_id, captadores_busca, imoveis_captados(id, codigo_imovel, user_captador_id, captador_id, etapa_funil, data_visita, data_fechamento, dormitorios, vagas, observacoes, localizacao_texto, created_at), respostas_captador(id, captador_id, resposta, motivo, observacao, created_at), prazos_captacao(id, prazo_resposta, prorrogacoes_usadas, status)'
-              : 'id, nome_cliente, cliente_nome, telefone, email, bairros, localizacoes, valor_minimo, valor_maximo, orcamento_max, dormitorios, vagas_estacionamento, necessidades_especificas, tipo_imovel, nivel_urgencia, urgencia, status_demanda, is_prioritaria, created_at, corretor_id, vinculacao_captador_id, captadores_busca, imoveis_captados(id, codigo_imovel, user_captador_id, captador_id, etapa_funil, data_visita, data_fechamento, dormitorios, vagas, observacoes, localizacao_texto, created_at), respostas_captador(id, captador_id, resposta, motivo, observacao, created_at), prazos_captacao(id, prazo_resposta, prorrogacoes_usadas, status)'
+              ? 'id, nome_cliente, cliente_nome, telefone, email, bairros, localizacoes, valor_minimo, valor_maximo, orcamento_max, dormitorios, vagas_estacionamento, observacoes, tipo_imovel, nivel_urgencia, urgencia, status_demanda, is_prioritaria, created_at, updated_at, sdr_id, vinculacao_captador_id, captadores_busca, imoveis_captados(id, codigo_imovel, user_captador_id, captador_id, etapa_funil, data_visita, data_fechamento, dormitorios, vagas, observacoes, localizacao_texto, created_at, updated_at), respostas_captador(id, captador_id, resposta, motivo, observacao, created_at), prazos_captacao(id, prazo_resposta, prorrogacoes_usadas, status)'
+              : 'id, nome_cliente, cliente_nome, telefone, email, bairros, localizacoes, valor_minimo, valor_maximo, orcamento_max, dormitorios, vagas_estacionamento, necessidades_especificas, tipo_imovel, nivel_urgencia, urgencia, status_demanda, is_prioritaria, created_at, updated_at, corretor_id, vinculacao_captador_id, captadores_busca, imoveis_captados(id, codigo_imovel, user_captador_id, captador_id, etapa_funil, data_visita, data_fechamento, dormitorios, vagas, observacoes, localizacao_texto, created_at, updated_at), respostas_captador(id, captador_id, resposta, motivo, observacao, created_at), prazos_captacao(id, prazo_resposta, prorrogacoes_usadas, status)'
 
-          const { data: resData, error } = await supabase
+          let query = supabase
             .from(table)
             .select(selectFields)
-            .order('created_at', { ascending: false })
+            .order('updated_at', { ascending: false, nullsFirst: false })
             .limit(100)
+
+          if (options?.onlyMine && currentUserRef.current?.id) {
+            if (type === 'Aluguel') {
+              query = query.eq('sdr_id', currentUserRef.current.id)
+            } else {
+              query = query.eq('corretor_id', currentUserRef.current.id)
+            }
+          }
+
+          const { data: resData, error } = await query
           if (error) throw error
           return resData
         })
@@ -333,6 +351,12 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
           setSyncing(true)
           if (payload.eventType === 'INSERT') {
             const d = payload.new
+
+            if (options?.onlyMine && currentUserRef.current?.id) {
+              if (type === 'Aluguel' && d.sdr_id !== currentUserRef.current.id) return
+              if (type === 'Venda' && d.corretor_id !== currentUserRef.current.id) return
+            }
+
             setDemands((prev) => {
               if (prev.some((x) => x.id === d.id)) return prev
               const newDemand = formatData([
@@ -352,6 +376,12 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda') {
             })
           } else if (payload.eventType === 'UPDATE') {
             const d = payload.new
+
+            if (options?.onlyMine && currentUserRef.current?.id) {
+              if (type === 'Aluguel' && d.sdr_id !== currentUserRef.current.id) return
+              if (type === 'Venda' && d.corretor_id !== currentUserRef.current.id) return
+            }
+
             setDemands((prev) => {
               if (!prev.some((x) => x.id === d.id)) {
                 if (

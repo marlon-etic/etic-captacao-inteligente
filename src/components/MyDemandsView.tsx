@@ -72,7 +72,7 @@ export function MyDemandsView({ filterType }: Props) {
   const [searchParams, setSearchParams] = useSearchParams()
 
   const activeType = filterType || (currentUser?.role === 'corretor' ? 'Venda' : 'Aluguel')
-  const { demands, loading, syncing, refresh } = useSupabaseDemands(activeType)
+  const { demands, loading, syncing, refresh } = useSupabaseDemands(activeType, { onlyMine: true })
 
   useEffect(() => {
     const channelName =
@@ -371,10 +371,10 @@ export function MyDemandsView({ filterType }: Props) {
                   <Users className="w-10 h-10 text-[#1A3A52]" />
                 </div>
                 <h3 className="text-[22px] font-black text-[#1A3A52]">
-                  Nenhuma demanda registrada
+                  Nenhuma demanda encontrada para o seu usuário
                 </h3>
                 <p className="text-[15px] text-[#666666] mt-2 mb-8 max-w-[360px] leading-relaxed">
-                  Você ainda não criou nenhuma demanda. Crie uma para acompanhá-la.
+                  Não há demandas atribuídas ao seu perfil no momento.
                 </p>
                 <Button onClick={refresh} variant="outline" className="gap-2">
                   <RefreshCw className="w-4 h-4" /> Atualizar

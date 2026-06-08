@@ -15,6 +15,7 @@ export interface UltimoImovel {
   vagas: number
   captador_nome: string
   created_at: string
+  updated_at?: string
   tipo: string
   has_demanda: boolean
   is_minha_demanda: boolean
@@ -39,11 +40,10 @@ export function useUltimosImoveis(
       let query = supabase
         .from('imoveis_captados')
         .select(
-          'id, codigo_imovel, endereco, preco, valor, dormitorios, vagas, user_captador_id, captador_id, created_at, tipo, demanda_locacao:demandas_locacao(sdr_id), demanda_venda:demandas_vendas(corretor_id)',
+          'id, codigo_imovel, endereco, preco, valor, dormitorios, vagas, user_captador_id, captador_id, created_at, updated_at, tipo, demanda_locacao:demandas_locacao(sdr_id), demanda_venda:demandas_vendas(corretor_id)',
         )
-        .order('created_at', { ascending: false })
+        .order('updated_at', { ascending: false, nullsFirst: false })
         .limit(100)
-
       if (periodo !== 'todos') {
         const date = new Date()
         if (periodo === '24h') date.setHours(date.getHours() - 24)
@@ -76,6 +76,7 @@ export function useUltimosImoveis(
           vagas: item.vagas || 0,
           captador_nome: userMap.get(item.user_captador_id || item.captador_id) || 'Captador',
           created_at: item.created_at,
+          updated_at: item.updated_at,
           tipo,
           has_demanda: !!(d_loc || d_ven),
           is_minha_demanda: !!isMinhaDemanda,

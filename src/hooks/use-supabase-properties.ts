@@ -14,6 +14,7 @@ export interface SupabaseCapturedPropertyWithDemand {
   valor: number
   user_captador_id: string
   created_at: string
+  updated_at?: string
   status_captacao: string
   captador_nome?: string
   bairros?: string[]
@@ -57,6 +58,7 @@ export function useSupabaseProperties(
       user_captador_id: p.user_captador_id || p.captador_id,
       captador_nome: captador_nome,
       created_at: p.created_at,
+      updated_at: p.updated_at,
       status_captacao: p.status_captacao,
       bairros: demanda?.bairros || [],
       dormitorios: p.dormitorios || demanda?.dormitorios || 0,
@@ -95,10 +97,10 @@ export function useSupabaseProperties(
         let query = supabase
           .from('imoveis_captados')
           .select(
-            'id, codigo_imovel, endereco, preco, valor, user_captador_id, captador_id, created_at, status_captacao, dormitorios, vagas, observacoes, localizacao_texto, tipo, etapa_funil, data_visita, data_fechamento, demanda_locacao:demandas_locacao(id, nome_cliente, cliente_nome, sdr_id, bairros, dormitorios, vagas_estacionamento), demanda_venda:demandas_vendas(id, nome_cliente, cliente_nome, corretor_id, bairros, dormitorios, vagas_estacionamento), captador_rel:users!fk_imoveis_captador(nome, email)',
+            'id, codigo_imovel, endereco, preco, valor, user_captador_id, captador_id, created_at, updated_at, status_captacao, dormitorios, vagas, observacoes, localizacao_texto, tipo, etapa_funil, data_visita, data_fechamento, demanda_locacao:demandas_locacao(id, nome_cliente, cliente_nome, sdr_id, bairros, dormitorios, vagas_estacionamento), demanda_venda:demandas_vendas(id, nome_cliente, cliente_nome, corretor_id, bairros, dormitorios, vagas_estacionamento), captador_rel:users!fk_imoveis_captador(nome, email)',
             { count: 'exact' },
           )
-          .order('created_at', { ascending: false })
+          .order('updated_at', { ascending: false, nullsFirst: false })
 
         if (options?.onlyMine && currentUser?.id) {
           query = query.eq('user_captador_id', currentUser.id)
@@ -204,7 +206,7 @@ export function useSupabaseProperties(
             const { data: fallbackData, error: fallbackError } = await supabase
               .from('imoveis_captados')
               .select(
-                'id, codigo_imovel, endereco, preco, valor, user_captador_id, captador_id, created_at, status_captacao, dormitorios, vagas, observacoes, localizacao_texto, tipo, etapa_funil, data_visita, data_fechamento, demanda_locacao:demandas_locacao(id, nome_cliente, cliente_nome, sdr_id, bairros, dormitorios, vagas_estacionamento), demanda_venda:demandas_vendas(id, nome_cliente, cliente_nome, corretor_id, bairros, dormitorios, vagas_estacionamento), captador_rel:users!fk_imoveis_captador(nome, email)',
+                'id, codigo_imovel, endereco, preco, valor, user_captador_id, captador_id, created_at, updated_at, status_captacao, dormitorios, vagas, observacoes, localizacao_texto, tipo, etapa_funil, data_visita, data_fechamento, demanda_locacao:demandas_locacao(id, nome_cliente, cliente_nome, sdr_id, bairros, dormitorios, vagas_estacionamento), demanda_venda:demandas_vendas(id, nome_cliente, cliente_nome, corretor_id, bairros, dormitorios, vagas_estacionamento), captador_rel:users!fk_imoveis_captador(nome, email)',
               )
               .eq('id', id)
               .single()
@@ -232,7 +234,9 @@ export function useSupabaseProperties(
                 return prev.map((p) => (p.id === formatted.id ? formatted : p))
               } else {
                 return [formatted, ...prev].sort(
-                  (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+                  (a, b) =>
+                    new Date(b.updated_at || b.created_at).getTime() -
+                    new Date(a.updated_at || a.created_at).getTime(),
                 )
               }
             })
