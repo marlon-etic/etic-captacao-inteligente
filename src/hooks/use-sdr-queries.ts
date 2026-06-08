@@ -44,11 +44,11 @@ export function useSdrQueries() {
         const startIso = start.toISOString()
         const endIso = end.toISOString()
 
+        const fieldsToSelect = `id, created_at, status_demanda, updated_at, nome_cliente, cliente_nome, valor_maximo, bairros, ${ownerField}, is_prioritaria, nivel_urgencia`
+
         let demandasQuery = supabase
           .from(demandasTable)
-          .select(
-            'id, created_at, status_demanda, updated_at, nome_cliente, cliente_nome, valor_maximo, bairros, sdr_id, corretor_id, is_prioritaria, nivel_urgencia',
-          )
+          .select(fieldsToSelect)
           .order('created_at', { ascending: false })
 
         if (applyDateFilter) {
@@ -59,9 +59,7 @@ export function useSdrQueries() {
         seteDiasAtras.setDate(seteDiasAtras.getDate() - 7)
         let demandasInativasQuery = supabase
           .from(demandasTable)
-          .select(
-            'id, created_at, status_demanda, updated_at, nome_cliente, cliente_nome, valor_maximo, bairros, sdr_id, corretor_id, is_prioritaria, nivel_urgencia',
-          )
+          .select(fieldsToSelect)
           .in('status_demanda', ['aberta', 'em busca', 'em visita'])
           .not('updated_at', 'is', null)
           .lt('updated_at', seteDiasAtras.toISOString())
