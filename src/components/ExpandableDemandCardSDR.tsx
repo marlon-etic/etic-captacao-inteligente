@@ -105,6 +105,23 @@ export function ExpandableDemandCardSDR({
     (c: any) => new Date(c.data_clique).getTime() > Date.now() - 24 * 3600000,
   )
 
+  let progressStatus = 'Aguardando'
+  let progressColor = 'bg-gray-100 text-gray-600 border-gray-200'
+
+  if (capturedCount > 0) {
+    progressStatus = 'Imóvel Proposto'
+    progressColor = 'bg-emerald-100 text-emerald-700 border-emerald-200'
+  } else if (respostasNaoEncontrei.length > 0) {
+    progressStatus = 'Sem Opções'
+    progressColor = 'bg-red-100 text-red-700 border-red-200'
+  } else if (activeCaptadores.length > 0) {
+    progressStatus = 'Em Busca'
+    progressColor = 'bg-blue-100 text-blue-700 border-blue-200'
+  } else {
+    progressStatus = 'Aguardando'
+    progressColor = 'bg-gray-100 text-gray-600 border-gray-200'
+  }
+
   return (
     <Card
       id={`demand-card-${demand.id}`}
@@ -148,6 +165,15 @@ export function ExpandableDemandCardSDR({
               <Zap className="w-3 h-3 fill-current" /> NOVA DEMANDA
             </Badge>
           )}
+
+          <Badge
+            className={cn(
+              'border font-bold text-[10px] px-2 py-1 shadow-sm uppercase tracking-wider flex items-center gap-1 pointer-events-auto',
+              progressColor,
+            )}
+          >
+            {progressStatus}
+          </Badge>
 
           {matchCount > 0 &&
             !isLost &&

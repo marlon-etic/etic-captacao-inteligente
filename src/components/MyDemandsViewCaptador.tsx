@@ -10,6 +10,7 @@ import { useSupabaseDemands } from '@/hooks/use-supabase-demands'
 import { ExpandableDemandCardCaptador } from '@/components/ExpandableDemandCardCaptador'
 import useAppStore from '@/stores/useAppStore'
 import { toast } from '@/hooks/use-toast'
+import { supabase } from '@/lib/supabase/client'
 
 interface Props {
   filterType?: 'Venda' | 'Aluguel'
@@ -65,6 +66,23 @@ export function MyDemandsViewCaptador({ filterType }: Props) {
 
   const activeType = filterType || 'Venda'
   const { demands, loading, refresh } = useSupabaseDemands(activeType)
+
+  useEffect(() => {
+    const channelName =
+      activeType === 'Venda'
+        ? 'demandas_vendas_changes_captador'
+        : 'demandas_locacao_changes_captador'
+    const table = activeType === 'Venda' ? 'demandas_vendas' : 'demandas_locacao'
+    const sub = supabase
+      .channel(channelName)
+      .on('postgres_changes', { event: '*', schema: 'public', table }, () => {
+        refresh()
+      })
+      .subscribe()
+    return () => {
+      supabase.removeChannel(sub)
+    }
+  }, [activeType, refresh])
 
   const [filters, setFilters] = useViewFilters('captador_demands_view_supabase_' + activeType, {
     prioridade: 'Todos',
@@ -125,6 +143,11 @@ export function MyDemandsViewCaptador({ filterType }: Props) {
         const dDate = new Date(d.created_at)
         if (dDate < dateLimit) return false
       }
+
+      if (filters.status !== 'impossivel' && d.status_demanda === 'impossivel') {
+        return false
+      }
+
       return true
     })
   }, [demands, filters])

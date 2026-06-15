@@ -27,14 +27,20 @@ export function ListasSdr({
 
   if (loading) return null
 
+  const demandasList = Array.isArray(data?.demandas) ? data.demandas : []
+  const imoveisLivresList = Array.isArray(data?.imoveisLivres) ? data.imoveisLivres : []
+  const imoveisSobDemandaList = Array.isArray(data?.imoveisSobDemanda) ? data.imoveisSobDemanda : []
+  const visitasList = Array.isArray(data?.visitas) ? data.visitas : []
+  const fechadosList = Array.isArray(data?.fechados) ? data.fechados : []
+
   const activeDemands =
-    data?.demandas?.map((d: any) => ({
+    demandasList.map((d: any) => ({
       id: d.id,
       tipo: isLocacao ? 'Locação' : 'Venda',
       nome_cliente: d.nome_cliente || d.cliente_nome || 'Cliente',
     })) || []
 
-  const allProperties = [...(data?.imoveisLivres || []), ...(data?.imoveisSobDemanda || [])]
+  const allProperties = [...imoveisLivresList, ...imoveisSobDemandaList]
 
   let listData: any[] = []
   let columns: string[] = []
@@ -42,7 +48,7 @@ export function ListasSdr({
 
   if (cardFiltrado === 'novas' || cardFiltrado === 'nenhum') {
     listData =
-      data?.demandas?.filter((d: any) => !d.status_demanda || d.status_demanda === 'aberta') || []
+      demandasList.filter((d: any) => !d?.status_demanda || d.status_demanda === 'aberta') || []
     columns = ['Cliente', 'Specs', 'Data', 'Status']
     renderRow = (d) => (
       <TableRow key={d.id} className="hover:bg-gray-50">
@@ -64,9 +70,9 @@ export function ListasSdr({
     )
   } else if (cardFiltrado === 'ativas') {
     listData =
-      data?.demandas?.filter((d: any) =>
+      demandasList.filter((d: any) =>
         ['aberta', 'em busca', 'em visita', 'em negociação'].includes(
-          d.status_demanda?.toLowerCase(),
+          d?.status_demanda?.toLowerCase() || '',
         ),
       ) || []
     columns = ['Cliente', 'Budget', 'Criada em', 'Status']
@@ -87,7 +93,7 @@ export function ListasSdr({
       </TableRow>
     )
   } else if (cardFiltrado === 'livres') {
-    listData = data?.imoveisLivres || []
+    listData = imoveisLivresList
     columns = ['Endereço', 'Tipo', 'Valor', 'Specs', 'Status']
     renderRow = (i) => (
       <TableRow key={i.id} className="hover:bg-gray-50">
@@ -107,7 +113,7 @@ export function ListasSdr({
       </TableRow>
     )
   } else if (cardFiltrado === 'sob_demanda') {
-    listData = data?.imoveisSobDemanda || []
+    listData = imoveisSobDemandaList
     columns = ['Endereço', 'Tipo', 'Valor', 'Matches']
     renderRow = (i) => (
       <TableRow key={i.id} className="hover:bg-gray-50">
@@ -124,7 +130,7 @@ export function ListasSdr({
       </TableRow>
     )
   } else if (cardFiltrado === 'visitas') {
-    listData = data?.visitas || []
+    listData = visitasList
     columns = ['Data Visita', 'Tipo', 'Endereço', 'Ações']
     renderRow = (v) => (
       <TableRow key={v.id} className="hover:bg-gray-50">
@@ -141,7 +147,7 @@ export function ListasSdr({
       </TableRow>
     )
   } else if (cardFiltrado === 'fechados') {
-    listData = data?.fechados || []
+    listData = fechadosList
     columns = ['Data', 'Tipo', 'Valor', 'Status']
     renderRow = (f) => (
       <TableRow key={f.id} className="hover:bg-gray-50">

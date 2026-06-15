@@ -31,23 +31,30 @@ export function MetricsCardsSdr({ data, loading }: { data: any; loading: boolean
       </div>
     )
 
-  const totais = data?.demandas?.length || 0
+  const demandasList = Array.isArray(data?.demandas) ? data.demandas : []
+  const imoveisLivresList = Array.isArray(data?.imoveisLivres) ? data.imoveisLivres : []
+  const imoveisSobDemandaList = Array.isArray(data?.imoveisSobDemanda) ? data.imoveisSobDemanda : []
+  const visitasList = Array.isArray(data?.visitas) ? data.visitas : []
+  const fechadosList = Array.isArray(data?.fechados) ? data.fechados : []
+
+  const totais = demandasList.length || 0
   const novas =
-    data?.demandas?.filter(
-      (d: any) => !d.status_demanda || d.status_demanda === 'aberta' || d.status_demanda === 'nova',
+    demandasList.filter(
+      (d: any) =>
+        !d?.status_demanda || d.status_demanda === 'aberta' || d.status_demanda === 'nova',
     ).length || 0
   const ativas =
-    data?.demandas?.filter((d: any) =>
-      ['aberta', 'em busca', 'em visita', 'nova'].includes(d.status_demanda?.toLowerCase()),
+    demandasList.filter((d: any) =>
+      ['aberta', 'em busca', 'em visita', 'nova'].includes(d?.status_demanda?.toLowerCase() || ''),
     ).length || 0
   const perdidas =
-    data?.demandas?.filter(
-      (d: any) => d.status_demanda === 'perdida' || d.status_demanda?.includes('PERDIDA'),
+    demandasList.filter(
+      (d: any) => d?.status_demanda === 'perdida' || d?.status_demanda?.includes('PERDIDA'),
     ).length || 0
-  const livres = data?.imoveisLivres?.length || 0
-  const sobDemanda = data?.imoveisSobDemanda?.length || 0
-  const visitas = data?.visitas?.length || 0
-  const fechados = data?.fechados?.length || 0
+  const livres = imoveisLivresList.length || 0
+  const sobDemanda = imoveisSobDemandaList.length || 0
+  const visitas = visitasList.length || 0
+  const fechados = fechadosList.length || 0
 
   const convVisitas = novas > 0 ? Math.round((visitas / novas) * 100) : 0
   const convNegocios = totais > 0 ? Math.round((fechados / totais) * 100) : 0

@@ -1,5 +1,6 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Skeleton } from '@/components/ui/skeleton'
+import { supabase } from '@/lib/supabase/client'
 import { ExpandableDemandCardCaptador } from '@/components/ExpandableDemandCardCaptador'
 import { useAllDemands } from '@/hooks/use-all-demands'
 import { Button } from '@/components/ui/button'
@@ -9,6 +10,27 @@ import { RefreshCw, Search } from 'lucide-react'
 export function DemandasPerdidasView() {
   const { demands, loading, refresh } = useAllDemands()
   const [searchTerm, setSearchTerm] = useState('')
+
+  useEffect(() => {
+    const channelVendas = supabase
+      .channel('demandas_vendas_perdidas_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'demandas_vendas' }, () => {
+        refresh()
+      })
+      .subscribe()
+
+    const channelLocacao = supabase
+      .channel('demandas_locacao_perdidas_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'demandas_locacao' }, () => {
+        refresh()
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channelVendas)
+      supabase.removeChannel(channelLocacao)
+    }
+  }, [refresh])
 
   const filteredDemands = useMemo(() => {
     return demands
