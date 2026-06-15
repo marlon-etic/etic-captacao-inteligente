@@ -1619,6 +1619,19 @@ export type Database = {
         }
         Relationships: []
       }
+      vw_demandas_perdidas: {
+        Row: {
+          bairros: string[] | null
+          created_at: string | null
+          id: string | null
+          nivel_urgencia: string | null
+          nome_cliente: string | null
+          status_demanda: string | null
+          tipo: string | null
+          valor_maximo: number | null
+        }
+        Relationships: []
+      }
       vw_demandas_sem_retorno: {
         Row: {
           cliente_nome: string | null
@@ -2265,6 +2278,15 @@ export const Constants = {
 //   data: jsonb (not null)
 //   expires_at: timestamp with time zone (not null)
 //   created_at: timestamp with time zone (nullable, default: now())
+// Table: vw_demandas_perdidas
+//   id: uuid (nullable)
+//   tipo: text (nullable)
+//   nome_cliente: character varying (nullable)
+//   bairros: _text (nullable)
+//   valor_maximo: numeric (nullable)
+//   nivel_urgencia: character varying (nullable)
+//   status_demanda: character varying (nullable)
+//   created_at: timestamp with time zone (nullable)
 // Table: vw_demandas_sem_retorno
 //   demanda_id: uuid (nullable)
 //   cliente_nome: character varying (nullable)

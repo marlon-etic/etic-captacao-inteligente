@@ -11,6 +11,7 @@ import { ExpandableDemandCardCaptador } from '@/components/ExpandableDemandCardC
 import useAppStore from '@/stores/useAppStore'
 import { toast } from '@/hooks/use-toast'
 import { supabase } from '@/lib/supabase/client'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 interface Props {
   filterType?: 'Venda' | 'Aluguel'
@@ -92,6 +93,8 @@ export function MyDemandsViewCaptador({ filterType }: Props) {
     bairro: '',
   })
 
+  const [activeTab, setActiveTab] = useState<'ativas' | 'vencidas' | 'perdidas'>('ativas')
+
   useEffect(() => {
     let urgentCount = 0
     demands.forEach((d) => {
@@ -119,8 +122,30 @@ export function MyDemandsViewCaptador({ filterType }: Props) {
     setFilters(newF)
   }
 
-  const filteredDemands = useMemo(() => {
+  const tabFilteredDemands = useMemo(() => {
     return demands.filter((d) => {
+      const isPerdida =
+        d.status_demanda === 'impossivel' ||
+        d.status_demanda === 'PERDIDA_BAIXA' ||
+        d.status_demanda === 'localmente_perdida'
+      const prazoStatus = d.prazos_captacao?.[0]?.status
+      const isAtendida = d.status_demanda === 'atendida' || d.status_demanda === 'ganho'
+      const isVencida =
+        !isPerdida &&
+        !isAtendida &&
+        (d.status_demanda === 'sem_resposta_24h' ||
+          (prazoStatus &&
+            ['vencido', 'sem_resposta_24h', 'sem_resposta_final'].includes(prazoStatus)))
+
+      if (activeTab === 'ativas') return !isPerdida && !isVencida
+      if (activeTab === 'vencidas') return isVencida
+      if (activeTab === 'perdidas') return isPerdida
+      return true
+    })
+  }, [demands, activeTab])
+
+  const filteredDemands = useMemo(() => {
+    return tabFilteredDemands.filter((d) => {
       if (filters.prioridade && filters.prioridade !== 'Todos') {
         const isPrio = filters.prioridade === 'prioritaria'
         if (!!d.is_prioritaria !== isPrio) return false
@@ -144,13 +169,9 @@ export function MyDemandsViewCaptador({ filterType }: Props) {
         if (dDate < dateLimit) return false
       }
 
-      if (filters.status !== 'impossivel' && d.status_demanda === 'impossivel') {
-        return false
-      }
-
       return true
     })
-  }, [demands, filters])
+  }, [tabFilteredDemands, filters])
 
   const handleClear = () =>
     handleFilterChange({
@@ -210,6 +231,20 @@ export function MyDemandsViewCaptador({ filterType }: Props) {
       />
 
       <div className="flex-1 w-full flex flex-col gap-[16px] min-w-0">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
+          <TabsList className="grid w-full grid-cols-3 mb-4 h-12">
+            <TabsTrigger value="ativas" className="font-bold text-[14px]">
+              Ativas
+            </TabsTrigger>
+            <TabsTrigger value="vencidas" className="font-bold text-[14px]">
+              Vencidas
+            </TabsTrigger>
+            <TabsTrigger value="perdidas" className="font-bold text-[14px]">
+              Perdidas
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+
         <div className="lg:hidden w-full space-y-3">
           <div className="flex overflow-x-auto gap-2 pb-1 scrollbar-hide px-1">
             {MOBILE_CHIPS.map((chip) => {
@@ -240,13 +275,13 @@ export function MyDemandsViewCaptador({ filterType }: Props) {
         </div>
 
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-[16px] w-full items-stretch">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-[16px] w-full items-stretch mt-2">
             {[1, 2, 3].map((i) => (
               <Skeleton key={i} className="h-[250px] w-full rounded-[16px] animate-fast-pulse" />
             ))}
           </div>
         ) : filteredDemands.length === 0 ? (
-          <div className="text-center py-[64px] px-4 bg-[#FFFFFF] border-[2px] rounded-[12px] border-dashed border-[#E5E5E5] flex flex-col items-center justify-center shadow-sm">
+          <div className="text-center py-[64px] px-4 bg-[#FFFFFF] border-[2px] rounded-[12px] border-dashed border-[#E5E5E5] flex flex-col items-center justify-center shadow-sm mt-2">
             {isAnyFilterActive ? (
               <>
                 <Users className="w-16 h-16 text-[#999999]/30 mb-4" />
@@ -281,7 +316,7 @@ export function MyDemandsViewCaptador({ filterType }: Props) {
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-[16px] w-full items-stretch">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-[16px] w-full items-stretch mt-2">
             {filteredDemands.map((demand) => (
               <ExpandableDemandCardCaptador key={demand.id} demand={demand} />
             ))}

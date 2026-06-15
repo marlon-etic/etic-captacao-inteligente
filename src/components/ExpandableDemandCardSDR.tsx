@@ -108,7 +108,7 @@ export function ExpandableDemandCardSDR({
   let progressStatus = 'Aguardando'
   let progressColor = 'bg-gray-100 text-gray-600 border-gray-200'
 
-  if (capturedCount > 0) {
+  if (capturedCount > 0 || matchCount > 0) {
     progressStatus = 'Imóvel Proposto'
     progressColor = 'bg-emerald-100 text-emerald-700 border-emerald-200'
   } else if (respostasNaoEncontrei.length > 0) {
