@@ -2618,6 +2618,15 @@ export const Constants = {
 //     WITH CHECK: true
 //   Policy "Captadores can update prazos" (UPDATE, PERMISSIVE) roles={public}
 //     USING: true
+//   Policy "authenticated_delete_prazos" (DELETE, PERMISSIVE) roles={authenticated}
+//     USING: true
+//   Policy "authenticated_insert_prazos" (INSERT, PERMISSIVE) roles={authenticated}
+//     WITH CHECK: true
+//   Policy "authenticated_select_prazos" (SELECT, PERMISSIVE) roles={authenticated}
+//     USING: true
+//   Policy "authenticated_update_prazos" (UPDATE, PERMISSIVE) roles={authenticated}
+//     USING: true
+//     WITH CHECK: true
 // Table: property_performance
 //   Policy "Landlords can view own property performance" (SELECT, PERMISSIVE) roles={authenticated}
 //     USING: (EXISTS ( SELECT 1    FROM (imoveis_captados ic      JOIN landlord_profiles lp ON ((ic.landlord_id = lp.id)))   WHERE ((ic.id = property_performance.property_id) AND (lp.user_id = auth.uid()))))
@@ -2638,6 +2647,15 @@ export const Constants = {
 //     WITH CHECK: (captador_id = auth.uid())
 //   Policy "Captadores manage own respostas" (ALL, PERMISSIVE) roles={public}
 //     USING: (captador_id = auth.uid())
+//   Policy "authenticated_delete_respostas" (DELETE, PERMISSIVE) roles={authenticated}
+//     USING: true
+//   Policy "authenticated_insert_respostas" (INSERT, PERMISSIVE) roles={authenticated}
+//     WITH CHECK: true
+//   Policy "authenticated_select_respostas" (SELECT, PERMISSIVE) roles={authenticated}
+//     USING: true
+//   Policy "authenticated_update_respostas" (UPDATE, PERMISSIVE) roles={authenticated}
+//     USING: true
+//     WITH CHECK: true
 // Table: resumo_diario_sdr
 //   Policy "Users can insert own resumo" (INSERT, PERMISSIVE) roles={public}
 //     WITH CHECK: (user_id = auth.uid())

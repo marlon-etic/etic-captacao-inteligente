@@ -38,9 +38,11 @@ export function BuscarImoveisTab() {
   const { toast } = useToast()
   const [imoveis, setImoveis] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const userRole = user?.user_metadata?.role || user?.app_metadata?.role
+
   const [filtros, setFiltros] = useState({
     status: 'todas',
-    tipo: 'todas',
+    tipo: userRole === 'sdr' || userRole === 'SDR' ? 'Locação' : 'todas',
     busca: '',
   })
   const [imovelSelecionado, setImovelSelecionado] = useState<any>(null)
@@ -57,8 +59,6 @@ export function BuscarImoveisTab() {
     vagas: '',
     urgencia: 'Normal',
   })
-
-  const userRole = user?.user_metadata?.role || user?.app_metadata?.role
 
   const fetchImoveis = async () => {
     setLoading(true)

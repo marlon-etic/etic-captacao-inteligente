@@ -221,22 +221,36 @@ export function MyDemandsView({ filterType }: Props) {
   }
 
   const tabFilteredDemands = useMemo(() => {
+    const now = Date.now()
     return demands.filter((d) => {
       const isPerdida =
         d.status_demanda === 'impossivel' ||
         d.status_demanda === 'PERDIDA_BAIXA' ||
         d.status_demanda === 'localmente_perdida'
-      const prazoStatus = d.prazos_captacao?.[0]?.status
+
       const isAtendida = d.status_demanda === 'atendida' || d.status_demanda === 'ganho'
-      const isVencida =
-        !isPerdida &&
-        !isAtendida &&
-        (d.status_demanda === 'sem_resposta_24h' ||
-          (prazoStatus &&
-            ['vencido', 'sem_resposta_24h', 'sem_resposta_final'].includes(prazoStatus)))
+
+      const prazos = d.prazos_captacao || []
+      let isVencida = false
+      if (prazos.length > 0) {
+        const hasActive = prazos.some((p) => {
+          const isFuture = p.prazo_resposta && new Date(p.prazo_resposta).getTime() > now
+          return (
+            isFuture ||
+            p.status === 'prorrogado' ||
+            p.status === 'ativo' ||
+            p.status === 'estendido'
+          )
+        })
+        isVencida =
+          !hasActive &&
+          prazos.some((p) => p.prazo_resposta && new Date(p.prazo_resposta).getTime() <= now)
+      } else {
+        isVencida = d.status_demanda === 'sem_resposta_24h'
+      }
 
       if (activeTab === 'ativas') return !isPerdida && !isVencida
-      if (activeTab === 'vencidas') return isVencida
+      if (activeTab === 'vencidas') return !isPerdida && isVencida
       if (activeTab === 'perdidas') return isPerdida
       return true
     })
