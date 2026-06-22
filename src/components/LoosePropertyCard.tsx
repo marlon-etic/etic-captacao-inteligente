@@ -166,7 +166,7 @@ export function LoosePropertyCard({
           <p className="text-[13px] text-[#333333] font-medium flex items-center gap-1.5 mt-1 pointer-events-auto">
             <MapPin className="w-4 h-4 shrink-0 text-[#F44336]" />
             <span className="line-clamp-2">
-              {property.bairro_tipo === 'outro' && <span className="mr-1">🔹</span>}
+              Localização: {property.bairro_tipo === 'outro' && <span className="mr-1">🔹</span>}
               {Array.isArray(property.neighborhood)
                 ? property.neighborhood.join(', ')
                 : property.neighborhood}

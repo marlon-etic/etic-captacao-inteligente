@@ -197,6 +197,28 @@ export function ModalDetalhes({
             </div>
           )}
 
+          {/* Links Sugeridos */}
+          {demanda.links_sugeridos && demanda.links_sugeridos.length > 0 && (
+            <div>
+              <h3 className="mb-3 text-sm font-bold tracking-wider text-gray-500 uppercase">
+                🔗 Links Sugeridos para Captação
+              </h3>
+              <div className="space-y-2">
+                {demanda.links_sugeridos.map((link: string, idx: number) => (
+                  <a
+                    key={idx}
+                    href={link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block text-[13px] text-[#2E5F8A] font-bold hover:underline truncate bg-gray-50 p-2 rounded-lg border border-gray-200 shadow-sm pointer-events-auto"
+                  >
+                    {link}
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Status & Meta */}
           <div>
             <h3 className="mb-3 text-sm font-bold tracking-wider text-gray-500 uppercase">

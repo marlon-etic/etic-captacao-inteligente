@@ -9,6 +9,7 @@ const ModalDetalhes = lazy(() =>
 const ModalVinculador = lazy(() =>
   import('./ModalVinculador').then((m) => ({ default: m.ModalVinculador })),
 )
+import { ModalSugerirLinks } from './ModalSugerirLinks'
 import useAppStore from '@/stores/useAppStore'
 import { useTimeElapsed } from '@/hooks/use-time-elapsed'
 import { useToast } from '@/hooks/use-toast'
@@ -31,6 +32,7 @@ export interface Demand {
   imoveiVinculados: number
   imoveis: { id: string; codigo_imovel: string; captador_id: string; user_captador_id: string }[]
   captadores_busca: any[]
+  links_sugeridos?: string[]
   criador_nome: string
   criador_id: string
 }
@@ -42,6 +44,7 @@ const DemandCard = React.memo(function DemandCard({
   onDarPerdido,
   currentUser,
   onReload,
+  onSugerirLinks,
 }: {
   demand: Demand
   onVerDetalhes: () => void
@@ -49,6 +52,7 @@ const DemandCard = React.memo(function DemandCard({
   onDarPerdido: () => void
   currentUser: any
   onReload: () => void
+  onSugerirLinks: () => void
 }) {
   const timeInfo = useTimeElapsed(demand.created_at)
   const { toast } = useToast()
@@ -209,14 +213,27 @@ const DemandCard = React.memo(function DemandCard({
         >
           Ver Detalhes
         </Button>
-        <Button
-          onClick={handleBuscando}
-          disabled={isBuscando}
-          variant={isBuscando ? 'secondary' : 'outline'}
-          className={`w-full text-[12px] h-9 font-bold shadow-sm ${isBuscando ? 'bg-blue-50 text-blue-700 opacity-80' : 'border-blue-200 text-blue-700 hover:bg-blue-50'}`}
-        >
-          {isBuscando ? '✅ Buscando' : '🔍 Estou Buscando'}
-        </Button>
+        {currentUser?.role === 'sdr' || currentUser?.role === 'corretor' ? (
+          <Button
+            onClick={(e) => {
+              e.stopPropagation()
+              onSugerirLinks()
+            }}
+            variant="outline"
+            className="w-full text-[12px] h-9 font-bold border-blue-200 text-blue-700 hover:bg-blue-50 shadow-sm"
+          >
+            🔗 Sugerir Links de Captação
+          </Button>
+        ) : (
+          <Button
+            onClick={handleBuscando}
+            disabled={isBuscando}
+            variant={isBuscando ? 'secondary' : 'outline'}
+            className={`w-full text-[12px] h-9 font-bold shadow-sm ${isBuscando ? 'bg-blue-50 text-blue-700 opacity-80' : 'border-blue-200 text-blue-700 hover:bg-blue-50'}`}
+          >
+            {isBuscando ? '✅ Buscando' : '🔍 Estou Buscando'}
+          </Button>
+        )}
         <Button
           onClick={onDarPerdido}
           variant="outline"
@@ -301,6 +318,7 @@ const DemandCardWrapper = React.memo(function DemandCardWrapper({
   setSelectedDetalhes,
   setSelectedVinculador,
   setSelectedPerdido,
+  setSelectedSugerirLinks,
   currentUser,
   onReload,
 }: any) {
@@ -316,6 +334,10 @@ const DemandCardWrapper = React.memo(function DemandCardWrapper({
     () => setSelectedPerdido(demand),
     [demand, setSelectedPerdido],
   )
+  const handleSugerirLinks = useCallback(
+    () => setSelectedSugerirLinks(demand),
+    [demand, setSelectedSugerirLinks],
+  )
 
   return (
     <DemandCard
@@ -323,6 +345,7 @@ const DemandCardWrapper = React.memo(function DemandCardWrapper({
       onVerDetalhes={handleVerDetalhes}
       onVincular={handleVincular}
       onDarPerdido={handleDarPerdido}
+      onSugerirLinks={handleSugerirLinks}
       currentUser={currentUser}
       onReload={onReload}
     />
@@ -348,6 +371,7 @@ export function BuscarDemandas() {
   const [selectedDetalhes, setSelectedDetalhes] = useState<Demand | null>(null)
   const [selectedVinculador, setSelectedVinculador] = useState<Demand | null>(null)
   const [selectedPerdido, setSelectedPerdido] = useState<Demand | null>(null)
+  const [selectedSugerirLinks, setSelectedSugerirLinks] = useState<Demand | null>(null)
 
   const { currentUser } = useAppStore()
   const { toast } = useToast()
@@ -371,7 +395,7 @@ export function BuscarDemandas() {
       const { data: demandsLoc, error: errLoc } = await supabase
         .from('demandas_locacao')
         .select(`
-          id, nome_cliente, telefone, email, sdr_id, created_at, valor_minimo, valor_maximo, bairros, dormitorios, banheiros, vagas_estacionamento, urgencia, status_demanda, captadores_busca,
+          id, nome_cliente, telefone, email, sdr_id, created_at, valor_minimo, valor_maximo, bairros, dormitorios, banheiros, vagas_estacionamento, urgencia, status_demanda, captadores_busca, links_sugeridos,
           criador:users!fk_demandas_locacao_sdr(nome, email),
           imoveis_captados!imoveis_captados_demanda_locacao_id_fkey(id, codigo_imovel, user_captador_id, captador_id)
         `)
@@ -383,7 +407,7 @@ export function BuscarDemandas() {
       const { data: demandsVen, error: errVen } = await supabase
         .from('demandas_vendas')
         .select(`
-          id, nome_cliente, telefone, email, corretor_id, created_at, valor_minimo, valor_maximo, bairros, dormitorios, banheiros, vagas_estacionamento, urgencia, status_demanda, captadores_busca,
+          id, nome_cliente, telefone, email, corretor_id, created_at, valor_minimo, valor_maximo, bairros, dormitorios, banheiros, vagas_estacionamento, urgencia, status_demanda, captadores_busca, links_sugeridos,
           criador:users!demandas_vendas_corretor_id_fkey(nome, email),
           imoveis_captados!imoveis_captados_demanda_venda_id_fkey(id, codigo_imovel, user_captador_id, captador_id)
         `)
@@ -414,6 +438,7 @@ export function BuscarDemandas() {
           imoveiVinculados: imoveis.length,
           imoveis: imoveis as any,
           captadores_busca: demand.captadores_busca || [],
+          links_sugeridos: demand.links_sugeridos || [],
           criador_nome:
             (demand.criador as any)?.nome || (demand.criador as any)?.email || 'Desconhecido',
           criador_id: demand.sdr_id || '',
@@ -440,6 +465,7 @@ export function BuscarDemandas() {
           imoveiVinculados: imoveis.length,
           imoveis: imoveis as any,
           captadores_busca: demand.captadores_busca || [],
+          links_sugeridos: demand.links_sugeridos || [],
           criador_nome:
             (demand.criador as any)?.nome || (demand.criador as any)?.email || 'Desconhecido',
           criador_id: demand.corretor_id || '',
@@ -539,7 +565,7 @@ export function BuscarDemandas() {
           const { data: locData } = await supabase
             .from('demandas_locacao')
             .select(`
-              id, nome_cliente, telefone, email, sdr_id, created_at, valor_minimo, valor_maximo, bairros, dormitorios, banheiros, vagas_estacionamento, urgencia, status_demanda, captadores_busca,
+              id, nome_cliente, telefone, email, sdr_id, created_at, valor_minimo, valor_maximo, bairros, dormitorios, banheiros, vagas_estacionamento, urgencia, status_demanda, captadores_busca, links_sugeridos,
               criador:users!fk_demandas_locacao_sdr(nome, email),
               imoveis_captados!imoveis_captados_demanda_locacao_id_fkey(id, codigo_imovel, user_captador_id, captador_id)
             `)
@@ -566,6 +592,7 @@ export function BuscarDemandas() {
               imoveiVinculados: imoveis.length,
               imoveis: imoveis as any,
               captadores_busca: locData.captadores_busca || [],
+              links_sugeridos: locData.links_sugeridos || [],
               criador_nome:
                 (locData.criador as any)?.nome || (locData.criador as any)?.email || 'Desconhecido',
               criador_id: locData.sdr_id || '',
@@ -578,7 +605,7 @@ export function BuscarDemandas() {
           const { data: venData } = await supabase
             .from('demandas_vendas')
             .select(`
-              id, nome_cliente, telefone, email, corretor_id, created_at, valor_minimo, valor_maximo, bairros, dormitorios, banheiros, vagas_estacionamento, urgencia, status_demanda, captadores_busca,
+              id, nome_cliente, telefone, email, corretor_id, created_at, valor_minimo, valor_maximo, bairros, dormitorios, banheiros, vagas_estacionamento, urgencia, status_demanda, captadores_busca, links_sugeridos,
               criador:users!demandas_vendas_corretor_id_fkey(nome, email),
               imoveis_captados!imoveis_captados_demanda_venda_id_fkey(id, codigo_imovel, user_captador_id, captador_id)
             `)
@@ -605,6 +632,7 @@ export function BuscarDemandas() {
               imoveiVinculados: imoveis.length,
               imoveis: imoveis as any,
               captadores_busca: venData.captadores_busca || [],
+              links_sugeridos: venData.links_sugeridos || [],
               criador_nome:
                 (venData.criador as any)?.nome || (venData.criador as any)?.email || 'Desconhecido',
               criador_id: venData.corretor_id || '',
@@ -774,6 +802,7 @@ export function BuscarDemandas() {
               setSelectedDetalhes={setSelectedDetalhes}
               setSelectedVinculador={setSelectedVinculador}
               setSelectedPerdido={setSelectedPerdido}
+              setSelectedSugerirLinks={setSelectedSugerirLinks}
               currentUser={currentUser}
               onReload={() => loadDemands(false)}
             />
@@ -814,6 +843,17 @@ export function BuscarDemandas() {
           demanda={selectedPerdido}
           onClose={() => setSelectedPerdido(null)}
           onConfirm={handleDarPerdidoConfirm}
+        />
+      )}
+
+      {selectedSugerirLinks && (
+        <ModalSugerirLinks
+          demanda={selectedSugerirLinks}
+          onClose={() => setSelectedSugerirLinks(null)}
+          onSuccess={() => {
+            setSelectedSugerirLinks(null)
+            loadDemands(false)
+          }}
         />
       )}
     </div>

@@ -161,6 +161,28 @@ export function DemandDetailModal({
 
             <RespostasHistory respostas={respostasNaoEncontrei} />
 
+            {/* Links Sugeridos */}
+            {(demand as any).links_sugeridos && (demand as any).links_sugeridos.length > 0 && (
+              <div className="bg-white p-5 rounded-[12px] border border-[#E5E5E5] shadow-sm pointer-events-auto mt-4">
+                <span className="text-[12px] text-[#999999] font-black uppercase tracking-wider flex items-center gap-1.5 mb-3 border-b border-[#F5F5F5] pb-2">
+                  🔗 Links Sugeridos para Captação
+                </span>
+                <div className="space-y-2">
+                  {(demand as any).links_sugeridos.map((link: string, idx: number) => (
+                    <a
+                      key={idx}
+                      href={link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block text-[13px] text-[#2E5F8A] font-bold hover:underline truncate bg-gray-50 p-2 rounded-lg border border-gray-200 shadow-sm"
+                    >
+                      {link}
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Histórico/Imóveis */}
             <div className="bg-white p-5 rounded-[12px] border border-[#E5E5E5] shadow-sm relative z-0 mt-4">
               <span className="text-[12px] text-[#999999] font-black uppercase tracking-wider flex items-center gap-1.5 mb-4 border-b border-[#F5F5F5] pb-2 pointer-events-none">

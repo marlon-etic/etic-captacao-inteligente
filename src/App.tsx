@@ -238,7 +238,7 @@ const AppRoutes = () => {
 
       <Route path="/app" element={<Layout />}>
         <Route index element={<DashboardRedirect />} />
-        <Route path="demandas" element={<Demandas />} />
+        <Route path="demandas" element={<Navigate to="/app" replace />} />
         <Route path="nova-demanda" element={<NovaDemanda />} />
         <Route path="ranking" element={<Ranking />} />
         <Route path="perfil" element={<Perfil />} />

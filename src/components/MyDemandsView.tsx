@@ -64,7 +64,7 @@ const FILTERS: FilterDef[] = [
       { value: '90', label: 'Últimos 90 dias', icon: '📅' },
     ],
   },
-  { id: 'bairro', label: 'Bairro', isSearch: true, options: [] },
+  { id: 'bairro', label: 'Localização', isSearch: true, options: [] },
 ]
 
 export function MyDemandsView({ filterType }: Props) {

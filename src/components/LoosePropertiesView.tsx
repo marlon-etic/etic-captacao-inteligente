@@ -35,7 +35,7 @@ export function LoosePropertiesView({ filterType }: { filterType?: 'Venda' | 'Al
         { value: '30 dias', label: '30 dias', icon: '📅' },
       ],
     },
-    { id: 'bairro', label: 'Bairro', isSearch: true, options: [] },
+    { id: 'bairro', label: 'Localização', isSearch: true, options: [] },
   ]
 
   if (!filterType) {
