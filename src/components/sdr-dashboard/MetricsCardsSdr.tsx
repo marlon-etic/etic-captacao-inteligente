@@ -61,7 +61,12 @@ export function MetricsCardsSdr({ data, loading }: { data: any; loading: boolean
   const vinculacaoPct =
     ativas > 0 ? Math.round(((sobDemanda > ativas ? ativas : sobDemanda) / ativas) * 100) : 0
 
-  const toggle = (val: any) => setCardFiltrado(cardFiltrado === val ? 'nenhum' : val)
+  const toggle = (val: any) => {
+    setCardFiltrado(cardFiltrado === val ? 'nenhum' : val)
+    setTimeout(() => {
+      document.getElementById('listas-sdr-container')?.scrollIntoView({ behavior: 'smooth' })
+    }, 100)
+  }
 
   const cards = [
     {

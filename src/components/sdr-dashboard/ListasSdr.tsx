@@ -21,6 +21,15 @@ import {
 } from '@/components/ui/dialog'
 import { LogVisitSection } from '@/components/checkin/LogVisitSection'
 import { LogClosingSection } from '@/components/checkin/LogClosingSection'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { useToast } from '@/components/ui/use-toast'
+import { supabase } from '@/lib/supabase/client'
 
 export function ListasSdr({
   data,
@@ -33,6 +42,9 @@ export function ListasSdr({
 }) {
   const { cardFiltrado } = useSdrStore()
   const [selectedProperty, setSelectedProperty] = useState<any>(null)
+  const [linkingDemandaId, setLinkingDemandaId] = useState<string>('')
+  const [isLinking, setIsLinking] = useState(false)
+  const { toast } = useToast()
 
   if (loading) return null
 
@@ -43,11 +55,41 @@ export function ListasSdr({
   const fechadosList = Array.isArray(data?.fechados) ? data.fechados : []
 
   const activeDemands =
-    demandasList.map((d: any) => ({
-      id: d.id,
-      tipo: isLocacao ? 'Locação' : 'Venda',
-      nome_cliente: d.nome_cliente || d.cliente_nome || 'Cliente',
-    })) || []
+    demandasList
+      .filter((d: any) =>
+        ['aberta', 'em busca', 'em visita', 'nova'].includes(
+          d.status_demanda?.toLowerCase() || 'aberta',
+        ),
+      )
+      .map((d: any) => ({
+        id: d.id,
+        tipo: isLocacao ? 'Locação' : 'Venda',
+        nome_cliente: d.nome_cliente || d.cliente_nome || 'Cliente',
+      })) || []
+
+  const handleVincularCliente = async () => {
+    if (!selectedProperty || !linkingDemandaId) return
+    setIsLinking(true)
+    try {
+      const { error } = await supabase.from('imovel_demand_match').insert({
+        imovel_id: selectedProperty.id,
+        demanda_id: linkingDemandaId,
+        tipo_demanda: isLocacao ? 'Locação' : 'Venda',
+        captador_id: selectedProperty.user_captador_id || null,
+        tipo_vinculacao: 'manual',
+        compatibilidade_pct: 100,
+      })
+      if (error) throw error
+      toast({ title: 'Sucesso', description: 'Cliente vinculado com sucesso!' })
+      setLinkingDemandaId('')
+      setSelectedProperty(null)
+      window.location.reload()
+    } catch (err: any) {
+      toast({ title: 'Erro', description: err.message, variant: 'destructive' })
+    } finally {
+      setIsLinking(false)
+    }
+  }
 
   const allProperties = [...imoveisLivresList, ...imoveisSobDemandaList]
 
@@ -111,7 +153,7 @@ export function ListasSdr({
     )
   } else if (cardFiltrado === 'livres') {
     listData = imoveisLivresList
-    columns = ['Bairro', 'Código do Imóvel', 'Valor', 'Specs', 'Link de acesso']
+    columns = ['Localização', 'Código do Imóvel', 'Valor', 'Specs', 'Link de acesso']
     renderRow = (i) => (
       <TableRow key={i.id} className="hover:bg-gray-50">
         <TableCell className="font-bold text-gray-800">
@@ -136,7 +178,7 @@ export function ListasSdr({
     )
   } else if (cardFiltrado === 'sob_demanda') {
     listData = imoveisSobDemandaList
-    columns = ['Bairro', 'Código do Imóvel', 'Valor', 'Specs', 'Link de acesso']
+    columns = ['Localização', 'Código do Imóvel', 'Valor', 'Specs', 'Link de acesso']
     renderRow = (i) => (
       <TableRow key={i.id} className="hover:bg-gray-50">
         <TableCell className="font-bold text-gray-800">
@@ -207,7 +249,10 @@ export function ListasSdr({
     cardFiltrado === 'nenhum' ? 'Novas Demandas' : cardFiltrado.toUpperCase().replace('_', ' ')
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+    <div
+      id="listas-sdr-container"
+      className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden"
+    >
       <div className="p-5 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
         <h2 className="font-black text-[#1A3A52] text-lg">{title}</h2>
         <div className="flex items-center gap-3">
@@ -370,6 +415,36 @@ export function ListasSdr({
                   </div>
                 </div>
               )}
+
+              <div className="mt-6 pt-6 border-t border-gray-100">
+                <h3 className="text-lg font-black text-[#1A3A52] mb-4">Vincular Clientes</h3>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Select value={linkingDemandaId} onValueChange={setLinkingDemandaId}>
+                    <SelectTrigger className="flex-1 bg-white">
+                      <SelectValue placeholder="Selecione uma demanda ativa..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {activeDemands.map((d: any) => (
+                        <SelectItem key={d.id} value={d.id}>
+                          {d.nome_cliente} - {d.tipo}
+                        </SelectItem>
+                      ))}
+                      {activeDemands.length === 0 && (
+                        <SelectItem value="none" disabled>
+                          Nenhuma demanda ativa
+                        </SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    onClick={handleVincularCliente}
+                    disabled={!linkingDemandaId || isLinking}
+                    className="bg-[#1A3A52] text-white hover:bg-[#1f4866]"
+                  >
+                    {isLinking ? 'Vinculando...' : 'Confirmar Vínculo'}
+                  </Button>
+                </div>
+              </div>
             </div>
           )}
         </DialogContent>

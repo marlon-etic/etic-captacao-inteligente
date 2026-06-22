@@ -107,12 +107,6 @@ export function AppSidebar() {
     navItems = [
       { title: 'Dashboard', icon: LayoutDashboard, url: '/app/sdr-corretor/dashboard' },
       {
-        title: 'Minhas Demandas',
-        icon: Users,
-        url: '/app/sdr-corretor/dashboard?tab=minhas-demandas',
-        badge: myActiveDemandsCount > 0 ? myActiveDemandsCount : undefined,
-      },
-      {
         title: 'Disponível Geral',
         icon: Building,
         url: '/app/disponivel-geral',
