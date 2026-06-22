@@ -201,7 +201,7 @@ export function ModalDetalhes({
           {demanda.links_sugeridos && demanda.links_sugeridos.length > 0 && (
             <div>
               <h3 className="mb-3 text-sm font-bold tracking-wider text-gray-500 uppercase">
-                🔗 Links Sugeridos para Captação
+                🔗 Sugestões de Captação
               </h3>
               <div className="space-y-2">
                 {demanda.links_sugeridos.map((link: string, idx: number) => (

@@ -153,16 +153,16 @@ export function ListasSdr({
     )
   } else if (cardFiltrado === 'livres') {
     listData = imoveisLivresList
-    columns = ['Localização', 'Código do Imóvel', 'Valor', 'Specs', 'Link de acesso']
+    columns = ['Tipo', 'Código do Imóvel', 'Valor', 'Specs', 'Link de acesso']
     renderRow = (i) => (
       <TableRow key={i.id} className="hover:bg-gray-50">
-        <TableCell className="font-bold text-gray-800">
-          {i.localizacao_texto || i.endereco?.split(',')[0] || 'N/A'}
+        <TableCell className="font-black text-gray-800 uppercase tracking-wide">
+          {i.tipo_imovel || 'Imóvel'}
         </TableCell>
         <TableCell className="text-gray-500 font-medium">{i.codigo_imovel || 'N/A'}</TableCell>
         <TableCell className="font-medium text-emerald-600">R$ {i.preco || i.valor || 0}</TableCell>
         <TableCell className="text-gray-500">
-          {i.tipo_imovel || 'Imóvel'} • {i.dormitorios || 0} qtos, {i.vagas || 0} vagas
+          {i.dormitorios || 0} qtos, {i.vagas || 0} vagas
         </TableCell>
         <TableCell>
           <Button
@@ -178,16 +178,16 @@ export function ListasSdr({
     )
   } else if (cardFiltrado === 'sob_demanda') {
     listData = imoveisSobDemandaList
-    columns = ['Localização', 'Código do Imóvel', 'Valor', 'Specs', 'Link de acesso']
+    columns = ['Tipo', 'Código do Imóvel', 'Valor', 'Specs', 'Link de acesso']
     renderRow = (i) => (
       <TableRow key={i.id} className="hover:bg-gray-50">
-        <TableCell className="font-bold text-gray-800">
-          {i.localizacao_texto || i.endereco?.split(',')[0] || 'N/A'}
+        <TableCell className="font-black text-gray-800 uppercase tracking-wide">
+          {i.tipo_imovel || 'Imóvel'}
         </TableCell>
         <TableCell className="text-gray-500 font-medium">{i.codigo_imovel || 'N/A'}</TableCell>
         <TableCell className="font-medium text-emerald-600">R$ {i.preco || i.valor || 0}</TableCell>
         <TableCell className="text-gray-500">
-          {i.tipo_imovel || 'Imóvel'} • {i.dormitorios || 0} qtos, {i.vagas || 0} vagas
+          {i.dormitorios || 0} qtos, {i.vagas || 0} vagas
         </TableCell>
         <TableCell>
           <Button

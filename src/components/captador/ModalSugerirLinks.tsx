@@ -106,8 +106,8 @@ export function ModalSugerirLinks({
 
         <div className="p-5 space-y-4">
           <p className="text-sm text-gray-700 bg-blue-50 text-blue-800 p-3 rounded-md border border-blue-100">
-            Estes links ajudarão a equipe de captadores a prospectar imóveis com perfil similar ao
-            deste cliente.
+            Estes links servirão como diretriz de busca para que os captadores encontrem imóveis com
+            este perfil específico.
           </p>
 
           <div className="space-y-2">
