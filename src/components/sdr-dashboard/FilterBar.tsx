@@ -2,6 +2,13 @@ import { useState } from 'react'
 import { useSdrStore } from '@/hooks/use-sdr-store'
 import { Button } from '@/components/ui/button'
 import { DatePicker } from '@/components/ui/date-picker'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 
 export function FilterBar() {
@@ -42,22 +49,20 @@ export function FilterBar() {
 
   return (
     <div className="flex flex-col sm:flex-row items-center gap-4 w-full">
-      <div className="flex items-center bg-white border border-gray-200 rounded-lg p-1 shadow-sm overflow-x-auto max-w-full">
-        {periods.map((p) => (
-          <Button
-            key={p}
-            variant="outline"
-            onClick={() => handlePeriodChange(p)}
-            className={cn(
-              'text-sm font-bold h-8 px-4 rounded-md whitespace-nowrap border-none transition-all',
-              periodo === p
-                ? 'bg-[#1A3A52] text-white shadow-sm hover:bg-[#1A3A52]/90 hover:text-white'
-                : 'text-gray-500 hover:text-[#1A3A52] hover:bg-gray-100 bg-transparent',
-            )}
-          >
-            {labels[p]}
-          </Button>
-        ))}
+      <div className="flex items-center gap-2">
+        <span className="text-sm font-bold text-gray-500">Filtrar por:</span>
+        <Select value={periodo} onValueChange={handlePeriodChange}>
+          <SelectTrigger className="w-[180px] bg-white font-bold h-9">
+            <SelectValue placeholder="Selecione o período" />
+          </SelectTrigger>
+          <SelectContent>
+            {periods.map((p) => (
+              <SelectItem key={p} value={p} className="font-medium">
+                {labels[p]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {showCustom && (

@@ -74,7 +74,7 @@ export function useSdrQueries() {
         let imoveisLivresQuery = supabase
           .from('imoveis_captados')
           .select(
-            'id, codigo_imovel, endereco, preco, valor, created_at, updated_at, tipo, etapa_funil, status_captacao, imovel_demand_match(id, demanda_id, tipo_vinculacao)',
+            'id, codigo_imovel, endereco, preco, valor, created_at, updated_at, tipo, tipo_imovel, etapa_funil, status_captacao, dormitorios, vagas, banheiros, fotos, observacoes, localizacao_texto, imovel_demand_match(id, demanda_id, tipo_vinculacao)',
           )
           .eq('tipo', tipoTransacao)
           .is('demanda_locacao_id', null)
@@ -100,7 +100,7 @@ export function useSdrQueries() {
           const { data: imV } = await supabase
             .from('imovel_demand_match')
             .select(
-              'id, demanda_id, tipo_vinculacao, compatibilidade_pct, imovel_id, imoveis_captados(id, codigo_imovel, endereco, preco, valor, created_at, updated_at, user_captador_id, users!imoveis_captados_user_captador_id_fkey(nome))',
+              'id, demanda_id, tipo_vinculacao, compatibilidade_pct, imovel_id, imoveis_captados(id, codigo_imovel, endereco, preco, valor, created_at, updated_at, user_captador_id, tipo, tipo_imovel, etapa_funil, status_captacao, dormitorios, vagas, banheiros, fotos, observacoes, localizacao_texto, users!imoveis_captados_user_captador_id_fkey(nome))',
             )
             .in('demanda_id', sdrDemandaIds)
 
