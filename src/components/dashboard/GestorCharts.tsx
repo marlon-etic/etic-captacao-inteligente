@@ -10,6 +10,8 @@ import {
 import { FunnelChart, Funnel, LabelList, PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
 import { Demand } from '@/types'
 import { useIsMobile } from '@/hooks/use-mobile'
+import { GestorPropertyGrid } from './GestorPropertyGrid'
+import { GestorDemandAnalysis } from './GestorDemandAnalysis'
 
 export function GestorCharts({ demands }: { demands: Demand[] }) {
   const isMobile = useIsMobile()
@@ -63,91 +65,103 @@ export function GestorCharts({ demands }: { demands: Demand[] }) {
   }, {} as any)
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6 w-full min-w-0">
-      <Card className="border-0 shadow-md flex flex-col min-w-0">
-        <CardHeader className="p-4 md:p-6 shrink-0 border-b bg-muted/10">
-          <CardTitle className="text-base sm:text-lg font-bold leading-tight">
-            Funil de Conversão Global
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-4 md:p-6 flex-1 flex flex-col min-w-0">
-          <div className="h-[300px] md:h-[350px] w-full min-h-0 flex-1 relative overflow-hidden">
-            <ChartContainer config={funnelConfig} className="h-full w-full absolute inset-0">
-              <ResponsiveContainer width="100%" height="100%">
-                <FunnelChart margin={{ top: 10, bottom: 10, left: 10, right: 30 }}>
-                  <ChartTooltip
-                    content={<ChartTooltipContent />}
-                    cursor={{ fill: 'transparent' }}
-                  />
-                  <Funnel dataKey="value" data={funnelData} isAnimationActive>
-                    <LabelList
-                      position="inside"
-                      fill="#fff"
-                      stroke="none"
-                      dataKey="name"
-                      fontSize={isMobile ? 11 : 13}
-                      className="font-bold drop-shadow-md"
-                    />
-                    <LabelList
-                      position="right"
-                      fill="currentColor"
-                      stroke="none"
-                      dataKey="label"
-                      fontSize={isMobile ? 11 : 13}
-                      className="font-bold"
-                    />
-                  </Funnel>
-                </FunnelChart>
-              </ResponsiveContainer>
-            </ChartContainer>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="border-0 shadow-md flex flex-col min-w-0">
-        <CardHeader className="p-4 md:p-6 shrink-0 border-b bg-muted/10">
-          <CardTitle className="text-base sm:text-lg font-bold leading-tight">
-            Motivos de Perda (Desistências)
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-4 md:p-6 flex-1 flex flex-col min-w-0">
-          <div className="h-[300px] md:h-[350px] w-full min-h-0 flex-1 relative overflow-hidden">
-            {pieData.length > 0 ? (
-              <ChartContainer config={pieConfig} className="h-full w-full absolute inset-0">
+    <div className="flex flex-col w-full min-w-0">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6 w-full min-w-0">
+        <Card className="border-0 shadow-md flex flex-col min-w-0">
+          <CardHeader className="p-4 md:p-6 shrink-0 border-b bg-muted/10">
+            <CardTitle className="text-base sm:text-lg font-bold leading-tight">
+              Funil de Conversão Global
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 md:p-6 flex-1 flex flex-col min-w-0">
+            <div className="h-[300px] md:h-[350px] w-full min-h-0 flex-1 relative overflow-hidden">
+              <ChartContainer config={funnelConfig} className="h-full w-full absolute inset-0">
                 <ResponsiveContainer width="100%" height="100%">
-                  <PieChart margin={{ top: 10, bottom: isMobile ? 40 : 10, left: 0, right: 0 }}>
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <Pie
-                      data={pieData}
-                      dataKey="value"
-                      nameKey="name"
-                      cx="50%"
-                      cy={isMobile ? '40%' : '50%'}
-                      innerRadius="45%"
-                      outerRadius="80%"
-                      paddingAngle={2}
-                    >
-                      {pieData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.fill} />
-                      ))}
-                    </Pie>
-                    <ChartLegend
-                      content={<ChartLegendContent className="flex-wrap text-[11px] sm:text-xs" />}
-                      layout="horizontal"
-                      verticalAlign="bottom"
-                      align="center"
+                  <FunnelChart margin={{ top: 10, bottom: 10, left: 10, right: 30 }}>
+                    <ChartTooltip
+                      content={<ChartTooltipContent />}
+                      cursor={{ fill: 'transparent' }}
                     />
-                  </PieChart>
+                    <Funnel dataKey="value" data={funnelData} isAnimationActive>
+                      <LabelList
+                        position="inside"
+                        fill="#fff"
+                        stroke="none"
+                        dataKey="name"
+                        fontSize={isMobile ? 11 : 13}
+                        className="font-bold drop-shadow-md"
+                      />
+                      <LabelList
+                        position="right"
+                        fill="currentColor"
+                        stroke="none"
+                        dataKey="label"
+                        fontSize={isMobile ? 11 : 13}
+                        className="font-bold"
+                      />
+                    </Funnel>
+                  </FunnelChart>
                 </ResponsiveContainer>
               </ChartContainer>
-            ) : (
-              <div className="h-full w-full flex flex-col items-center justify-center text-muted-foreground bg-muted/10 rounded-lg absolute inset-0">
-                <p className="text-sm font-medium">Nenhuma demanda perdida no período.</p>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-md flex flex-col min-w-0">
+          <CardHeader className="p-4 md:p-6 shrink-0 border-b bg-muted/10">
+            <CardTitle className="text-base sm:text-lg font-bold leading-tight">
+              Motivos de Perda (Desistências)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 md:p-6 flex-1 flex flex-col min-w-0">
+            <div className="h-[300px] md:h-[350px] w-full min-h-0 flex-1 relative overflow-hidden">
+              {pieData.length > 0 ? (
+                <ChartContainer config={pieConfig} className="h-full w-full absolute inset-0">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart margin={{ top: 10, bottom: isMobile ? 40 : 10, left: 0, right: 0 }}>
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <Pie
+                        data={pieData}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy={isMobile ? '40%' : '50%'}
+                        innerRadius="45%"
+                        outerRadius="80%"
+                        paddingAngle={2}
+                      >
+                        {pieData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.fill} />
+                        ))}
+                      </Pie>
+                      <ChartLegend
+                        content={
+                          <ChartLegendContent className="flex-wrap text-[11px] sm:text-xs" />
+                        }
+                        layout="horizontal"
+                        verticalAlign="bottom"
+                        align="center"
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </ChartContainer>
+              ) : (
+                <div className="h-full w-full flex flex-col items-center justify-center text-muted-foreground bg-muted/10 rounded-lg absolute inset-0">
+                  <p className="text-sm font-medium">Nenhuma demanda perdida no período.</p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="mt-8 mb-8">
+        <GestorPropertyGrid />
+      </div>
+
+      <div className="mt-4">
+        <GestorDemandAnalysis />
+      </div>
     </div>
   )
 }

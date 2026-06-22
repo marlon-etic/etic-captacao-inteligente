@@ -1,53 +1,56 @@
-import { useMemo } from 'react'
-import { EnhancedDemand } from '@/lib/analytics-utils'
-import { PieChart, Pie, Cell, Tooltip, Legend } from 'recharts'
-import { ChartContainer } from '@/components/ui/chart'
+import { useEffect, useState, useMemo } from 'react'
+import { supabase } from '@/lib/supabase/client'
+import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import {
+  ChartContainer,
+  ChartTooltipContent,
+  ChartLegend,
+  ChartLegendContent,
+} from '@/components/ui/chart'
 import { useIsMobile } from '@/hooks/use-mobile'
 
-interface Props {
-  demands: EnhancedDemand[]
-  type: 'Venda' | 'Aluguel' | 'Ambos'
-}
-
-export function PriceDonutChart({ demands, type }: Props) {
+export function PriceDonutChart({ demands, type }: { demands?: any; type?: any }) {
   const isMobile = useIsMobile()
+  const [imoveis, setImoveis] = useState<any[]>([])
 
-  const { vData, aData } = useMemo(() => {
-    const vMap = new Map<string, { name: string; value: number }>()
-    const vOrder = ['Até R$300k', 'R$300k-R$500k', 'R$500k-R$700k', 'R$700k-R$1M', 'R$1M+']
-    vOrder.forEach((o) => vMap.set(o, { name: o, value: 0 }))
+  useEffect(() => {
+    supabase
+      .from('imoveis_captados')
+      .select('dormitorios, vagas')
+      .then(({ data }) => setImoveis(data || []))
+  }, [])
 
-    const aMap = new Map<string, { name: string; value: number }>()
-    const aOrder = [
-      'Até R$2.000',
-      'R$2.000-R$3.000',
-      'R$3.000-R$4.000',
-      'R$4.000-R$5.000',
-      'R$5.000+',
-    ]
-    aOrder.forEach((o) => aMap.set(o, { name: o, value: 0 }))
+  const { dormData, vagasData } = useMemo(() => {
+    const dMap = new Map<string, number>()
+    const vMap = new Map<string, number>()
+    imoveis.forEach((i) => {
+      const d = i.dormitorios ?? 0
+      const dLabel = d >= 4 ? '4+' : d.toString()
+      dMap.set(dLabel, (dMap.get(dLabel) || 0) + 1)
 
-    demands.forEach((d) => {
-      if (d.type === 'Venda' && vMap.has(d.faixaValor)) vMap.get(d.faixaValor)!.value++
-      if (d.type === 'Aluguel' && aMap.has(d.faixaValor)) aMap.get(d.faixaValor)!.value++
+      const v = i.vagas ?? 0
+      const vLabel = v >= 4 ? '4+' : v.toString()
+      vMap.set(vLabel, (vMap.get(vLabel) || 0) + 1)
     })
-
     return {
-      vData: Array.from(vMap.values()).filter((v) => v.value > 0),
-      aData: Array.from(aMap.values()).filter((v) => v.value > 0),
+      dormData: Array.from(dMap.entries())
+        .map(([name, value]) => ({ name: `${name} Dorm.`, value }))
+        .sort((a, b) => a.name.localeCompare(b.name)),
+      vagasData: Array.from(vMap.entries())
+        .map(([name, value]) => ({ name: `${name} Vagas`, value }))
+        .sort((a, b) => a.name.localeCompare(b.name)),
     }
-  }, [demands])
+  }, [imoveis])
 
-  const V_COLORS = ['#FFE0B2', '#FFCC80', '#FFB74D', '#FF9800', '#E65100']
-  const A_COLORS = ['#809BAF', '#4D7491', '#2E5F8A', '#1A3A52', '#0D2233']
+  const COLORS = ['#809BAF', '#4D7491', '#2E5F8A', '#1A3A52', '#0D2233']
+  const COLORS2 = ['#FFE0B2', '#FFCC80', '#FFB74D', '#FF9800', '#E65100']
 
-  const renderDonut = (data: any[], title: string, colors: string[]) => {
-    if (data.length === 0) return null
-    return (
-      <div className="flex-1 flex flex-col min-w-[280px]">
-        <h4 className="text-center font-bold text-[#333333] mb-2">{title}</h4>
-        <div className="h-[250px] w-full">
-          <ChartContainer config={{}} className="h-full w-full">
+  const renderDonut = (data: any[], title: string, colors: string[]) => (
+    <div className="flex-1 flex flex-col min-w-[280px]">
+      <h4 className="text-center font-bold text-[#333333] mb-2">{title}</h4>
+      <div className="h-[250px] w-full relative">
+        <ChartContainer config={{}} className="h-full w-full absolute inset-0">
+          <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
                 data={data}
@@ -63,45 +66,29 @@ export function PriceDonutChart({ demands, type }: Props) {
                   <Cell key={`cell-${i}`} fill={colors[i % colors.length]} />
                 ))}
               </Pie>
-              <Tooltip
-                contentStyle={{
-                  borderRadius: '8px',
-                  border: '1px solid #E5E5E5',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                }}
-                itemStyle={{ color: '#333333' }}
-              />
-              <Legend
-                verticalAlign={isMobile ? 'bottom' : 'middle'}
-                layout={isMobile ? 'horizontal' : 'vertical'}
-                align={isMobile ? 'center' : 'right'}
-                iconType="circle"
-                iconSize={8}
-                wrapperStyle={{ fontSize: 12, fontWeight: 500 }}
+              <Tooltip content={<ChartTooltipContent />} />
+              <ChartLegend
+                content={<ChartLegendContent />}
+                layout="horizontal"
+                verticalAlign="bottom"
+                align="center"
               />
             </PieChart>
-          </ChartContainer>
-        </div>
+          </ResponsiveContainer>
+        </ChartContainer>
       </div>
-    )
-  }
+    </div>
+  )
 
   return (
     <div className="bg-white p-6 rounded-xl border-[2px] border-[#2E5F8A]/20 shadow-sm flex flex-col">
-      <h3 className="text-[18px] font-bold text-[#1A3A52] mb-1">Distribuição por Faixa de Valor</h3>
+      <h3 className="text-[18px] font-bold text-[#1A3A52] mb-1">Dormitórios e Vagas de Imóveis</h3>
       <p className="text-[12px] text-[#999999] mb-6 font-medium">
-        Proporção de demandas em cada categoria
+        Distribuição das características dos imóveis captados (Visão Global)
       </p>
-
       <div className="flex flex-col md:flex-row items-center justify-center gap-8 md:gap-4 flex-wrap">
-        {(type === 'Ambos' || type === 'Venda') &&
-          renderDonut(vData, 'Demandas de Venda', V_COLORS)}
-        {(type === 'Ambos' || type === 'Aluguel') &&
-          renderDonut(aData, 'Demandas de Aluguel', A_COLORS)}
-        {vData.length === 0 && aData.length === 0 && (
-          <p className="text-[#999999] text-sm py-12">Sem dados de faixas de valor.</p>
-        )}
+        {renderDonut(dormData, 'Dormitórios', COLORS)}
+        {renderDonut(vagasData, 'Vagas', COLORS2)}
       </div>
     </div>
   )
