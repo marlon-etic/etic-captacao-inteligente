@@ -51,6 +51,7 @@ import MeusCaptadosPage from '@/pages/MeusCaptadosPage'
 import MatchInteligentes from '@/pages/MatchInteligentes'
 import BuscarImoveisPage from '@/pages/dashboard/BuscarImoveisPage'
 import { SDRDashboard } from '@/pages/dashboard/SDRDashboard'
+import { SdrStoreProvider } from '@/hooks/use-sdr-store'
 
 // Landlord Panel Imports
 import LandlordLogin from '@/pages/auth/LandlordLogin'
@@ -383,9 +384,11 @@ const App = () => (
   <ErrorBoundary>
     <AuthProvider>
       <AppStoreProvider>
-        <GlobalPontuacaoListener />
-        <GlobalNotificationListener />
-        <AppContent />
+        <SdrStoreProvider>
+          <GlobalPontuacaoListener />
+          <GlobalNotificationListener />
+          <AppContent />
+        </SdrStoreProvider>
       </AppStoreProvider>
     </AuthProvider>
   </ErrorBoundary>
