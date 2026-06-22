@@ -1,18 +1,7 @@
+import { useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  PieChart,
-  Pie,
-  Cell,
-  LineChart,
-  Line,
-  ResponsiveContainer,
-} from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell } from 'recharts'
 import {
   ChartContainer,
   ChartTooltip,
@@ -20,10 +9,97 @@ import {
   ChartLegend,
   ChartLegendContent,
 } from '@/components/ui/chart'
-import { format, subDays } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
 
 export function ChartsSdr({ data, loading }: { data: any; loading: boolean }) {
+  const imoveis = useMemo(() => {
+    return [...(data?.imoveisLivres || []), ...(data?.imoveisSobDemanda || [])]
+  }, [data])
+
+  const { tipoData, dormsData, vagasData, bairrosData, dormsConfig, vagasConfig } = useMemo(() => {
+    // 1. Distribuição por Tipo
+    const tipoCount: Record<string, number> = {}
+    imoveis.forEach((i: any) => {
+      let t = i.tipo_imovel || 'Outros'
+      if (typeof t === 'string' && t.includes(',')) t = t.split(',')[0]
+      t = t.trim()
+      tipoCount[t] = (tipoCount[t] || 0) + 1
+    })
+    const processedTipoData = Object.keys(tipoCount)
+      .map((k) => ({ name: k, value: tipoCount[k] }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 6)
+
+    // 2. Distribuição por Dormitórios
+    const dormsCount: Record<string, number> = {}
+    imoveis.forEach((i: any) => {
+      const d = typeof i.dormitorios === 'number' ? i.dormitorios : parseInt(i.dormitorios) || 0
+      const label = d >= 4 ? '4+' : `${d}`
+      dormsCount[label] = (dormsCount[label] || 0) + 1
+    })
+    const colorsDorms = ['#10b981', '#34d399', '#6ee7b7', '#a7f3d0', '#059669']
+    const processedDormsData = Object.keys(dormsCount)
+      .map((k, idx) => ({
+        name: k === '0' ? 'Não inf.' : k + (k === '4+' ? ' Quartos' : ' Quarto(s)'),
+        value: dormsCount[k],
+        fill: colorsDorms[idx % colorsDorms.length],
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name))
+
+    const confDorms: Record<string, any> = { value: { label: 'Imóveis' } }
+    processedDormsData.forEach((d) => {
+      confDorms[d.name] = { label: d.name, color: d.fill }
+    })
+
+    // 3. Distribuição por Vagas
+    const vagasCount: Record<string, number> = {}
+    imoveis.forEach((i: any) => {
+      const v = typeof i.vagas === 'number' ? i.vagas : parseInt(i.vagas) || 0
+      const label = v >= 3 ? '3+' : `${v}`
+      vagasCount[label] = (vagasCount[label] || 0) + 1
+    })
+    const colorsVagas = ['#8b5cf6', '#a78bfa', '#c4b5fd', '#ddd6fe', '#7c3aed']
+    const processedVagasData = Object.keys(vagasCount)
+      .map((k, idx) => ({
+        name: k === '0' ? 'Não inf.' : k + (k === '3+' ? ' Vagas' : ' Vaga(s)'),
+        value: vagasCount[k],
+        fill: colorsVagas[idx % colorsVagas.length],
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name))
+
+    const confVagas: Record<string, any> = { value: { label: 'Imóveis' } }
+    processedVagasData.forEach((d) => {
+      confVagas[d.name] = { label: d.name, color: d.fill }
+    })
+
+    // 4. Top Bairros
+    const bairrosCount: Record<string, number> = {}
+    imoveis.forEach((i: any) => {
+      let b = i.localizacao_texto || i.endereco || 'Não informado'
+      if (typeof b === 'string') {
+        if (b.includes(',')) b = b.split(',')[0]
+        if (b.includes('-')) b = b.split('-')[0]
+        b = b.trim()
+        if (b.length > 25) b = b.substring(0, 25) + '...'
+        if (b && b.toLowerCase() !== 'não informado') {
+          bairrosCount[b] = (bairrosCount[b] || 0) + 1
+        }
+      }
+    })
+    const processedBairrosData = Object.keys(bairrosCount)
+      .map((k) => ({ name: k, value: bairrosCount[k] }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 6)
+
+    return {
+      tipoData: processedTipoData,
+      dormsData: processedDormsData,
+      vagasData: processedVagasData,
+      bairrosData: processedBairrosData,
+      dormsConfig: confDorms,
+      vagasConfig: confVagas,
+    }
+  }, [imoveis])
+
   if (loading)
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
@@ -33,56 +109,6 @@ export function ChartsSdr({ data, loading }: { data: any; loading: boolean }) {
         <Skeleton className="h-[350px] rounded-xl" />
       </div>
     )
-
-  const imoveis = [...(data?.imoveisLivres || []), ...(data?.imoveisSobDemanda || [])]
-
-  // 1. Distribuição por Tipo
-  const tipoCount: Record<string, number> = {}
-  imoveis.forEach((i: any) => {
-    let t = i.tipo_imovel || 'Outros'
-    if (t.includes(',')) t = t.split(',')[0]
-    tipoCount[t] = (tipoCount[t] || 0) + 1
-  })
-  const tipoData = Object.keys(tipoCount)
-    .map((k) => ({ name: k, value: tipoCount[k] }))
-    .sort((a, b) => b.value - a.value)
-    .slice(0, 6)
-
-  // 2. Distribuição por Dormitórios
-  const dormsCount: Record<string, number> = {}
-  imoveis.forEach((i: any) => {
-    const d = i.dormitorios || 0
-    const label = d >= 4 ? '4+' : `${d}`
-    dormsCount[label] = (dormsCount[label] || 0) + 1
-  })
-  const dormsData = Object.keys(dormsCount)
-    .map((k) => ({ name: k + (k === '4+' ? ' Quartos' : ' Quarto(s)'), value: dormsCount[k] }))
-    .sort((a, b) => a.name.localeCompare(b.name))
-
-  // 3. Distribuição por Vagas
-  const vagasCount: Record<string, number> = {}
-  imoveis.forEach((i: any) => {
-    const v = i.vagas || 0
-    const label = v >= 3 ? '3+' : `${v}`
-    vagasCount[label] = (vagasCount[label] || 0) + 1
-  })
-  const vagasData = Object.keys(vagasCount)
-    .map((k) => ({ name: k + (k === '3+' ? ' Vagas' : ' Vaga(s)'), value: vagasCount[k] }))
-    .sort((a, b) => a.name.localeCompare(b.name))
-
-  // 4. Top Bairros
-  const bairrosCount: Record<string, number> = {}
-  imoveis.forEach((i: any) => {
-    let b = i.localizacao_texto || i.endereco || 'Não informado'
-    if (b.includes(',')) b = b.split(',')[0]
-    b = b.trim()
-    if (b.length > 20) b = b.substring(0, 20) + '...'
-    bairrosCount[b] = (bairrosCount[b] || 0) + 1
-  })
-  const bairrosData = Object.keys(bairrosCount)
-    .map((k) => ({ name: k, value: bairrosCount[k] }))
-    .sort((a, b) => b.value - a.value)
-    .slice(0, 6)
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
@@ -133,10 +159,7 @@ export function ChartsSdr({ data, loading }: { data: any; loading: boolean }) {
         </CardHeader>
         <CardContent className="h-[350px] w-full flex flex-col items-center justify-center pb-6">
           {dormsData.length > 0 ? (
-            <ChartContainer
-              config={{ value: { label: 'Imóveis', color: '#10b981' } }}
-              className="h-full w-full"
-            >
+            <ChartContainer config={dormsConfig} className="h-full w-full">
               <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
                 <Pie
                   data={dormsData}
@@ -148,10 +171,9 @@ export function ChartsSdr({ data, loading }: { data: any; loading: boolean }) {
                   outerRadius={110}
                   stroke="none"
                 >
-                  {dormsData.map((entry, index) => {
-                    const colors = ['#10b981', '#34d399', '#6ee7b7', '#a7f3d0', '#059669']
-                    return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
-                  })}
+                  {dormsData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                  ))}
                 </Pie>
                 <ChartTooltip content={<ChartTooltipContent />} />
                 <ChartLegend content={<ChartLegendContent />} />
@@ -173,10 +195,7 @@ export function ChartsSdr({ data, loading }: { data: any; loading: boolean }) {
         </CardHeader>
         <CardContent className="h-[350px] w-full flex flex-col items-center justify-center pb-6">
           {vagasData.length > 0 ? (
-            <ChartContainer
-              config={{ value: { label: 'Imóveis', color: '#8b5cf6' } }}
-              className="h-full w-full"
-            >
+            <ChartContainer config={vagasConfig} className="h-full w-full">
               <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
                 <Pie
                   data={vagasData}
@@ -188,10 +207,9 @@ export function ChartsSdr({ data, loading }: { data: any; loading: boolean }) {
                   outerRadius={110}
                   stroke="none"
                 >
-                  {vagasData.map((entry, index) => {
-                    const colors = ['#8b5cf6', '#a78bfa', '#c4b5fd', '#ddd6fe', '#7c3aed']
-                    return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
-                  })}
+                  {vagasData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                  ))}
                 </Pie>
                 <ChartTooltip content={<ChartTooltipContent />} />
                 <ChartLegend content={<ChartLegendContent />} />
