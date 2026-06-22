@@ -1,7 +1,17 @@
-import { useMemo } from 'react'
+import { useMemo, useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell } from 'recharts'
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+} from 'recharts'
 import {
   ChartContainer,
   ChartTooltip,
@@ -9,34 +19,59 @@ import {
   ChartLegend,
   ChartLegendContent,
 } from '@/components/ui/chart'
+import { supabase } from '@/lib/supabase/client'
 
-export function ChartsSdr({ data, loading }: { data: any; loading: boolean }) {
-  const imoveis = useMemo(() => {
-    return [...(data?.imoveisLivres || []), ...(data?.imoveisSobDemanda || [])]
-  }, [data])
+export function ChartsSdr({
+  data: _propData,
+  loading: _propLoading,
+}: {
+  data?: any
+  loading?: boolean
+}) {
+  const [imoveis, setImoveis] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function fetchImoveis() {
+      try {
+        const { data, error } = await supabase
+          .from('imoveis_captados')
+          .select('tipo_imovel, dormitorios, vagas, localizacao_texto, endereco')
+
+        if (data && !error) {
+          setImoveis(data)
+        }
+      } catch (err) {
+        console.error('Erro ao buscar imoveis para os gráficos', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchImoveis()
+  }, [])
 
   const { tipoData, dormsData, vagasData, bairrosData, dormsConfig, vagasConfig } = useMemo(() => {
-    // 1. Distribuição por Tipo
+    // 1. Distribuição por Tipo de Imóvel
     const tipoCount: Record<string, number> = {}
-    imoveis.forEach((i: any) => {
+    imoveis.forEach((i) => {
       let t = i.tipo_imovel || 'Outros'
       if (typeof t === 'string' && t.includes(',')) t = t.split(',')[0]
       t = t.trim()
-      tipoCount[t] = (tipoCount[t] || 0) + 1
+      if (t) tipoCount[t] = (tipoCount[t] || 0) + 1
     })
     const processedTipoData = Object.keys(tipoCount)
       .map((k) => ({ name: k, value: tipoCount[k] }))
       .sort((a, b) => b.value - a.value)
       .slice(0, 6)
 
-    // 2. Distribuição por Dormitórios
+    // 2. Distribuição por Dormitórios (Donut)
     const dormsCount: Record<string, number> = {}
-    imoveis.forEach((i: any) => {
+    imoveis.forEach((i) => {
       const d = typeof i.dormitorios === 'number' ? i.dormitorios : parseInt(i.dormitorios) || 0
       const label = d >= 4 ? '4+' : `${d}`
       dormsCount[label] = (dormsCount[label] || 0) + 1
     })
-    const colorsDorms = ['#10b981', '#34d399', '#6ee7b7', '#a7f3d0', '#059669']
+    const colorsDorms = ['#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe', '#1d4ed8']
     const processedDormsData = Object.keys(dormsCount)
       .map((k, idx) => ({
         name: k === '0' ? 'Não inf.' : k + (k === '4+' ? ' Quartos' : ' Quarto(s)'),
@@ -50,14 +85,14 @@ export function ChartsSdr({ data, loading }: { data: any; loading: boolean }) {
       confDorms[d.name] = { label: d.name, color: d.fill }
     })
 
-    // 3. Distribuição por Vagas
+    // 3. Distribuição por Vagas (Donut)
     const vagasCount: Record<string, number> = {}
-    imoveis.forEach((i: any) => {
+    imoveis.forEach((i) => {
       const v = typeof i.vagas === 'number' ? i.vagas : parseInt(i.vagas) || 0
       const label = v >= 3 ? '3+' : `${v}`
       vagasCount[label] = (vagasCount[label] || 0) + 1
     })
-    const colorsVagas = ['#8b5cf6', '#a78bfa', '#c4b5fd', '#ddd6fe', '#7c3aed']
+    const colorsVagas = ['#10b981', '#34d399', '#6ee7b7', '#a7f3d0', '#047857']
     const processedVagasData = Object.keys(vagasCount)
       .map((k, idx) => ({
         name: k === '0' ? 'Não inf.' : k + (k === '3+' ? ' Vagas' : ' Vaga(s)'),
@@ -71,9 +106,9 @@ export function ChartsSdr({ data, loading }: { data: any; loading: boolean }) {
       confVagas[d.name] = { label: d.name, color: d.fill }
     })
 
-    // 4. Top Bairros
+    // 4. Top Bairros (Horizontal Bar)
     const bairrosCount: Record<string, number> = {}
-    imoveis.forEach((i: any) => {
+    imoveis.forEach((i) => {
       let b = i.localizacao_texto || i.endereco || 'Não informado'
       if (typeof b === 'string') {
         if (b.includes(',')) b = b.split(',')[0]
@@ -100,167 +135,188 @@ export function ChartsSdr({ data, loading }: { data: any; loading: boolean }) {
     }
   }, [imoveis])
 
-  if (loading)
+  if (loading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <Skeleton className="h-[350px] rounded-xl" />
-        <Skeleton className="h-[350px] rounded-xl" />
-        <Skeleton className="h-[350px] rounded-xl" />
-        <Skeleton className="h-[350px] rounded-xl" />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full mb-8">
+        <Skeleton className="h-[380px] w-full rounded-2xl" />
+        <Skeleton className="h-[380px] w-full rounded-2xl" />
+        <Skeleton className="h-[380px] w-full rounded-2xl" />
+        <Skeleton className="h-[380px] w-full rounded-2xl" />
       </div>
     )
+  }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-      <Card className="rounded-xl shadow-sm border-gray-100 hover:shadow-md transition-shadow">
-        <CardHeader className="pb-2 pt-6 px-6">
-          <CardTitle className="text-sm font-bold text-gray-500 uppercase tracking-wider">
-            Distribuição por Tipo
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full mb-8">
+      {/* Property Type Chart */}
+      <Card className="rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.05)] border-gray-100 bg-white flex flex-col min-w-0">
+        <CardHeader className="bg-gray-50/50 border-b border-gray-100 pb-4 shrink-0">
+          <CardTitle className="text-[15px] font-bold text-[#1A3A52]">
+            Tipologia (Tipo de Imóvel)
           </CardTitle>
         </CardHeader>
-        <CardContent className="h-[350px] w-full px-4 pb-6">
+        <CardContent className="h-[320px] w-full pt-6 flex-1 min-w-0">
           {tipoData.length > 0 ? (
             <ChartContainer
               config={{ value: { label: 'Imóveis', color: '#3b82f6' } }}
               className="h-full w-full"
             >
-              <BarChart data={tipoData} margin={{ left: -10, bottom: 20, right: 20, top: 20 }}>
-                <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="#f3f4f6" />
-                <XAxis
-                  dataKey="name"
-                  tick={{ fontSize: 12, fill: '#6b7280' }}
-                  axisLine={false}
-                  tickLine={false}
-                  dy={10}
-                />
-                <YAxis
-                  tick={{ fontSize: 12, fill: '#6b7280' }}
-                  axisLine={false}
-                  tickLine={false}
-                  dx={-10}
-                />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={60} />
-              </BarChart>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={tipoData} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
+                  <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis
+                    dataKey="name"
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{ fontSize: 11, fill: '#6b7280', fontWeight: 600 }}
+                    angle={-15}
+                    textAnchor="end"
+                  />
+                  <YAxis
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{ fontSize: 11, fill: '#6b7280', fontWeight: 600 }}
+                  />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={50} />
+                </BarChart>
+              </ResponsiveContainer>
             </ChartContainer>
           ) : (
-            <div className="h-full w-full flex items-center justify-center text-sm text-gray-400 font-medium">
+            <div className="h-full w-full flex items-center justify-center text-sm font-medium text-gray-400">
               Sem dados
             </div>
           )}
         </CardContent>
       </Card>
 
-      <Card className="rounded-xl shadow-sm border-gray-100 hover:shadow-md transition-shadow">
-        <CardHeader className="pb-2 pt-6 px-6">
-          <CardTitle className="text-sm font-bold text-gray-500 uppercase tracking-wider">
-            Por Dormitórios
+      {/* Top Bairros Chart */}
+      <Card className="rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.05)] border-gray-100 bg-white flex flex-col min-w-0">
+        <CardHeader className="bg-gray-50/50 border-b border-gray-100 pb-4 shrink-0">
+          <CardTitle className="text-[15px] font-bold text-[#1A3A52]">
+            Top Bairros (Localização)
           </CardTitle>
         </CardHeader>
-        <CardContent className="h-[350px] w-full flex flex-col items-center justify-center pb-6">
-          {dormsData.length > 0 ? (
-            <ChartContainer config={dormsConfig} className="h-full w-full">
-              <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
-                <Pie
-                  data={dormsData}
-                  dataKey="value"
-                  nameKey="name"
-                  cx="50%"
-                  cy="45%"
-                  innerRadius={70}
-                  outerRadius={110}
-                  stroke="none"
-                >
-                  {dormsData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.fill} />
-                  ))}
-                </Pie>
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <ChartLegend content={<ChartLegendContent />} />
-              </PieChart>
-            </ChartContainer>
-          ) : (
-            <div className="h-full w-full flex items-center justify-center text-sm text-gray-400 font-medium">
-              Sem dados
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card className="rounded-xl shadow-sm border-gray-100 hover:shadow-md transition-shadow">
-        <CardHeader className="pb-2 pt-6 px-6">
-          <CardTitle className="text-sm font-bold text-gray-500 uppercase tracking-wider">
-            Por Vagas
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="h-[350px] w-full flex flex-col items-center justify-center pb-6">
-          {vagasData.length > 0 ? (
-            <ChartContainer config={vagasConfig} className="h-full w-full">
-              <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
-                <Pie
-                  data={vagasData}
-                  dataKey="value"
-                  nameKey="name"
-                  cx="50%"
-                  cy="45%"
-                  innerRadius={70}
-                  outerRadius={110}
-                  stroke="none"
-                >
-                  {vagasData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.fill} />
-                  ))}
-                </Pie>
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <ChartLegend content={<ChartLegendContent />} />
-              </PieChart>
-            </ChartContainer>
-          ) : (
-            <div className="h-full w-full flex items-center justify-center text-sm text-gray-400 font-medium">
-              Sem dados
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card className="rounded-xl shadow-sm border-gray-100 hover:shadow-md transition-shadow">
-        <CardHeader className="pb-2 pt-6 px-6">
-          <CardTitle className="text-sm font-bold text-gray-500 uppercase tracking-wider">
-            Top Bairros
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="h-[350px] w-full px-4 pb-6">
+        <CardContent className="h-[320px] w-full pt-6 flex-1 min-w-0">
           {bairrosData.length > 0 ? (
             <ChartContainer
               config={{ value: { label: 'Imóveis', color: '#f59e0b' } }}
               className="h-full w-full"
             >
-              <BarChart
-                data={bairrosData}
-                layout="vertical"
-                margin={{ left: 10, bottom: 10, right: 20, top: 20 }}
-              >
-                <CartesianGrid horizontal={false} strokeDasharray="3 3" stroke="#f3f4f6" />
-                <XAxis
-                  type="number"
-                  tick={{ fontSize: 12, fill: '#6b7280' }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis
-                  dataKey="name"
-                  type="category"
-                  tick={{ fontSize: 11, fill: '#6b7280' }}
-                  axisLine={false}
-                  tickLine={false}
-                  width={110}
-                />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Bar dataKey="value" fill="#f59e0b" radius={[0, 4, 4, 0]} maxBarSize={40} />
-              </BarChart>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={bairrosData}
+                  layout="vertical"
+                  margin={{ top: 10, right: 30, left: 30, bottom: 0 }}
+                >
+                  <CartesianGrid horizontal={false} strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis
+                    type="number"
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{ fontSize: 11, fill: '#6b7280', fontWeight: 600 }}
+                  />
+                  <YAxis
+                    dataKey="name"
+                    type="category"
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{ fontSize: 11, fill: '#6b7280', fontWeight: 600 }}
+                    width={100}
+                  />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Bar dataKey="value" fill="#f59e0b" radius={[0, 4, 4, 0]} maxBarSize={40} />
+                </BarChart>
+              </ResponsiveContainer>
             </ChartContainer>
           ) : (
-            <div className="h-full w-full flex items-center justify-center text-sm text-gray-400 font-medium">
+            <div className="h-full w-full flex items-center justify-center text-sm font-medium text-gray-400">
+              Sem dados
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Bedrooms Donut Chart */}
+      <Card className="rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.05)] border-gray-100 bg-white flex flex-col min-w-0">
+        <CardHeader className="bg-gray-50/50 border-b border-gray-100 pb-4 shrink-0">
+          <CardTitle className="text-[15px] font-bold text-[#1A3A52]">Dormitórios</CardTitle>
+        </CardHeader>
+        <CardContent className="h-[320px] w-full pt-6 pb-2 flex-1 min-w-0">
+          {dormsData.length > 0 ? (
+            <ChartContainer config={dormsConfig} className="h-full w-full mx-auto">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={dormsData}
+                    cx="50%"
+                    cy="45%"
+                    innerRadius="50%"
+                    outerRadius="80%"
+                    paddingAngle={3}
+                    dataKey="value"
+                    nameKey="name"
+                    stroke="none"
+                  >
+                    {dormsData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.fill} />
+                    ))}
+                  </Pie>
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <ChartLegend
+                    content={<ChartLegendContent className="flex-wrap text-[11px]" />}
+                    layout="horizontal"
+                    verticalAlign="bottom"
+                    align="center"
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </ChartContainer>
+          ) : (
+            <div className="h-full w-full flex items-center justify-center text-sm font-medium text-gray-400">
+              Sem dados
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Vagas Donut Chart */}
+      <Card className="rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.05)] border-gray-100 bg-white flex flex-col min-w-0">
+        <CardHeader className="bg-gray-50/50 border-b border-gray-100 pb-4 shrink-0">
+          <CardTitle className="text-[15px] font-bold text-[#1A3A52]">Vagas de Garagem</CardTitle>
+        </CardHeader>
+        <CardContent className="h-[320px] w-full pt-6 pb-2 flex-1 min-w-0">
+          {vagasData.length > 0 ? (
+            <ChartContainer config={vagasConfig} className="h-full w-full mx-auto">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={vagasData}
+                    cx="50%"
+                    cy="45%"
+                    innerRadius="50%"
+                    outerRadius="80%"
+                    paddingAngle={3}
+                    dataKey="value"
+                    nameKey="name"
+                    stroke="none"
+                  >
+                    {vagasData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.fill} />
+                    ))}
+                  </Pie>
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <ChartLegend
+                    content={<ChartLegendContent className="flex-wrap text-[11px]" />}
+                    layout="horizontal"
+                    verticalAlign="bottom"
+                    align="center"
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </ChartContainer>
+          ) : (
+            <div className="h-full w-full flex items-center justify-center text-sm font-medium text-gray-400">
               Sem dados
             </div>
           )}
