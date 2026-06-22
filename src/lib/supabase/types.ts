@@ -683,6 +683,7 @@ export type Database = {
           demanda_locacao_id: string | null
           demanda_venda_id: string | null
           dormitorios: number | null
+          banheiros: number | null
           endereco: string | null
           etapa_funil: string | null
           fotos: string[] | null
@@ -710,6 +711,7 @@ export type Database = {
           demanda_locacao_id?: string | null
           demanda_venda_id?: string | null
           dormitorios?: number | null
+          banheiros?: number | null
           endereco?: string | null
           etapa_funil?: string | null
           fotos?: string[] | null
