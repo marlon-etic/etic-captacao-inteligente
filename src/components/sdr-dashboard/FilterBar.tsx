@@ -17,9 +17,9 @@ export function FilterBar() {
   const periods = ['hoje', 'semana', 'mes', 'sempre', 'custom'] as const
   const labels = {
     hoje: 'Hoje',
-    semana: 'Esta Semana',
-    mes: 'Este Mês',
-    sempre: 'Sempre',
+    semana: 'Semana',
+    mes: 'Mês',
+    sempre: 'Total',
     custom: 'Personalizado',
   }
 

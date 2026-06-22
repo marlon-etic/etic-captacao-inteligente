@@ -120,7 +120,7 @@ export function ListasSdr({
         <TableCell className="text-gray-500 font-medium">{i.codigo_imovel || 'N/A'}</TableCell>
         <TableCell className="font-medium text-emerald-600">R$ {i.preco || i.valor || 0}</TableCell>
         <TableCell className="text-gray-500">
-          {i.dormitorios || 0} qtos, {i.vagas || 0} vagas
+          {i.tipo_imovel || 'Imóvel'} • {i.dormitorios || 0} qtos, {i.vagas || 0} vagas
         </TableCell>
         <TableCell>
           <Button
@@ -145,7 +145,7 @@ export function ListasSdr({
         <TableCell className="text-gray-500 font-medium">{i.codigo_imovel || 'N/A'}</TableCell>
         <TableCell className="font-medium text-emerald-600">R$ {i.preco || i.valor || 0}</TableCell>
         <TableCell className="text-gray-500">
-          {i.dormitorios || 0} qtos, {i.vagas || 0} vagas
+          {i.tipo_imovel || 'Imóvel'} • {i.dormitorios || 0} qtos, {i.vagas || 0} vagas
         </TableCell>
         <TableCell>
           <Button

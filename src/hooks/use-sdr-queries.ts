@@ -27,9 +27,7 @@ export function useSdrQueries() {
         if (periodo === 'hoje') {
           start.setHours(0, 0, 0, 0)
         } else if (periodo === 'semana') {
-          const day = start.getDay()
-          const diff = start.getDate() - day + (day === 0 ? -6 : 1)
-          start = new Date(start.setDate(diff))
+          start.setDate(start.getDate() - 7)
           start.setHours(0, 0, 0, 0)
         } else if (periodo === 'mes') {
           start.setDate(1)

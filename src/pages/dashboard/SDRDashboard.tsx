@@ -1,104 +1,44 @@
-import { useSearchParams } from 'react-router-dom'
-import { Tabs, TabsContent } from '@/components/ui/tabs'
-import { MyDemandsView } from '@/components/MyDemandsView'
-import { CapturedPropertiesView } from '@/components/CapturedPropertiesView'
-import { ScrollableTabs } from '@/components/ScrollableTabs'
-import { BuscarImoveisTab } from '@/components/BuscarImoveisTab'
-import { MetricsCardsSdr } from '@/components/sdr-dashboard/MetricsCardsSdr'
-import { ChartsSdr } from '@/components/sdr-dashboard/ChartsSdr'
-import { ListasSdr } from '@/components/sdr-dashboard/ListasSdr'
 import { useSdrQueries } from '@/hooks/use-sdr-queries'
-import { useSdrStore, SdrStoreProvider } from '@/hooks/use-sdr-store'
-import useAppStore from '@/stores/useAppStore'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-
-function SDRDashboardContent() {
-  const [searchParams, setSearchParams] = useSearchParams()
-  const currentTab = searchParams.get('tab') || 'visao-geral'
-  const { currentUser } = useAppStore()
-  const { data, loading } = useSdrQueries()
-  const { periodo, setPeriodo } = useSdrStore()
-
-  const filterType = currentUser?.role === 'corretor' ? 'Venda' : 'Aluguel'
-  const isLocacao = currentUser?.role === 'sdr'
-
-  const handleTabChange = (val: string) => {
-    setSearchParams({ tab: val })
-  }
-
-  const tabs = [
-    { value: 'visao-geral', label: 'Visão Geral' },
-    { value: 'demandas', label: 'Demandas' },
-    { value: 'cadastrados', label: 'Imóveis Vinculados' },
-    { value: 'buscar-imoveis', label: 'Buscar Imóveis' },
-  ]
-
-  return (
-    <div className="space-y-[16px] md:space-y-[24px]">
-      <Tabs value={currentTab} onValueChange={handleTabChange} className="w-full">
-        <ScrollableTabs
-          tabs={tabs}
-          activeTab={currentTab}
-          onTabChange={handleTabChange}
-          className="sticky top-[64px] lg:top-[72px] bg-[#F5F5F5] pt-2 z-[40] -mx-4 px-4 sm:mx-0 sm:px-0"
-        />
-
-        <div className="mt-4 transition-opacity duration-300 ease-in animate-in fade-in">
-          <TabsContent value="visao-geral" className="m-0 border-none space-y-6">
-            <div className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-              <div>
-                <h2 className="text-lg font-black text-[#1A3A52]">Visão Geral</h2>
-                <p className="text-sm text-gray-500">Métricas e acompanhamento de performance</p>
-              </div>
-              <Select value={periodo} onValueChange={(val: any) => setPeriodo(val)}>
-                <SelectTrigger className="w-[160px] h-10 font-bold bg-gray-50">
-                  <SelectValue placeholder="Período" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="hoje">Hoje</SelectItem>
-                  <SelectItem value="semana">Esta Semana</SelectItem>
-                  <SelectItem value="mes">Este Mês</SelectItem>
-                  <SelectItem value="sempre">Todo o Período</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <MetricsCardsSdr data={data} loading={loading} />
-            <ChartsSdr data={data} loading={loading} />
-            <ListasSdr data={data} loading={loading} isLocacao={isLocacao} />
-          </TabsContent>
-
-          <TabsContent value="demandas" className="m-0 border-none">
-            <MyDemandsView filterType={filterType} />
-          </TabsContent>
-
-          <TabsContent value="cadastrados" className="m-0 border-none">
-            <CapturedPropertiesView
-              filterType={filterType}
-              source="linked"
-              emptyStateText="Nenhum imóvel cadastrado ou vinculado no momento."
-            />
-          </TabsContent>
-
-          <TabsContent value="buscar-imoveis" className="m-0 border-none">
-            <BuscarImoveisTab />
-          </TabsContent>
-        </div>
-      </Tabs>
-    </div>
-  )
-}
+import { FilterBar } from '@/components/sdr-dashboard/FilterBar'
+import { MetricsCardsSdr } from '@/components/sdr-dashboard/MetricsCardsSdr'
+import { ListasSdr } from '@/components/sdr-dashboard/ListasSdr'
+import { AlertasBannerSdr } from '@/components/sdr-dashboard/AlertasBannerSdr'
+import { ChartsSdr } from '@/components/sdr-dashboard/ChartsSdr'
+import { useAuth } from '@/hooks/use-auth'
 
 export function SDRDashboard() {
+  const { data, loading } = useSdrQueries()
+  const { user } = useAuth()
+
+  const role = user?.user_metadata?.role || user?.app_metadata?.role || 'sdr'
+  const isLocacao = role === 'sdr'
+
   return (
-    <SdrStoreProvider>
-      <SDRDashboardContent />
-    </SdrStoreProvider>
+    <div className="flex-1 space-y-6 p-4 md:p-8 pt-6 animate-fade-in">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-3xl font-black tracking-tight text-[#1A3A52]">
+            Dashboard {isLocacao ? 'SDR' : 'Corretor'}
+          </h2>
+          <p className="text-gray-500 font-medium">
+            Acompanhamento e gestão de demandas em tempo real
+          </p>
+        </div>
+      </div>
+
+      <AlertasBannerSdr data={data} loading={loading} isLocacao={isLocacao} />
+
+      <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col items-start gap-4">
+        <FilterBar />
+      </div>
+
+      <MetricsCardsSdr data={data} loading={loading} />
+
+      <ListasSdr data={data} loading={loading} isLocacao={isLocacao} />
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+        <ChartsSdr data={data} loading={loading} />
+      </div>
+    </div>
   )
 }
