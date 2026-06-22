@@ -223,15 +223,22 @@ export function MyDemandsView({ filterType }: Props) {
   const tabFilteredDemands = useMemo(() => {
     const now = Date.now()
     return demands.filter((d) => {
+      const statusLower = d.status_demanda?.toLowerCase() || ''
       const isPerdida =
-        d.status_demanda === 'impossivel' ||
-        d.status_demanda === 'PERDIDA_BAIXA' ||
-        d.status_demanda === 'localmente_perdida'
+        statusLower === 'impossivel' ||
+        statusLower === 'perdida_baixa' ||
+        statusLower === 'localmente_perdida' ||
+        statusLower === 'perdida'
 
-      const isAtendida = d.status_demanda === 'atendida' || d.status_demanda === 'ganho'
+      const isFechada =
+        statusLower === 'atendida' || statusLower === 'ganho' || statusLower === 'fechada'
+
+      let isVencida = false
+      const now = Date.now()
 
       const prazos = d.prazos_captacao || []
-      let isVencida = false
+      const dataPrazo = d.data_prazo_resposta ? new Date(d.data_prazo_resposta).getTime() : null
+
       if (prazos.length > 0) {
         const hasActive = prazos.some((p) => {
           const isFuture = p.prazo_resposta && new Date(p.prazo_resposta).getTime() > now
@@ -245,12 +252,14 @@ export function MyDemandsView({ filterType }: Props) {
         isVencida =
           !hasActive &&
           prazos.some((p) => p.prazo_resposta && new Date(p.prazo_resposta).getTime() <= now)
+      } else if (dataPrazo) {
+        isVencida = dataPrazo <= now
       } else {
-        isVencida = d.status_demanda === 'sem_resposta_24h'
+        isVencida = statusLower === 'sem_resposta_24h'
       }
 
-      if (activeTab === 'ativas') return !isPerdida && !isVencida
-      if (activeTab === 'vencidas') return !isPerdida && isVencida
+      if (activeTab === 'ativas') return !isPerdida && !isFechada && !isVencida
+      if (activeTab === 'vencidas') return !isPerdida && !isFechada && isVencida
       if (activeTab === 'perdidas') return isPerdida
       return true
     })

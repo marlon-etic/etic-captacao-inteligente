@@ -51,7 +51,11 @@ export function ListasSdr({
       demandasList.filter((d: any) => !d?.status_demanda || d.status_demanda === 'aberta') || []
     columns = ['Cliente', 'Specs', 'Data', 'Status']
     renderRow = (d) => (
-      <TableRow key={d.id} className="hover:bg-gray-50">
+      <TableRow
+        key={d.id}
+        className="hover:bg-gray-50 cursor-pointer"
+        onClick={() => (window.location.href = `/app/demandas?id=${d.id}`)}
+      >
         <TableCell className="font-bold text-gray-800">
           {d.nome_cliente || d.cliente_nome || 'N/A'}
         </TableCell>
@@ -77,7 +81,11 @@ export function ListasSdr({
       ) || []
     columns = ['Cliente', 'Budget', 'Criada em', 'Status']
     renderRow = (d) => (
-      <TableRow key={d.id} className="hover:bg-gray-50">
+      <TableRow
+        key={d.id}
+        className="hover:bg-gray-50 cursor-pointer"
+        onClick={() => (window.location.href = `/app/demandas?id=${d.id}`)}
+      >
         <TableCell className="font-bold text-gray-800">
           {d.nome_cliente || d.cliente_nome || 'N/A'}
         </TableCell>
@@ -114,21 +122,27 @@ export function ListasSdr({
     )
   } else if (cardFiltrado === 'sob_demanda') {
     listData = imoveisSobDemandaList
-    columns = ['Endereço', 'Tipo', 'Valor', 'Matches']
-    renderRow = (i) => (
-      <TableRow key={i.id} className="hover:bg-gray-50">
-        <TableCell className="font-bold text-gray-800">
-          {i.endereco || i.localizacao_texto || 'N/A'}
-        </TableCell>
-        <TableCell className="text-gray-500">{i.tipo_imovel}</TableCell>
-        <TableCell className="font-medium text-emerald-600">R$ {i.preco || i.valor || 0}</TableCell>
-        <TableCell>
-          <Badge className="bg-blue-100 text-blue-800 border-none font-bold uppercase tracking-wider text-[10px]">
-            {i.imovel_demand_match?.length || 0} Vinculados
-          </Badge>
-        </TableCell>
-      </TableRow>
-    )
+    columns = ['Código', 'Endereço', 'Valor', 'Captador']
+    renderRow = (i) => {
+      const captadorNome = i.users?.nome || 'Desconhecido'
+      return (
+        <TableRow key={i.id} className="hover:bg-gray-50">
+          <TableCell className="font-bold text-gray-500 text-xs">
+            #{i.codigo_imovel || i.id?.split('-')[0] || 'N/A'}
+          </TableCell>
+          <TableCell
+            className="font-bold text-gray-800 truncate max-w-[200px]"
+            title={i.endereco || i.localizacao_texto}
+          >
+            {i.endereco || i.localizacao_texto || 'N/A'}
+          </TableCell>
+          <TableCell className="font-medium text-emerald-600">
+            R$ {i.preco || i.valor || 0}
+          </TableCell>
+          <TableCell className="text-gray-500 text-sm">{captadorNome}</TableCell>
+        </TableRow>
+      )
+    }
   } else if (cardFiltrado === 'visitas') {
     listData = visitasList
     columns = ['Data Visita', 'Tipo', 'Endereço', 'Ações']

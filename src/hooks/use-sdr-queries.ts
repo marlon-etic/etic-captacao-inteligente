@@ -51,6 +51,7 @@ export function useSdrQueries() {
           .from(demandasTable)
           .select(fieldsToSelect)
           .neq('status_demanda', 'impossivel')
+          .eq(ownerField, user.id)
           .order('updated_at', { ascending: false, nullsFirst: false })
 
         if (applyDateFilter) {
@@ -63,6 +64,7 @@ export function useSdrQueries() {
           .from(demandasTable)
           .select(fieldsToSelect)
           .in('status_demanda', ['aberta', 'em busca', 'em visita'])
+          .eq(ownerField, user.id)
           .not('updated_at', 'is', null)
           .lt('updated_at', seteDiasAtras.toISOString())
 
@@ -98,7 +100,7 @@ export function useSdrQueries() {
           const { data: imV } = await supabase
             .from('imovel_demand_match')
             .select(
-              'id, demanda_id, tipo_vinculacao, compatibilidade_pct, imovel_id, imoveis_captados(id, codigo_imovel, endereco, preco, valor, created_at, updated_at)',
+              'id, demanda_id, tipo_vinculacao, compatibilidade_pct, imovel_id, imoveis_captados(id, codigo_imovel, endereco, preco, valor, created_at, updated_at, user_captador_id, users!imoveis_captados_user_captador_id_fkey(nome))',
             )
             .in('demanda_id', sdrDemandaIds)
 
@@ -127,6 +129,7 @@ export function useSdrQueries() {
             'id, demanda_id, imovel_id, novo_imovel_endereco, novo_imovel_valor, user_sdr_id, data_visita, created_at',
           )
           .eq('tipo_demanda', tipoTransacao)
+          .eq('user_sdr_id', user.id)
           .order('data_visita', { ascending: false })
 
         let fechadosQuery = supabase
@@ -135,6 +138,7 @@ export function useSdrQueries() {
             'id, demanda_id, imovel_id, user_sdr_id, valor, data_prevista, status, created_at',
           )
           .eq('tipo_demanda', tipoTransacao)
+          .eq('user_sdr_id', user.id)
           .order('created_at', { ascending: false })
 
         if (applyDateFilter) {
@@ -161,6 +165,25 @@ export function useSdrQueries() {
     }
 
     fetchData()
+
+    const channel = supabase
+      .channel('sdr_queries_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: demandasTable }, fetchData)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'imovel_demand_match' },
+        fetchData,
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'imoveis_captados' },
+        fetchData,
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
   }, [user, periodo, dataCustomStart, dataCustomEnd])
 
   return { data, loading }

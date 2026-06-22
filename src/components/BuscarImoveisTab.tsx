@@ -68,7 +68,6 @@ export function BuscarImoveisTab() {
         `*, demanda_locacao:demandas_locacao(*), demanda_venda:demandas_vendas(*), users:user_captador_id(nome, email)`,
       )
       .order('created_at', { ascending: false })
-      .limit(200)
     if (data) setImoveis(data)
     setLoading(false)
   }
