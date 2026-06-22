@@ -255,6 +255,7 @@ export type Database = {
           grupo_id: string | null
           id: string
           is_prioritaria: boolean | null
+          links_sugeridos: Json | null
           localizacoes: string[] | null
           marcada_sem_resposta: boolean | null
           motivo_perda: string | null
@@ -299,6 +300,7 @@ export type Database = {
           grupo_id?: string | null
           id?: string
           is_prioritaria?: boolean | null
+          links_sugeridos?: Json | null
           localizacoes?: string[] | null
           marcada_sem_resposta?: boolean | null
           motivo_perda?: string | null
@@ -343,6 +345,7 @@ export type Database = {
           grupo_id?: string | null
           id?: string
           is_prioritaria?: boolean | null
+          links_sugeridos?: Json | null
           localizacoes?: string[] | null
           marcada_sem_resposta?: boolean | null
           motivo_perda?: string | null
@@ -441,6 +444,7 @@ export type Database = {
           grupo_id: string | null
           id: string
           is_prioritaria: boolean | null
+          links_sugeridos: Json | null
           localizacoes: string[] | null
           marcada_sem_resposta: boolean | null
           motivo_perda: string | null
@@ -482,6 +486,7 @@ export type Database = {
           grupo_id?: string | null
           id?: string
           is_prioritaria?: boolean | null
+          links_sugeridos?: Json | null
           localizacoes?: string[] | null
           marcada_sem_resposta?: boolean | null
           motivo_perda?: string | null
@@ -523,6 +528,7 @@ export type Database = {
           grupo_id?: string | null
           id?: string
           is_prioritaria?: boolean | null
+          links_sugeridos?: Json | null
           localizacoes?: string[] | null
           marcada_sem_resposta?: boolean | null
           motivo_perda?: string | null
