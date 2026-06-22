@@ -674,6 +674,7 @@ export type Database = {
       }
       imoveis_captados: {
         Row: {
+          banheiros: number | null
           captador_id: string | null
           codigo_imovel: string | null
           comissao_percentual: number | null
@@ -683,7 +684,6 @@ export type Database = {
           demanda_locacao_id: string | null
           demanda_venda_id: string | null
           dormitorios: number | null
-          banheiros: number | null
           endereco: string | null
           etapa_funil: string | null
           fotos: string[] | null
@@ -702,6 +702,7 @@ export type Database = {
           valor: number | null
         }
         Insert: {
+          banheiros?: number | null
           captador_id?: string | null
           codigo_imovel?: string | null
           comissao_percentual?: number | null
@@ -711,7 +712,6 @@ export type Database = {
           demanda_locacao_id?: string | null
           demanda_venda_id?: string | null
           dormitorios?: number | null
-          banheiros?: number | null
           endereco?: string | null
           etapa_funil?: string | null
           fotos?: string[] | null
@@ -730,6 +730,7 @@ export type Database = {
           valor?: number | null
         }
         Update: {
+          banheiros?: number | null
           captador_id?: string | null
           codigo_imovel?: string | null
           comissao_percentual?: number | null
@@ -824,6 +825,7 @@ export type Database = {
       }
       imoveis_captados_backup: {
         Row: {
+          banheiros: number | null
           captador_id: string | null
           codigo_imovel: string | null
           comissao_percentual: number | null
@@ -851,6 +853,7 @@ export type Database = {
           valor: number | null
         }
         Insert: {
+          banheiros?: number | null
           captador_id?: string | null
           codigo_imovel?: string | null
           comissao_percentual?: number | null
@@ -878,6 +881,7 @@ export type Database = {
           valor?: number | null
         }
         Update: {
+          banheiros?: number | null
           captador_id?: string | null
           codigo_imovel?: string | null
           comissao_percentual?: number | null
