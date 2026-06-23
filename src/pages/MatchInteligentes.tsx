@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { useToast } from '@/components/ui/use-toast'
-import { ThumbsDown, Zap, DollarSign, Home, CheckCircle, X } from 'lucide-react'
+import { ThumbsDown, Zap, DollarSign, Home, CheckCircle, X, MapPin, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { calculateMatching } from '@/lib/matching'
@@ -34,6 +34,7 @@ export default function MatchInteligentes() {
   const { currentUser } = useAppStore()
   const [matches, setMatches] = useState<MatchCard[]>([])
   const [loading, setLoading] = useState(true)
+  const [isLinking, setIsLinking] = useState<Set<string>>(new Set())
   const [error, setError] = useState<string | null>(null)
   const [selectedMatches, setSelectedMatches] = useState<Set<string>>(new Set())
   const { toast } = useToast()
@@ -140,7 +141,7 @@ export default function MatchInteligentes() {
           supabase
             .from('demandas_vendas')
             .select(
-              'id, nome_cliente, cliente_nome, valor_minimo, valor_maximo, orcamento_max, dormitorios, quartos, vagas_estacionamento, vagas, bairros, tipo_imovel, corretor_id',
+              'id, nome_cliente, cliente_nome, valor_minimo, valor_maximo, orcamento_max, dormitorios, quartos, vagas_estacionamento, vagas, bairros, localizacoes, tipo_imovel, corretor_id',
             )
             .in('id', demandaVendaIds),
         )
@@ -153,7 +154,7 @@ export default function MatchInteligentes() {
           supabase
             .from('demandas_locacao')
             .select(
-              'id, nome_cliente, cliente_nome, valor_minimo, valor_maximo, orcamento_max, dormitorios, quartos, vagas_estacionamento, vagas, bairros, tipo_imovel, sdr_id',
+              'id, nome_cliente, cliente_nome, valor_minimo, valor_maximo, orcamento_max, dormitorios, quartos, vagas_estacionamento, vagas, bairros, localizacoes, tipo_imovel, sdr_id',
             )
             .in('id', demandaLocacaoIds),
         )
@@ -253,6 +254,8 @@ export default function MatchInteligentes() {
     const matchesParaVincular = group.matches.filter((m) => selectedMatches.has(m.id))
     if (matchesParaVincular.length === 0) return
 
+    setIsLinking((prev) => new Set(prev).add(group.demanda_id))
+
     try {
       // 1. Inserir em imovel_demand_match
       const inserts = matchesParaVincular.map((match) => ({
@@ -288,9 +291,11 @@ export default function MatchInteligentes() {
         return newSet
       })
 
+      const clientName = group.demanda.nome_cliente || group.demanda.cliente_nome || 'Cliente'
+
       toast({
         title: 'Sucesso',
-        description: `${matchesParaVincular.length} imóveis vinculados à demanda com sucesso!`,
+        description: `${matchesParaVincular.length} imóveis vinculados com sucesso à demanda de ${clientName}.`,
       })
     } catch (error) {
       console.error('[MATCH] Erro ao vincular em lote:', error)
@@ -298,6 +303,12 @@ export default function MatchInteligentes() {
         title: 'Erro',
         description: 'Não foi possível vincular os imóveis selecionados.',
         variant: 'destructive',
+      })
+    } finally {
+      setIsLinking((prev) => {
+        const newSet = new Set(prev)
+        newSet.delete(group.demanda_id)
+        return newSet
       })
     }
   }
@@ -422,6 +433,10 @@ export default function MatchInteligentes() {
             const allSelected =
               group.matches.length > 0 && group.matches.every((m) => selectedMatches.has(m.id))
             const selectedCount = group.matches.filter((m) => selectedMatches.has(m.id)).length
+            const isGroupLinking = isLinking.has(group.demanda_id)
+            const demandaBairros = group.demanda.bairros || group.demanda.localizacoes || []
+            const bairrosText =
+              demandaBairros.length > 0 ? demandaBairros.join(', ') : 'Qualquer bairro'
 
             return (
               <Card
@@ -455,22 +470,31 @@ export default function MatchInteligentes() {
                       • Quartos: {group.demanda.quartos || group.demanda.dormitorios || 0} • Vagas:{' '}
                       {group.demanda.vagas || group.demanda.vagas_estacionamento || 0}
                     </p>
+                    <p className="text-sm font-medium text-muted-foreground mt-1 flex items-center">
+                      <MapPin className="inline w-3 h-3 mr-1 text-primary" />
+                      {bairrosText}
+                    </p>
                   </div>
                   <div className="flex items-center gap-2 w-full md:w-auto">
                     <Button
                       variant="outline"
                       className="text-red-600 hover:text-red-700 hover:bg-red-50 flex-1 md:flex-none"
                       onClick={() => handleRejectGroup(group)}
+                      disabled={isGroupLinking}
                     >
                       <ThumbsDown className="w-4 h-4 mr-2 hidden sm:inline" /> Descartar Demanda
                     </Button>
                     <Button
-                      disabled={selectedCount === 0}
+                      disabled={selectedCount === 0 || isGroupLinking}
                       onClick={() => handleVincularSelecionados(group)}
                       className="flex-1 md:flex-none"
                     >
-                      <CheckCircle className="w-4 h-4 mr-2 hidden sm:inline" /> Vincular
-                      Selecionados ({selectedCount})
+                      {isGroupLinking ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin hidden sm:inline" />
+                      ) : (
+                        <CheckCircle className="w-4 h-4 mr-2 hidden sm:inline" />
+                      )}
+                      Vincular Selecionados ({selectedCount})
                     </Button>
                   </div>
                 </CardHeader>
@@ -481,6 +505,7 @@ export default function MatchInteligentes() {
                         id={`select-all-${group.demanda_id}`}
                         checked={allSelected}
                         onCheckedChange={() => toggleAllForGroup(group)}
+                        disabled={isGroupLinking}
                       />
                       <label
                         htmlFor={`select-all-${group.demanda_id}`}
@@ -500,6 +525,7 @@ export default function MatchInteligentes() {
                           id={`match-${match.id}`}
                           checked={selectedMatches.has(match.id)}
                           onCheckedChange={() => toggleSelection(match.id)}
+                          disabled={isGroupLinking}
                           className="mt-1"
                         />
                         <div className="flex-1 space-y-1">
@@ -526,12 +552,17 @@ export default function MatchInteligentes() {
                               <p className="text-sm font-bold text-emerald-600">
                                 {formatCurrency(match.imovel.preco || match.imovel.valor || 0)}
                               </p>
+                              <span className="text-xs text-muted-foreground font-medium border-l pl-2 border-border">
+                                {match.imovel.dormitorios || 0} dorm • {match.imovel.vagas || 0}{' '}
+                                vagas
+                              </span>
                               <Button
                                 variant="ghost"
                                 size="icon"
                                 className="h-6 w-6 text-muted-foreground hover:text-red-600 ml-2"
                                 onClick={() => handleRejectSingle(match.id)}
                                 title="Descartar este imóvel"
+                                disabled={isGroupLinking}
                               >
                                 <X className="w-4 h-4" />
                               </Button>

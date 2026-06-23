@@ -13,9 +13,13 @@ export interface ImovelForMatching {
 export interface ClienteForMatching {
   id?: string
   bairros?: string[]
+  localizacoes?: string[]
   valor_minimo?: number
   valor_maximo?: number
+  orcamento_max?: number
   dormitorios?: number
+  quartos?: number
+  vagas?: number
   vagas_estacionamento?: number
   tipo_imovel?: string | string[]
 }
@@ -79,8 +83,11 @@ export function calculateMatching(
     ''
   ).toLowerCase()
   let hasBairroMatch = false
-  if (cliente.bairros && cliente.bairros.length > 0) {
-    hasBairroMatch = cliente.bairros.some((b) => imovelBairrosStr.includes(b.toLowerCase()))
+  const clienteBairros =
+    cliente.bairros && cliente.bairros.length > 0 ? cliente.bairros : cliente.localizacoes
+
+  if (clienteBairros && clienteBairros.length > 0) {
+    hasBairroMatch = clienteBairros.some((b) => imovelBairrosStr.includes(b.toLowerCase()))
     if (!hasBairroMatch) {
       score -= 25
       details.location_match = false
@@ -90,7 +97,7 @@ export function calculateMatching(
 
   // Vagas Penalty (-15%)
   const imovelVagas = imovel.vagas || 0
-  const clienteVagas = cliente.vagas_estacionamento || 0
+  const clienteVagas = cliente.vagas_estacionamento || cliente.vagas || 0
   if (clienteVagas > 0 && imovelVagas < clienteVagas) {
     score -= 15
     details.parking_match = false
@@ -102,26 +109,29 @@ export function calculateMatching(
   const imovelValor = imovel.valor || 0
   let precoAComparar = 0
 
-  if (cliente.valor_maximo && cliente.valor_maximo > 0) {
+  const clienteMaxBudget = cliente.valor_maximo || cliente.orcamento_max || 0
+  const clienteMinBudget = cliente.valor_minimo || 0
+
+  if (clienteMaxBudget > 0) {
     // Distinguish logic depending on max budget (Venda vs Locação context implicitly)
-    if (cliente.valor_maximo > 50000 && imovelPreco > 0) {
+    if (clienteMaxBudget > 50000 && imovelPreco > 0) {
       precoAComparar = imovelPreco
-    } else if (cliente.valor_maximo <= 50000 && imovelValor > 0) {
+    } else if (clienteMaxBudget <= 50000 && imovelValor > 0) {
       precoAComparar = imovelValor
     } else {
       precoAComparar = imovelPreco > 0 ? imovelPreco : imovelValor
     }
 
     if (precoAComparar > 0) {
-      if (precoAComparar > cliente.valor_maximo * 1.2) {
+      if (precoAComparar > clienteMaxBudget * 1.2) {
         score -= 30
         details.price_match = false
         details.valorScore = 70
-      } else if (precoAComparar > cliente.valor_maximo) {
+      } else if (precoAComparar > clienteMaxBudget) {
         score -= 20
         details.price_match = false
         details.valorScore = 80
-      } else if (cliente.valor_minimo && precoAComparar < cliente.valor_minimo) {
+      } else if (clienteMinBudget > 0 && precoAComparar < clienteMinBudget) {
         score -= 10
         details.price_match = false
         details.valorScore = 90
@@ -131,7 +141,7 @@ export function calculateMatching(
 
   // Dormitorios penalty (-15%)
   const imovelDorms = imovel.dormitorios || 0
-  const clienteDorms = cliente.dormitorios || 0
+  const clienteDorms = cliente.dormitorios || cliente.quartos || 0
   if (clienteDorms > 0 && imovelDorms < clienteDorms) {
     score -= 15
     details.rooms_match = false
