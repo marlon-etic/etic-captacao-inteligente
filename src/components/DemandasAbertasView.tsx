@@ -32,11 +32,29 @@ export function DemandasAbertasView() {
 
         // Ensure we only show ACTIVE demands in this view
         // Lost demands (impossivel / PERDIDA_BAIXA) should never show here
-        if (d.status_demanda === 'impossivel' || d.status_demanda === 'PERDIDA_BAIXA') {
+        if (
+          d.status_demanda === 'impossivel' ||
+          d.status_demanda === 'PERDIDA_BAIXA' ||
+          d.status_demanda === 'localmente_perdida'
+        ) {
           return false
         }
 
         if (!isAberta && !isPrioritizada) {
+          return false
+        }
+
+        // Smart Demand Filtering: exclude old inactive requests
+        const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
+        const isRecent = Date.now() - new Date(d.created_at).getTime() <= SEVEN_DAYS_MS
+        const hasEngagement =
+          d.status_demanda === 'em busca' ||
+          isPrioritizada ||
+          (d.prazos_captacao && d.prazos_captacao.length > 0) ||
+          (d.respostas_captador && d.respostas_captador.length > 0) ||
+          (d.imoveis_captados && d.imoveis_captados.length > 0)
+
+        if (!isRecent && !hasEngagement) {
           return false
         }
 

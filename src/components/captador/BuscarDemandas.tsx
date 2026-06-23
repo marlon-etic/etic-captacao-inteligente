@@ -651,12 +651,26 @@ export function BuscarDemandas() {
   useEffect(() => {
     let filtered = demands
 
-    if (filterStatusDemanda !== 'todas') {
-      filtered = filtered.filter((d) => {
-        const isActive = ['aberta', 'atendida', 'em busca', 'sem_resposta_24h'].includes(d.status)
-        return filterStatusDemanda === 'ativas' ? isActive : !isActive
-      })
-    }
+    filtered = filtered.filter((d) => {
+      const isActiveStatus = ['aberta', 'atendida', 'em busca', 'sem_resposta_24h'].includes(
+        d.status,
+      )
+
+      const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
+      const isRecent = Date.now() - new Date(d.created_at).getTime() <= SEVEN_DAYS_MS
+      const isEmBusca = d.status === 'em busca'
+      const hasInteraction = d.captadores_busca?.length > 0 || d.imoveiVinculados > 0
+      const hasEngagement = isEmBusca || hasInteraction
+
+      const isActiveAndValid = isActiveStatus && (isRecent || hasEngagement)
+
+      if (filterStatusDemanda === 'ativas') {
+        return isActiveAndValid
+      } else if (filterStatusDemanda === 'inativas') {
+        return !isActiveAndValid
+      }
+      return true // todas
+    })
 
     if (filterType !== 'todos') {
       filtered = filtered.filter((d) => d.tipo === filterType)

@@ -90,10 +90,27 @@ export function useCaptadorDashboard() {
         demVenData = data || []
       }
 
-      const todasDemandas = [
+      let todasDemandas = [
         ...demLocData.map((d) => ({ ...d, tipo: 'Locação' })),
         ...demVenData.map((d) => ({ ...d, tipo: 'Venda' })),
       ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+
+      // Smart Demand Filtering: exclude old inactive requests
+      const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
+      todasDemandas = todasDemandas.filter((d) => {
+        const isRecent = Date.now() - new Date(d.created_at).getTime() <= SEVEN_DAYS_MS
+        const isEmBusca = d.status_demanda === 'em busca'
+        const hasInteraction =
+          (d.captadores_busca && d.captadores_busca.length > 0) ||
+          (d.imovel_demand_match && d.imovel_demand_match.length > 0) ||
+          !!d.is_prioritaria
+        const hasEngagement = isEmBusca || hasInteraction
+
+        if (d.status_demanda === 'aberta' || d.status_demanda === 'sem_resposta_24h') {
+          return isRecent || hasEngagement
+        }
+        return true // keep other statuses like atendida, ganha, perdida, etc in the dashboard if they match the query
+      })
 
       const sobDemanda = (imoveisData || []).filter(
         (i) => i.demanda_locacao_id || i.demanda_venda_id,

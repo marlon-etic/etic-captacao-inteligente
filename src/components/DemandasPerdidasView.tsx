@@ -38,8 +38,10 @@ export function DemandasPerdidasView() {
         const isGloballyLost =
           d.status_demanda === 'impossivel' ||
           d.status_demanda === 'PERDIDA_BAIXA' ||
+          d.status_demanda === 'perdida' ||
           d.db_status_demanda === 'impossivel' ||
-          d.db_status_demanda === 'PERDIDA_BAIXA'
+          d.db_status_demanda === 'PERDIDA_BAIXA' ||
+          d.db_status_demanda === 'perdida'
         const isLocallyLost = d.status_demanda === 'localmente_perdida'
         if (!isGloballyLost && !isLocallyLost) return false
 
