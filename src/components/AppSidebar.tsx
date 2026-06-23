@@ -1,255 +1,211 @@
-import React, { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import {
-  Users,
-  Trophy,
-  UserCircle,
-  LineChart,
-  Bell,
-  HelpCircle,
-  UserCog,
-  Shield,
-  Star,
-  History,
-  ArchiveX,
-  Building,
-  LayoutDashboard,
-  ShieldAlert,
-  CheckSquare,
-  Activity,
-  Zap,
+  Home,
   Search,
+  Building,
+  History,
+  User,
+  LogOut,
+  Bell,
+  MapPin,
+  XCircle,
+  BarChart,
+  Shield,
+  Zap,
 } from 'lucide-react'
 import {
   Sidebar,
   SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
+  SidebarFooter,
+  SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  useSidebar,
+  SidebarSeparator,
 } from '@/components/ui/sidebar'
-import useAppStore from '@/stores/useAppStore'
-import { cn } from '@/lib/utils'
-import { Badge } from '@/components/ui/badge'
-import { getPendingMatches } from '@/services/matchingService'
-import { supabase } from '@/lib/supabase/client'
+import { useAuth } from '@/hooks/use-auth'
+import { useUserRole } from '@/hooks/use-user-role'
 
 export function AppSidebar() {
-  const { currentUser, demands, looseProperties } = useAppStore()
-  const location = useLocation()
-  const { isMobile, setOpenMobile } = useSidebar()
-  const [matchCount, setMatchCount] = useState(0)
-
-  useEffect(() => {
-    let mounted = true
-    const loadMatchCount = async () => {
-      try {
-        const matches = await getPendingMatches(1000)
-        if (mounted) setMatchCount(matches.length)
-      } catch (err) {
-        console.error('[SIDEBAR] Erro ao carregar contador:', err)
-      }
-    }
-
-    loadMatchCount()
-    const interval = setInterval(loadMatchCount, 30000)
-
-    const channel = supabase
-      .channel('sidebar_matches_realtime')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'matches_sugestoes' },
-        (payload) => {
-          console.log('[REALTIME] Alteração em matches_sugestoes (AppSidebar):', payload)
-          loadMatchCount()
-        },
-      )
-      .subscribe()
-
-    return () => {
-      mounted = false
-      clearInterval(interval)
-      supabase.removeChannel(channel)
-    }
-  }, [])
-
-  if (!currentUser) return null
-
-  const isAdmin = currentUser.role === 'admin'
-  const isGestor = currentUser.role === 'gestor'
-  const isCaptador = currentUser.role === 'captador'
-  const isSDRCorretor = currentUser.role === 'sdr' || currentUser.role === 'corretor'
-
-  // Counters - protected with logical fallbacks
-  const safeDemands = demands || []
-  const safeProperties = looseProperties || []
-
-  const myActiveDemandsCount = safeDemands.filter(
-    (d) =>
-      d.createdBy === currentUser.id &&
-      !['Perdida', 'Impossível', 'Negócio', 'Arquivado'].includes(d.status),
-  ).length
-
-  const myAvailablePropsCount = safeProperties.filter((p) => {
-    if (currentUser.role === 'sdr') return p.propertyType === 'Aluguel'
-    if (currentUser.role === 'corretor') return p.propertyType === 'Venda'
-    return true
-  }).length
-
-  const historyCount = safeDemands.filter((d) => d.createdBy === currentUser.id).length
-
-  let navItems: any[] = []
-
-  if (isSDRCorretor) {
-    navItems = [
-      { title: 'Dashboard', icon: LayoutDashboard, url: '/app/sdr-corretor/dashboard' },
-      {
-        title: 'Disponível Geral',
-        icon: Building,
-        url: '/app/disponivel-geral',
-        badge: myAvailablePropsCount > 0 ? myAvailablePropsCount : undefined,
-      },
-      {
-        title: 'Todos Captados',
-        icon: Building,
-        url: '/app/todos-captados',
-        badge: undefined,
-      },
-      {
-        title: 'MATCH Inteligentes',
-        icon: Zap,
-        url: '/app/match-inteligentes',
-        badge: matchCount > 0 ? matchCount : undefined,
-      },
-      {
-        title: 'Histórico',
-        icon: History,
-        url: '/app/historico',
-        badge: historyCount > 0 ? historyCount : undefined,
-      },
-      { title: 'Notificações', icon: Bell, url: '/app/notificacoes' },
-      { title: 'Perfil', icon: UserCircle, url: '/app/perfil' },
-    ]
-  } else if (isCaptador) {
-    navItems = [
-      { title: 'Dashboard', icon: LayoutDashboard, url: '/app' },
-      { title: 'Buscar Imóveis', icon: Search, url: '/app/disponivel-geral' },
-      { title: 'Meus Captados', icon: Building, url: '/app/meus-captados' },
-      {
-        title: 'MATCH Inteligentes',
-        icon: Zap,
-        url: '/app/match-inteligentes',
-        badge: matchCount > 0 ? matchCount : undefined,
-      },
-      { title: 'Pontuação', icon: Star, url: '/app/pontuacao' },
-      { title: 'Histórico', icon: History, url: '/app/historico' },
-      { title: 'Perdidos', icon: ArchiveX, url: '/app/perdidos' },
-      { title: 'Notificações', icon: Bell, url: '/app/notificacoes' },
-      { title: 'Perfil', icon: UserCircle, url: '/app/perfil' },
-    ]
-  } else if (isAdmin || isGestor) {
-    navItems = [
-      { title: 'Dashboard Geral', icon: LayoutDashboard, url: '/app' },
-      { title: 'Todas as Demandas', icon: Users, url: '/app/demandas' },
-      {
-        title: 'MATCH Inteligentes',
-        icon: Zap,
-        url: '/app/match-inteligentes',
-        badge: matchCount > 0 ? matchCount : undefined,
-      },
-      { title: 'Analytics', icon: LineChart, url: '/app/analytics' },
-      { title: 'Notificações', icon: Bell, url: '/app/notificacoes' },
-      ...(isAdmin ? [{ title: 'Usuários', icon: UserCog, url: '/app/usuarios' }] : []),
-      ...(isAdmin ? [{ title: 'Auditoria Logs', icon: Shield, url: '/app/auditoria' }] : []),
-      ...(isAdmin ? [{ title: 'Teste de RLS', icon: ShieldAlert, url: '/app/rls-tester' }] : []),
-      ...(isAdmin ? [{ title: 'Teste E2E', icon: CheckSquare, url: '/app/e2e-tester' }] : []),
-      ...(isAdmin
-        ? [{ title: 'Teste Perf.', icon: Activity, url: '/app/performance-tester' }]
-        : []),
-      { title: 'Perfil', icon: UserCircle, url: '/app/perfil' },
-    ]
-  }
-
-  const checkIsActive = (itemUrl: string) => {
-    if (itemUrl === '/app') {
-      return location.pathname === '/app'
-    }
-
-    const [path, query] = itemUrl.split('?')
-
-    if (query) {
-      return location.pathname === path && location.search.includes(query)
-    }
-
-    if (path === '/app/sdr-corretor/dashboard' && location.pathname === path) {
-      const isSpecificTab = location.search.includes('tab=')
-      return !isSpecificTab
-    }
-
-    return location.pathname.startsWith(path)
-  }
+  const { pathname } = useLocation()
+  const { signOut } = useAuth()
+  const { isAdmin, isGestor, isCaptador } = useUserRole()
 
   return (
-    <Sidebar className="border-r-[2px] border-[#2E5F8A]/20 hidden md:flex bg-[#F5F5F5] z-[100]">
-      <SidebarContent className="bg-[#F5F5F5]">
-        <div className="p-[24px]">
-          <h1 className="text-[20px] font-bold text-[#1A3A52] tracking-tight flex items-center gap-[8px]">
-            <div className="w-[32px] h-[32px] rounded-[8px] bg-[#1A3A52] flex items-center justify-center text-white shadow-[0_2px_4px_rgba(26,58,82,0.2)]">
-              É
-            </div>
-            Étic
-          </h1>
-        </div>
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-[12px] font-bold text-[#999999] uppercase tracking-wider mb-[8px]">
-            Menu Principal
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {navItems.map((item) => {
-                const isActive = checkIsActive(item.url)
-                return (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={isActive}
-                      onClick={() => {
-                        if (isMobile) setOpenMobile(false)
-                      }}
-                      className={cn(
-                        'transition-all duration-200 ease-in-out font-bold text-[14px] px-[16px] py-[12px] min-h-[48px] rounded-[8px] h-auto border border-transparent',
-                        isActive
-                          ? 'bg-[#1A3A52] text-white shadow-[0_2px_4px_rgba(26,58,82,0.15)] hover:bg-[#1f4866]'
-                          : 'bg-transparent text-[#333333] hover:bg-[#FFFFFF] hover:border-[#2E5F8A]/20 shadow-none hover:text-[#1A3A52]',
-                      )}
-                    >
-                      <Link to={item.url} className="flex items-center justify-between w-full">
-                        <div className="flex items-center gap-[12px] min-w-0">
-                          <item.icon className="w-[20px] h-[20px] shrink-0" />
-                          <span className="truncate">{item.title}</span>
-                        </div>
-                        {item.badge !== undefined && (
-                          <Badge
-                            className={cn(
-                              'ml-2 shrink-0 border-none px-1.5 min-w-[20px] flex justify-center text-[11px]',
-                              isActive ? 'bg-white text-[#1A3A52]' : 'bg-[#1A3A52] text-white',
-                            )}
-                          >
-                            {item.badge}
-                          </Badge>
-                        )}
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                )
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+    <Sidebar variant="inset">
+      <SidebarHeader className="p-4 border-b border-gray-100 dark:border-gray-800">
+        <Link to="/app" className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center">
+            <Search className="w-5 h-5 text-white" />
+          </div>
+          <span className="font-bold text-lg hidden md:block tracking-tight text-[#1A3A52]">
+            Étic Captação
+          </span>
+        </Link>
+      </SidebarHeader>
+
+      <SidebarContent className="p-2 gap-1">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild isActive={pathname === '/app'} tooltip="Início">
+              <Link to="/app">
+                <Home />
+                <span>Início</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              asChild
+              isActive={pathname.startsWith('/app/demandas')}
+              tooltip="Começar Busca"
+              className="text-emerald-700 bg-emerald-50 hover:bg-emerald-100 hover:text-emerald-800 transition-colors"
+            >
+              <Link to="/app/demandas">
+                <Search />
+                <span className="font-bold">Começar Busca</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+
+          {(isAdmin || isGestor) && (
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={pathname.startsWith('/app/analytics')}
+                tooltip="Analytics"
+              >
+                <Link to="/app/analytics">
+                  <BarChart />
+                  <span>Analytics Dashboard</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          )}
+
+          {isCaptador && (
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={pathname.startsWith('/app/meus-captados')}
+                tooltip="Meus Captados"
+              >
+                <Link to="/app/meus-captados">
+                  <Building />
+                  <span>Meus Captados</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          )}
+
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              asChild
+              isActive={pathname.startsWith('/app/disponivel-geral')}
+              tooltip="Disponível Geral"
+            >
+              <Link to="/app/disponivel-geral">
+                <MapPin />
+                <span>Disponível Geral</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              asChild
+              isActive={pathname.startsWith('/app/match-inteligentes')}
+              tooltip="Matches Inteligentes"
+            >
+              <Link to="/app/match-inteligentes">
+                <Zap />
+                <span>Matches Inteligentes</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              asChild
+              isActive={pathname.startsWith('/app/historico')}
+              tooltip="Histórico"
+            >
+              <Link to="/app/historico">
+                <History />
+                <span>Histórico (Ganhos)</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              asChild
+              isActive={pathname.startsWith('/app/perdidos')}
+              tooltip="Perdidos"
+            >
+              <Link to="/app/perdidos">
+                <XCircle />
+                <span>Perdidos</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+
+        <SidebarSeparator className="my-2" />
+
+        <SidebarMenu>
+          {(isAdmin || isGestor) && (
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={pathname.startsWith('/app/usuarios')}
+                tooltip="Gestão de Usuários"
+              >
+                <Link to="/app/usuarios">
+                  <Shield />
+                  <span>Gestão de Usuários</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          )}
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              asChild
+              isActive={pathname.startsWith('/app/notificacoes')}
+              tooltip="Notificações"
+            >
+              <Link to="/app/notificacoes">
+                <Bell />
+                <span>Notificações</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
       </SidebarContent>
+
+      <SidebarFooter className="p-2 border-t border-gray-100 dark:border-gray-800">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              asChild
+              isActive={pathname.startsWith('/app/perfil')}
+              tooltip="Meu Perfil"
+            >
+              <Link to="/app/perfil">
+                <User />
+                <span>Meu Perfil</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton onClick={() => signOut()} tooltip="Sair">
+              <LogOut />
+              <span>Sair</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
     </Sidebar>
   )
 }

@@ -91,8 +91,11 @@ export function ImoveisCadastradosList({ imoveis, loading, onSelect }: any) {
                             />
                           </div>
                         ) : (
-                          <div className="w-10 h-10 rounded-md bg-slate-100 flex items-center justify-center flex-shrink-0 text-slate-400 text-xs font-bold">
-                            Sem
+                          <div
+                            className="w-10 h-10 rounded-md bg-slate-100 flex items-center justify-center flex-shrink-0 text-slate-500 text-[9px] font-bold text-center leading-[1.1] p-1 break-all uppercase border border-slate-200 shadow-sm"
+                            title={imv.codigo_imovel}
+                          >
+                            {imv.codigo_imovel || 'SEM IMG'}
                           </div>
                         )}
                         <div className="flex flex-col">
