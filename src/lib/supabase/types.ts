@@ -255,6 +255,7 @@ export type Database = {
           grupo_id: string | null
           id: string
           is_prioritaria: boolean | null
+          is_test_data: boolean | null
           links_sugeridos: Json | null
           localizacoes: string[] | null
           marcada_sem_resposta: boolean | null
@@ -300,6 +301,7 @@ export type Database = {
           grupo_id?: string | null
           id?: string
           is_prioritaria?: boolean | null
+          is_test_data?: boolean | null
           links_sugeridos?: Json | null
           localizacoes?: string[] | null
           marcada_sem_resposta?: boolean | null
@@ -345,6 +347,7 @@ export type Database = {
           grupo_id?: string | null
           id?: string
           is_prioritaria?: boolean | null
+          is_test_data?: boolean | null
           links_sugeridos?: Json | null
           localizacoes?: string[] | null
           marcada_sem_resposta?: boolean | null
@@ -444,6 +447,7 @@ export type Database = {
           grupo_id: string | null
           id: string
           is_prioritaria: boolean | null
+          is_test_data: boolean | null
           links_sugeridos: Json | null
           localizacoes: string[] | null
           marcada_sem_resposta: boolean | null
@@ -486,6 +490,7 @@ export type Database = {
           grupo_id?: string | null
           id?: string
           is_prioritaria?: boolean | null
+          is_test_data?: boolean | null
           links_sugeridos?: Json | null
           localizacoes?: string[] | null
           marcada_sem_resposta?: boolean | null
@@ -528,6 +533,7 @@ export type Database = {
           grupo_id?: string | null
           id?: string
           is_prioritaria?: boolean | null
+          is_test_data?: boolean | null
           links_sugeridos?: Json | null
           localizacoes?: string[] | null
           marcada_sem_resposta?: boolean | null
@@ -589,6 +595,7 @@ export type Database = {
           demanda_id: string
           id: string
           imovel_id: string | null
+          is_test_data: boolean | null
           status: string | null
           tipo_demanda: string
           user_sdr_id: string
@@ -600,6 +607,7 @@ export type Database = {
           demanda_id: string
           id?: string
           imovel_id?: string | null
+          is_test_data?: boolean | null
           status?: string | null
           tipo_demanda: string
           user_sdr_id: string
@@ -611,6 +619,7 @@ export type Database = {
           demanda_id?: string
           id?: string
           imovel_id?: string | null
+          is_test_data?: boolean | null
           status?: string | null
           tipo_demanda?: string
           user_sdr_id?: string
@@ -694,6 +703,7 @@ export type Database = {
           etapa_funil: string | null
           fotos: string[] | null
           id: string
+          is_test_data: boolean | null
           landlord_id: string | null
           localizacao_texto: string | null
           observacoes: string | null
@@ -722,6 +732,7 @@ export type Database = {
           etapa_funil?: string | null
           fotos?: string[] | null
           id?: string
+          is_test_data?: boolean | null
           landlord_id?: string | null
           localizacao_texto?: string | null
           observacoes?: string | null
@@ -750,6 +761,7 @@ export type Database = {
           etapa_funil?: string | null
           fotos?: string[] | null
           id?: string
+          is_test_data?: boolean | null
           landlord_id?: string | null
           localizacao_texto?: string | null
           observacoes?: string | null
