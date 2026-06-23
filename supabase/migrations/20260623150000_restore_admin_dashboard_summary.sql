@@ -1,5 +1,6 @@
 DO $$ 
 BEGIN
+    DROP MATERIALIZED VIEW IF EXISTS public.admin_dashboard_summary CASCADE;
     DROP VIEW IF EXISTS public.admin_dashboard_summary CASCADE;
     DROP TABLE IF EXISTS public.admin_dashboard_summary CASCADE;
 END $$;
