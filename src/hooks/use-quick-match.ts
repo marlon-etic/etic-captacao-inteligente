@@ -1,62 +1,80 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase/client'
+import { calculateMatching, ImovelForMatching } from '@/lib/matching'
 
-export function useQuickMatchCount(propertyParams: {
-  preco?: number
-  endereco?: string
-  tipo?: string
-  tipo_imovel?: string
-  dormitorios?: number
-  vagas?: number
-}) {
+export interface QuickMatchClient {
+  id: string
+  nome: string
+}
+
+export function useQuickMatchCount(propertyParams: ImovelForMatching & { tipo?: string }) {
   const [count, setCount] = useState<number | null>(null)
+  const [matchedClients, setMatchedClients] = useState<QuickMatchClient[]>([])
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     async function fetchMatches() {
       if (!propertyParams.preco || !propertyParams.tipo || !propertyParams.tipo_imovel) {
         setCount(0)
+        setMatchedClients([])
         return
       }
 
       setLoading(true)
       try {
-        let totalCount = 0
+        let clients: QuickMatchClient[] = []
 
         const checkType = async (table: 'demandas_vendas' | 'demandas_locacao') => {
-          let q = supabase
+          const { data, error } = await supabase
             .from(table)
-            .select('id', { count: 'exact', head: true })
+            .select(
+              'id, nome_cliente, bairros, valor_maximo, dormitorios, vagas_estacionamento, tipo_imovel',
+            )
             .in('status_demanda', ['aberta', 'em_andamento'])
 
-          if (propertyParams.tipo_imovel) {
-            q = q.ilike('tipo_imovel', `%${propertyParams.tipo_imovel}%`)
-          }
-
-          q = q.gte('valor_maximo', propertyParams.preco)
-
-          if (propertyParams.dormitorios) {
-            q = q.lte('dormitorios', propertyParams.dormitorios)
-          }
-
-          const { count, error } = await q
           if (error) {
             console.error('[useQuickMatchCount] Query Error:', error)
+            return []
           }
-          return count || 0
+
+          const imovelMock: ImovelForMatching = {
+            endereco: propertyParams.endereco,
+            preco: propertyParams.preco,
+            dormitorios: propertyParams.dormitorios || 0,
+            vagas: propertyParams.vagas || 0,
+            tipo_imovel: propertyParams.tipo_imovel,
+          }
+
+          const validClients: QuickMatchClient[] = []
+          for (const d of data || []) {
+            const match = calculateMatching(imovelMock, {
+              bairros: d.bairros || [],
+              valor_maximo: d.valor_maximo || 0,
+              dormitorios: d.dormitorios || 0,
+              vagas_estacionamento: d.vagas_estacionamento || 0,
+              tipo_imovel: d.tipo_imovel || '',
+            })
+
+            if (match.score >= 60) {
+              validClients.push({ id: d.id, nome: d.nome_cliente || 'Cliente' })
+            }
+          }
+          return validClients
         }
 
         if (propertyParams.tipo === 'Venda' || propertyParams.tipo === 'Ambos') {
-          totalCount += await checkType('demandas_vendas')
+          clients = clients.concat(await checkType('demandas_vendas'))
         }
         if (propertyParams.tipo === 'Locação' || propertyParams.tipo === 'Ambos') {
-          totalCount += await checkType('demandas_locacao')
+          clients = clients.concat(await checkType('demandas_locacao'))
         }
 
-        setCount(totalCount)
+        setCount(clients.length)
+        setMatchedClients(clients)
       } catch (e) {
         console.error('Error fetching match count', e)
         setCount(0)
+        setMatchedClients([])
       } finally {
         setLoading(false)
       }
@@ -73,5 +91,5 @@ export function useQuickMatchCount(propertyParams: {
     propertyParams.vagas,
   ])
 
-  return { count, loading }
+  return { count, matchedClients, loading }
 }

@@ -45,7 +45,7 @@ export function CapturePropertyModal({ demand, isOpen, onClose, onSuccess }: Pro
   const [uploadProgress, setUploadProgress] = useState(0)
   const [errors, setErrors] = useState<Record<string, string>>({})
 
-  const { count: matchCount } = useQuickMatchCount({
+  const { count: matchCount, matchedClients } = useQuickMatchCount({
     preco: parseFloat(price) || undefined,
     endereco: address,
     tipo,
@@ -53,6 +53,8 @@ export function CapturePropertyModal({ demand, isOpen, onClose, onSuccess }: Pro
     dormitorios: parseInt(bedrooms || '0'),
     vagas: parseInt(parking || '0'),
   })
+  const otherClients = matchedClients.filter((c) => c.id !== demand?.id)
+  const otherCount = otherClients.length
 
   useEffect(() => {
     if (isOpen && demand) {
@@ -536,7 +538,7 @@ export function CapturePropertyModal({ demand, isOpen, onClose, onSuccess }: Pro
                 />
               </div>
 
-              {matchCount !== null && matchCount > 0 && (
+              {otherCount > 0 && (
                 <div className="md:col-span-2 mt-2 bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 rounded-xl p-4 flex items-center justify-between animate-fade-in-up shadow-sm">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center shrink-0 shadow-inner">
@@ -545,8 +547,10 @@ export function CapturePropertyModal({ demand, isOpen, onClose, onSuccess }: Pro
                     <div>
                       <p className="text-sm font-black text-orange-800">⚡ Matches Potenciais</p>
                       <p className="text-xs text-orange-700/80 font-bold mt-0.5">
-                        Além da demanda selecionada, outros {matchCount} clientes procuram esse
-                        perfil.
+                        Além da demanda selecionada, {otherCount}{' '}
+                        {otherCount === 1 ? 'cliente ativo' : 'clientes ativos'} (
+                        {otherClients.map((c) => c.nome).join(', ')}){' '}
+                        {otherCount === 1 ? 'procura' : 'procuram'} esse perfil.
                       </p>
                     </div>
                   </div>

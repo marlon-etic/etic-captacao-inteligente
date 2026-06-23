@@ -305,7 +305,7 @@ export function AddPropertyModal({ isOpen, onClose, onSuccess }: Props) {
     parking: parking.trim() !== '' ? parseInt(parking, 10) : 0,
   }
 
-  const { count: matchCount } = useQuickMatchCount({
+  const { count: matchCount, matchedClients } = useQuickMatchCount({
     preco: parseFloat(price) || undefined,
     endereco: address,
     tipo,
@@ -511,9 +511,9 @@ export function AddPropertyModal({ isOpen, onClose, onSuccess }: Props) {
                         ⚡ Alta Demanda Identificada!
                       </p>
                       <p className="text-xs text-orange-700/80 font-bold mt-0.5">
-                        Existem {matchCount}{' '}
-                        {matchCount === 1 ? 'cliente ativo' : 'clientes ativos'} procurando um
-                        imóvel com este perfil exato.
+                        ⚡ {matchCount} {matchCount === 1 ? 'cliente ativo' : 'clientes ativos'} (
+                        {matchedClients.map((c) => c.nome).join(', ')}) procurando imóvel com este
+                        perfil.
                       </p>
                     </div>
                   </div>

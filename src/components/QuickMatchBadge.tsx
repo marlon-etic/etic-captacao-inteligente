@@ -11,9 +11,9 @@ export function QuickMatchBadge({
   className?: string
   showLabel?: boolean
 }) {
-  const { count, loading } = useQuickMatchCount({
+  const { count, matchedClients, loading } = useQuickMatchCount({
     preco: imovel?.preco || imovel?.valor,
-    endereco: imovel?.endereco,
+    endereco: imovel?.endereco || imovel?.bairros?.join(', '),
     tipo: imovel?.tipo,
     tipo_imovel: imovel?.tipo_imovel,
     dormitorios: imovel?.dormitorios,
@@ -32,13 +32,16 @@ export function QuickMatchBadge({
 
   if (!count || count === 0) return null
 
+  const names = matchedClients.map((c) => c.nome).join(', ')
+  const titleText = `⚡ ${count} ${count === 1 ? 'cliente ativo' : 'clientes ativos'} (${names}) procurando imóvel com este perfil`
+
   return (
     <span
       className={cn(
         'inline-flex items-center text-[10px] bg-gradient-to-r from-orange-100 to-amber-50 text-orange-700 px-2 py-0.5 rounded-full font-black animate-fade-in border border-orange-200 shadow-[0_2px_10px_rgba(249,115,22,0.15)]',
         className,
       )}
-      title={`${count} clientes procurando imóvel semelhante`}
+      title={titleText}
     >
       <Zap className="w-3 h-3 mr-1 fill-orange-500 text-orange-500 animate-pulse" />
       {count} {showLabel ? (count === 1 ? 'Match Rápido' : 'Matches Rápidos') : ''}
