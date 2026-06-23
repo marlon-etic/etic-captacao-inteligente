@@ -10,11 +10,11 @@ export type AnalyticsFiltersState = {
 }
 
 export function getRentBracket(val: number) {
-  if (val <= 2000) return 'Até R$2.000'
-  if (val <= 3000) return 'R$2.000-R$3.000'
-  if (val <= 4000) return 'R$3.000-R$4.000'
-  if (val <= 5000) return 'R$4.000-R$5.000'
-  return 'R$5.000+'
+  if (val <= 2000) return 'Até R$ 2.000,00'
+  if (val <= 3000) return 'R$ 2.000,00 a R$ 3.000,00'
+  if (val <= 5000) return 'R$ 3.000,00 a R$ 5.000,00'
+  if (val <= 8000) return 'R$ 5.000,00 a R$ 8.000,00'
+  return 'Acima de R$ 8.000,00'
 }
 
 export function getSaleBracket(val: number) {
@@ -38,7 +38,9 @@ export function getDemandTypology(d: Demand): string {
 export function enhanceDemands(demands: Demand[]): EnhancedDemand[] {
   return demands.map((d) => {
     const val = d.maxBudget || d.budget || 0
-    const faixaValor = d.type === 'Aluguel' ? getRentBracket(val) : getSaleBracket(val)
+    const typeNorm = d.type?.toLowerCase() || ''
+    const isRent = typeNorm === 'aluguel' || typeNorm === 'locação' || typeNorm === 'locacao'
+    const faixaValor = isRent ? getRentBracket(val) : getSaleBracket(val)
     const tipologia = getDemandTypology(d)
     return { ...d, tipologia, faixaValor }
   })
