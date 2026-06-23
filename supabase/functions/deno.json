@@ -2,7 +2,7 @@
   "_versions": {
     "admin-users": 4,
     "monitor-realtime": 5,
-    "marcar-demandas-sem-resposta": 3,
+    "marcar-demandas-sem-resposta": 4,
     "send-daily-reports": 2
   }
 }

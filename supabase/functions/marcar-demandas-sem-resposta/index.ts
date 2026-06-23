@@ -8,32 +8,28 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    const supabase = createClient(supabaseUrl, supabaseServiceKey)
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') || ''
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
+    const supabase = createClient(supabaseUrl, supabaseKey)
 
-    // Call existing function for marking sem resposta
-    const { data: results, error } = await supabase.rpc('fn_marcar_demandas_sem_resposta')
+    // Call existing sem resposta function
+    const { data: result1, error: err1 } = await supabase.rpc('fn_marcar_demandas_sem_resposta')
+    if (err1) throw err1
 
-    if (error) {
-      console.error('Error calling fn_marcar_demandas_sem_resposta:', error)
-    }
-
-    // Call the new archiving function to transition inactive demands to Perdida
-    const { error: archiveError } = await supabase.rpc('fn_arquivar_demandas_inativas')
-    if (archiveError) {
-      console.error('Error archiving demands:', archiveError)
-    }
+    // Call new global escalation function
+    const { error: err2 } = await supabase.rpc('fn_escalate_all_expired_demands')
+    if (err2) throw err2
 
     return new Response(
-      JSON.stringify({
-        success: true,
-        marcadas: results || [],
-        archived: archiveError ? false : true,
+      JSON.stringify({ 
+        success: true, 
+        message: 'Demandas processadas e escaladas com sucesso',
+        data: result1 
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      },
+        status: 200,
+      }
     )
   } catch (error: any) {
     return new Response(JSON.stringify({ error: error.message }), {

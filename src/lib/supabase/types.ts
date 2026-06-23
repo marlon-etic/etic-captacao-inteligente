@@ -1722,6 +1722,10 @@ export type Database = {
       }
       cleanup_old_analytics: { Args: never; Returns: undefined }
       cleanup_old_email_logs: { Args: never; Returns: undefined }
+      escalate_lost_demand: {
+        Args: { p_demanda_id: string; p_tipo_demanda: string }
+        Returns: undefined
+      }
       fn_arquivar_demandas_inativas: { Args: never; Returns: undefined }
       fn_auto_fix_test_users: { Args: never; Returns: Json }
       fn_calcular_tenant_score: {
@@ -1740,6 +1744,7 @@ export type Database = {
         Returns: Json
       }
       fn_diagnose_oauth_setup: { Args: never; Returns: Json }
+      fn_escalate_all_expired_demands: { Args: never; Returns: undefined }
       fn_executar_marcar_demandas_cron: { Args: never; Returns: undefined }
       fn_hard_reset_imoveis: { Args: never; Returns: undefined }
       fn_logar_falhas_api: {
