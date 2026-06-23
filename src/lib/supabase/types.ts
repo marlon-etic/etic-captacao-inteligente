@@ -1753,6 +1753,10 @@ export type Database = {
           status: string
         }[]
       }
+      fn_prorrogar_prazo: {
+        Args: { p_demanda_id: string; p_horas: number; p_tipo_demanda: string }
+        Returns: Json
+      }
       fn_recalcular_pontos_captadores: { Args: never; Returns: Json }
       fn_reset_database: { Args: { p_delete_before?: string }; Returns: Json }
       get_imovel_matches: {
