@@ -82,7 +82,7 @@ export function ImoveisCadastradosList({ imoveis, loading, onSelect }: any) {
                   >
                     <TableCell className="font-bold text-gray-800">
                       <div className="flex items-center gap-3">
-                        {imv.fotos?.[0] ? (
+                        {imv.fotos?.[0] && imv.fotos[0] !== 'SEM' ? (
                           <div className="w-10 h-10 rounded-md bg-gray-100 overflow-hidden flex-shrink-0">
                             <img
                               src={imv.fotos[0]}
@@ -92,10 +92,10 @@ export function ImoveisCadastradosList({ imoveis, loading, onSelect }: any) {
                           </div>
                         ) : (
                           <div
-                            className="w-10 h-10 rounded-md bg-slate-100 flex items-center justify-center flex-shrink-0 text-slate-500 text-[9px] font-bold text-center leading-[1.1] p-1 break-all uppercase border border-slate-200 shadow-sm"
+                            className="w-10 h-10 rounded-md bg-slate-100 flex items-center justify-center flex-shrink-0 text-slate-500 text-[10px] font-bold text-center leading-[1.1] p-1 break-all uppercase border border-slate-200 shadow-sm"
                             title={imv.codigo_imovel}
                           >
-                            {imv.codigo_imovel || 'SEM IMG'}
+                            {imv.codigo_imovel || 'SEM'}
                           </div>
                         )}
                         <div className="flex flex-col">
