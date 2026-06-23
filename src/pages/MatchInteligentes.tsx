@@ -175,24 +175,24 @@ export default function MatchInteligentes() {
             : demandaLocacaoMap.get(match.demanda_id)
 
         let details = null
+        let calculatedScore = match.score
+
         if (imovel && demanda) {
           const matchResult = calculateMatching(imovel, demanda)
           details = matchResult.details
+          calculatedScore = matchResult.score
         }
 
-        return { ...match, imovel, demanda, details }
+        return { ...match, score: calculatedScore, imovel, demanda, details }
       })
 
       // Filter matches depending on if SDR/Corretor wants to see only their demands
       const finalMatches = enrichedMatches.filter((m: any) => {
         if (!m.imovel || !m.demanda) return false
 
-        // Filter out inactive leads
+        // Strict filtering: ensure only active demands are displayed
         const status = m.demanda.status_demanda?.toLowerCase() || ''
-        const isInactive = ['perdida', 'fechada', 'cancelada', 'inativa', 'concluída'].includes(
-          status,
-        )
-        if (isInactive) return false
+        if (status !== 'ativo') return false
 
         if (role === 'admin' || role === 'gestor') return true
 
