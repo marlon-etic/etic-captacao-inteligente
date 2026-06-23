@@ -1710,6 +1710,7 @@ export type Database = {
       }
       cleanup_old_analytics: { Args: never; Returns: undefined }
       cleanup_old_email_logs: { Args: never; Returns: undefined }
+      fn_arquivar_demandas_inativas: { Args: never; Returns: undefined }
       fn_auto_fix_test_users: { Args: never; Returns: Json }
       fn_calcular_tenant_score: {
         Args: { p_renda_mensal: number; p_valor_aluguel: number }
