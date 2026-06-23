@@ -12,6 +12,7 @@ import { Demand } from '@/types'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { GestorPropertyGrid } from './GestorPropertyGrid'
 import { GestorDemandAnalysis } from './GestorDemandAnalysis'
+import { GestorMarketIntelligence } from './GestorMarketIntelligence'
 
 export function GestorCharts({ demands }: { demands: Demand[] }) {
   const isMobile = useIsMobile()
@@ -162,6 +163,8 @@ export function GestorCharts({ demands }: { demands: Demand[] }) {
       <div className="mt-4">
         <GestorDemandAnalysis />
       </div>
+
+      <GestorMarketIntelligence />
     </div>
   )
 }
