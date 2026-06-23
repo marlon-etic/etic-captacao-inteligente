@@ -1716,6 +1716,7 @@ export type Database = {
         Returns: number
       }
       fn_clean_expired_cache: { Args: never; Returns: undefined }
+      fn_cleanup_inactive_demands: { Args: never; Returns: Json }
       fn_diagnose_and_fix_auth: {
         Args: {
           p_email: string
