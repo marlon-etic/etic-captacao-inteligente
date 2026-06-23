@@ -98,15 +98,23 @@ export function LoosePropertyCard({
     <>
       <Card className="overflow-visible flex flex-col h-full border-[2px] border-[#2E5F8A] hover:shadow-[0_8px_24px_rgba(26,58,82,0.15)] relative transition-all duration-150 ease-in-out bg-[#FFFFFF] rounded-[16px] z-0 group">
         {/* Imagem do Imóvel no Topo com Data */}
-        <div className="relative h-48 w-full bg-[#F5F5F5] pointer-events-none shrink-0 border-b border-[#E5E5E5] rounded-t-[14px] overflow-hidden">
-          <img
-            src={
-              property.photoUrl ||
-              `https://img.usecurling.com/p/400/300?q=house&seed=${property.code}`
-            }
-            alt="Imóvel Disponível"
-            className="w-full h-full object-cover"
-          />
+        <div className="relative h-48 w-full bg-[#F5F5F5] pointer-events-none shrink-0 border-b border-[#E5E5E5] rounded-t-[14px] overflow-hidden flex flex-col items-center justify-center">
+          {property.photoUrl && property.photoUrl !== 'SEM' ? (
+            <img
+              src={property.photoUrl}
+              alt="Imóvel Disponível"
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full bg-[#F8FAFC] flex flex-col items-center justify-center text-[#64748B]">
+              <span className="font-black text-2xl tracking-widest text-[#1A3A52] px-4 py-2 bg-white rounded-lg border border-[#E2E8F0] shadow-sm">
+                {property.code || property.codigo_imovel || 'S/ CÓDIGO'}
+              </span>
+              <span className="text-[11px] font-bold uppercase mt-2 opacity-60">
+                Código de Referência
+              </span>
+            </div>
+          )}
           {/* Header absoluto sobre a imagem com pointer-events-auto */}
           <div className="absolute top-3 left-3 right-3 flex justify-between items-start pointer-events-auto z-10">
             <Badge className="font-sans font-bold bg-white/90 text-[#333333] border border-[#E5E5E5] shadow-sm backdrop-blur-md px-2.5 py-1 shrink-0 max-w-[50%] truncate">

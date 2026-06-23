@@ -11,9 +11,12 @@ import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis }
 import { Clock, Search, CheckCircle, XCircle, Building } from 'lucide-react'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { DashboardCharts } from './DashboardCharts'
+import { useNavigate } from 'react-router-dom'
+import { Button } from '@/components/ui/button'
 
 export function CaptadorDashboardOverview() {
   const { metrics, charts, loading } = useCaptadorDashboard()
+  const navigate = useNavigate()
 
   if (loading)
     return (
@@ -44,6 +47,13 @@ export function CaptadorDashboardOverview() {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <h2 className="text-3xl font-bold tracking-tight">Dashboard de Engajamento</h2>
+        <Button
+          onClick={() => navigate('/app/demandas')}
+          className="bg-[#10B981] hover:bg-[#059669] text-white font-bold h-11 px-6 shadow-sm flex items-center gap-2"
+        >
+          <Search className="w-5 h-5" />
+          Começar Busca
+        </Button>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

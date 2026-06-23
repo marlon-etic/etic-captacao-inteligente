@@ -98,6 +98,13 @@ export function useCaptadorDashboard() {
       // Smart Demand Filtering: exclude old inactive requests
       const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
       todasDemandas = todasDemandas.filter((d) => {
+        const status = d.status_demanda?.toLowerCase() || ''
+
+        // Ensure demands marked as 'perdida' by inactivity are excluded from active counts
+        if (status.includes('perdid') && d.motivo_perda === 'Inatividade') {
+          // keep them in the dataset for "perdidos" metrics, but we filter them out of emBusca
+        }
+
         const isRecent = Date.now() - new Date(d.created_at).getTime() <= SEVEN_DAYS_MS
         const isEmBusca = d.status_demanda === 'em busca'
         const hasInteraction =
@@ -106,7 +113,7 @@ export function useCaptadorDashboard() {
           !!d.is_prioritaria
         const hasEngagement = isEmBusca || hasInteraction
 
-        if (d.status_demanda === 'aberta' || d.status_demanda === 'sem_resposta_24h') {
+        if (status === 'aberta' || status === 'sem_resposta_24h') {
           return isRecent || hasEngagement
         }
         return true // keep other statuses like atendida, ganha, perdida, etc in the dashboard if they match the query
@@ -118,13 +125,16 @@ export function useCaptadorDashboard() {
       const aleatorios = (imoveisData || []).length - sobDemanda
       const semResposta = todasDemandas.filter((d) => d.status_demanda === 'aberta').length
 
-      const emBusca = todasDemandas.filter((d) => d.status_demanda === 'em busca').length
+      const emBusca = todasDemandas.filter((d) => {
+        const status = d.status_demanda?.toLowerCase() || ''
+        return !status.includes('perdid') && status !== 'arquivado'
+      }).length
       const perdidosInatividade = todasDemandas.filter(
-        (d) => d.status_demanda === 'perdida' && d.motivo_perda === 'Inatividade',
+        (d) => d.status_demanda?.toLowerCase() === 'perdida' && d.motivo_perda === 'Inatividade',
       ).length
       const perdidosOutros = todasDemandas.filter(
         (d) =>
-          d.status_demanda === 'perdida' &&
+          d.status_demanda?.toLowerCase() === 'perdida' &&
           d.motivo_perda !== 'Inatividade' &&
           d.motivo_perda != null,
       ).length

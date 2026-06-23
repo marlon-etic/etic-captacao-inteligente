@@ -131,7 +131,6 @@ export function AppSidebar() {
         badge: historyCount > 0 ? historyCount : undefined,
       },
       { title: 'Notificações', icon: Bell, url: '/app/notificacoes' },
-      { title: 'Ajuda', icon: HelpCircle, url: '/app/ajuda' },
       { title: 'Perfil', icon: UserCircle, url: '/app/perfil' },
     ]
   } else if (isCaptador) {
@@ -146,11 +145,9 @@ export function AppSidebar() {
         badge: matchCount > 0 ? matchCount : undefined,
       },
       { title: 'Pontuação', icon: Star, url: '/app/pontuacao' },
-      { title: 'Ranking', icon: Trophy, url: '/app/ranking' },
       { title: 'Histórico', icon: History, url: '/app/historico' },
       { title: 'Perdidos', icon: ArchiveX, url: '/app/perdidos' },
       { title: 'Notificações', icon: Bell, url: '/app/notificacoes' },
-      { title: 'Ajuda', icon: HelpCircle, url: '/app/ajuda' },
       { title: 'Perfil', icon: UserCircle, url: '/app/perfil' },
     ]
   } else if (isAdmin || isGestor) {
@@ -164,9 +161,7 @@ export function AppSidebar() {
         badge: matchCount > 0 ? matchCount : undefined,
       },
       { title: 'Analytics', icon: LineChart, url: '/app/analytics' },
-      { title: 'Ranking', icon: Trophy, url: '/app/ranking' },
       { title: 'Notificações', icon: Bell, url: '/app/notificacoes' },
-      { title: 'Ajuda', icon: HelpCircle, url: '/app/ajuda' },
       ...(isAdmin ? [{ title: 'Usuários', icon: UserCog, url: '/app/usuarios' }] : []),
       ...(isAdmin ? [{ title: 'Auditoria Logs', icon: Shield, url: '/app/auditoria' }] : []),
       ...(isAdmin ? [{ title: 'Teste de RLS', icon: ShieldAlert, url: '/app/rls-tester' }] : []),
