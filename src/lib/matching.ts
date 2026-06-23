@@ -1,6 +1,7 @@
 export interface ImovelForMatching {
   id?: string
   endereco?: string
+  localizacao_texto?: string
   preco?: number
   valor?: number
   dormitorios?: number
@@ -71,7 +72,12 @@ export function calculateMatching(
   }
 
   // Bairro Penalty (-25%)
-  const imovelBairrosStr = (imovel.bairros?.join(', ') || imovel.endereco || '').toLowerCase()
+  const imovelBairrosStr = (
+    imovel.bairros?.join(', ') ||
+    imovel.endereco ||
+    imovel.localizacao_texto ||
+    ''
+  ).toLowerCase()
   let hasBairroMatch = false
   if (cliente.bairros && cliente.bairros.length > 0) {
     hasBairroMatch = cliente.bairros.some((b) => imovelBairrosStr.includes(b.toLowerCase()))

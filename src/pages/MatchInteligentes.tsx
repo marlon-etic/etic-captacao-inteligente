@@ -86,7 +86,7 @@ export default function MatchInteligentes() {
       const { data: imoveisRes, error: imoveisError } = await supabase
         .from('imoveis_captados')
         .select(
-          'id, codigo_imovel, localizacao_texto, preco, valor, dormitorios, vagas, tipo, endereco, tipo_imovel, bairros, user_captador_id',
+          'id, codigo_imovel, localizacao_texto, preco, valor, dormitorios, vagas, tipo, endereco, tipo_imovel, user_captador_id',
         )
         .in('id', imovelIds)
 
@@ -179,11 +179,17 @@ export default function MatchInteligentes() {
       const finalMatches = enrichedMatches.filter((m: any) => {
         if (!m.imovel || !m.demanda) return false
 
+        if (role === 'admin' || role === 'gestor') return true
+
         if (role === 'sdr') {
-          return m.demanda.sdr_id === currentUser.id || !m.demanda.sdr_id
+          const isRentalProperty = m.imovel.tipo !== 'Venda'
+          const isOwnDemand = m.demanda.sdr_id === currentUser.id || !m.demanda.sdr_id
+          return isRentalProperty && isOwnDemand
         }
         if (role === 'corretor' || role === 'broker') {
-          return m.demanda.corretor_id === currentUser.id || !m.demanda.corretor_id
+          const isSaleProperty = m.imovel.tipo !== 'Locação' && m.imovel.tipo !== 'Aluguel'
+          const isOwnDemand = m.demanda.corretor_id === currentUser.id || !m.demanda.corretor_id
+          return isSaleProperty && isOwnDemand
         }
         return true
       })
