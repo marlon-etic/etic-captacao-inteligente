@@ -76,7 +76,8 @@ export function useCaptadorDashboard() {
         const { data } = await supabase
           .from('demandas_locacao')
           .select('*, imovel_demand_match(id)')
-          .in('status_demanda', ['aberta', 'em busca'])
+          .gte('created_at', startIso)
+          .lte('created_at', endIso)
         demLocData = data || []
       }
 
@@ -84,7 +85,8 @@ export function useCaptadorDashboard() {
         const { data } = await supabase
           .from('demandas_vendas')
           .select('*, imovel_demand_match(id)')
-          .in('status_demanda', ['aberta', 'em busca'])
+          .gte('created_at', startIso)
+          .lte('created_at', endIso)
         demVenData = data || []
       }
 
@@ -99,6 +101,18 @@ export function useCaptadorDashboard() {
       const aleatorios = (imoveisData || []).length - sobDemanda
       const semResposta = todasDemandas.filter((d) => d.status_demanda === 'aberta').length
 
+      const emBusca = todasDemandas.filter((d) => d.status_demanda === 'em busca').length
+      const perdidosInatividade = todasDemandas.filter(
+        (d) => d.status_demanda === 'perdida' && d.motivo_perda === 'Inatividade',
+      ).length
+      const perdidosOutros = todasDemandas.filter(
+        (d) =>
+          d.status_demanda === 'perdida' &&
+          d.motivo_perda !== 'Inatividade' &&
+          d.motivo_perda != null,
+      ).length
+      const captados = convertidos.length || 0
+
       setMetrics({
         total: imoveisData?.length || 0,
         convertidos: convertidos.length,
@@ -110,6 +124,10 @@ export function useCaptadorDashboard() {
         sobDemanda,
         aleatorios,
         semResposta,
+        emBusca,
+        perdidosInatividade,
+        perdidosOutros,
+        captados,
       })
 
       setImoveis(imoveisData || [])
