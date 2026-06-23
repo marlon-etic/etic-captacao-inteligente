@@ -21,6 +21,9 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { useNotificacoes } from '@/hooks/use-notificacoes'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { ConnectionStatus } from '@/components/common/ConnectionStatus'
+import { useSystemStore } from '@/stores/useSystemStore'
+import { FlaskConical } from 'lucide-react'
 
 interface AppHeaderProps {
   onAddPropertyClick?: () => void
@@ -83,9 +86,20 @@ export function AppHeader({ onAddPropertyClick }: AppHeaderProps) {
         <h1 className="text-[20px] font-bold leading-[30px] truncate max-w-[200px] md:max-w-none text-white">
           {getTitle()}
         </h1>
+        <div className="hidden md:block ml-4">
+          <ConnectionStatus />
+        </div>
       </div>
 
       <div className="flex items-center gap-3 md:gap-4">
+        {useSystemStore().isPlaygroundMode && (
+          <Badge
+            variant="outline"
+            className="hidden md:flex bg-amber-500/20 text-amber-300 border-amber-500/50 shrink-0"
+          >
+            <FlaskConical className="w-3.5 h-3.5 mr-1" /> Playground
+          </Badge>
+        )}
         {currentUser.role === 'captador' && onAddPropertyClick && (
           <Button
             onClick={onAddPropertyClick}

@@ -38,12 +38,12 @@ export function QuickMatchBadge({
   return (
     <span
       className={cn(
-        'inline-flex items-center text-[10px] bg-gradient-to-r from-orange-100 to-amber-50 text-orange-700 px-2 py-0.5 rounded-full font-black animate-fade-in border border-orange-200 shadow-[0_2px_10px_rgba(249,115,22,0.15)] max-w-full',
+        'inline-flex items-center text-[10px] sm:text-xs bg-gradient-to-r from-orange-100 to-amber-50 text-orange-700 px-2 py-0.5 sm:px-3 sm:py-1 rounded-full font-black animate-fade-in border border-orange-200 shadow-[0_2px_10px_rgba(249,115,22,0.15)] max-w-full touch-manipulation',
         className,
       )}
       title={description}
     >
-      <Zap className="w-3 h-3 mr-1 fill-orange-500 text-orange-500 animate-pulse shrink-0" />
+      <Zap className="w-3 h-3 sm:w-4 sm:h-4 mr-1 fill-orange-500 text-orange-500 animate-pulse shrink-0" />
       <span className="truncate">{showLabel ? description : count}</span>
     </span>
   )

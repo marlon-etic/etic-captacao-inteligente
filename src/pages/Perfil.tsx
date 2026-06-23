@@ -16,6 +16,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
+import { useSystemStore } from '@/stores/useSystemStore'
+import { FlaskConical } from 'lucide-react'
 import {
   Sheet,
   SheetContent,
@@ -30,6 +32,7 @@ import { UserPreferences, NotificationType } from '@/types'
 export default function Perfil() {
   const { currentUser, logout, updateUserPreferences } = useAppStore()
   const navigate = useNavigate()
+  const { isPlaygroundMode, setPlaygroundMode } = useSystemStore()
 
   const prefs = currentUser?.preferences || defaultPreferences
   const [localPrefs, setLocalPrefs] = useState<UserPreferences['notifications']>(
@@ -249,6 +252,24 @@ export default function Perfil() {
             <Settings className="w-5 h-5 mr-3 text-muted-foreground" /> Configurações Gerais
           </div>
         </Button>
+
+        {['admin', 'gestor'].includes(currentUser?.role || '') && (
+          <Card className="bg-amber-500/5 border-amber-500/20 mt-4 shadow-none">
+            <CardContent className="p-4 flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label className="text-base flex items-center gap-2 text-amber-700">
+                  <FlaskConical className="w-5 h-5" /> Modo Playground
+                </Label>
+                <p className="text-xs text-amber-600/80">Isolar dados de teste do ambiente real.</p>
+              </div>
+              <Switch
+                checked={isPlaygroundMode}
+                onCheckedChange={setPlaygroundMode}
+                className="data-[state=checked]:bg-amber-500"
+              />
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       <Button variant="destructive" className="w-full py-6 mt-8" onClick={handleLogout}>
