@@ -137,7 +137,7 @@ export function useCaptadorDashboard() {
       // Faixas de Preço
       let faixas: Record<string, number> = {}
 
-      if (transactionType === 'locacao') {
+      if (transactionType === 'Locação' || transactionType === 'locacao') {
         faixas = {
           'Até R$ 2.000,00': 0,
           'R$ 2.000,00 a R$ 3.000,00': 0,

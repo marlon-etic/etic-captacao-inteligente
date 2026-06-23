@@ -10,9 +10,10 @@ import {
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis } from 'recharts'
 import { Clock, Search, CheckCircle, XCircle, Building } from 'lucide-react'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
+import { DashboardCharts } from './DashboardCharts'
 
 export function CaptadorDashboardOverview() {
-  const { metrics, loading } = useCaptadorDashboard()
+  const { metrics, charts, loading } = useCaptadorDashboard()
 
   if (loading)
     return (
@@ -171,6 +172,11 @@ export function CaptadorDashboardOverview() {
             </div>
           </CardContent>
         </Card>
+      </div>
+
+      <div className="mt-8">
+        <h3 className="text-xl font-bold tracking-tight mb-4">Análise de Mercado</h3>
+        <DashboardCharts charts={charts} loading={loading} />
       </div>
     </div>
   )
