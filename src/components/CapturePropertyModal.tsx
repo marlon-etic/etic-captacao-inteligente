@@ -19,6 +19,7 @@ import { X, CheckCircle2, Image as ImageIcon } from 'lucide-react'
 import { trackEvent } from '@/lib/analytics'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { BairroCombobox } from './BairroCombobox'
+import { useQuickMatchCount } from '@/hooks/use-quick-match'
 
 interface Props {
   demand: SupabaseDemand | null
@@ -43,6 +44,15 @@ export function CapturePropertyModal({ demand, isOpen, onClose, onSuccess }: Pro
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [errors, setErrors] = useState<Record<string, string>>({})
+
+  const { count: matchCount } = useQuickMatchCount({
+    preco: parseFloat(price) || undefined,
+    endereco: address,
+    tipo,
+    tipo_imovel,
+    dormitorios: parseInt(bedrooms || '0'),
+    vagas: parseInt(parking || '0'),
+  })
 
   useEffect(() => {
     if (isOpen && demand) {
@@ -525,6 +535,23 @@ export function CapturePropertyModal({ demand, isOpen, onClose, onSuccess }: Pro
                   className="resize-none min-h-[80px]"
                 />
               </div>
+
+              {matchCount !== null && matchCount > 0 && (
+                <div className="md:col-span-2 mt-2 bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 rounded-xl p-4 flex items-center justify-between animate-fade-in-up shadow-sm">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center shrink-0 shadow-inner">
+                      <CheckCircle2 className="w-5 h-5 text-orange-500" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-black text-orange-800">⚡ Matches Potenciais</p>
+                      <p className="text-xs text-orange-700/80 font-bold mt-0.5">
+                        Além da demanda selecionada, outros {matchCount} clientes procuram esse
+                        perfil.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </ScrollArea>

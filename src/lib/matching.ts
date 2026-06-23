@@ -22,10 +22,16 @@ export interface ClienteForMatching {
 export interface MatchingResult {
   score: number
   details: {
-    localizacaoScore: number
-    valorScore: number
-    dormitoriosScore: number
-    vagasScore: number
+    location_match: boolean
+    price_match: boolean
+    rooms_match: boolean
+    parking_match: boolean
+    tipology_match: boolean
+    // backwards compatibility
+    localizacaoScore?: number
+    valorScore?: number
+    dormitoriosScore?: number
+    vagasScore?: number
   }
 }
 
@@ -119,35 +125,83 @@ export function calculateMatching(
     console.log('[MATCHING] Tipologias incompatíveis - Score 0%')
     return {
       score: 0,
-      details: { localizacaoScore: 0, valorScore: 0, dormitoriosScore: 0, vagasScore: 0 },
+      details: {
+        location_match: false,
+        price_match: false,
+        rooms_match: false,
+        parking_match: false,
+        tipology_match: false,
+        localizacaoScore: 0,
+        valorScore: 0,
+        dormitoriosScore: 0,
+        vagasScore: 0,
+      },
     }
   }
 
   let score = 100
+  let location_match = true
+  let price_match = true
+  let rooms_match = true
+  let parking_match = true
 
-  const imovelValor = imovel.preco || imovel.valor || 0
-  if (imovelValor > 0 && cliente.valor_maximo && imovelValor > cliente.valor_maximo) {
-    score -= 30
-  }
-  if (imovelValor > 0 && cliente.valor_minimo && imovelValor < cliente.valor_minimo) {
-    score -= 10
+  // Location Penalty
+  if (cliente.bairros && cliente.bairros.length > 0 && imovel.endereco) {
+    const endereco = imovel.endereco.toLowerCase()
+    const isBairroEncontrado = cliente.bairros.some((b) => endereco.includes(b.toLowerCase()))
+    if (!isBairroEncontrado) {
+      location_match = false
+      score -= 25
+    }
+  } else if (cliente.bairros && cliente.bairros.length > 0 && !imovel.endereco) {
+    location_match = false
+    score -= 25
   }
 
-  if (
-    cliente.dormitorios &&
-    imovel.dormitorios !== undefined &&
-    imovel.dormitorios < cliente.dormitorios
-  ) {
+  // Parking Penalty
+  const vagasDemanda = cliente.vagas_estacionamento || 0
+  const vagasImovel = imovel.vagas || 0
+  if (vagasDemanda > 0 && vagasImovel < vagasDemanda) {
+    parking_match = false
+    score -= 15
+  }
+
+  // Rooms Penalty
+  const quartosDemanda = cliente.dormitorios || 0
+  const quartosImovel = imovel.dormitorios || 0
+  if (quartosDemanda > 0 && quartosImovel < quartosDemanda) {
+    rooms_match = false
     score -= 20
+  }
+
+  // Budget Penalty
+  const imovelValor = imovel.preco || imovel.valor || 0
+  if (imovelValor > 0) {
+    if (cliente.valor_maximo && cliente.valor_maximo > 0 && imovelValor > cliente.valor_maximo) {
+      price_match = false
+      score -= 30
+    } else if (
+      cliente.valor_minimo &&
+      cliente.valor_minimo > 0 &&
+      imovelValor < cliente.valor_minimo
+    ) {
+      price_match = false
+      score -= 10
+    }
   }
 
   return {
     score: Math.max(0, score),
     details: {
-      localizacaoScore: 25,
-      valorScore: 25,
-      dormitoriosScore: 25,
-      vagasScore: 25,
+      location_match,
+      price_match,
+      rooms_match,
+      parking_match,
+      tipology_match: true,
+      localizacaoScore: location_match ? 25 : 0,
+      valorScore: price_match ? 25 : 0,
+      dormitoriosScore: rooms_match ? 25 : 0,
+      vagasScore: parking_match ? 25 : 0,
     },
   }
 }

@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/table'
 import { MapPin, Home, DollarSign, ExternalLink, CheckCircle2, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { QuickMatchBadge } from '@/components/QuickMatchBadge'
 
 export function ImoveisCadastradosList({ imoveis, loading, onSelect }: any) {
   if (loading) {
@@ -109,13 +110,18 @@ export function ImoveisCadastradosList({ imoveis, loading, onSelect }: any) {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="flex flex-col gap-1">
-                        <span className="font-bold text-gray-700 text-xs">
-                          {imv.tipo_imovel || 'Imóvel'}
-                        </span>
+                      <div className="flex flex-col gap-1 items-start">
+                        <div className="flex items-center gap-1">
+                          <span className="font-bold text-gray-700 text-xs">
+                            {imv.tipo_imovel || 'Imóvel'}
+                          </span>
+                        </div>
                         <span className="text-[10px] font-bold text-gray-500">
                           {imv.dormitorios || 0}D, {imv.vagas || 0}V
                         </span>
+                        <div className="mt-1">
+                          <QuickMatchBadge imovel={imv} showLabel={false} />
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell className="font-black text-emerald-600 text-sm">

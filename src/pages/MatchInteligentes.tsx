@@ -5,6 +5,7 @@ import { useToast } from '@/components/ui/use-toast'
 import { ThumbsDown, ThumbsUp, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { calculateMatching } from '@/lib/matching'
 import { ConfirmacaoVinculacaoMatch } from '@/components/modals/ConfirmacaoVinculacaoMatch'
 import { useUserRole } from '@/hooks/use-user-role'
 
@@ -257,6 +258,20 @@ function MatchCardItem({
         ? 'bg-yellow-50 border-yellow-200'
         : 'bg-red-50 border-red-200'
 
+  const imovelSpecs = {
+    ...match.imovel,
+    tipo_imovel: match.imovel?.tipo_imovel || 'Apartamento',
+  }
+  const demandaSpecs = {
+    ...match.demanda,
+    bairros: match.demanda?.bairros || match.demanda?.localizacoes || [],
+    tipo_imovel: match.demanda?.tipo_imovel || 'Apartamento',
+    vagas_estacionamento: match.demanda?.vagas_estacionamento || match.demanda?.vagas || 0,
+    dormitorios: match.demanda?.dormitorios || match.demanda?.quartos || 0,
+  }
+
+  const matchResult = calculateMatching(imovelSpecs, demandaSpecs)
+
   return (
     <div
       className={cn(
@@ -312,17 +327,72 @@ function MatchCardItem({
 
         <div className="bg-white/80 p-3 rounded-lg border border-blue-100">
           <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wider mb-1.5">
-            Por que esse match?
+            Critérios do Match
           </p>
-          <ul className="text-xs text-blue-800 space-y-1 font-medium">
-            <li className="flex items-center gap-1">
-              <span className="text-blue-500">✓</span> Tipologia e Status
+          <ul className="text-xs space-y-1.5 font-bold">
+            <li className="flex items-center gap-1.5">
+              <span
+                className={cn(
+                  'flex items-center justify-center w-4 h-4 rounded-full',
+                  matchResult.details.location_match
+                    ? 'bg-green-100 text-green-600'
+                    : 'bg-red-100 text-red-600',
+                )}
+              >
+                {matchResult.details.location_match ? '✓' : '✗'}
+              </span>
+              <span
+                className={matchResult.details.location_match ? 'text-green-800' : 'text-red-800'}
+              >
+                Bairro compatível
+              </span>
             </li>
-            <li className="flex items-center gap-1">
-              <span className="text-blue-500">✓</span> Valor dentro do orçamento
+            <li className="flex items-center gap-1.5">
+              <span
+                className={cn(
+                  'flex items-center justify-center w-4 h-4 rounded-full',
+                  matchResult.details.price_match
+                    ? 'bg-green-100 text-green-600'
+                    : 'bg-red-100 text-red-600',
+                )}
+              >
+                {matchResult.details.price_match ? '✓' : '✗'}
+              </span>
+              <span className={matchResult.details.price_match ? 'text-green-800' : 'text-red-800'}>
+                Valor no orçamento
+              </span>
             </li>
-            <li className="flex items-center gap-1">
-              <span className="text-blue-500">✓</span> Perfil compatível
+            <li className="flex items-center gap-1.5">
+              <span
+                className={cn(
+                  'flex items-center justify-center w-4 h-4 rounded-full',
+                  matchResult.details.rooms_match
+                    ? 'bg-green-100 text-green-600'
+                    : 'bg-red-100 text-red-600',
+                )}
+              >
+                {matchResult.details.rooms_match ? '✓' : '✗'}
+              </span>
+              <span className={matchResult.details.rooms_match ? 'text-green-800' : 'text-red-800'}>
+                Dormitórios suficientes
+              </span>
+            </li>
+            <li className="flex items-center gap-1.5">
+              <span
+                className={cn(
+                  'flex items-center justify-center w-4 h-4 rounded-full',
+                  matchResult.details.parking_match
+                    ? 'bg-green-100 text-green-600'
+                    : 'bg-red-100 text-red-600',
+                )}
+              >
+                {matchResult.details.parking_match ? '✓' : '✗'}
+              </span>
+              <span
+                className={matchResult.details.parking_match ? 'text-green-800' : 'text-red-800'}
+              >
+                Vagas suficientes
+              </span>
             </li>
           </ul>
         </div>

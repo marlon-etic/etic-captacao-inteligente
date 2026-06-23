@@ -18,6 +18,8 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { DemandSelector } from './DemandSelector'
 import { BairroCombobox } from './BairroCombobox'
 import { cn } from '@/lib/utils'
+import { useQuickMatchCount } from '@/hooks/use-quick-match'
+import { Zap } from 'lucide-react'
 
 interface Props {
   isOpen: boolean
@@ -303,6 +305,15 @@ export function AddPropertyModal({ isOpen, onClose, onSuccess }: Props) {
     parking: parking.trim() !== '' ? parseInt(parking, 10) : 0,
   }
 
+  const { count: matchCount } = useQuickMatchCount({
+    preco: parseFloat(price) || undefined,
+    endereco: address,
+    tipo,
+    tipo_imovel,
+    dormitorios: bedrooms.trim() !== '' ? parseInt(bedrooms, 10) : 0,
+    vagas: parking.trim() !== '' ? parseInt(parking, 10) : 0,
+  })
+
   return (
     <Dialog open={isOpen} onOpenChange={(val) => !val && onClose()}>
       <DialogContent
@@ -487,6 +498,28 @@ export function AddPropertyModal({ isOpen, onClose, onSuccess }: Props) {
                 </div>
               </div>
             </ScrollArea>
+
+            <div className="px-4 md:px-6">
+              {matchCount !== null && matchCount > 0 && (
+                <div className="mt-2 mb-4 bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 rounded-xl p-4 flex items-center justify-between animate-fade-in-up shadow-sm">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center shrink-0 shadow-inner">
+                      <Zap className="w-5 h-5 text-orange-500 fill-orange-500 animate-pulse" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-black text-orange-800">
+                        ⚡ Alta Demanda Identificada!
+                      </p>
+                      <p className="text-xs text-orange-700/80 font-bold mt-0.5">
+                        Existem {matchCount}{' '}
+                        {matchCount === 1 ? 'cliente ativo' : 'clientes ativos'} procurando um
+                        imóvel com este perfil exato.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
 
             <div className="p-4 md:p-6 border-t border-[#E5E5E5] bg-[#F8FAFC] shrink-0 flex justify-end gap-3">
               <Button
