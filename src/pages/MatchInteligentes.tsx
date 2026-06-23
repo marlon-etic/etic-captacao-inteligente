@@ -141,7 +141,7 @@ export default function MatchInteligentes() {
           supabase
             .from('demandas_vendas')
             .select(
-              'id, nome_cliente, cliente_nome, valor_minimo, valor_maximo, orcamento_max, dormitorios, quartos, vagas_estacionamento, vagas, bairros, localizacoes, tipo_imovel, corretor_id',
+              'id, nome_cliente, cliente_nome, valor_minimo, valor_maximo, orcamento_max, dormitorios, quartos, vagas_estacionamento, vagas, bairros, localizacoes, tipo_imovel, corretor_id, status_demanda',
             )
             .in('id', demandaVendaIds),
         )
@@ -154,7 +154,7 @@ export default function MatchInteligentes() {
           supabase
             .from('demandas_locacao')
             .select(
-              'id, nome_cliente, cliente_nome, valor_minimo, valor_maximo, orcamento_max, dormitorios, quartos, vagas_estacionamento, vagas, bairros, localizacoes, tipo_imovel, sdr_id',
+              'id, nome_cliente, cliente_nome, valor_minimo, valor_maximo, orcamento_max, dormitorios, quartos, vagas_estacionamento, vagas, bairros, localizacoes, tipo_imovel, sdr_id, status_demanda',
             )
             .in('id', demandaLocacaoIds),
         )
@@ -186,6 +186,13 @@ export default function MatchInteligentes() {
       // Filter matches depending on if SDR/Corretor wants to see only their demands
       const finalMatches = enrichedMatches.filter((m: any) => {
         if (!m.imovel || !m.demanda) return false
+
+        // Filter out inactive leads
+        const status = m.demanda.status_demanda?.toLowerCase() || ''
+        const isInactive = ['perdida', 'fechada', 'cancelada', 'inativa', 'concluída'].includes(
+          status,
+        )
+        if (isInactive) return false
 
         if (role === 'admin' || role === 'gestor') return true
 
