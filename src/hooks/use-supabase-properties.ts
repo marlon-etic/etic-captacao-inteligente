@@ -120,13 +120,20 @@ export function useSupabaseProperties(
           { count: 'exact' },
         )
 
+        // Role-based filtering to prevent loading unnecessary data
+        if (currentUser.role === 'sdr') {
+          query = query.in('tipo', ['Locação', 'Aluguel', 'Ambos'])
+        } else if (currentUser.role === 'corretor' || currentUser.role === 'broker') {
+          query = query.in('tipo', ['Venda', 'Ambos'])
+        }
+
         // Server-side filtering to ensure consistency and performance
         const priceFilter = filterType ? parsePriceFilter(filterType) : null
 
         if (priceFilter) {
-          if (priceFilter.isLocacao) {
+          if (priceFilter.isLocacao && currentUser.role !== 'corretor') {
             query = query.in('tipo', ['Locação', 'Aluguel', 'Ambos'])
-          } else if (priceFilter.isVenda) {
+          } else if (priceFilter.isVenda && currentUser.role !== 'sdr') {
             query = query.in('tipo', ['Venda', 'Ambos'])
           }
 
@@ -137,11 +144,18 @@ export function useSupabaseProperties(
             )
           }
         } else if (filterType && filterType !== 'Ambos') {
-          if (filterType === 'Aluguel' || filterType === 'Locação') {
+          if (
+            (filterType === 'Aluguel' || filterType === 'Locação') &&
+            currentUser.role !== 'corretor'
+          ) {
             query = query.in('tipo', ['Locação', 'Aluguel', 'Ambos'])
-          } else if (filterType === 'Venda') {
+          } else if (filterType === 'Venda' && currentUser.role !== 'sdr') {
             query = query.in('tipo', ['Venda', 'Ambos'])
-          } else {
+          } else if (
+            filterType !== 'Aluguel' &&
+            filterType !== 'Locação' &&
+            filterType !== 'Venda'
+          ) {
             // Text search fallback
             query = query.or(
               `endereco.ilike.%${filterType}%,codigo_imovel.ilike.%${filterType}%,localizacao_texto.ilike.%${filterType}%`,
@@ -153,7 +167,8 @@ export function useSupabaseProperties(
           query = query.eq('status_captacao', options.statusFilter)
         }
 
-        if (options?.onlyMine) {
+        // Captador ALWAYS sees only their properties, or if explicitly requested onlyMine
+        if (options?.onlyMine || currentUser.role === 'captador') {
           query = query.eq('user_captador_id', currentUser.id)
         }
 

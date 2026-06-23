@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { getPendingMatches, updateMatchStatus } from '@/services/matchingService'
 import { supabase } from '@/lib/supabase/client'
 import { useToast } from '@/components/ui/use-toast'
 import { ThumbsDown, Zap, DollarSign, Home, CheckCircle } from 'lucide-react'
@@ -8,7 +7,9 @@ import { cn } from '@/lib/utils'
 import { calculateMatching } from '@/lib/matching'
 import { ConfirmacaoVinculacaoMatch } from '@/components/modals/ConfirmacaoVinculacaoMatch'
 import { useUserRole } from '@/hooks/use-user-role'
+import useAppStore from '@/stores/useAppStore'
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'
+import { updateMatchStatus } from '@/services/matchingService'
 
 interface MatchCard {
   id: string
@@ -23,6 +24,7 @@ interface MatchCard {
 
 export default function MatchInteligentes() {
   const { role, loading: roleLoading } = useUserRole()
+  const { currentUser } = useAppStore()
   const [matches, setMatches] = useState<MatchCard[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -30,70 +32,108 @@ export default function MatchInteligentes() {
   const { toast } = useToast()
 
   useEffect(() => {
-    if (!roleLoading && role) {
+    if (!roleLoading && role && currentUser?.id) {
       loadMatches()
+    } else if (!roleLoading && !currentUser?.id) {
+      setLoading(false)
     }
-  }, [role, roleLoading])
+  }, [role, roleLoading, currentUser])
 
   const loadMatches = async () => {
     try {
       setLoading(true)
       setError(null)
 
-      let pendingMatches
-      try {
-        pendingMatches = await getPendingMatches(50, role)
-      } catch (err: any) {
-        if (err.message === 'TIMEOUT') {
-          toast({
-            title: 'Servidor ocupado',
-            description:
-              'A busca de matches demorou muito. Mostrando resultados em cache ou tente novamente.',
-            variant: 'destructive',
-          })
-          setLoading(false)
-          return
-        }
-        throw err
+      if (!currentUser?.id || !role) {
+        setMatches([])
+        return
       }
 
-      if (!pendingMatches || pendingMatches.length === 0) {
+      // Step 1: Fetch pending matches filtered by Demanda Tipo (SDR/Corretor)
+      let query = supabase
+        .from('matches_sugestoes')
+        .select(`
+          id,
+          imovel_id,
+          demanda_id,
+          demanda_tipo,
+          score,
+          status
+        `)
+        .eq('status', 'pendente')
+        .order('score', { ascending: false })
+        .limit(100)
+
+      if (role === 'sdr') {
+        query = query.in('demanda_tipo', ['Locação', 'Aluguel'])
+      } else if (role === 'corretor' || role === 'broker') {
+        query = query.eq('demanda_tipo', 'Venda')
+      }
+
+      const { data: rawMatches, error: matchError } = await query
+
+      if (matchError) throw matchError
+
+      if (!rawMatches || rawMatches.length === 0) {
         setMatches([])
         setLoading(false)
         return
       }
 
-      const imovelIds = [...new Set(pendingMatches.map((m: any) => m.imovel_id))]
+      const imovelIds = [...new Set(rawMatches.map((m: any) => m.imovel_id))]
+
+      // Step 2: Fetch Imoveis
+      const { data: imoveisRes, error: imoveisError } = await supabase
+        .from('imoveis_captados')
+        .select(
+          'id, codigo_imovel, localizacao_texto, preco, valor, dormitorios, vagas, tipo, endereco, tipo_imovel, bairros, user_captador_id',
+        )
+        .in('id', imovelIds)
+
+      if (imoveisError) throw imoveisError
+
+      // Filter Imoveis based on Captador role
+      const validImovelMap = new Map()
+      ;(imoveisRes || []).forEach((i) => {
+        if (role === 'captador') {
+          if (i.user_captador_id === currentUser.id) validImovelMap.set(i.id, i)
+        } else {
+          validImovelMap.set(i.id, i)
+        }
+      })
+
+      const filteredMatches = rawMatches.filter((m) => validImovelMap.has(m.imovel_id))
+
+      if (filteredMatches.length === 0) {
+        setMatches([])
+        setLoading(false)
+        return
+      }
+
       const demandaVendaIds = [
         ...new Set(
-          pendingMatches
+          filteredMatches
             .filter((m: any) => m.demanda_tipo === 'Venda')
             .map((m: any) => m.demanda_id),
         ),
       ]
+
       const demandaLocacaoIds = [
         ...new Set(
-          pendingMatches
+          filteredMatches
             .filter((m: any) => m.demanda_tipo === 'Locação' || m.demanda_tipo === 'Aluguel')
             .map((m: any) => m.demanda_id),
         ),
       ]
 
-      const promises = [
-        supabase
-          .from('imoveis_captados')
-          .select(
-            'id, codigo_imovel, localizacao_texto, preco, valor, dormitorios, vagas, tipo, endereco, tipo_imovel, bairros',
-          )
-          .in('id', imovelIds),
-      ]
+      const promises = []
 
       if (demandaVendaIds.length > 0) {
         promises.push(
           supabase
             .from('demandas_vendas')
             .select(
-              'id, nome_cliente, cliente_nome, valor_minimo, valor_maximo, orcamento_max, dormitorios, quartos, vagas_estacionamento, vagas, bairros, tipo_imovel',
+              'id, nome_cliente, cliente_nome, valor_minimo, valor_maximo, orcamento_max, dormitorios, quartos, vagas_estacionamento, vagas, bairros, tipo_imovel, corretor_id',
             )
             .in('id', demandaVendaIds),
         )
@@ -106,7 +146,7 @@ export default function MatchInteligentes() {
           supabase
             .from('demandas_locacao')
             .select(
-              'id, nome_cliente, cliente_nome, valor_minimo, valor_maximo, orcamento_max, dormitorios, quartos, vagas_estacionamento, vagas, bairros, tipo_imovel',
+              'id, nome_cliente, cliente_nome, valor_minimo, valor_maximo, orcamento_max, dormitorios, quartos, vagas_estacionamento, vagas, bairros, tipo_imovel, sdr_id',
             )
             .in('id', demandaLocacaoIds),
         )
@@ -114,14 +154,13 @@ export default function MatchInteligentes() {
         promises.push(Promise.resolve({ data: [] } as any))
       }
 
-      const [imoveisRes, demandasVendaRes, demandasLocacaoRes] = await Promise.all(promises)
+      const [demandasVendaRes, demandasLocacaoRes] = await Promise.all(promises)
 
-      const imovelMap = new Map((imoveisRes.data || []).map((i) => [i.id, i]))
-      const demandaVendaMap = new Map((demandasVendaRes.data || []).map((d) => [d.id, d]))
-      const demandaLocacaoMap = new Map((demandasLocacaoRes.data || []).map((d) => [d.id, d]))
+      const demandaVendaMap = new Map((demandasVendaRes.data || []).map((d: any) => [d.id, d]))
+      const demandaLocacaoMap = new Map((demandasLocacaoRes.data || []).map((d: any) => [d.id, d]))
 
-      const enrichedMatches = pendingMatches.map((match: any) => {
-        const imovel = imovelMap.get(match.imovel_id)
+      const enrichedMatches = filteredMatches.map((match: any) => {
+        const imovel = validImovelMap.get(match.imovel_id)
         const demanda =
           match.demanda_tipo === 'Venda'
             ? demandaVendaMap.get(match.demanda_id)
@@ -136,11 +175,20 @@ export default function MatchInteligentes() {
         return { ...match, imovel, demanda, details }
       })
 
-      setMatches(
-        enrichedMatches
-          .filter((m: any) => m.imovel && m.demanda)
-          .sort((a: any, b: any) => b.score - a.score),
-      )
+      // Filter matches depending on if SDR/Corretor wants to see only their demands
+      const finalMatches = enrichedMatches.filter((m: any) => {
+        if (!m.imovel || !m.demanda) return false
+
+        if (role === 'sdr') {
+          return m.demanda.sdr_id === currentUser.id || !m.demanda.sdr_id
+        }
+        if (role === 'corretor' || role === 'broker') {
+          return m.demanda.corretor_id === currentUser.id || !m.demanda.corretor_id
+        }
+        return true
+      })
+
+      setMatches(finalMatches.sort((a: any, b: any) => b.score - a.score))
     } catch (err) {
       console.error('[MATCH] Erro ao carregar:', err)
       setError('Erro ao carregar matches. Tente novamente.')
@@ -190,6 +238,20 @@ export default function MatchInteligentes() {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val)
   }
 
+  if (!currentUser) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center p-8 bg-card rounded-lg shadow-sm border">
+          <Zap className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+          <h2 className="text-xl font-bold mb-2">Autenticação Necessária</h2>
+          <p className="text-muted-foreground">
+            Você precisa estar logado para ver seus matches inteligentes.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="container mx-auto py-6 max-w-5xl space-y-6">
       <div className="flex items-center justify-between">
@@ -219,9 +281,11 @@ export default function MatchInteligentes() {
       ) : matches.length === 0 ? (
         <div className="text-center py-24 bg-card rounded-lg border border-dashed">
           <Zap className="mx-auto h-12 w-12 text-muted-foreground opacity-50 mb-4" />
-          <h3 className="text-lg font-medium">Nenhum match pendente</h3>
+          <h3 className="text-lg font-medium">Nenhum match encontrado para o seu perfil</h3>
           <p className="text-muted-foreground mt-2 max-w-sm mx-auto">
-            Não encontramos novas conexões inteligentes no momento. Volte mais tarde!
+            {role === 'captador'
+              ? 'Não encontramos matches pendentes para os imóveis que você captou. Continue cadastrando!'
+              : 'Não encontramos novas conexões inteligentes para suas demandas no momento. Volte mais tarde!'}
           </p>
         </div>
       ) : (
@@ -353,7 +417,7 @@ export default function MatchInteligentes() {
       {selectedMatch && (
         <ConfirmacaoVinculacaoMatch
           open={!!selectedMatch}
-          onOpenChange={(open) => !open && setSelectedMatch(null)}
+          onOpenChange={(open: boolean) => !open && setSelectedMatch(null)}
           imovelId={selectedMatch.imovel_id}
           demandaId={selectedMatch.demanda_id}
           tipoDemanda={selectedMatch.demanda_tipo}

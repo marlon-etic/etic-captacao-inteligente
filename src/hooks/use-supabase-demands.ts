@@ -175,6 +175,19 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda', options?: { onlyMi
         const { data: userData, error: userError } = await supabase.auth.getUser()
         if (userError || !userData?.user) return
 
+        // Prevent SDR from loading Venda, and Corretor from loading Aluguel
+        const role = currentUserRef.current?.role
+        if (role === 'sdr' && type === 'Venda') {
+          setDemands([])
+          setLoading(false)
+          return
+        }
+        if ((role === 'corretor' || role === 'broker') && type === 'Aluguel') {
+          setDemands([])
+          setLoading(false)
+          return
+        }
+
         const table = type === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
 
         const cacheKey = `demands_cache_${type}`
