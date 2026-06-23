@@ -2,21 +2,23 @@ import { useEffect, useState } from 'react'
 import { getPendingMatches, updateMatchStatus } from '@/services/matchingService'
 import { supabase } from '@/lib/supabase/client'
 import { useToast } from '@/components/ui/use-toast'
-import { ThumbsDown, ThumbsUp, Zap } from 'lucide-react'
+import { ThumbsDown, Zap, DollarSign, Home, CheckCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { calculateMatching } from '@/lib/matching'
 import { ConfirmacaoVinculacaoMatch } from '@/components/modals/ConfirmacaoVinculacaoMatch'
 import { useUserRole } from '@/hooks/use-user-role'
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'
 
 interface MatchCard {
   id: string
   imovel_id: string
   demanda_id: string
-  demanda_tipo: 'Venda' | 'Locação'
+  demanda_tipo: 'Venda' | 'Locação' | string
   score: number
   imovel?: any
   demanda?: any
+  details?: any
 }
 
 export default function MatchInteligentes() {
@@ -61,24 +63,28 @@ export default function MatchInteligentes() {
         return
       }
 
-      const imovelIds = [...new Set(pendingMatches.map((m) => m.imovel_id))]
+      const imovelIds = [...new Set(pendingMatches.map((m: any) => m.imovel_id))]
       const demandaVendaIds = [
         ...new Set(
-          pendingMatches.filter((m) => m.demanda_tipo === 'Venda').map((m) => m.demanda_id),
+          pendingMatches
+            .filter((m: any) => m.demanda_tipo === 'Venda')
+            .map((m: any) => m.demanda_id),
         ),
       ]
       const demandaLocacaoIds = [
         ...new Set(
           pendingMatches
-            .filter((m) => m.demanda_tipo === 'Locação' || m.demanda_tipo === 'Aluguel')
-            .map((m) => m.demanda_id),
+            .filter((m: any) => m.demanda_tipo === 'Locação' || m.demanda_tipo === 'Aluguel')
+            .map((m: any) => m.demanda_id),
         ),
       ]
 
       const promises = [
         supabase
           .from('imoveis_captados')
-          .select('id, codigo_imovel, localizacao_texto, preco, valor, dormitorios, vagas, tipo')
+          .select(
+            'id, codigo_imovel, localizacao_texto, preco, valor, dormitorios, vagas, tipo, endereco, tipo_imovel, bairros',
+          )
           .in('id', imovelIds),
       ]
 
@@ -87,7 +93,7 @@ export default function MatchInteligentes() {
           supabase
             .from('demandas_vendas')
             .select(
-              'id, nome_cliente, cliente_nome, valor_minimo, valor_maximo, dormitorios, quartos, vagas_estacionamento, vagas',
+              'id, nome_cliente, cliente_nome, valor_minimo, valor_maximo, orcamento_max, dormitorios, quartos, vagas_estacionamento, vagas, bairros, tipo_imovel',
             )
             .in('id', demandaVendaIds),
         )
@@ -100,7 +106,7 @@ export default function MatchInteligentes() {
           supabase
             .from('demandas_locacao')
             .select(
-              'id, nome_cliente, cliente_nome, valor_minimo, valor_maximo, dormitorios, quartos, vagas_estacionamento, vagas',
+              'id, nome_cliente, cliente_nome, valor_minimo, valor_maximo, orcamento_max, dormitorios, quartos, vagas_estacionamento, vagas, bairros, tipo_imovel',
             )
             .in('id', demandaLocacaoIds),
         )
@@ -114,17 +120,27 @@ export default function MatchInteligentes() {
       const demandaVendaMap = new Map((demandasVendaRes.data || []).map((d) => [d.id, d]))
       const demandaLocacaoMap = new Map((demandasLocacaoRes.data || []).map((d) => [d.id, d]))
 
-      const enrichedMatches = pendingMatches.map((match) => {
+      const enrichedMatches = pendingMatches.map((match: any) => {
         const imovel = imovelMap.get(match.imovel_id)
         const demanda =
           match.demanda_tipo === 'Venda'
             ? demandaVendaMap.get(match.demanda_id)
             : demandaLocacaoMap.get(match.demanda_id)
 
-        return { ...match, imovel, demanda }
+        let details = null
+        if (imovel && demanda) {
+          const matchResult = calculateMatching(imovel, demanda)
+          details = matchResult.details
+        }
+
+        return { ...match, imovel, demanda, details }
       })
 
-      setMatches(enrichedMatches.filter((m) => m.imovel && m.demanda))
+      setMatches(
+        enrichedMatches
+          .filter((m: any) => m.imovel && m.demanda)
+          .sort((a: any, b: any) => b.score - a.score),
+      )
     } catch (err) {
       console.error('[MATCH] Erro ao carregar:', err)
       setError('Erro ao carregar matches. Tente novamente.')
@@ -135,6 +151,20 @@ export default function MatchInteligentes() {
 
   const handleAccept = (match: MatchCard) => {
     setSelectedMatch(match)
+  }
+
+  const handleReject = async (match: MatchCard) => {
+    try {
+      await updateMatchStatus(match.id, 'rejeitado')
+      setMatches(matches.filter((m) => m.id !== match.id))
+      toast({ title: 'Match rejeitado', description: 'Este match não será sugerido novamente.' })
+    } catch (err) {
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível rejeitar o match.',
+        variant: 'destructive',
+      })
+    }
   }
 
   const handleConfirmSuccess = async () => {
@@ -150,271 +180,187 @@ export default function MatchInteligentes() {
           description: 'A vinculação foi feita, mas houve erro ao atualizar o status do match.',
           variant: 'destructive',
         })
-        setMatches(matches.filter((m) => m.id !== selectedMatch.id))
         setSelectedMatch(null)
       }
     }
   }
 
-  const handleReject = async (match: MatchCard) => {
-    try {
-      await updateMatchStatus(match.id, 'rejeitado')
-      setMatches(matches.filter((m) => m.id !== match.id))
-      toast({
-        title: '👎 Match rejeitado',
-        description: 'Não será mais sugerido',
-      })
-    } catch (err) {
-      console.error('[MATCH] Erro ao rejeitar:', err)
-      toast({
-        title: '❌ Erro ao rejeitar match',
-        variant: 'destructive',
-      })
-    }
-  }
-
-  if (loading || roleLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-100px)]">
-        <Zap className="w-12 h-12 animate-pulse text-yellow-500 mb-4" />
-        <p className="text-gray-600 font-medium">Buscando matches inteligentes...</p>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-100px)]">
-        <p className="text-red-600 mb-4 font-medium">{error}</p>
-        <Button onClick={loadMatches}>Tentar Novamente</Button>
-      </div>
-    )
-  }
-
-  if (matches.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-100px)] text-center px-4">
-        <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-6">
-          <Zap className="w-10 h-10 text-gray-400" />
-        </div>
-        <h2 className="text-2xl font-bold text-gray-800 mb-2">Nenhum match encontrado</h2>
-        <p className="text-gray-500 max-w-md">
-          Novos matches aparecerão aqui automaticamente quando o sistema encontrar propriedades e
-          demandas compatíveis.
-        </p>
-      </div>
-    )
+  const formatCurrency = (val: number) => {
+    if (!val) return 'R$ 0,00'
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val)
   }
 
   return (
-    <div className="p-4 md:p-6 max-w-6xl mx-auto pb-24">
-      <div className="flex flex-col md:flex-row md:items-center gap-3 mb-2">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-yellow-100 flex shrink-0 items-center justify-center">
-            <Zap className="w-6 h-6 text-yellow-600" />
-          </div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-800">MATCH Inteligentes</h1>
+    <div className="container mx-auto py-6 max-w-5xl space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Match Inteligente</h1>
+          <p className="text-muted-foreground mt-1">
+            Conexões sugeridas automaticamente entre Imóveis e Demandas.
+          </p>
         </div>
+        <Button variant="outline" onClick={loadMatches} disabled={loading}>
+          <Zap className="mr-2 h-4 w-4" /> Atualizar
+        </Button>
       </div>
-      <p className="text-gray-600 mb-8 md:ml-13">{matches.length} sugestões encontradas</p>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {matches.map((match) => (
-          <MatchCardItem
-            key={match.id}
-            match={match}
-            onAccept={() => handleAccept(match)}
-            onReject={() => handleReject(match)}
-          />
-        ))}
-      </div>
+      {error && (
+        <div className="bg-destructive/10 text-destructive border-l-4 border-destructive p-4 rounded text-sm">
+          {error}
+        </div>
+      )}
+
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {[1, 2, 3, 4].map((i) => (
+            <Card key={i} className="animate-pulse h-64 bg-muted/50" />
+          ))}
+        </div>
+      ) : matches.length === 0 ? (
+        <div className="text-center py-24 bg-card rounded-lg border border-dashed">
+          <Zap className="mx-auto h-12 w-12 text-muted-foreground opacity-50 mb-4" />
+          <h3 className="text-lg font-medium">Nenhum match pendente</h3>
+          <p className="text-muted-foreground mt-2 max-w-sm mx-auto">
+            Não encontramos novas conexões inteligentes no momento. Volte mais tarde!
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {matches.map((match) => (
+            <Card
+              key={match.id}
+              className="flex flex-col overflow-hidden transition-all hover:shadow-md border-primary/20"
+            >
+              <CardHeader className="bg-primary/5 pb-4 border-b">
+                <div className="flex justify-between items-start">
+                  <div className="flex flex-col">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-primary">
+                      {match.demanda_tipo}
+                    </span>
+                    <CardTitle className="text-xl mt-1">
+                      {match.score}% de Compatibilidade
+                    </CardTitle>
+                  </div>
+                  <div className="bg-primary text-primary-foreground font-bold rounded-full w-12 h-12 flex items-center justify-center text-lg shadow-sm">
+                    {match.score}
+                  </div>
+                </div>
+              </CardHeader>
+
+              <CardContent className="flex-1 pt-4">
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Imóvel */}
+                  <div className="space-y-3">
+                    <h4 className="font-semibold text-sm text-muted-foreground border-b pb-1">
+                      Imóvel
+                    </h4>
+                    <p
+                      className="text-sm font-medium line-clamp-2"
+                      title={match.imovel.endereco || match.imovel.localizacao_texto}
+                    >
+                      <Home className="inline w-3 h-3 mr-1 text-muted-foreground" />
+                      {match.imovel.endereco ||
+                        match.imovel.localizacao_texto ||
+                        'Endereço não informado'}
+                    </p>
+                    <p className="text-sm font-bold text-emerald-600">
+                      <DollarSign className="inline w-3 h-3 mr-1" />
+                      {formatCurrency(match.imovel.preco || match.imovel.valor || 0)}
+                    </p>
+                  </div>
+
+                  {/* Demanda */}
+                  <div className="space-y-3">
+                    <h4 className="font-semibold text-sm text-muted-foreground border-b pb-1">
+                      Demanda
+                    </h4>
+                    <p className="text-sm font-medium line-clamp-2">
+                      👤 {match.demanda.nome_cliente || match.demanda.cliente_nome || 'Cliente'}
+                    </p>
+                    <p className="text-sm font-bold text-blue-600">
+                      <DollarSign className="inline w-3 h-3 mr-1" />
+                      Até{' '}
+                      {formatCurrency(
+                        match.demanda.valor_maximo || match.demanda.orcamento_max || 0,
+                      )}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Match Reasons */}
+                {match.details && (
+                  <div className="mt-5 bg-muted/30 p-3 rounded-lg border border-border/50">
+                    <p className="text-xs font-semibold mb-2 text-muted-foreground uppercase tracking-wider">
+                      Análise de Compatibilidade
+                    </p>
+                    <div className="flex flex-wrap gap-2 text-xs">
+                      <span
+                        className={cn(
+                          'px-2 py-1 rounded border',
+                          match.details.price_match
+                            ? 'bg-green-50 text-green-700 border-green-200'
+                            : 'bg-red-50 text-red-700 border-red-200',
+                        )}
+                      >
+                        {match.details.price_match ? '✓ Preço no orçamento' : '✕ Fora do orçamento'}
+                      </span>
+                      <span
+                        className={cn(
+                          'px-2 py-1 rounded border',
+                          match.details.location_match
+                            ? 'bg-green-50 text-green-700 border-green-200'
+                            : 'bg-yellow-50 text-yellow-700 border-yellow-200',
+                        )}
+                      >
+                        {match.details.location_match
+                          ? '✓ Região compatível'
+                          : '⚠ Região diferente'}
+                      </span>
+                      <span
+                        className={cn(
+                          'px-2 py-1 rounded border',
+                          match.details.tipology_match
+                            ? 'bg-green-50 text-green-700 border-green-200'
+                            : 'bg-yellow-50 text-yellow-700 border-yellow-200',
+                        )}
+                      >
+                        {match.details.tipology_match
+                          ? '✓ Tipologia ideal'
+                          : '⚠ Tipologia diferente'}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+
+              <CardFooter className="grid grid-cols-2 gap-3 pt-2 pb-4 px-6 border-t bg-muted/10">
+                <Button
+                  variant="outline"
+                  className="w-full text-red-600 hover:text-red-700 hover:bg-red-50"
+                  onClick={() => handleReject(match)}
+                >
+                  <ThumbsDown className="w-4 h-4 mr-2" /> Descartar
+                </Button>
+                <Button className="w-full" onClick={() => handleAccept(match)}>
+                  <CheckCircle className="w-4 h-4 mr-2" /> Vincular
+                </Button>
+              </CardFooter>
+            </Card>
+          ))}
+        </div>
+      )}
 
       {selectedMatch && (
         <ConfirmacaoVinculacaoMatch
-          match={selectedMatch}
-          onClose={() => setSelectedMatch(null)}
+          open={!!selectedMatch}
+          onOpenChange={(open) => !open && setSelectedMatch(null)}
+          imovelId={selectedMatch.imovel_id}
+          demandaId={selectedMatch.demanda_id}
+          tipoDemanda={selectedMatch.demanda_tipo}
+          compatibilidade={selectedMatch.score}
           onSuccess={handleConfirmSuccess}
         />
       )}
-    </div>
-  )
-}
-
-function MatchCardItem({
-  match,
-  onAccept,
-  onReject,
-}: {
-  match: MatchCard
-  onAccept: () => void
-  onReject: () => void
-}) {
-  const scoreColor =
-    match.score >= 75 ? 'text-green-600' : match.score >= 50 ? 'text-yellow-600' : 'text-red-600'
-  const scoreBg =
-    match.score >= 75
-      ? 'bg-green-50 border-green-200'
-      : match.score >= 50
-        ? 'bg-yellow-50 border-yellow-200'
-        : 'bg-red-50 border-red-200'
-
-  const imovelSpecs = {
-    ...match.imovel,
-    tipo_imovel: match.imovel?.tipo_imovel || 'Apartamento',
-  }
-  const demandaSpecs = {
-    ...match.demanda,
-    bairros: match.demanda?.bairros || match.demanda?.localizacoes || [],
-    tipo_imovel: match.demanda?.tipo_imovel || 'Apartamento',
-    vagas_estacionamento: match.demanda?.vagas_estacionamento || match.demanda?.vagas || 0,
-    dormitorios: match.demanda?.dormitorios || match.demanda?.quartos || 0,
-  }
-
-  const matchResult = calculateMatching(imovelSpecs, demandaSpecs)
-
-  return (
-    <div
-      className={cn(
-        'rounded-xl border-2 p-5 transition-all hover:shadow-md flex flex-col h-full bg-white',
-        scoreBg,
-      )}
-    >
-      <div className="flex items-center justify-between mb-5">
-        <div className={cn('text-3xl font-black tracking-tight', scoreColor)}>{match.score}%</div>
-        <span className="text-xs font-bold bg-white/80 px-3 py-1.5 rounded-full text-gray-700 shadow-sm border border-black/5">
-          {match.demanda_tipo === 'Venda' ? '🏷️ Venda' : '🔑 Locação'}
-        </span>
-      </div>
-
-      <div className="flex-1 space-y-4">
-        <div className="bg-white/60 rounded-lg p-3 border border-black/5">
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
-            Imóvel
-          </p>
-          <p className="font-bold text-gray-800 line-clamp-1">
-            {match.imovel?.codigo_imovel || 'Sem Código'}
-          </p>
-          <p className="text-sm text-gray-600 line-clamp-1">
-            {match.imovel?.localizacao_texto || 'Sem Localização'}
-          </p>
-          <p className="text-base font-bold text-green-600 mt-1.5">
-            R${' '}
-            {match.imovel?.preco?.toLocaleString('pt-BR') ||
-              match.imovel?.valor?.toLocaleString('pt-BR') ||
-              '0,00'}
-          </p>
-          <p className="text-xs text-gray-500 mt-1 font-medium">
-            {match.imovel?.dormitorios || 0} dorm • {match.imovel?.vagas || 0} vagas
-          </p>
-        </div>
-
-        <div className="bg-white/60 rounded-lg p-3 border border-black/5">
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
-            Demanda
-          </p>
-          <p className="font-bold text-gray-800 line-clamp-1">
-            {match.demanda?.nome_cliente || match.demanda?.cliente_nome || 'Cliente'}
-          </p>
-          <p className="text-sm text-gray-600">
-            R$ {match.demanda?.valor_minimo?.toLocaleString('pt-BR') || 0} - R${' '}
-            {match.demanda?.valor_maximo?.toLocaleString('pt-BR') || 0}
-          </p>
-          <p className="text-xs text-gray-500 mt-1 font-medium">
-            {match.demanda?.dormitorios || match.demanda?.quartos || 0} dorm •{' '}
-            {match.demanda?.vagas_estacionamento || match.demanda?.vagas || 0} vagas
-          </p>
-        </div>
-
-        <div className="bg-white/80 p-3 rounded-lg border border-blue-100">
-          <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wider mb-1.5">
-            Critérios do Match
-          </p>
-          <ul className="text-xs space-y-1.5 font-bold">
-            <li className="flex items-center gap-1.5">
-              <span
-                className={cn(
-                  'flex items-center justify-center w-4 h-4 rounded-full',
-                  matchResult.details.location_match
-                    ? 'bg-green-100 text-green-600'
-                    : 'bg-red-100 text-red-600',
-                )}
-              >
-                {matchResult.details.location_match ? '✓' : '✗'}
-              </span>
-              <span
-                className={matchResult.details.location_match ? 'text-green-800' : 'text-red-800'}
-              >
-                Bairro compatível
-              </span>
-            </li>
-            <li className="flex items-center gap-1.5">
-              <span
-                className={cn(
-                  'flex items-center justify-center w-4 h-4 rounded-full',
-                  matchResult.details.price_match
-                    ? 'bg-green-100 text-green-600'
-                    : 'bg-red-100 text-red-600',
-                )}
-              >
-                {matchResult.details.price_match ? '✓' : '✗'}
-              </span>
-              <span className={matchResult.details.price_match ? 'text-green-800' : 'text-red-800'}>
-                Valor no orçamento
-              </span>
-            </li>
-            <li className="flex items-center gap-1.5">
-              <span
-                className={cn(
-                  'flex items-center justify-center w-4 h-4 rounded-full',
-                  matchResult.details.rooms_match
-                    ? 'bg-green-100 text-green-600'
-                    : 'bg-red-100 text-red-600',
-                )}
-              >
-                {matchResult.details.rooms_match ? '✓' : '✗'}
-              </span>
-              <span className={matchResult.details.rooms_match ? 'text-green-800' : 'text-red-800'}>
-                Dormitórios suficientes
-              </span>
-            </li>
-            <li className="flex items-center gap-1.5">
-              <span
-                className={cn(
-                  'flex items-center justify-center w-4 h-4 rounded-full',
-                  matchResult.details.parking_match
-                    ? 'bg-green-100 text-green-600'
-                    : 'bg-red-100 text-red-600',
-                )}
-              >
-                {matchResult.details.parking_match ? '✓' : '✗'}
-              </span>
-              <span
-                className={matchResult.details.parking_match ? 'text-green-800' : 'text-red-800'}
-              >
-                Vagas suficientes
-              </span>
-            </li>
-          </ul>
-        </div>
-      </div>
-
-      <div className="flex gap-3 mt-5 pt-2">
-        <Button
-          onClick={onReject}
-          variant="outline"
-          className="flex-1 h-12 bg-white hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors"
-        >
-          <ThumbsDown className="w-5 h-5 mr-2" />
-          Rejeitar
-        </Button>
-        <Button
-          onClick={onAccept}
-          className="flex-1 h-12 bg-[#1A3A52] hover:bg-[#1A3A52]/90 text-white transition-colors"
-        >
-          <ThumbsUp className="w-5 h-5 mr-2" />
-          Aceitar
-        </Button>
-      </div>
     </div>
   )
 }

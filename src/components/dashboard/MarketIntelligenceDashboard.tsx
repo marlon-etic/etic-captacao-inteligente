@@ -10,15 +10,13 @@ import {
   ChartLegendContent,
 } from '@/components/ui/chart'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts'
-import { TrendingUp, AlertTriangle } from 'lucide-react'
-import { useIsMobile } from '@/hooks/use-mobile'
+import { TrendingUp } from 'lucide-react'
 import { useAuth } from '@/hooks/use-auth'
 import { useUserRole } from '@/hooks/use-user-role'
 
 export function MarketIntelligenceDashboard() {
   const [data, setData] = useState<{ demandas: any[]; imoveis: any[] } | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const isMobile = useIsMobile()
   const { user } = useAuth()
   const { role } = useUserRole()
 
@@ -84,8 +82,19 @@ export function MarketIntelligenceDashboard() {
     fetchData()
   }, [user, role])
 
+  const handleChartClick = (chartData: any, type: string) => {
+    if (!chartData || !chartData.name) return
+    const prefix = type === 'Locação' ? 'L:' : 'V:'
+    const filterString = `${prefix} ${chartData.name}`
+    window.dispatchEvent(
+      new CustomEvent('navigate-to', {
+        detail: `/app/buscar-imoveis?filter=${encodeURIComponent(filterString)}`,
+      }),
+    )
+  }
+
   const chartsData = useMemo(() => {
-    if (!data) return { tipologia: [], bairros: [], precos: [], specs: [] }
+    if (!data) return { precos: [] }
 
     const isAtiva = (d: any) => {
       const s = (d.status_demanda || '').toLowerCase()
@@ -97,294 +106,111 @@ export function MarketIntelligenceDashboard() {
       )
     }
 
-    const isAvailable = (i: any) => {
-      const st = (i.status_captacao || '').toLowerCase()
-      const funil = (i.etapa_funil || '').toLowerCase()
-      return !st.includes('inativ') && !funil.includes('fechado') && !funil.includes('perdido')
+    const precosMap = new Map<
+      string,
+      { name: string; Locação: number; Venda: number; Imóveis: number }
+    >()
+
+    const faixas = ['0 - 2k', '2k - 4k', '4k - 8k', '8k - 15k', '15k+']
+    faixas.forEach((f) => precosMap.set(f, { name: f, Locação: 0, Venda: 0, Imóveis: 0 }))
+
+    const getFaixa = (v: number) => {
+      if (v < 2000) return '0 - 2k'
+      if (v < 4000) return '2k - 4k'
+      if (v < 8000) return '4k - 8k'
+      if (v < 15000) return '8k - 15k'
+      return '15k+'
     }
 
-    const ativas = data.demandas.filter(isAtiva)
-    const disponiveis = data.imoveis.filter(isAvailable)
-
-    const buildChartData = (
-      demandsKeyFn: (d: any) => string | null,
-      imoveisKeyFn: (i: any) => string | null,
-      limit = 5,
-    ) => {
-      const map = new Map<string, { name: string; Demanda: number; Oferta: number }>()
-
-      ativas.forEach((d) => {
-        const k = demandsKeyFn(d)
-        if (!k) return
-        if (!map.has(k)) map.set(k, { name: k, Demanda: 0, Oferta: 0 })
-        map.get(k)!.Demanda++
-      })
-
-      disponiveis.forEach((i) => {
-        const k = imoveisKeyFn(i)
-        if (!k) return
-        if (!map.has(k)) map.set(k, { name: k, Demanda: 0, Oferta: 0 })
-        map.get(k)!.Oferta++
-      })
-
-      return Array.from(map.values())
-        .sort((a, b) => b.Demanda - a.Demanda)
-        .slice(0, limit)
-    }
-
-    const tipologia = buildChartData(
-      (d) => d.tipo_imovel || 'Outro',
-      (i) => i.tipo_imovel || 'Outro',
-      5,
-    )
-
-    const bairros = buildChartData(
-      (d) => {
-        const b = d.bairros?.[0] || d.localizacoes?.[0]
-        return b ? b.split(',')[0].trim() : null
-      },
-      (i) => {
-        const loc = i.localizacao_texto || i.endereco
-        if (!loc) return null
-        const parts = loc.split(',')
-        return parts.length > 1 ? parts[1].trim() : loc.substring(0, 15).trim()
-      },
-      6,
-    )
-
-    const precos = buildChartData(
-      (d) => {
-        const v = d.valor_maximo || d.orcamento_max || 0
-        if (v === 0) return null
-        if (d.tipo_geral === 'Venda') {
-          if (v <= 500000) return 'V: Até 500k'
-          if (v <= 1000000) return 'V: 500k-1M'
-          return 'V: 1M+'
-        } else {
-          if (v <= 3000) return 'L: Até 3k'
-          if (v <= 6000) return 'L: 3k-6k'
-          return 'L: 6k+'
+    data.demandas.filter(isAtiva).forEach((d) => {
+      const val = d.valor_maximo || d.orcamento_max || 0
+      if (val > 0) {
+        const f = getFaixa(val)
+        const entry = precosMap.get(f)
+        if (entry) {
+          if (d.tipo_geral === 'Locação') entry.Locação += 1
+          else entry.Venda += 1
         }
-      },
-      (i) => {
-        const isVenda =
-          i.tipo === 'Venda' ||
-          i.tipo_geral === 'Venda' ||
-          (i.tipo === 'Ambos' && i.preco && i.preco > 50000)
-        const v = isVenda ? i.preco || 0 : i.valor || 0
-        if (v === 0) return null
-
-        if (isVenda) {
-          if (v <= 500000) return 'V: Até 500k'
-          if (v <= 1000000) return 'V: 500k-1M'
-          return 'V: 1M+'
-        } else {
-          if (v <= 3000) return 'L: Até 3k'
-          if (v <= 6000) return 'L: 3k-6k'
-          return 'L: 6k+'
-        }
-      },
-      6,
-    )
-    const specsMap = new Map<string, { name: string; Demanda: number; Oferta: number }>()
-    const initSpec = (k: string) => {
-      if (!specsMap.has(k)) specsMap.set(k, { name: k, Demanda: 0, Oferta: 0 })
-    }
-
-    ativas.forEach((d) => {
-      const dorms = d.dormitorios ?? d.quartos ?? 0
-      const vagas = d.vagas ?? d.vagas_estacionamento ?? 0
-      if (dorms > 0) {
-        const k = `${dorms >= 4 ? '4+' : dorms} Dorms`
-        initSpec(k)
-        specsMap.get(k)!.Demanda++
-      }
-      if (vagas > 0) {
-        const k = `${vagas >= 4 ? '4+' : vagas} Vagas`
-        initSpec(k)
-        specsMap.get(k)!.Demanda++
       }
     })
 
-    disponiveis.forEach((i) => {
-      const dorms = i.dormitorios ?? 0
-      const vagas = i.vagas ?? 0
-      if (dorms > 0) {
-        const k = `${dorms >= 4 ? '4+' : dorms} Dorms`
-        initSpec(k)
-        specsMap.get(k)!.Oferta++
-      }
-      if (vagas > 0) {
-        const k = `${vagas >= 4 ? '4+' : vagas} Vagas`
-        initSpec(k)
-        specsMap.get(k)!.Oferta++
+    data.imoveis.forEach((i) => {
+      const val = i.valor || i.preco || 0
+      if (val > 0) {
+        const f = getFaixa(val)
+        const entry = precosMap.get(f)
+        if (entry) entry.Imóveis += 1
       }
     })
 
-    const specs = Array.from(specsMap.values()).sort((a, b) => a.name.localeCompare(b.name))
-
-    return { tipologia, bairros, precos, specs }
+    return {
+      precos: Array.from(precosMap.values()),
+    }
   }, [data])
-
-  const chartConfig = {
-    Demanda: { label: 'Demanda', color: 'hsl(var(--primary))' },
-    Oferta: { label: 'Oferta', color: 'hsl(var(--chart-2))' },
-  }
-
-  const renderChart = (
-    dataArray: any[],
-    title: string,
-    desc: string,
-    layout: 'horizontal' | 'vertical' = 'horizontal',
-  ) => {
-    const hasGaps = dataArray.some((d) => d.Demanda > d.Oferta * 1.5 && d.Demanda > 1)
-
-    return (
-      <Card className="border-0 shadow-md flex flex-col min-w-0 animate-fade-in-up">
-        <CardHeader className="bg-muted/10 border-b p-4 relative">
-          <CardTitle className="text-base flex items-center justify-between">
-            {title}
-            {hasGaps && (
-              <div className="flex items-center text-[10px] text-amber-600 bg-amber-50 px-2 py-1 rounded font-bold uppercase tracking-wider">
-                <AlertTriangle className="w-3 h-3 mr-1" />
-                Gargalo
-              </div>
-            )}
-          </CardTitle>
-          <CardDescription className="text-xs">{desc}</CardDescription>
-        </CardHeader>
-        <CardContent className="h-[280px] p-4 relative flex-1">
-          {dataArray.length > 0 ? (
-            <ChartContainer
-              config={chartConfig}
-              className="h-full w-full absolute inset-0 p-4 pb-0"
-            >
-              <ResponsiveContainer width="100%" height="100%">
-                {layout === 'vertical' ? (
-                  <BarChart
-                    data={dataArray}
-                    layout="vertical"
-                    margin={{ left: 10, right: 30, top: 10, bottom: 5 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" horizontal={false} opacity={0.3} />
-                    <XAxis type="number" hide />
-                    <YAxis
-                      dataKey="name"
-                      type="category"
-                      width={100}
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fontSize: 11 }}
-                      tickFormatter={(val) =>
-                        val.length > 15 ? val.substring(0, 12) + '...' : val
-                      }
-                    />
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <ChartLegend content={<ChartLegendContent />} verticalAlign="bottom" />
-                    <Bar
-                      dataKey="Demanda"
-                      fill="var(--color-Demanda)"
-                      radius={[0, 4, 4, 0]}
-                      maxBarSize={20}
-                    />
-                    <Bar
-                      dataKey="Oferta"
-                      fill="var(--color-Oferta)"
-                      radius={[0, 4, 4, 0]}
-                      maxBarSize={20}
-                    />
-                  </BarChart>
-                ) : (
-                  <BarChart data={dataArray} margin={{ left: -20, right: 10, top: 10, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
-                    <XAxis
-                      dataKey="name"
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fontSize: 11 }}
-                    />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11 }} />
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <ChartLegend content={<ChartLegendContent />} verticalAlign="bottom" />
-                    <Bar
-                      dataKey="Demanda"
-                      fill="var(--color-Demanda)"
-                      radius={[4, 4, 0, 0]}
-                      maxBarSize={30}
-                    />
-                    <Bar
-                      dataKey="Oferta"
-                      fill="var(--color-Oferta)"
-                      radius={[4, 4, 0, 0]}
-                      maxBarSize={30}
-                    />
-                  </BarChart>
-                )}
-              </ResponsiveContainer>
-            </ChartContainer>
-          ) : (
-            <div className="h-full w-full flex flex-col items-center justify-center text-muted-foreground bg-muted/10 rounded-lg absolute inset-0">
-              <p className="text-sm font-medium">Sem dados disponíveis</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    )
-  }
 
   if (isLoading) {
     return (
-      <div className="space-y-4 w-full mt-8">
-        <Skeleton className="h-8 w-80" />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
-          <Skeleton className="h-[320px] w-full rounded-xl" />
-          <Skeleton className="h-[320px] w-full rounded-xl" />
-          <Skeleton className="h-[320px] w-full rounded-xl" />
-          <Skeleton className="h-[320px] w-full rounded-xl" />
-        </div>
+      <div className="grid grid-cols-1 gap-6">
+        <Skeleton className="h-[400px] w-full rounded-xl" />
       </div>
     )
   }
 
   return (
-    <div className="space-y-6 w-full mt-10 border-t pt-8">
-      <div className="flex items-center space-x-3 mb-2">
-        <div className="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600 shadow-sm shrink-0">
-          <TrendingUp className="w-5 h-5" />
-        </div>
-        <div>
-          <h2 className="text-xl md:text-2xl font-bold tracking-tight text-foreground leading-tight">
-            Inteligência de Mercado: Oferta vs. Demanda
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Comparativo entre a carteira de imóveis ativos e as necessidades dos clientes
-          </p>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
-        {renderChart(
-          chartsData.tipologia,
-          'Cruzamento de Tipologia',
-          'Distribuição de clientes vs imóveis por tipo',
-        )}
-        {renderChart(
-          chartsData.bairros,
-          'Gargalos por Bairro',
-          'Top regiões demandadas vs estoque disponível',
-          'vertical',
-        )}
-        {renderChart(
-          chartsData.precos,
-          'Faixas de Preço',
-          'Orçamento dos clientes vs Valor dos imóveis',
-        )}
-        {renderChart(
-          chartsData.specs,
-          'Dormitórios e Vagas',
-          'Demanda por características específicas',
-        )}
-      </div>
+    <div className="space-y-6">
+      <Card className="shadow-sm">
+        <CardHeader>
+          <CardTitle>Inteligência de Preços</CardTitle>
+          <CardDescription>
+            Comparativo entre demandas ativas e imóveis captados por faixa de valor
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ChartContainer
+            config={{
+              Locação: { color: 'hsl(var(--primary))' },
+              Venda: { color: 'hsl(var(--chart-2))' },
+              Imóveis: { color: 'hsl(var(--chart-3))' },
+            }}
+            className="h-[350px] w-full"
+          >
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={chartsData.precos}
+                margin={{ top: 20, right: 30, left: 0, bottom: 5 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tickMargin={10} />
+                <YAxis axisLine={false} tickLine={false} tickMargin={10} />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <ChartLegend content={<ChartLegendContent />} />
+                <Bar
+                  dataKey="Locação"
+                  fill="var(--color-Locação)"
+                  radius={[4, 4, 0, 0]}
+                  onClick={(data) => handleChartClick(data, 'Locação')}
+                  className="cursor-pointer hover:opacity-80 transition-opacity"
+                />
+                <Bar
+                  dataKey="Venda"
+                  fill="var(--color-Venda)"
+                  radius={[4, 4, 0, 0]}
+                  onClick={(data) => handleChartClick(data, 'Venda')}
+                  className="cursor-pointer hover:opacity-80 transition-opacity"
+                />
+                <Bar dataKey="Imóveis" fill="var(--color-Imóveis)" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </ChartContainer>
+          <div className="mt-4 flex items-start gap-3 text-sm text-muted-foreground bg-muted/50 p-4 rounded-lg">
+            <TrendingUp className="h-5 w-5 text-primary shrink-0" />
+            <p>
+              <strong>Dica de Uso:</strong> Clique nas barras de Locação ou Venda acima para filtrar
+              a lista de imóveis na busca com a faixa de preço correspondente.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }

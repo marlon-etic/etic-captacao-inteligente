@@ -92,16 +92,34 @@ export function calculateMatching(
   }
 
   // Preço Penalty (up to -30%)
-  const preco = imovel.preco || imovel.valor || 0
-  if (preco > 0 && cliente.valor_maximo && cliente.valor_maximo > 0) {
-    if (preco > cliente.valor_maximo * 1.2) {
-      score -= 30
-      details.price_match = false
-      details.valorScore = 70
-    } else if (preco > cliente.valor_maximo) {
-      score -= 20
-      details.price_match = false
-      details.valorScore = 80
+  const imovelPreco = imovel.preco || 0
+  const imovelValor = imovel.valor || 0
+  let precoAComparar = 0
+
+  if (cliente.valor_maximo && cliente.valor_maximo > 0) {
+    // Distinguish logic depending on max budget (Venda vs Locação context implicitly)
+    if (cliente.valor_maximo > 50000 && imovelPreco > 0) {
+      precoAComparar = imovelPreco
+    } else if (cliente.valor_maximo <= 50000 && imovelValor > 0) {
+      precoAComparar = imovelValor
+    } else {
+      precoAComparar = imovelPreco > 0 ? imovelPreco : imovelValor
+    }
+
+    if (precoAComparar > 0) {
+      if (precoAComparar > cliente.valor_maximo * 1.2) {
+        score -= 30
+        details.price_match = false
+        details.valorScore = 70
+      } else if (precoAComparar > cliente.valor_maximo) {
+        score -= 20
+        details.price_match = false
+        details.valorScore = 80
+      } else if (cliente.valor_minimo && precoAComparar < cliente.valor_minimo) {
+        score -= 10
+        details.price_match = false
+        details.valorScore = 90
+      }
     }
   }
 
