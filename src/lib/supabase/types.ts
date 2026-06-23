@@ -1775,6 +1775,20 @@ export type Database = {
           tipo: string
         }[]
       }
+      get_quick_matches: {
+        Args: {
+          p_dormitorios: number
+          p_endereco: string
+          p_preco: number
+          p_tipo: string
+          p_tipo_imovel: string
+          p_vagas: number
+        }
+        Returns: {
+          id: string
+          nome: string
+        }[]
+      }
       log_realtime_error: {
         Args: {
           p_channel_name: string
