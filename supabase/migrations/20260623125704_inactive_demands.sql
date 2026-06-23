@@ -1,3 +1,12 @@
+-- Atualiza as constraints para permitir o status PERDIDA_BAIXA
+ALTER TABLE public.demandas_locacao DROP CONSTRAINT IF EXISTS demandas_locacao_status_demanda_check;
+ALTER TABLE public.demandas_locacao ADD CONSTRAINT demandas_locacao_status_demanda_check 
+  CHECK (status_demanda IN ('aberta', 'atendida', 'impossivel', 'sem_resposta_24h', 'ganho', 'PERDIDA_BAIXA'));
+
+ALTER TABLE public.demandas_vendas DROP CONSTRAINT IF EXISTS demandas_vendas_status_demanda_check;
+ALTER TABLE public.demandas_vendas ADD CONSTRAINT demandas_vendas_status_demanda_check 
+  CHECK (status_demanda IN ('aberta', 'atendida', 'impossivel', 'sem_resposta_24h', 'ganho', 'PERDIDA_BAIXA'));
+
 -- Cria a função para atualizar demandas inativas
 CREATE OR REPLACE FUNCTION public.fn_marcar_demandas_perdidas_inatividade()
 RETURNS void AS $func$
