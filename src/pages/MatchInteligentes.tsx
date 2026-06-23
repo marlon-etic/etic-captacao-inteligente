@@ -1,15 +1,15 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { useToast } from '@/components/ui/use-toast'
-import { ThumbsDown, Zap, DollarSign, Home, CheckCircle } from 'lucide-react'
+import { ThumbsDown, Zap, DollarSign, Home, CheckCircle, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { calculateMatching } from '@/lib/matching'
-import { ConfirmacaoVinculacaoMatch } from '@/components/modals/ConfirmacaoVinculacaoMatch'
 import { useUserRole } from '@/hooks/use-user-role'
 import useAppStore from '@/stores/useAppStore'
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'
-import { updateMatchStatus } from '@/services/matchingService'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Checkbox } from '@/components/ui/checkbox'
 
 interface MatchCard {
   id: string
@@ -22,13 +22,20 @@ interface MatchCard {
   details?: any
 }
 
+interface GroupedMatches {
+  demanda_id: string
+  demanda: any
+  demanda_tipo: string
+  matches: MatchCard[]
+}
+
 export default function MatchInteligentes() {
   const { role, loading: roleLoading } = useUserRole()
   const { currentUser } = useAppStore()
   const [matches, setMatches] = useState<MatchCard[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [selectedMatch, setSelectedMatch] = useState<MatchCard | null>(null)
+  const [selectedMatches, setSelectedMatches] = useState<Set<string>>(new Set())
   const { toast } = useToast()
 
   useEffect(() => {
@@ -203,39 +210,154 @@ export default function MatchInteligentes() {
     }
   }
 
-  const handleAccept = (match: MatchCard) => {
-    setSelectedMatch(match)
+  const groupedMatches = useMemo(() => {
+    const groups = new Map<string, GroupedMatches>()
+    matches.forEach((m) => {
+      if (!groups.has(m.demanda_id)) {
+        groups.set(m.demanda_id, {
+          demanda_id: m.demanda_id,
+          demanda: m.demanda,
+          demanda_tipo: m.demanda_tipo,
+          matches: [],
+        })
+      }
+      groups.get(m.demanda_id)!.matches.push(m)
+    })
+    return Array.from(groups.values())
+  }, [matches])
+
+  const toggleSelection = (matchId: string) => {
+    setSelectedMatches((prev) => {
+      const newSet = new Set(prev)
+      if (newSet.has(matchId)) newSet.delete(matchId)
+      else newSet.add(matchId)
+      return newSet
+    })
   }
 
-  const handleReject = async (match: MatchCard) => {
+  const toggleAllForGroup = (group: GroupedMatches) => {
+    setSelectedMatches((prev) => {
+      const newSet = new Set(prev)
+      const allSelected = group.matches.every((m) => newSet.has(m.id))
+
+      if (allSelected) {
+        group.matches.forEach((m) => newSet.delete(m.id))
+      } else {
+        group.matches.forEach((m) => newSet.add(m.id))
+      }
+      return newSet
+    })
+  }
+
+  const handleVincularSelecionados = async (group: GroupedMatches) => {
+    const matchesParaVincular = group.matches.filter((m) => selectedMatches.has(m.id))
+    if (matchesParaVincular.length === 0) return
+
     try {
-      await updateMatchStatus(match.id, 'rejeitado')
-      setMatches(matches.filter((m) => m.id !== match.id))
-      toast({ title: 'Match rejeitado', description: 'Este match não será sugerido novamente.' })
-    } catch (err) {
+      // 1. Inserir em imovel_demand_match
+      const inserts = matchesParaVincular.map((match) => ({
+        imovel_id: match.imovel_id,
+        demanda_id: match.demanda_id,
+        tipo_demanda: match.demanda_tipo,
+        captador_id: currentUser?.id,
+        tipo_vinculacao: 'vinculado',
+        compatibilidade_pct: match.score,
+      }))
+
+      const { error: insertError } = await supabase.from('imovel_demand_match').insert(inserts)
+
+      if (insertError) {
+        console.warn('[MATCH] Possíveis duplicatas em imovel_demand_match', insertError)
+      }
+
+      // 2. Atualizar status dos matches sugeridos
+      const matchIds = matchesParaVincular.map((m) => m.id)
+      const { error: updateError } = await supabase
+        .from('matches_sugestoes')
+        .update({ status: 'vinculado' })
+        .in('id', matchIds)
+
+      if (updateError) throw updateError
+
+      // 3. Atualizar UI
+      setMatches((prev) => prev.filter((m) => !matchIds.includes(m.id)))
+
+      setSelectedMatches((prev) => {
+        const newSet = new Set(prev)
+        matchIds.forEach((id) => newSet.delete(id))
+        return newSet
+      })
+
+      toast({
+        title: 'Sucesso',
+        description: `${matchesParaVincular.length} imóveis vinculados à demanda com sucesso!`,
+      })
+    } catch (error) {
+      console.error('[MATCH] Erro ao vincular em lote:', error)
       toast({
         title: 'Erro',
-        description: 'Não foi possível rejeitar o match.',
+        description: 'Não foi possível vincular os imóveis selecionados.',
         variant: 'destructive',
       })
     }
   }
 
-  const handleConfirmSuccess = async () => {
-    if (selectedMatch) {
-      try {
-        await updateMatchStatus(selectedMatch.id, 'vinculado')
-        setMatches(matches.filter((m) => m.id !== selectedMatch.id))
-        setSelectedMatch(null)
-      } catch (err) {
-        console.error('[MATCH] Erro ao atualizar status para vinculado:', err)
-        toast({
-          title: 'Aviso',
-          description: 'A vinculação foi feita, mas houve erro ao atualizar o status do match.',
-          variant: 'destructive',
-        })
-        setSelectedMatch(null)
-      }
+  const handleRejectGroup = async (group: GroupedMatches) => {
+    try {
+      const matchIds = group.matches.map((m) => m.id)
+
+      const { error: updateError } = await supabase
+        .from('matches_sugestoes')
+        .update({ status: 'rejeitado' })
+        .in('id', matchIds)
+
+      if (updateError) throw updateError
+
+      setMatches((prev) => prev.filter((m) => !matchIds.includes(m.id)))
+
+      setSelectedMatches((prev) => {
+        const newSet = new Set(prev)
+        matchIds.forEach((id) => newSet.delete(id))
+        return newSet
+      })
+
+      toast({
+        title: 'Matches rejeitados',
+        description: `As sugestões para esta demanda foram descartadas.`,
+      })
+    } catch (err) {
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível rejeitar as sugestões.',
+        variant: 'destructive',
+      })
+    }
+  }
+
+  const handleRejectSingle = async (matchId: string) => {
+    try {
+      const { error } = await supabase
+        .from('matches_sugestoes')
+        .update({ status: 'rejeitado' })
+        .eq('id', matchId)
+
+      if (error) throw error
+
+      setMatches((prev) => prev.filter((m) => m.id !== matchId))
+
+      setSelectedMatches((prev) => {
+        const newSet = new Set(prev)
+        newSet.delete(matchId)
+        return newSet
+      })
+
+      toast({ title: 'Match descartado', description: 'O imóvel foi descartado desta demanda.' })
+    } catch (err) {
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível descartar o match.',
+        variant: 'destructive',
+      })
     }
   }
 
@@ -279,12 +401,12 @@ export default function MatchInteligentes() {
       )}
 
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {[1, 2, 3, 4].map((i) => (
+        <div className="grid grid-cols-1 gap-6">
+          {[1, 2, 3].map((i) => (
             <Card key={i} className="animate-pulse h-64 bg-muted/50" />
           ))}
         </div>
-      ) : matches.length === 0 ? (
+      ) : groupedMatches.length === 0 ? (
         <div className="text-center py-24 bg-card rounded-lg border border-dashed">
           <Zap className="mx-auto h-12 w-12 text-muted-foreground opacity-50 mb-4" />
           <h3 className="text-lg font-medium">Nenhum match encontrado para o seu perfil</h3>
@@ -295,141 +417,186 @@ export default function MatchInteligentes() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {matches.map((match) => (
-            <Card
-              key={match.id}
-              className="flex flex-col overflow-hidden transition-all hover:shadow-md border-primary/20"
-            >
-              <CardHeader className="bg-primary/5 pb-4 border-b">
-                <div className="flex justify-between items-start">
-                  <div className="flex flex-col">
-                    <span className="text-xs font-semibold uppercase tracking-wider text-primary">
-                      {match.demanda_tipo}
-                    </span>
-                    <CardTitle className="text-xl mt-1">
-                      {match.score}% de Compatibilidade
+        <div className="grid grid-cols-1 gap-6">
+          {groupedMatches.map((group) => {
+            const allSelected =
+              group.matches.length > 0 && group.matches.every((m) => selectedMatches.has(m.id))
+            const selectedCount = group.matches.filter((m) => selectedMatches.has(m.id)).length
+
+            return (
+              <Card
+                key={group.demanda_id}
+                className="overflow-hidden flex flex-col transition-all border-primary/20"
+              >
+                <CardHeader className="bg-primary/5 pb-4 border-b flex flex-col md:flex-row md:justify-between md:items-start gap-4">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs font-semibold uppercase tracking-wider text-primary">
+                        {group.demanda_tipo}
+                      </span>
+                      <Badge
+                        variant="outline"
+                        className="bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200 font-bold"
+                      >
+                        {group.matches.length} Sugestões de Imóveis
+                      </Badge>
+                    </div>
+                    <CardTitle className="text-xl">
+                      👤 {group.demanda.nome_cliente || group.demanda.cliente_nome || 'Cliente'}
                     </CardTitle>
+                    <p className="text-sm font-medium text-muted-foreground mt-1">
+                      Orçamento:{' '}
+                      <span className="font-bold text-blue-600">
+                        <DollarSign className="inline w-3 h-3 mr-1" />
+                        {formatCurrency(
+                          group.demanda.valor_maximo || group.demanda.orcamento_max || 0,
+                        )}
+                      </span>{' '}
+                      • Quartos: {group.demanda.quartos || group.demanda.dormitorios || 0} • Vagas:{' '}
+                      {group.demanda.vagas || group.demanda.vagas_estacionamento || 0}
+                    </p>
                   </div>
-                  <div className="bg-primary text-primary-foreground font-bold rounded-full w-12 h-12 flex items-center justify-center text-lg shadow-sm">
-                    {match.score}
-                  </div>
-                </div>
-              </CardHeader>
-
-              <CardContent className="flex-1 pt-4">
-                <div className="grid grid-cols-2 gap-4">
-                  {/* Imóvel */}
-                  <div className="space-y-3">
-                    <h4 className="font-semibold text-sm text-muted-foreground border-b pb-1">
-                      Imóvel
-                    </h4>
-                    <p
-                      className="text-sm font-medium line-clamp-2"
-                      title={match.imovel.endereco || match.imovel.localizacao_texto}
+                  <div className="flex items-center gap-2 w-full md:w-auto">
+                    <Button
+                      variant="outline"
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50 flex-1 md:flex-none"
+                      onClick={() => handleRejectGroup(group)}
                     >
-                      <Home className="inline w-3 h-3 mr-1 text-muted-foreground" />
-                      {match.imovel.endereco ||
-                        match.imovel.localizacao_texto ||
-                        'Endereço não informado'}
-                    </p>
-                    <p className="text-sm font-bold text-emerald-600">
-                      <DollarSign className="inline w-3 h-3 mr-1" />
-                      {formatCurrency(match.imovel.preco || match.imovel.valor || 0)}
-                    </p>
+                      <ThumbsDown className="w-4 h-4 mr-2 hidden sm:inline" /> Descartar Demanda
+                    </Button>
+                    <Button
+                      disabled={selectedCount === 0}
+                      onClick={() => handleVincularSelecionados(group)}
+                      className="flex-1 md:flex-none"
+                    >
+                      <CheckCircle className="w-4 h-4 mr-2 hidden sm:inline" /> Vincular
+                      Selecionados ({selectedCount})
+                    </Button>
                   </div>
-
-                  {/* Demanda */}
-                  <div className="space-y-3">
-                    <h4 className="font-semibold text-sm text-muted-foreground border-b pb-1">
-                      Demanda
-                    </h4>
-                    <p className="text-sm font-medium line-clamp-2">
-                      👤 {match.demanda.nome_cliente || match.demanda.cliente_nome || 'Cliente'}
-                    </p>
-                    <p className="text-sm font-bold text-blue-600">
-                      <DollarSign className="inline w-3 h-3 mr-1" />
-                      Até{' '}
-                      {formatCurrency(
-                        match.demanda.valor_maximo || match.demanda.orcamento_max || 0,
-                      )}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Match Reasons */}
-                {match.details && (
-                  <div className="mt-5 bg-muted/30 p-3 rounded-lg border border-border/50">
-                    <p className="text-xs font-semibold mb-2 text-muted-foreground uppercase tracking-wider">
-                      Análise de Compatibilidade
-                    </p>
-                    <div className="flex flex-wrap gap-2 text-xs">
-                      <span
-                        className={cn(
-                          'px-2 py-1 rounded border',
-                          match.details.price_match
-                            ? 'bg-green-50 text-green-700 border-green-200'
-                            : 'bg-red-50 text-red-700 border-red-200',
-                        )}
+                </CardHeader>
+                <CardContent className="p-0">
+                  <div className="px-4 py-3 bg-muted/30 border-b flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`select-all-${group.demanda_id}`}
+                        checked={allSelected}
+                        onCheckedChange={() => toggleAllForGroup(group)}
+                      />
+                      <label
+                        htmlFor={`select-all-${group.demanda_id}`}
+                        className="text-sm font-medium cursor-pointer"
                       >
-                        {match.details.price_match ? '✓ Preço no orçamento' : '✕ Fora do orçamento'}
-                      </span>
-                      <span
-                        className={cn(
-                          'px-2 py-1 rounded border',
-                          match.details.location_match
-                            ? 'bg-green-50 text-green-700 border-green-200'
-                            : 'bg-yellow-50 text-yellow-700 border-yellow-200',
-                        )}
-                      >
-                        {match.details.location_match
-                          ? '✓ Região compatível'
-                          : '⚠ Região diferente'}
-                      </span>
-                      <span
-                        className={cn(
-                          'px-2 py-1 rounded border',
-                          match.details.tipology_match
-                            ? 'bg-green-50 text-green-700 border-green-200'
-                            : 'bg-yellow-50 text-yellow-700 border-yellow-200',
-                        )}
-                      >
-                        {match.details.tipology_match
-                          ? '✓ Tipologia ideal'
-                          : '⚠ Tipologia diferente'}
-                      </span>
+                        Selecionar Todos ({group.matches.length})
+                      </label>
                     </div>
                   </div>
-                )}
-              </CardContent>
-
-              <CardFooter className="grid grid-cols-2 gap-3 pt-2 pb-4 px-6 border-t bg-muted/10">
-                <Button
-                  variant="outline"
-                  className="w-full text-red-600 hover:text-red-700 hover:bg-red-50"
-                  onClick={() => handleReject(match)}
-                >
-                  <ThumbsDown className="w-4 h-4 mr-2" /> Descartar
-                </Button>
-                <Button className="w-full" onClick={() => handleAccept(match)}>
-                  <CheckCircle className="w-4 h-4 mr-2" /> Vincular
-                </Button>
-              </CardFooter>
-            </Card>
-          ))}
+                  <div className="divide-y max-h-[400px] overflow-y-auto">
+                    {group.matches.map((match) => (
+                      <div
+                        key={match.id}
+                        className="p-4 hover:bg-muted/10 flex items-start space-x-4 transition-colors"
+                      >
+                        <Checkbox
+                          id={`match-${match.id}`}
+                          checked={selectedMatches.has(match.id)}
+                          onCheckedChange={() => toggleSelection(match.id)}
+                          className="mt-1"
+                        />
+                        <div className="flex-1 space-y-1">
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h4 className="font-semibold text-sm">
+                                {match.imovel.codigo_imovel
+                                  ? `#${match.imovel.codigo_imovel} - `
+                                  : ''}
+                                {match.imovel.tipo_imovel || 'Imóvel'}
+                              </h4>
+                              <Badge
+                                className={cn(
+                                  'text-xs font-bold',
+                                  match.score >= 80
+                                    ? 'bg-green-500 hover:bg-green-600 text-white'
+                                    : 'bg-blue-500 hover:bg-blue-600 text-white',
+                                )}
+                              >
+                                {match.score}% Compatível
+                              </Badge>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-bold text-emerald-600">
+                                {formatCurrency(match.imovel.preco || match.imovel.valor || 0)}
+                              </p>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 text-muted-foreground hover:text-red-600 ml-2"
+                                onClick={() => handleRejectSingle(match.id)}
+                                title="Descartar este imóvel"
+                              >
+                                <X className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+                          <p
+                            className="text-sm text-muted-foreground"
+                            title={match.imovel.endereco || match.imovel.localizacao_texto}
+                          >
+                            <Home className="inline w-3 h-3 mr-1" />
+                            {match.imovel.endereco ||
+                              match.imovel.localizacao_texto ||
+                              'Endereço não informado'}
+                          </p>
+                          {match.details && (
+                            <div className="flex flex-wrap gap-2 text-[11px] mt-2 pt-2">
+                              <span
+                                className={cn(
+                                  'px-2 py-0.5 rounded border',
+                                  match.details.price_match
+                                    ? 'bg-green-50 text-green-700 border-green-200'
+                                    : 'bg-red-50 text-red-700 border-red-200',
+                                )}
+                              >
+                                {match.details.price_match
+                                  ? '✓ Preço compatível'
+                                  : '✕ Fora do orçamento'}
+                              </span>
+                              <span
+                                className={cn(
+                                  'px-2 py-0.5 rounded border',
+                                  match.details.location_match
+                                    ? 'bg-green-50 text-green-700 border-green-200'
+                                    : 'bg-yellow-50 text-yellow-700 border-yellow-200',
+                                )}
+                              >
+                                {match.details.location_match
+                                  ? '✓ Região compatível'
+                                  : '⚠ Região diferente'}
+                              </span>
+                              {match.details.tipology_match !== undefined && (
+                                <span
+                                  className={cn(
+                                    'px-2 py-0.5 rounded border',
+                                    match.details.tipology_match
+                                      ? 'bg-green-50 text-green-700 border-green-200'
+                                      : 'bg-yellow-50 text-yellow-700 border-yellow-200',
+                                  )}
+                                >
+                                  {match.details.tipology_match
+                                    ? '✓ Tipologia ideal'
+                                    : '⚠ Tipologia diferente'}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          })}
         </div>
-      )}
-
-      {selectedMatch && (
-        <ConfirmacaoVinculacaoMatch
-          open={!!selectedMatch}
-          onOpenChange={(open: boolean) => !open && setSelectedMatch(null)}
-          imovelId={selectedMatch.imovel_id}
-          demandaId={selectedMatch.demanda_id}
-          tipoDemanda={selectedMatch.demanda_tipo}
-          compatibilidade={selectedMatch.score}
-          onSuccess={handleConfirmSuccess}
-        />
       )}
     </div>
   )
