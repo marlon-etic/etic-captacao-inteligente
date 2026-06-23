@@ -37,6 +37,7 @@ export function AppHeader({ onAddPropertyClick }: AppHeaderProps) {
   const { isMobile, setOpenMobile } = useSidebar()
   const { notificacoes, markAsRead, markAllAsRead } = useNotificacoes()
   const [popoverOpen, setPopoverOpen] = useState(false)
+  const { isPlaygroundMode } = useSystemStore()
 
   if (!currentUser) return null
 
@@ -92,7 +93,7 @@ export function AppHeader({ onAddPropertyClick }: AppHeaderProps) {
       </div>
 
       <div className="flex items-center gap-3 md:gap-4">
-        {useSystemStore().isPlaygroundMode && (
+        {isPlaygroundMode && (
           <Badge
             variant="outline"
             className="hidden md:flex bg-amber-500/20 text-amber-300 border-amber-500/50 shrink-0"

@@ -157,30 +157,32 @@ export function AppSidebar() {
 
         <SidebarMenu>
           {(isAdmin || isGestor) && (
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                asChild
-                isActive={pathname.startsWith('/app/usuarios')}
-                tooltip="Gestão de Usuários"
-              >
-                <Link to="/app/usuarios">
-                  <Shield />
-                  <span>Gestão de Usuários</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                asChild
-                isActive={pathname.startsWith('/app/health-check')}
-                tooltip="Diagnóstico de Sistema"
-              >
-                <Link to="/app/health-check">
-                  <Activity />
-                  <span>Diagnóstico de Sistema</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
+            <>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname.startsWith('/app/usuarios')}
+                  tooltip="Gestão de Usuários"
+                >
+                  <Link to="/app/usuarios">
+                    <Shield />
+                    <span>Gestão de Usuários</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname.startsWith('/app/health-check')}
+                  tooltip="Diagnóstico de Sistema"
+                >
+                  <Link to="/app/health-check">
+                    <Activity />
+                    <span>Diagnóstico de Sistema</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </>
           )}
           <SidebarMenuItem>
             <SidebarMenuButton
