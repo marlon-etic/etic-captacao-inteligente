@@ -24,53 +24,30 @@ export function useQuickMatchCount(propertyParams: ImovelForMatching & { tipo?: 
       try {
         let clients: QuickMatchClient[] = []
 
-        const checkType = async (table: 'demandas_vendas' | 'demandas_locacao') => {
-          const { data, error } = await supabase
-            .from(table)
-            .select(
-              'id, nome_cliente, bairros, valor_maximo, dormitorios, vagas_estacionamento, tipo_imovel',
-            )
-            .in('status_demanda', ['aberta', 'em_andamento'])
+        // Calls the synchronized RPC function that uses the exact same logic as 'Vincular Demanda'
+        const { data, error } = await supabase.rpc('get_quick_matches', {
+          p_endereco: propertyParams.endereco || '',
+          p_preco: propertyParams.preco || 0,
+          p_dormitorios: propertyParams.dormitorios || 0,
+          p_vagas: propertyParams.vagas || 0,
+          p_tipo: propertyParams.tipo || 'Ambos',
+          p_tipo_imovel: propertyParams.tipo_imovel || '',
+        })
 
-          if (error) {
-            console.error('[useQuickMatchCount] Query Error:', error)
-            return []
-          }
-
-          const imovelMock: ImovelForMatching = {
-            endereco: propertyParams.endereco,
-            preco: propertyParams.preco,
-            dormitorios: propertyParams.dormitorios || 0,
-            vagas: propertyParams.vagas || 0,
-            tipo_imovel: propertyParams.tipo_imovel,
-          }
-
-          const validClients: QuickMatchClient[] = []
-          for (const d of data || []) {
-            const match = calculateMatching(imovelMock, {
-              bairros: d.bairros || [],
-              valor_maximo: d.valor_maximo || 0,
-              dormitorios: d.dormitorios || 0,
-              vagas_estacionamento: d.vagas_estacionamento || 0,
-              tipo_imovel: d.tipo_imovel || '',
-            })
-
-            if (match.score >= 60) {
-              validClients.push({ id: d.id, nome: d.nome_cliente || 'Cliente' })
-            }
-          }
-          return validClients
+        if (error) {
+          console.error('[useQuickMatchCount] RPC Error:', error)
+          setCount(0)
+          setMatchedClients([])
+          return
         }
 
-        if (propertyParams.tipo === 'Venda' || propertyParams.tipo === 'Ambos') {
-          clients = clients.concat(await checkType('demandas_vendas'))
-        }
-        if (propertyParams.tipo === 'Locação' || propertyParams.tipo === 'Ambos') {
-          clients = clients.concat(await checkType('demandas_locacao'))
-        }
+        // De-duplicate in case a client has multiple demands matching
+        const uniqueClients = Array.from(
+          new Map((data || []).map((c: any) => [c.id, c])).values(),
+        ) as QuickMatchClient[]
 
-        setCount(clients.length)
-        setMatchedClients(clients)
+        setCount(uniqueClients.length)
+        setMatchedClients(uniqueClients)
       } catch (e) {
         console.error('Error fetching match count', e)
         setCount(0)
