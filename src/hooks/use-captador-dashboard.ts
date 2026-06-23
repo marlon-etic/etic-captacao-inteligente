@@ -162,45 +162,94 @@ export function useCaptadorDashboard() {
       setDemandas(todasDemandas)
 
       // Faixas de Preço
-      let faixas: Record<string, number> = {}
+      let faixas: Record<string, { oferta: number; demanda: number }> = {}
 
       if (transactionType === 'Locação' || transactionType === 'locacao') {
         faixas = {
-          'Até R$ 2.000,00': 0,
-          'R$ 2.000,00 a R$ 3.000,00': 0,
-          'R$ 3.000,00 a R$ 5.000,00': 0,
-          'R$ 5.000,00 a R$ 8.000,00': 0,
-          'Mais de R$ 8.000,00': 0,
+          'Até R$ 2.000,00': { oferta: 0, demanda: 0 },
+          'R$ 2.000,00 a R$ 3.000,00': { oferta: 0, demanda: 0 },
+          'R$ 3.000,00 a R$ 5.000,00': { oferta: 0, demanda: 0 },
+          'R$ 5.000,00 a R$ 8.000,00': { oferta: 0, demanda: 0 },
+          'Mais de R$ 8.000,00': { oferta: 0, demanda: 0 },
         }
 
         imoveisData?.forEach((i) => {
-          const v = Number(i.preco || i.valor || 0)
-          if (v <= 2000) faixas['Até R$ 2.000,00']++
-          else if (v <= 3000) faixas['R$ 2.000,00 a R$ 3.000,00']++
-          else if (v <= 5000) faixas['R$ 3.000,00 a R$ 5.000,00']++
-          else if (v <= 8000) faixas['R$ 5.000,00 a R$ 8.000,00']++
-          else faixas['Mais de R$ 8.000,00']++
+          const status = i.status_captacao?.toLowerCase() || ''
+          const isActive =
+            !status.includes('fechado') &&
+            !status.includes('perdid') &&
+            !status.includes('descartad')
+          if (isActive && i.tipo_imovel !== 'Venda' && i.tipo !== 'Venda') {
+            const v = Number(i.preco || i.valor || 0)
+            if (v <= 2000) faixas['Até R$ 2.000,00'].oferta++
+            else if (v <= 3000) faixas['R$ 2.000,00 a R$ 3.000,00'].oferta++
+            else if (v <= 5000) faixas['R$ 3.000,00 a R$ 5.000,00'].oferta++
+            else if (v <= 8000) faixas['R$ 5.000,00 a R$ 8.000,00'].oferta++
+            else faixas['Mais de R$ 8.000,00'].oferta++
+          }
+        })
+
+        todasDemandas?.forEach((d) => {
+          const status = d.status_demanda?.toLowerCase() || ''
+          const isActive =
+            !status.includes('perdid') &&
+            !status.includes('arquivad') &&
+            !status.includes('encerrad') &&
+            !status.includes('ganh') &&
+            !status.includes('atendid')
+          if (isActive && d.tipo === 'Locação') {
+            const v = Number(d.valor_maximo || d.orcamento_max || 0)
+            if (v <= 2000) faixas['Até R$ 2.000,00'].demanda++
+            else if (v <= 3000) faixas['R$ 2.000,00 a R$ 3.000,00'].demanda++
+            else if (v <= 5000) faixas['R$ 3.000,00 a R$ 5.000,00'].demanda++
+            else if (v <= 8000) faixas['R$ 5.000,00 a R$ 8.000,00'].demanda++
+            else faixas['Mais de R$ 8.000,00'].demanda++
+          }
         })
       } else {
         faixas = {
-          'Até R$ 500k': 0,
-          'R$ 500k - R$ 1M': 0,
-          'R$ 1M - R$ 2M': 0,
-          'Acima de R$ 2M': 0,
+          'Até R$ 500k': { oferta: 0, demanda: 0 },
+          'R$ 500k - R$ 1M': { oferta: 0, demanda: 0 },
+          'R$ 1M - R$ 2M': { oferta: 0, demanda: 0 },
+          'Acima de R$ 2M': { oferta: 0, demanda: 0 },
         }
 
         imoveisData?.forEach((i) => {
-          const v = Number(i.preco || i.valor || 0)
-          if (v <= 500000) faixas['Até R$ 500k']++
-          else if (v <= 1000000) faixas['R$ 500k - R$ 1M']++
-          else if (v <= 2000000) faixas['R$ 1M - R$ 2M']++
-          else faixas['Acima de R$ 2M']++
+          const status = i.status_captacao?.toLowerCase() || ''
+          const isActive =
+            !status.includes('fechado') &&
+            !status.includes('perdid') &&
+            !status.includes('descartad')
+          if (isActive && i.tipo_imovel !== 'Locação' && i.tipo !== 'Locação') {
+            const v = Number(i.preco || i.valor || 0)
+            if (v <= 500000) faixas['Até R$ 500k'].oferta++
+            else if (v <= 1000000) faixas['R$ 500k - R$ 1M'].oferta++
+            else if (v <= 2000000) faixas['R$ 1M - R$ 2M'].oferta++
+            else faixas['Acima de R$ 2M'].oferta++
+          }
+        })
+
+        todasDemandas?.forEach((d) => {
+          const status = d.status_demanda?.toLowerCase() || ''
+          const isActive =
+            !status.includes('perdid') &&
+            !status.includes('arquivad') &&
+            !status.includes('encerrad') &&
+            !status.includes('ganh') &&
+            !status.includes('atendid')
+          if (isActive && d.tipo === 'Venda') {
+            const v = Number(d.valor_maximo || d.orcamento_max || 0)
+            if (v <= 500000) faixas['Até R$ 500k'].demanda++
+            else if (v <= 1000000) faixas['R$ 500k - R$ 1M'].demanda++
+            else if (v <= 2000000) faixas['R$ 1M - R$ 2M'].demanda++
+            else faixas['Acima de R$ 2M'].demanda++
+          }
         })
       }
 
       const faixaPrecoData = Object.entries(faixas)
-        .map(([name, value]) => ({ name, value }))
-        .filter((d) => d.value > 0)
+        .map(([name, counts]) => ({ name, ...counts }))
+        .filter((d) => d.oferta > 0 || d.demanda > 0)
 
       // Oferta vs Demanda (Imóveis x Demandas por Tipo)
       const ofertaDemandaMap: Record<string, { name: string; oferta: number; demanda: number }> = {}

@@ -97,13 +97,16 @@ export function DashboardCharts({
         <CardHeader className="bg-gray-50/50 border-b border-gray-100 pb-4">
           <CardTitle className="text-[15px] font-bold text-[#1A3A52]">Faixas de Valor</CardTitle>
           <CardDescription className="text-xs">
-            Imóveis captados por preço (clique p/ filtrar)
+            Oferta vs Demanda por preço (clique p/ filtrar)
           </CardDescription>
         </CardHeader>
         <CardContent className="h-[280px] w-full pt-6">
           {charts?.faixaPrecoData?.length > 0 ? (
             <ChartContainer
-              config={{ value: { label: 'Quantidade', color: '#0070f3' } }}
+              config={{
+                oferta: { label: 'Oferta (Captações)', color: '#0070f3' },
+                demanda: { label: 'Demanda (Pedidos)', color: '#f59e0b' },
+              }}
               className="h-full w-full"
             >
               <BarChart
@@ -126,7 +129,9 @@ export function DashboardCharts({
                   tick={{ fontSize: 11, fill: '#6b7280', fontWeight: 600 }}
                 />
                 <ChartTooltip content={<ChartTooltipContent />} />
-                <Bar dataKey="value" fill="#0070f3" radius={[4, 4, 0, 0]} cursor="pointer" />
+                <ChartLegend content={<ChartLegendContent />} />
+                <Bar dataKey="oferta" fill="#0070f3" radius={[4, 4, 0, 0]} cursor="pointer" />
+                <Bar dataKey="demanda" fill="#f59e0b" radius={[4, 4, 0, 0]} cursor="pointer" />
               </BarChart>
             </ChartContainer>
           ) : (
