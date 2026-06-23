@@ -213,9 +213,18 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda', options?: { onlyMi
         })
 
         if (data) {
-          sessionStorage.setItem(cacheKey, JSON.stringify(data))
+          const filteredData = data.filter((d: any) => {
+            if (
+              !options?.onlyMine &&
+              (d.status_demanda === 'Perdida' || d.status_demanda === 'PERDIDA_BAIXA')
+            ) {
+              return false
+            }
+            return true
+          })
+          sessionStorage.setItem(cacheKey, JSON.stringify(filteredData))
           setDemands((prev) => {
-            const fetchedFormatted = formatData(data)
+            const fetchedFormatted = formatData(filteredData)
             const fetchedIds = new Set(fetchedFormatted.map((f) => f.id))
             const recentLocal = prev.filter(
               (p) => !fetchedIds.has(p.id) && Date.now() - new Date(p.created_at).getTime() < 5000,

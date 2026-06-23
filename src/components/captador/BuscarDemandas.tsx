@@ -473,8 +473,13 @@ export function BuscarDemandas() {
       }
 
       enriched.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-      setDemands(enriched)
-      sessionStorage.setItem('buscar_demandas_cache', JSON.stringify(enriched))
+
+      const filteredEnriched = enriched.filter(
+        (d) => d.status !== 'Perdida' && d.status !== 'PERDIDA_BAIXA',
+      )
+
+      setDemands(filteredEnriched)
+      sessionStorage.setItem('buscar_demandas_cache', JSON.stringify(filteredEnriched))
     } catch (err) {
       console.error('[BuscarDemandas] ❌ Erro:', err)
       setError('Erro ao carregar demandas. Verifique a conexão ou tente novamente.')
