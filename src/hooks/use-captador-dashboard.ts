@@ -135,20 +135,42 @@ export function useCaptadorDashboard() {
       setDemandas(todasDemandas)
 
       // Faixas de Preço
-      const faixas: Record<string, number> = {
-        'Até R$ 500k': 0,
-        'R$ 500k - R$ 1M': 0,
-        'R$ 1M - R$ 2M': 0,
-        'Acima de R$ 2M': 0,
+      let faixas: Record<string, number> = {}
+
+      if (transactionType === 'locacao') {
+        faixas = {
+          'Até R$ 2.000,00': 0,
+          'R$ 2.000,00 a R$ 3.000,00': 0,
+          'R$ 3.000,00 a R$ 5.000,00': 0,
+          'R$ 5.000,00 a R$ 8.000,00': 0,
+          'Mais de R$ 8.000,00': 0,
+        }
+
+        imoveisData?.forEach((i) => {
+          const v = Number(i.preco || i.valor || 0)
+          if (v <= 2000) faixas['Até R$ 2.000,00']++
+          else if (v <= 3000) faixas['R$ 2.000,00 a R$ 3.000,00']++
+          else if (v <= 5000) faixas['R$ 3.000,00 a R$ 5.000,00']++
+          else if (v <= 8000) faixas['R$ 5.000,00 a R$ 8.000,00']++
+          else faixas['Mais de R$ 8.000,00']++
+        })
+      } else {
+        faixas = {
+          'Até R$ 500k': 0,
+          'R$ 500k - R$ 1M': 0,
+          'R$ 1M - R$ 2M': 0,
+          'Acima de R$ 2M': 0,
+        }
+
+        imoveisData?.forEach((i) => {
+          const v = Number(i.preco || i.valor || 0)
+          if (v <= 500000) faixas['Até R$ 500k']++
+          else if (v <= 1000000) faixas['R$ 500k - R$ 1M']++
+          else if (v <= 2000000) faixas['R$ 1M - R$ 2M']++
+          else faixas['Acima de R$ 2M']++
+        })
       }
 
-      imoveisData?.forEach((i) => {
-        const v = Number(i.preco || i.valor || 0)
-        if (v <= 500000) faixas['Até R$ 500k']++
-        else if (v <= 1000000) faixas['R$ 500k - R$ 1M']++
-        else if (v <= 2000000) faixas['R$ 1M - R$ 2M']++
-        else faixas['Acima de R$ 2M']++
-      })
       const faixaPrecoData = Object.entries(faixas)
         .map(([name, value]) => ({ name, value }))
         .filter((d) => d.value > 0)
