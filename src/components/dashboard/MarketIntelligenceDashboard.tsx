@@ -167,9 +167,13 @@ export function MarketIntelligenceDashboard() {
         }
       },
       (i) => {
-        const v = i.preco || i.valor || 0
+        const isVenda =
+          i.tipo === 'Venda' ||
+          i.tipo_geral === 'Venda' ||
+          (i.tipo === 'Ambos' && i.preco && i.preco > 50000)
+        const v = isVenda ? i.preco || 0 : i.valor || 0
         if (v === 0) return null
-        const isVenda = i.tipo === 'Venda' || v > 50000
+
         if (isVenda) {
           if (v <= 500000) return 'V: Até 500k'
           if (v <= 1000000) return 'V: 500k-1M'
@@ -182,7 +186,6 @@ export function MarketIntelligenceDashboard() {
       },
       6,
     )
-
     const specsMap = new Map<string, { name: string; Demanda: number; Oferta: number }>()
     const initSpec = (k: string) => {
       if (!specsMap.has(k)) specsMap.set(k, { name: k, Demanda: 0, Oferta: 0 })

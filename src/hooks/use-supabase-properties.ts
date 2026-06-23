@@ -28,8 +28,59 @@ export interface SupabaseCapturedPropertyWithDemand {
   data_fechamento?: string
 }
 
+const extractNumber = (str: string): number | null => {
+  if (!str) return null
+  let val = str.replace(/[R$\s]/g, '')
+  let multiplier = 1
+  if (val.toLowerCase().includes('k')) {
+    multiplier = 1000
+    val = val.replace(/k/i, '')
+  } else if (val.toLowerCase().includes('m')) {
+    multiplier = 1000000
+    val = val.replace(/m/i, '')
+  }
+  val = val.replace(/\./g, '').replace(',', '.')
+  const num = parseFloat(val)
+  return isNaN(num) ? null : num * multiplier
+}
+
+const parsePriceFilter = (label: string) => {
+  if (!label || typeof label !== 'string') return null
+
+  const isLocacao = label.startsWith('L:')
+  const isVenda = label.startsWith('V:')
+
+  if (!isLocacao && !isVenda) return null
+
+  let cleanLabel = label.replace(/^(L:|V:)\s*/i, '').trim()
+  let min = 0
+  let max = 999999999
+
+  if (cleanLabel.toLowerCase().includes('até')) {
+    const num = extractNumber(cleanLabel.replace(/até/i, ''))
+    if (num !== null) max = num
+  } else if (cleanLabel.toLowerCase().includes('acima') || cleanLabel.includes('+')) {
+    const num = extractNumber(cleanLabel.replace(/acima de/i, '').replace('+', ''))
+    if (num !== null) min = num
+  } else if (cleanLabel.includes('-')) {
+    const parts = cleanLabel.split('-')
+    const num1 = extractNumber(parts[0] || '')
+    const num2 = extractNumber(parts[1] || '')
+    if (num1 !== null) min = num1
+    if (num2 !== null) max = num2
+  } else {
+    const num = extractNumber(cleanLabel)
+    if (num !== null) {
+      min = num
+      max = num
+    }
+  }
+
+  return { isLocacao, isVenda, min, max }
+}
+
 export function useSupabaseProperties(
-  filterType?: 'Venda' | 'Aluguel' | 'Ambos',
+  filterType?: 'Venda' | 'Aluguel' | 'Ambos' | string,
   options?: { onlyMine?: boolean; pageSize?: number },
 ) {
   const [properties, setProperties] = useState<SupabaseCapturedPropertyWithDemand[]>([])
@@ -107,6 +158,21 @@ export function useSupabaseProperties(
           query = query.eq('user_captador_id', currentUser.id)
         }
 
+        const priceFilter = filterType ? parsePriceFilter(filterType) : null
+        if (priceFilter) {
+          if (priceFilter.isLocacao) {
+            query = query
+              .in('tipo', ['Locação', 'Aluguel', 'Ambos'])
+              .gte('valor', priceFilter.min)
+              .lte('valor', priceFilter.max)
+          } else if (priceFilter.isVenda) {
+            query = query
+              .in('tipo', ['Venda', 'Ambos'])
+              .gte('preco', priceFilter.min)
+              .lte('preco', priceFilter.max)
+          }
+        }
+
         query = query.range(0, limit - 1)
 
         const { data: directData, error: directError, count } = await query
@@ -136,10 +202,27 @@ export function useSupabaseProperties(
 
         // Aplica o filtro selecionado pelo dropdown na UI (Venda/Aluguel) se existir
         if (filterType && filterType !== ('Todos' as any)) {
-          const normalizedFilterType = normalizeTipo(filterType)
-          formatted = formatted.filter((f: any) => {
-            return f.tipo === normalizedFilterType || f.tipo === 'Ambos'
-          })
+          if (priceFilter) {
+            formatted = formatted.filter((f: any) => {
+              const fTipo = f.tipo ? f.tipo.toLowerCase() : ''
+              const isL = fTipo === 'locação' || fTipo === 'aluguel' || fTipo === 'ambos'
+              const isV = fTipo === 'venda' || fTipo === 'ambos'
+
+              if (priceFilter.isLocacao && isL) {
+                const val = f.valor || 0
+                return val >= priceFilter.min && val <= priceFilter.max
+              } else if (priceFilter.isVenda && isV) {
+                const val = f.preco || 0
+                return val >= priceFilter.min && val <= priceFilter.max
+              }
+              return false
+            })
+          } else {
+            const normalizedFilterType = normalizeTipo(filterType)
+            formatted = formatted.filter((f: any) => {
+              return f.tipo === normalizedFilterType || f.tipo === 'Ambos'
+            })
+          }
         }
 
         setProperties(formatted)
@@ -223,12 +306,31 @@ export function useSupabaseProperties(
             return
           }
 
-          if (
+          const priceFilter = filterType ? parsePriceFilter(filterType) : null
+
+          let shouldAdd = false
+          if (priceFilter) {
+            const fTipo = formatted.tipo ? formatted.tipo.toLowerCase() : ''
+            const isL = fTipo === 'locação' || fTipo === 'aluguel' || fTipo === 'ambos'
+            const isV = fTipo === 'venda' || fTipo === 'ambos'
+
+            if (priceFilter.isLocacao && isL) {
+              const val = formatted.valor || 0
+              if (val >= priceFilter.min && val <= priceFilter.max) shouldAdd = true
+            } else if (priceFilter.isVenda && isV) {
+              const val = formatted.preco || 0
+              if (val >= priceFilter.min && val <= priceFilter.max) shouldAdd = true
+            }
+          } else if (
             !filterType ||
             filterType === ('Todos' as any) ||
             formatted.tipo === filterType ||
             formatted.tipo === 'Ambos'
           ) {
+            shouldAdd = true
+          }
+
+          if (shouldAdd) {
             setProperties((prev) => {
               const exists = prev.some((p) => p.id === formatted.id)
               if (exists) {
