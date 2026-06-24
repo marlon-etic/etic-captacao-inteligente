@@ -14,6 +14,7 @@ import useAppStore from '@/stores/useAppStore'
 import { cn } from '@/lib/utils'
 import { ImovelCapturadoCard } from './ImovelCapturadoCard'
 import { RespostasHistory } from './RespostasHistory'
+import { SdrPropertyActions } from './sdr/SdrPropertyActions'
 
 interface Props {
   demand: SupabaseDemand | null
@@ -190,14 +191,16 @@ export function DemandDetailModal({
               </span>
 
               {demand.imoveis_captados && demand.imoveis_captados.length > 0 ? (
-                <div className="flex flex-col gap-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar relative z-10">
+                <div className="flex flex-col gap-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar relative z-10">
                   {demand.imoveis_captados.map((p, i) => (
-                    <ImovelCapturadoCard
-                      key={p.id || i}
-                      property={p}
-                      demand={demand as any}
-                      isOwnerOrAdmin={isOwnerOrAdmin}
-                    />
+                    <div key={p.id || i} className="flex flex-col gap-2">
+                      <ImovelCapturadoCard
+                        property={p}
+                        demand={demand as any}
+                        isOwnerOrAdmin={isOwnerOrAdmin}
+                      />
+                      <SdrPropertyActions propertyId={p.id} demandId={demand.id} />
+                    </div>
                   ))}
                 </div>
               ) : (

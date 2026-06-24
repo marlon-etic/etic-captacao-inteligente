@@ -13,6 +13,7 @@ import { Demand } from '@/types'
 import useAppStore from '@/stores/useAppStore'
 import { cn } from '@/lib/utils'
 import { ImovelCapturadoCard } from './ImovelCapturadoCard'
+import { SdrPropertyActions } from './sdr/SdrPropertyActions'
 
 interface Props {
   open: boolean
@@ -246,15 +247,17 @@ export function DemandDetailsModal({
               </span>
 
               {((demand as any).imoveis_captados || demand.capturedProperties)?.length > 0 ? (
-                <div className="flex flex-col gap-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar relative z-10">
+                <div className="flex flex-col gap-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar relative z-10">
                   {((demand as any).imoveis_captados || demand.capturedProperties).map(
                     (p: any, i: number) => (
-                      <ImovelCapturadoCard
-                        key={p.id || i}
-                        property={p}
-                        demand={demand}
-                        isOwnerOrAdmin={isOwnerOrAdmin}
-                      />
+                      <div key={p.id || i} className="flex flex-col gap-2">
+                        <ImovelCapturadoCard
+                          property={p}
+                          demand={demand}
+                          isOwnerOrAdmin={isOwnerOrAdmin}
+                        />
+                        <SdrPropertyActions propertyId={p.id} demandId={demand.id} />
+                      </div>
                     ),
                   )}
                 </div>
