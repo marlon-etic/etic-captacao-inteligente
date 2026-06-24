@@ -1895,6 +1895,7 @@ export type Database = {
       }
       fn_recalcular_pontos_captadores: { Args: never; Returns: Json }
       fn_reset_database: { Args: { p_delete_before?: string }; Returns: Json }
+      fn_test_notifications_flow: { Args: never; Returns: undefined }
       get_imovel_matches: {
         Args: { p_imovel_id: string }
         Returns: {
@@ -2090,7 +2091,8 @@ export const Constants = {
         "visita_registrada",
         "feedback_registrado",
         "negociacao_registrada",
-      ],      user_role: ["admin", "sdr", "corretor", "captador", "gestor"],
+      ],
+      user_role: ["admin", "sdr", "corretor", "captador", "gestor"],
     },
   },
 } as const
