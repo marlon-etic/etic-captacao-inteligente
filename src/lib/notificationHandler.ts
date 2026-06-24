@@ -15,7 +15,10 @@ export const createNotification = async (
     | 'status_atualizado'
     | 'busca_iniciada_outros'
     | 'busca_iniciada_responsavel'
-    | 'busca_iniciada_admin',
+    | 'busca_iniciada_admin'
+    | 'visita_registrada'
+    | 'feedback_registrado'
+    | 'negociacao_registrada',
   titulo: string,
   mensagem: string,
   dadosRelacionados: any,

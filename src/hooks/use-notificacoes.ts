@@ -7,7 +7,17 @@ import { toast } from '@/components/ui/use-toast'
 export interface Notificacao {
   id: string
   usuario_id: string
-  tipo: 'nova_demanda' | 'novo_imovel' | 'imovel_capturado' | 'status_atualizado'
+  tipo:
+    | 'nova_demanda'
+    | 'novo_imovel'
+    | 'imovel_capturado'
+    | 'status_atualizado'
+    | 'busca_iniciada_outros'
+    | 'busca_iniciada_responsavel'
+    | 'busca_iniciada_admin'
+    | 'visita_registrada'
+    | 'feedback_registrado'
+    | 'negociacao_registrada'
   titulo: string
   mensagem: string
   dados_relacionados: any
@@ -148,7 +158,10 @@ export function useNotificacoes() {
     } else if (
       notif.tipo === 'novo_imovel' ||
       notif.tipo === 'imovel_capturado' ||
-      notif.tipo === 'status_atualizado'
+      notif.tipo === 'status_atualizado' ||
+      notif.tipo === 'visita_registrada' ||
+      notif.tipo === 'feedback_registrado' ||
+      notif.tipo === 'negociacao_registrada'
     ) {
       const imovelId = notif.dados_relacionados?.imovel_id
       if (imovelId) {

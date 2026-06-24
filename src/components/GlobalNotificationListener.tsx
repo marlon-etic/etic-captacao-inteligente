@@ -48,7 +48,9 @@ export function GlobalNotificationListener() {
           let customColor = ''
           const data = notif.dados_relacionados
 
-          if (data?.is_match) {
+          if (notif.tipo === 'negociacao_registrada') {
+            customColor = 'bg-[#10B981] text-white border-none shadow-lg' // Success/Green
+          } else if (data?.is_match) {
             customColor = 'bg-[#10B981] text-white border-none shadow-lg' // Success/Green for Match
           } else if (notif.prioridade === 'alta') {
             customColor = 'bg-[#EF4444] text-white border-none shadow-lg'

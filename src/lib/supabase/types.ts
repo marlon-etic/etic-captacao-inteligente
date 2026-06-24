@@ -1947,6 +1947,9 @@ export type Database = {
         | "busca_iniciada_outros"
         | "busca_iniciada_responsavel"
         | "busca_iniciada_admin"
+        | "visita_registrada"
+        | "feedback_registrado"
+        | "negociacao_registrada"
       user_role: "admin" | "sdr" | "corretor" | "captador" | "gestor"
     }
     CompositeTypes: {
@@ -2084,8 +2087,10 @@ export const Constants = {
         "busca_iniciada_outros",
         "busca_iniciada_responsavel",
         "busca_iniciada_admin",
-      ],
-      user_role: ["admin", "sdr", "corretor", "captador", "gestor"],
+        "visita_registrada",
+        "feedback_registrado",
+        "negociacao_registrada",
+      ],      user_role: ["admin", "sdr", "corretor", "captador", "gestor"],
     },
   },
 } as const
