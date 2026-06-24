@@ -61,7 +61,12 @@ export function DemandDetailModal({
   let statusLabel = demand.status_demanda
   if (statusLabel === 'aberta' && demand.is_prioritaria) statusLabel = 'priorizada'
   if (demand.status_demanda === 'localmente_perdida') statusLabel = 'perdida (você)'
-  if (demand.db_status_demanda === 'impossivel' || demand.db_status_demanda === 'PERDIDA_BAIXA') {
+  if (
+    demand.db_status_demanda === 'impossivel' ||
+    demand.db_status_demanda === 'Perdida' ||
+    demand.db_status_demanda === 'perdida' ||
+    demand.db_status_demanda === 'PERDIDA_BAIXA'
+  ) {
     statusLabel =
       demand.db_status_demanda === 'PERDIDA_BAIXA' ? 'baixa automática' : 'perdida global'
   }
@@ -243,6 +248,8 @@ export function DemandDetailModal({
         <DialogFooter className="p-[16px] md:p-[20px] border-t border-[#E5E5E5] shrink-0 flex flex-col sm:flex-row gap-[12px] bg-white z-10 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] relative">
           {onFoundProperty &&
             demand.db_status_demanda !== 'impossivel' &&
+            demand.db_status_demanda !== 'Perdida' &&
+            demand.db_status_demanda !== 'perdida' &&
             demand.db_status_demanda !== 'PERDIDA_BAIXA' && (
               <Button
                 className="min-h-[56px] w-full text-[16px] font-black bg-[#10B981] hover:bg-[#059669] text-white shadow-[0_4px_12px_rgba(16,185,129,0.3)] animate-pulse-green relative z-10"
@@ -259,6 +266,8 @@ export function DemandDetailModal({
           {onEdit &&
             isOwnerOrAdmin &&
             demand.db_status_demanda !== 'impossivel' &&
+            demand.db_status_demanda !== 'Perdida' &&
+            demand.db_status_demanda !== 'perdida' &&
             demand.db_status_demanda !== 'PERDIDA_BAIXA' && (
               <Button
                 variant="outline"
@@ -276,6 +285,8 @@ export function DemandDetailModal({
           {onPrioritize &&
             isOwnerOrAdmin &&
             demand.db_status_demanda !== 'impossivel' &&
+            demand.db_status_demanda !== 'Perdida' &&
+            demand.db_status_demanda !== 'perdida' &&
             demand.db_status_demanda !== 'PERDIDA_BAIXA' && (
               <Button
                 className="min-h-[48px] w-full sm:flex-1 text-[14px] font-bold bg-[#FCD34D] hover:bg-[#F59E0B] text-[#854D0E] border-none relative z-10"
@@ -292,6 +303,8 @@ export function DemandDetailModal({
           {onLost &&
             isOwnerOrAdmin &&
             demand.db_status_demanda !== 'impossivel' &&
+            demand.db_status_demanda !== 'Perdida' &&
+            demand.db_status_demanda !== 'perdida' &&
             demand.db_status_demanda !== 'PERDIDA_BAIXA' && (
               <Button
                 className="min-h-[48px] w-full sm:flex-1 text-[14px] font-bold bg-[#EF4444] hover:bg-[#DC2626] text-white border-none relative z-10"

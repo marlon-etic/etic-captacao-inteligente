@@ -648,7 +648,7 @@ export const DemandCard = React.memo(function DemandCard({
               const table = demand.type === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
               const { error } = await supabase
                 .from(table)
-                .update({ status_demanda: 'impossivel' })
+                .update({ status_demanda: 'Perdida' })
                 .eq('id', demand.id)
 
               if (error) throw error

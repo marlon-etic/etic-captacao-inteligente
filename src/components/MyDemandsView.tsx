@@ -40,7 +40,8 @@ const FILTERS: FilterDef[] = [
       { value: 'aberta', label: 'Aberta', icon: '🟢' },
       { value: 'atendida', label: 'Ganho / Atendida', icon: '🔵' },
       { value: 'sem_resposta_24h', label: 'Sem Resposta', icon: '🟡' },
-      { value: 'impossivel', label: 'Perdida', icon: '⚪' },
+      { value: 'impossivel', label: 'Impossível', icon: '⚪' },
+      { value: 'Perdida', label: 'Perdida', icon: '⚫' },
     ],
   },
   {
@@ -188,7 +189,7 @@ export function MyDemandsView({ filterType }: Props) {
       ? `${currentObs}\n\n[PERDIDO - ${new Date().toLocaleDateString()}]: ${reason} - ${obs}`
       : `[PERDIDO - ${new Date().toLocaleDateString()}]: ${reason} - ${obs}`
 
-    const updateData: any = { status_demanda: 'impossivel' }
+    const updateData: any = { status_demanda: 'Perdida' }
     if (actionDemand.tipo === 'Aluguel') {
       updateData.observacoes = newObs
     } else {
@@ -344,7 +345,7 @@ export function MyDemandsView({ filterType }: Props) {
       label: 'Perdidas',
       apply: {
         prioridade: 'Todos',
-        status: 'impossivel',
+        status: 'Perdida',
         urgencia: 'Todos',
         data: 'Todos',
         bairro: '',

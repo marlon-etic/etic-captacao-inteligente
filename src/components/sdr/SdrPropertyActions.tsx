@@ -61,6 +61,28 @@ export function SdrPropertyActions({
       if (data) setMatchId(data.id)
     }
     fetchMatch()
+
+    const matchChannel = supabase
+      .channel(`match_listener_${propertyId}_${demandId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'imovel_demand_match',
+          filter: `imovel_id=eq.${propertyId}`,
+        },
+        (payload) => {
+          if (payload.new && payload.new.demanda_id === demandId) {
+            setMatchId(payload.new.id)
+          }
+        },
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(matchChannel)
+    }
   }, [propertyId, demandId])
 
   const fetchRecords = async () => {
@@ -135,7 +157,60 @@ export function SdrPropertyActions({
   const [negStatus, setNegStatus] = useState<'negociado' | 'falhou'>('negociado')
   const [negNotes, setNegNotes] = useState('')
 
-  if (!matchId) return null
+  const ensureMatchId = async () => {
+    if (matchId) return matchId
+
+    const { data: locData } = await supabase
+      .from('demandas_locacao')
+      .select('tipo')
+      .eq('id', demandId)
+      .maybeSingle()
+    let tipoDemanda = locData?.tipo
+    if (!tipoDemanda) {
+      const { data: venData } = await supabase
+        .from('demandas_vendas')
+        .select('tipo')
+        .eq('id', demandId)
+        .maybeSingle()
+      tipoDemanda = venData?.tipo || 'Ambos'
+    }
+
+    const { data, error } = await supabase
+      .from('imovel_demand_match')
+      .insert({
+        imovel_id: propertyId,
+        demanda_id: demandId,
+        tipo_demanda: tipoDemanda,
+        tipo_vinculacao: 'manual',
+        compatibilidade_pct: 0,
+      })
+      .select('id')
+      .maybeSingle()
+
+    if (error && error.code === '23505') {
+      const { data: existing } = await supabase
+        .from('imovel_demand_match')
+        .select('id')
+        .eq('imovel_id', propertyId)
+        .eq('demanda_id', demandId)
+        .maybeSingle()
+      if (existing) {
+        setMatchId(existing.id)
+        return existing.id
+      }
+    }
+
+    if (error || !data) {
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível vincular o imóvel para registrar a ação.',
+        variant: 'destructive',
+      })
+      return null
+    }
+    setMatchId(data.id)
+    return data.id
+  }
 
   const hasVisitToday = visits.some((v) => {
     const vDate = new Date(v.visited_date || v.created_at).toDateString()
@@ -146,8 +221,13 @@ export function SdrPropertyActions({
 
   const handleVisit = async () => {
     setIsLoading(true)
+    const currentMatchId = await ensureMatchId()
+    if (!currentMatchId) {
+      setIsLoading(false)
+      return
+    }
     const { error } = await supabase.functions.invoke('visit-registration', {
-      body: { property_link_id: matchId, notes: visitNotes },
+      body: { property_link_id: currentMatchId, notes: visitNotes },
     })
     setIsLoading(false)
     if (error) {
@@ -161,9 +241,14 @@ export function SdrPropertyActions({
 
   const handleFeedback = async () => {
     setIsLoading(true)
+    const currentMatchId = await ensureMatchId()
+    if (!currentMatchId) {
+      setIsLoading(false)
+      return
+    }
     const { error } = await supabase.functions.invoke('feedback-registration', {
       body: {
-        property_link_id: matchId,
+        property_link_id: currentMatchId,
         interest_level: interestLevel,
         feedback_text: feedbackText,
       },
@@ -180,8 +265,13 @@ export function SdrPropertyActions({
 
   const handleNegotiation = async () => {
     setIsLoading(true)
+    const currentMatchId = await ensureMatchId()
+    if (!currentMatchId) {
+      setIsLoading(false)
+      return
+    }
     const { error } = await supabase.functions.invoke('negotiation-registration', {
-      body: { property_link_id: matchId, negotiation_status: negStatus, notes: negNotes },
+      body: { property_link_id: currentMatchId, negotiation_status: negStatus, notes: negNotes },
     })
     setIsLoading(false)
     if (error) {
