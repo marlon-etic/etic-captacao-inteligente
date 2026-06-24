@@ -10,9 +10,58 @@ import {
   ChartLegendContent,
 } from '@/components/ui/chart'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts'
-import { TrendingUp } from 'lucide-react'
+import { TrendingUp, Home, MapPin, Bed, CarFront } from 'lucide-react'
 import { useAuth } from '@/hooks/use-auth'
 import { useUserRole } from '@/hooks/use-user-role'
+
+const isAtiva = (d: any) => {
+  const s = (d.status_demanda || '').toLowerCase()
+  return (
+    !s.includes('perdid') &&
+    !s.includes('fechad') &&
+    !s.includes('inativ') &&
+    !s.includes('impossível')
+  )
+}
+
+function TopList({
+  data,
+  title,
+  icon: Icon,
+}: {
+  data: { name: string; count: number }[]
+  title: string
+  icon: any
+}) {
+  return (
+    <Card className="shadow-sm h-full">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm flex items-center gap-2">
+          <Icon className="h-4 w-4 text-muted-foreground" />
+          {title}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {data.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-4 text-center">Sem dados disponíveis</p>
+        ) : (
+          <div className="space-y-2">
+            {data.slice(0, 5).map((item, idx) => (
+              <div key={idx} className="flex justify-between items-center text-sm">
+                <span className="truncate pr-2 text-muted-foreground" title={item.name}>
+                  {item.name}
+                </span>
+                <span className="font-medium bg-muted px-2 py-0.5 rounded-md text-xs min-w-[1.5rem] text-center">
+                  {item.count}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
 
 export function MarketIntelligenceDashboard() {
   const [data, setData] = useState<{ demandas: any[]; imoveis: any[] } | null>(null)
@@ -96,16 +145,6 @@ export function MarketIntelligenceDashboard() {
   const chartsData = useMemo(() => {
     if (!data) return { precos: [] }
 
-    const isAtiva = (d: any) => {
-      const s = (d.status_demanda || '').toLowerCase()
-      return (
-        !s.includes('perdid') &&
-        !s.includes('fechad') &&
-        !s.includes('inativ') &&
-        !s.includes('impossível')
-      )
-    }
-
     const precosMap = new Map<
       string,
       { name: string; Locação: number; Venda: number; Imóveis: number }
@@ -148,16 +187,87 @@ export function MarketIntelligenceDashboard() {
     }
   }, [data])
 
+  const listsData = useMemo(() => {
+    if (!data) return null
+
+    const activeDemands = data.demandas.filter(isAtiva)
+    const activeProperties = data.imoveis
+
+    const aggregateCounts = (
+      items: any[],
+      fieldExtractor: (item: any) => string | string[] | number | undefined | null,
+    ) => {
+      const counts: Record<string, number> = {}
+      items.forEach((item) => {
+        const val = fieldExtractor(item)
+        if (Array.isArray(val)) {
+          val.forEach((v) => {
+            if (v) counts[String(v)] = (counts[String(v)] || 0) + 1
+          })
+        } else if (val !== undefined && val !== null && val !== '') {
+          counts[String(val)] = (counts[String(val)] || 0) + 1
+        }
+      })
+
+      return Object.entries(counts)
+        .sort((a, b) => b[1] - a[1])
+        .map(([name, count]) => ({ name, count }))
+    }
+
+    return {
+      supply: {
+        tipology: aggregateCounts(activeProperties, (i) => i.tipo_imovel || 'Não informado'),
+        location: aggregateCounts(activeProperties, (i) => {
+          let loc = i.localizacao_texto || i.endereco
+          if (!loc) return 'Não informado'
+          return loc.split(',')[0].trim()
+        }),
+        bedrooms: aggregateCounts(activeProperties, (i) =>
+          i.dormitorios !== null && i.dormitorios !== undefined
+            ? `${i.dormitorios} quarto(s)`
+            : 'Não informado',
+        ),
+        parking: aggregateCounts(activeProperties, (i) =>
+          i.vagas !== null && i.vagas !== undefined ? `${i.vagas} vaga(s)` : 'Não informado',
+        ),
+      },
+      demand: {
+        tipology: aggregateCounts(activeDemands, (d) => d.tipo_imovel || 'Não informado'),
+        location: aggregateCounts(activeDemands, (d) =>
+          d.bairros?.length
+            ? d.bairros
+            : d.localizacoes?.length
+              ? d.localizacoes
+              : ['Não informado'],
+        ),
+        bedrooms: aggregateCounts(activeDemands, (d) => {
+          const beds = d.dormitorios ?? d.quartos
+          return beds !== null && beds !== undefined ? `${beds} quarto(s)` : 'Não informado'
+        }),
+        parking: aggregateCounts(activeDemands, (d) => {
+          const p = d.vagas_estacionamento ?? d.vagas
+          return p !== null && p !== undefined ? `${p} vaga(s)` : 'Não informado'
+        }),
+      },
+    }
+  }, [data])
+
   if (isLoading) {
     return (
       <div className="grid grid-cols-1 gap-6">
         <Skeleton className="h-[400px] w-full rounded-xl" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Skeleton className="h-[200px] w-full rounded-xl" />
+          <Skeleton className="h-[200px] w-full rounded-xl" />
+          <Skeleton className="h-[200px] w-full rounded-xl" />
+          <Skeleton className="h-[200px] w-full rounded-xl" />
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <Card className="shadow-sm">
         <CardHeader>
           <CardTitle>Inteligência de Preços</CardTitle>
@@ -211,6 +321,30 @@ export function MarketIntelligenceDashboard() {
           </div>
         </CardContent>
       </Card>
+
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold tracking-tight text-foreground">
+          Oferta de Mercado (Imóveis Captados)
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <TopList data={listsData?.supply.tipology || []} title="Tipologia" icon={Home} />
+          <TopList data={listsData?.supply.location || []} title="Localização" icon={MapPin} />
+          <TopList data={listsData?.supply.bedrooms || []} title="Dormitórios" icon={Bed} />
+          <TopList data={listsData?.supply.parking || []} title="Vagas" icon={CarFront} />
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold tracking-tight text-foreground">
+          Demanda de Mercado (Buscas Ativas)
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <TopList data={listsData?.demand.tipology || []} title="Tipologia" icon={Home} />
+          <TopList data={listsData?.demand.location || []} title="Localização" icon={MapPin} />
+          <TopList data={listsData?.demand.bedrooms || []} title="Dormitórios" icon={Bed} />
+          <TopList data={listsData?.demand.parking || []} title="Vagas" icon={CarFront} />
+        </div>
+      </div>
     </div>
   )
 }
