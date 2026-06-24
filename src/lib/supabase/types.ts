@@ -627,6 +627,41 @@ export type Database = {
         }
         Relationships: []
       }
+      feedback_records: {
+        Row: {
+          created_at: string
+          feedback_text: string | null
+          id: string
+          interest_level: string
+          property_link_id: string
+          sdr_user_id: string
+        }
+        Insert: {
+          created_at?: string
+          feedback_text?: string | null
+          id?: string
+          interest_level: string
+          property_link_id: string
+          sdr_user_id: string
+        }
+        Update: {
+          created_at?: string
+          feedback_text?: string | null
+          id?: string
+          interest_level?: string
+          property_link_id?: string
+          sdr_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feedback_records_property_link_id_fkey"
+            columns: ["property_link_id"]
+            isOneToOne: false
+            referencedRelation: "imovel_demand_match"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       grupos_demandas: {
         Row: {
           bairro: string
@@ -1051,6 +1086,47 @@ export type Database = {
             columns: ["imovel_id"]
             isOneToOne: false
             referencedRelation: "imoveis_captados"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      negotiation_records: {
+        Row: {
+          created_at: string
+          id: string
+          negotiated_by_user_id: string
+          negotiation_date: string
+          negotiation_status: string
+          notes: string | null
+          property_link_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          negotiated_by_user_id: string
+          negotiation_date?: string
+          negotiation_status: string
+          notes?: string | null
+          property_link_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          negotiated_by_user_id?: string
+          negotiation_date?: string
+          negotiation_status?: string
+          notes?: string | null
+          property_link_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "negotiation_records_property_link_id_fkey"
+            columns: ["property_link_id"]
+            isOneToOne: false
+            referencedRelation: "imovel_demand_match"
             referencedColumns: ["id"]
           },
         ]
@@ -1527,6 +1603,47 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      visit_records: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string | null
+          property_link_id: string
+          sdr_user_id: string
+          updated_at: string
+          visited_at: string
+          visited_date: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          property_link_id: string
+          sdr_user_id: string
+          updated_at?: string
+          visited_at?: string
+          visited_date?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          property_link_id?: string
+          sdr_user_id?: string
+          updated_at?: string
+          visited_at?: string
+          visited_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "visit_records_property_link_id_fkey"
+            columns: ["property_link_id"]
+            isOneToOne: false
+            referencedRelation: "imovel_demand_match"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       visitas_imovel: {
         Row: {
