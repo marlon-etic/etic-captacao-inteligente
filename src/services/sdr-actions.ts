@@ -1,0 +1,30 @@
+import { supabase } from '@/lib/supabase/client'
+
+export const recordVisit = async (property_link_id: string, notes?: string) => {
+  const { data, error } = await supabase.functions.invoke('visit-registration', {
+    body: { property_link_id, notes },
+  })
+  return { data, error }
+}
+
+export const recordFeedback = async (
+  property_link_id: string,
+  interest_level: 'interested' | 'not_interested',
+  feedback_text?: string,
+) => {
+  const { data, error } = await supabase.functions.invoke('feedback-registration', {
+    body: { property_link_id, interest_level, feedback_text },
+  })
+  return { data, error }
+}
+
+export const recordNegotiation = async (
+  property_link_id: string,
+  negotiation_status: 'negotiated' | 'failed',
+  notes?: string,
+) => {
+  const { data, error } = await supabase.functions.invoke('negotiation-registration', {
+    body: { property_link_id, negotiation_status, notes },
+  })
+  return { data, error }
+}
