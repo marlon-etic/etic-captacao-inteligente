@@ -22,39 +22,20 @@ import {
 import { supabase } from '@/lib/supabase/client'
 
 export function ChartsSdr({
-  data: _propData,
-  loading: _propLoading,
+  data: propData,
+  loading: propLoading,
 }: {
   data?: any
   loading?: boolean
 }) {
-  const [imoveis, setImoveis] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    async function fetchImoveis() {
-      try {
-        const { data, error } = await supabase
-          .from('imoveis_captados')
-          .select('tipo_imovel, dormitorios, vagas, localizacao_texto, endereco')
-
-        if (data && !error) {
-          setImoveis(data)
-        }
-      } catch (err) {
-        console.error('Erro ao buscar imoveis para os gráficos', err)
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchImoveis()
-  }, [])
+  const loading = propLoading ?? false
+  const demandas = Array.isArray(propData?.demandas) ? propData.demandas : []
 
   const { tipoData, dormsData, vagasData, bairrosData, dormsConfig, vagasConfig } = useMemo(() => {
     // 1. Distribuição por Tipo de Imóvel
     const tipoCount: Record<string, number> = {}
-    imoveis.forEach((i) => {
-      let t = i.tipo_imovel || 'Outros'
+    demandas.forEach((d) => {
+      let t = d.tipo_imovel || 'Outros'
       if (typeof t === 'string' && t.includes(',')) t = t.split(',')[0]
       t = t.trim()
       if (t) tipoCount[t] = (tipoCount[t] || 0) + 1
@@ -66,9 +47,9 @@ export function ChartsSdr({
 
     // 2. Distribuição por Dormitórios (Donut)
     const dormsCount: Record<string, number> = {}
-    imoveis.forEach((i) => {
-      const d = typeof i.dormitorios === 'number' ? i.dormitorios : parseInt(i.dormitorios) || 0
-      const label = d >= 4 ? '4+' : `${d}`
+    demandas.forEach((d) => {
+      const dNum = typeof d.dormitorios === 'number' ? d.dormitorios : parseInt(d.dormitorios) || 0
+      const label = dNum >= 4 ? '4+' : `${dNum}`
       dormsCount[label] = (dormsCount[label] || 0) + 1
     })
     const colorsDorms = ['#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe', '#1d4ed8']
@@ -80,15 +61,18 @@ export function ChartsSdr({
       }))
       .sort((a, b) => a.name.localeCompare(b.name))
 
-    const confDorms: Record<string, any> = { value: { label: 'Imóveis' } }
+    const confDorms: Record<string, any> = { value: { label: 'Demandas' } }
     processedDormsData.forEach((d) => {
       confDorms[d.name] = { label: d.name, color: d.fill }
     })
 
     // 3. Distribuição por Vagas (Donut)
     const vagasCount: Record<string, number> = {}
-    imoveis.forEach((i) => {
-      const v = typeof i.vagas === 'number' ? i.vagas : parseInt(i.vagas) || 0
+    demandas.forEach((d) => {
+      const v =
+        typeof d.vagas_estacionamento === 'number'
+          ? d.vagas_estacionamento
+          : parseInt(d.vagas_estacionamento) || 0
       const label = v >= 3 ? '3+' : `${v}`
       vagasCount[label] = (vagasCount[label] || 0) + 1
     })
@@ -101,16 +85,17 @@ export function ChartsSdr({
       }))
       .sort((a, b) => a.name.localeCompare(b.name))
 
-    const confVagas: Record<string, any> = { value: { label: 'Imóveis' } }
+    const confVagas: Record<string, any> = { value: { label: 'Demandas' } }
     processedVagasData.forEach((d) => {
       confVagas[d.name] = { label: d.name, color: d.fill }
     })
 
     // 4. Top Bairros (Horizontal Bar)
     const bairrosCount: Record<string, number> = {}
-    imoveis.forEach((i) => {
-      let b = i.localizacao_texto || i.endereco || 'Não informado'
-      if (typeof b === 'string') {
+    demandas.forEach((d) => {
+      const bArray = Array.isArray(d.bairros) ? d.bairros : []
+      bArray.forEach((bStr: string) => {
+        let b = bStr
         if (b.includes(',')) b = b.split(',')[0]
         if (b.includes('-')) b = b.split('-')[0]
         b = b.trim()
@@ -118,7 +103,7 @@ export function ChartsSdr({
         if (b && b.toLowerCase() !== 'não informado') {
           bairrosCount[b] = (bairrosCount[b] || 0) + 1
         }
-      }
+      })
     })
     const processedBairrosData = Object.keys(bairrosCount)
       .map((k) => ({ name: k, value: bairrosCount[k] }))
@@ -133,7 +118,7 @@ export function ChartsSdr({
       dormsConfig: confDorms,
       vagasConfig: confVagas,
     }
-  }, [imoveis])
+  }, [demandas])
 
   if (loading) {
     return (
@@ -158,7 +143,7 @@ export function ChartsSdr({
         <CardContent className="h-[320px] w-full pt-6 flex-1 min-w-0">
           {tipoData.length > 0 ? (
             <ChartContainer
-              config={{ value: { label: 'Imóveis', color: '#3b82f6' } }}
+              config={{ value: { label: 'Demandas', color: '#3b82f6' } }}
               className="h-full w-full"
             >
               <ResponsiveContainer width="100%" height="100%">
@@ -200,7 +185,7 @@ export function ChartsSdr({
         <CardContent className="h-[320px] w-full pt-6 flex-1 min-w-0">
           {bairrosData.length > 0 ? (
             <ChartContainer
-              config={{ value: { label: 'Imóveis', color: '#f59e0b' } }}
+              config={{ value: { label: 'Demandas', color: '#f59e0b' } }}
               className="h-full w-full"
             >
               <ResponsiveContainer width="100%" height="100%">

@@ -145,6 +145,33 @@ export function DemandDetailsModal({
               </div>
             </div>
 
+            {/* Contato (SDR/Corretor) */}
+            {((demand as any).contactPhone || (demand as any).contactEmail) && isOwnerOrAdmin && (
+              <div className="bg-white p-5 rounded-[12px] border border-[#E5E5E5] shadow-sm pointer-events-auto">
+                <span className="text-[12px] text-[#999999] font-black uppercase tracking-wider flex items-center gap-1.5 mb-3 border-b border-[#F5F5F5] pb-2">
+                  📞 Informações de Contato
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-[16px]">
+                  {(demand as any).contactPhone && (
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-[12px] text-[#666666] font-medium">Telefone</span>
+                      <span className="text-[16px] text-[#1A3A52] font-bold">
+                        {(demand as any).contactPhone}
+                      </span>
+                    </div>
+                  )}
+                  {(demand as any).contactEmail && (
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-[12px] text-[#666666] font-medium">Email</span>
+                      <span className="text-[16px] text-[#1A3A52] font-bold break-all">
+                        {(demand as any).contactEmail}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Especificações */}
             <div className="bg-white p-5 rounded-[12px] border border-[#E5E5E5] shadow-sm pointer-events-none">
               <span className="text-[12px] text-[#999999] font-black uppercase tracking-wider flex items-center gap-1.5 mb-3 border-b border-[#F5F5F5] pb-2">

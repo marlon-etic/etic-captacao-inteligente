@@ -43,7 +43,7 @@ export function useSdrQueries() {
         const endIso = end.toISOString()
 
         const customField = isLocacao ? 'observacoes' : 'necessidades_especificas'
-        const fieldsToSelect = `id, created_at, status_demanda, updated_at, nome_cliente, cliente_nome, valor_maximo, bairros, ${ownerField}, is_prioritaria, nivel_urgencia, ${customField}`
+        const fieldsToSelect = `id, created_at, status_demanda, updated_at, nome_cliente, cliente_nome, valor_minimo, valor_maximo, bairros, ${ownerField}, is_prioritaria, nivel_urgencia, telefone, email, dormitorios, vagas_estacionamento, banheiros, tipo_imovel, ${customField}`
 
         let demandasQuery = supabase
           .from(demandasTable)
