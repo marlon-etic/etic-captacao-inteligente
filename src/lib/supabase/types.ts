@@ -1786,8 +1786,11 @@ export type Database = {
           cliente_nome: string
           compatibilidade_pct: number
           demanda_id: string
+          imovel_id: string
           match_status: string
           motivo: string
+          orcamento: number
+          score: number
           specs: string
           tipo: string
         }[]

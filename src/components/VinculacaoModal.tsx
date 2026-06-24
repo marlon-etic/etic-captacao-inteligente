@@ -93,64 +93,85 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
             : 'Todos',
       )
 
-      const fetchDemands = async () => {
-        setLoadingDemands(true)
-        try {
-          const excludedStatuses = [
-            'impossivel',
-            'perdida_baixa',
-            'perdida',
-            'concluida',
-            'localmente_perdida',
-          ]
-
-          const { data: dataLocacao } = await supabase
-            .from('demandas_locacao')
-            .select(
-              'id, nome_cliente, bairros, valor_maximo, valor_minimo, dormitorios, vagas_estacionamento, status_demanda, observacoes, tipo_imovel, imoveis_captados(id)',
-            )
-
-          const locacao = (dataLocacao || [])
-            .filter(
-              (d) =>
-                !d.status_demanda || !excludedStatuses.includes(d.status_demanda.toLowerCase()),
-            )
-            .map((d) => ({
-              ...d,
-              tipo: 'Aluguel',
-              tipo_imovel: d.tipo_imovel || ['Apartamento'],
-            }))
-
-          const { data: dataVendas } = await supabase
-            .from('demandas_vendas')
-            .select(
-              'id, nome_cliente, bairros, valor_maximo, valor_minimo, dormitorios, vagas_estacionamento, status_demanda, necessidades_especificas, tipo_imovel, imoveis_captados(id)',
-            )
-
-          const vendas = (dataVendas || [])
-            .filter(
-              (d) =>
-                !d.status_demanda || !excludedStatuses.includes(d.status_demanda.toLowerCase()),
-            )
-            .map((d) => ({
-              ...d,
-              tipo: 'Venda',
-              tipo_imovel: d.tipo_imovel || ['Apartamento'],
-            }))
-
-          setActiveDemands([...locacao, ...vendas])
-        } catch (err) {
-          console.error(err)
-        } finally {
-          setLoadingDemands(false)
-        }
-      }
-      fetchDemands()
+      // Default to property attributes so valid matches appear automatically
+      setFilterDorms(
+        imovelNormalizado.dormitorios ? String(imovelNormalizado.dormitorios) : 'Todos',
+      )
+      setFilterVagas(imovelNormalizado.vagas ? String(imovelNormalizado.vagas) : 'Todos')
+      setFilterBairro('')
     } else {
       setActiveDemands([])
       setFilterBairro('')
+      setFilterDorms('Todos')
+      setFilterVagas('Todos')
     }
   }, [isOpen, imovelNormalizado])
+
+  useEffect(() => {
+    if (!isOpen || !imovelNormalizado) return
+
+    const fetchDemands = async () => {
+      setLoadingDemands(true)
+      try {
+        const excludedStatuses = [
+          'impossivel',
+          'perdida_baixa',
+          'perdida',
+          'concluida',
+          'localmente_perdida',
+        ]
+
+        let queryLocacao = supabase
+          .from('demandas_locacao')
+          .select(
+            'id, nome_cliente, bairros, valor_maximo, valor_minimo, dormitorios, vagas_estacionamento, status_demanda, observacoes, tipo_imovel, imoveis_captados(id)',
+          )
+          .not('status_demanda', 'in', `(${excludedStatuses.join(',')})`)
+
+        let queryVendas = supabase
+          .from('demandas_vendas')
+          .select(
+            'id, nome_cliente, bairros, valor_maximo, valor_minimo, dormitorios, vagas_estacionamento, status_demanda, necessidades_especificas, tipo_imovel, imoveis_captados(id)',
+          )
+          .not('status_demanda', 'in', `(${excludedStatuses.join(',')})`)
+
+        // Backend Filter: Return demands where property matches minimum requirements
+        // Meaning demand.dormitorios <= property.dormitorios
+        if (filterDorms !== 'Todos') {
+          queryLocacao = queryLocacao.lte('dormitorios', parseInt(filterDorms))
+          queryVendas = queryVendas.lte('dormitorios', parseInt(filterDorms))
+        }
+
+        if (filterVagas !== 'Todos') {
+          queryLocacao = queryLocacao.lte('vagas_estacionamento', parseInt(filterVagas))
+          queryVendas = queryVendas.lte('vagas_estacionamento', parseInt(filterVagas))
+        }
+
+        const [resLocacao, resVendas] = await Promise.all([queryLocacao, queryVendas])
+
+        const locacao = (resLocacao.data || []).map((d) => ({
+          ...d,
+          tipo: 'Aluguel',
+          tipo_imovel: d.tipo_imovel || ['Apartamento'],
+        }))
+
+        const vendas = (resVendas.data || []).map((d) => ({
+          ...d,
+          tipo: 'Venda',
+          tipo_imovel: d.tipo_imovel || ['Apartamento'],
+        }))
+
+        setActiveDemands([...locacao, ...vendas])
+      } catch (err) {
+        console.error(err)
+      } finally {
+        setLoadingDemands(false)
+      }
+    }
+
+    const timeoutId = setTimeout(fetchDemands, 300)
+    return () => clearTimeout(timeoutId)
+  }, [isOpen, filterDorms, filterVagas, imovelNormalizado?.id])
 
   // ✅ USAR IMOVEL NORMALIZADO AQUI
   const scoredDemands = useMemo(() => {
@@ -177,16 +198,17 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
   const filteredDemands = useMemo(() => {
     return scoredDemands.filter((d) => {
       if (filterTipo !== 'Todos' && d.tipo !== filterTipo) return false
-      if (
-        filterBairro &&
-        !d.bairros?.some((b: string) => b.toLowerCase().includes(filterBairro.toLowerCase()))
-      )
-        return false
-      if (filterDorms !== 'Todos' && d.dormitorios > parseInt(filterDorms)) return false
-      if (filterVagas !== 'Todos' && d.vagas_estacionamento > parseInt(filterVagas)) return false
+
+      // Client-side partial matching for Neighborhood to fulfill LIKE logic correctly
+      if (filterBairro && filterBairro.trim() !== '') {
+        const term = filterBairro.toLowerCase()
+        const hasMatch = d.bairros?.some((b: string) => b.toLowerCase().includes(term))
+        if (!hasMatch) return false
+      }
+
       return true
     })
-  }, [scoredDemands, filterTipo, filterBairro, filterDorms, filterVagas])
+  }, [scoredDemands, filterTipo, filterBairro])
 
   const selectedDemand = useMemo(
     () => filteredDemands.find((d) => d.id === selectedDemandId) || null,
@@ -403,7 +425,10 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
               <option value="1">Até 1</option>
               <option value="2">Até 2</option>
               <option value="3">Até 3</option>
-              <option value="4">Até 4+</option>
+              <option value="4">Até 4</option>
+              {filterDorms !== 'Todos' && parseInt(filterDorms) > 4 && (
+                <option value={filterDorms}>Até {filterDorms}</option>
+              )}
             </select>
           </div>
 
@@ -417,7 +442,10 @@ export function VinculacaoModal({ isOpen, onClose, imovel, onSuccess }: Props) {
               <option value="Todos">Indiferente</option>
               <option value="1">Até 1</option>
               <option value="2">Até 2</option>
-              <option value="3">Até 3+</option>
+              <option value="3">Até 3</option>
+              {filterVagas !== 'Todos' && parseInt(filterVagas) > 3 && (
+                <option value={filterVagas}>Até {filterVagas}</option>
+              )}
             </select>
           </div>
         </div>

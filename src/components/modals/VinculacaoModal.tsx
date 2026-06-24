@@ -54,20 +54,32 @@ export function VinculacaoModal({ isOpen, onClose, imovelData, onSuccess }: Vinc
   const fetchDemands = async () => {
     setLoadingDemands(true)
     try {
-      const [locacaoRes, vendasRes] = await Promise.all([
-        supabase
-          .from('demandas_locacao')
-          .select('*')
-          .in('status_demanda', ['aberta', 'atendida'])
-          .order('created_at', { ascending: false })
-          .limit(50),
-        supabase
-          .from('demandas_vendas')
-          .select('*')
-          .in('status_demanda', ['aberta', 'atendida'])
-          .order('created_at', { ascending: false })
-          .limit(50),
-      ])
+      let locacaoQuery = supabase
+        .from('demandas_locacao')
+        .select('*')
+        .in('status_demanda', ['aberta', 'atendida'])
+        .order('created_at', { ascending: false })
+        .limit(50)
+
+      let vendasQuery = supabase
+        .from('demandas_vendas')
+        .select('*')
+        .in('status_demanda', ['aberta', 'atendida'])
+        .order('created_at', { ascending: false })
+        .limit(50)
+
+      // Apply inclusive logic: Demand's min requirements <= Property's capabilities
+      if (imovelNormalizado.dormitorios && imovelNormalizado.dormitorios > 0) {
+        locacaoQuery = locacaoQuery.lte('dormitorios', imovelNormalizado.dormitorios)
+        vendasQuery = vendasQuery.lte('dormitorios', imovelNormalizado.dormitorios)
+      }
+
+      if (imovelNormalizado.vagas && imovelNormalizado.vagas > 0) {
+        locacaoQuery = locacaoQuery.lte('vagas_estacionamento', imovelNormalizado.vagas)
+        vendasQuery = vendasQuery.lte('vagas_estacionamento', imovelNormalizado.vagas)
+      }
+
+      const [locacaoRes, vendasRes] = await Promise.all([locacaoQuery, vendasQuery])
 
       const combined = [
         ...(locacaoRes.data || []).map((d) => ({
