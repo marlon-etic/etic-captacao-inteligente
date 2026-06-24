@@ -315,7 +315,7 @@ export function ModalDetalhesImovel({ imovel, onClose, refetch }: any) {
                 </div>
               ) : matches.length === 0 ? (
                 <div className="bg-white p-12 rounded-2xl border border-gray-100 text-center text-gray-500 font-bold shadow-sm">
-                  Nenhuma demanda com compatibilidade alta (&gt;=70%) encontrada no momento.
+                  Nenhuma demanda compatível encontrada no momento.
                 </div>
               ) : (
                 matches.map((m) => (
@@ -333,13 +333,23 @@ export function ModalDetalhesImovel({ imovel, onClose, refetch }: any) {
                           {m.tipo}
                         </Badge>
                         <Badge
-                          className={`font-black uppercase tracking-wider text-[10px] ${m.match_status === 'alto' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'} border-none`}
+                          className={`font-black uppercase tracking-wider text-[10px] ${
+                            m.match_status === 'alto'
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : m.match_status === 'medio'
+                                ? 'bg-amber-100 text-amber-800'
+                                : 'bg-red-100 text-red-800'
+                          } border-none`}
                         >
-                          {m.compatibilidade_pct}% Match
+                          {m.score || m.compatibilidade_pct}% Match
                         </Badge>
                       </div>
                       <p className="text-sm font-bold text-gray-500 mb-1">
-                        {m.bairros?.join(', ')} • {m.specs}
+                        {m.bairros?.join(', ')} • {m.specs} •{' '}
+                        {new Intl.NumberFormat('pt-BR', {
+                          style: 'currency',
+                          currency: 'BRL',
+                        }).format(m.orcamento || m.budget || 0)}
                       </p>
                       <p className="text-xs text-gray-400 font-medium">Motivos: {m.motivo}</p>
                     </div>
