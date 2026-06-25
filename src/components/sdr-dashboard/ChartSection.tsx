@@ -23,19 +23,17 @@ interface Props {
   data: ChartDataGroup
   title: string
   label: string
-  color1: string
-  color2: string
 }
 
-export function ChartSection({ data, title, label, color1, color2 }: Props) {
+export function ChartSection({ data, title, label }: Props) {
   return (
     <div className="mb-8">
       <h3 className="text-xl font-bold text-[#1A3A52] mb-6">{title}</h3>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 w-full">
         {/* Property Type Chart */}
         <ChartCard title="Tipologia (Tipo de Imóvel)">
           {data.tipoData.length > 0 ? (
-            <ChartContainer config={{ value: { label, color: color1 } }} className="h-full w-full">
+            <ChartContainer config={data.tipoConfig} className="h-full w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
                   data={data.tipoData}
@@ -55,8 +53,12 @@ export function ChartSection({ data, title, label, color1, color2 }: Props) {
                     axisLine={false}
                     tick={{ fontSize: 11, fill: '#6b7280', fontWeight: 600 }}
                   />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Bar dataKey="value" fill={color1} radius={[4, 4, 0, 0]} maxBarSize={50} />
+                  <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
+                  <Bar dataKey="value" radius={[4, 4, 0, 0]} maxBarSize={50}>
+                    {data.tipoData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.fill} />
+                    ))}
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </ChartContainer>
@@ -68,7 +70,7 @@ export function ChartSection({ data, title, label, color1, color2 }: Props) {
         {/* Top Bairros Chart */}
         <ChartCard title="Top Bairros (Localização)">
           {data.bairrosData.length > 0 ? (
-            <ChartContainer config={{ value: { label, color: color2 } }} className="h-full w-full">
+            <ChartContainer config={data.bairrosConfig} className="h-full w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
                   data={data.bairrosData}
@@ -90,8 +92,12 @@ export function ChartSection({ data, title, label, color1, color2 }: Props) {
                     tick={{ fontSize: 11, fill: '#6b7280', fontWeight: 600 }}
                     width={100}
                   />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Bar dataKey="value" fill={color2} radius={[0, 4, 4, 0]} maxBarSize={40} />
+                  <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
+                  <Bar dataKey="value" radius={[0, 4, 4, 0]} maxBarSize={40}>
+                    {data.bairrosData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.fill} />
+                    ))}
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </ChartContainer>
