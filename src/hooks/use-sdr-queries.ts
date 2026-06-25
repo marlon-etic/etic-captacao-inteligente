@@ -26,17 +26,26 @@ export function useSdrQueries() {
 
         if (periodo === 'hoje') {
           start.setHours(0, 0, 0, 0)
+          end.setHours(23, 59, 59, 999)
         } else if (periodo === 'semana') {
           start.setDate(start.getDate() - 7)
           start.setHours(0, 0, 0, 0)
+          end.setHours(23, 59, 59, 999)
         } else if (periodo === 'mes') {
           start.setDate(1)
           start.setHours(0, 0, 0, 0)
+          end.setHours(23, 59, 59, 999)
         } else if (periodo === 'sempre') {
           applyDateFilter = false
         } else if (periodo === 'custom' && dataCustomStart) {
           start = new Date(dataCustomStart)
-          if (dataCustomEnd) end = new Date(dataCustomEnd)
+          start.setHours(0, 0, 0, 0)
+          if (dataCustomEnd) {
+            end = new Date(dataCustomEnd)
+            end.setHours(23, 59, 59, 999)
+          } else {
+            end.setHours(23, 59, 59, 999)
+          }
         }
 
         const startIso = start.toISOString()
@@ -56,6 +65,7 @@ export function useSdrQueries() {
           ownerField: string,
           tipoDemanda: string,
           customField: string,
+          visibility: 'all' | 'own',
         ) => {
           const fields = `id, created_at, status_demanda, updated_at, nome_cliente, cliente_nome, valor_minimo, valor_maximo, bairros, ${ownerField}, is_prioritaria, nivel_urgencia, telefone, email, dormitorios, vagas_estacionamento, banheiros, tipo_imovel, ${customField}`
 
@@ -63,7 +73,8 @@ export function useSdrQueries() {
             .from(tabela)
             .select(fields)
             .neq('status_demanda', 'impossivel')
-          if (!isAdmin && !isCaptador) queryCreated = queryCreated.eq(ownerField, user.id)
+
+          if (visibility === 'own') queryCreated = queryCreated.eq(ownerField, user.id)
           if (applyDateFilter) {
             queryCreated = queryCreated.gte('created_at', startIso).lte('created_at', endIso)
           }
@@ -73,7 +84,11 @@ export function useSdrQueries() {
             .from(tabela)
             .select(fields)
             .in('status_demanda', ['aberta', 'em busca', 'em visita'])
-          if (!isAdmin && !isCaptador) queryActive = queryActive.eq(ownerField, user.id)
+
+          if (visibility === 'own') queryActive = queryActive.eq(ownerField, user.id)
+          if (applyDateFilter) {
+            queryActive = queryActive.gte('created_at', startIso).lte('created_at', endIso)
+          }
 
           let inativasQuery = supabase
             .from(tabela)
@@ -81,7 +96,11 @@ export function useSdrQueries() {
             .in('status_demanda', ['aberta', 'em busca', 'em visita'])
             .not('updated_at', 'is', null)
             .lt('updated_at', seteDiasAtrasIso)
-          if (!isAdmin && !isCaptador) inativasQuery = inativasQuery.eq(ownerField, user.id)
+
+          if (visibility === 'own') inativasQuery = inativasQuery.eq(ownerField, user.id)
+          if (applyDateFilter) {
+            inativasQuery = inativasQuery.gte('created_at', startIso).lte('created_at', endIso)
+          }
 
           const [{ data: dCreated }, { data: dActive }, { data: inativas }] = await Promise.all([
             queryCreated,
@@ -103,31 +122,46 @@ export function useSdrQueries() {
               ...x,
               tipo: tipoDemanda,
               tipo_demanda: tipoDemanda,
+              dormitorios: Number(x.dormitorios) || 0,
+              vagas_estacionamento: Number(x.vagas_estacionamento) || 0,
+              banheiros: Number(x.banheiros) || 0,
+              valor_minimo: Number(x.valor_minimo) || 0,
+              valor_maximo: Number(x.valor_maximo) || 0,
             })),
             inativas: (inativas || []).map((x: any) => ({
               ...x,
               tipo: tipoDemanda,
               tipo_demanda: tipoDemanda,
+              dormitorios: Number(x.dormitorios) || 0,
+              vagas_estacionamento: Number(x.vagas_estacionamento) || 0,
+              banheiros: Number(x.banheiros) || 0,
+              valor_minimo: Number(x.valor_minimo) || 0,
+              valor_maximo: Number(x.valor_maximo) || 0,
             })),
           }
         }
 
-        if (isAdmin || isCaptador || isSdr) {
-          const res = await fetchDemandas('demandas_locacao', 'sdr_id', 'Locação', 'observacoes')
-          todasDemandas = [...todasDemandas, ...res.demandas]
-          demandasInativas = [...demandasInativas, ...res.inativas]
-        }
+        const visLocacao = isAdmin || isCaptador || isSdr ? 'all' : 'own'
+        const resLocacao = await fetchDemandas(
+          'demandas_locacao',
+          'sdr_id',
+          'Locação',
+          'observacoes',
+          visLocacao,
+        )
+        todasDemandas = [...todasDemandas, ...resLocacao.demandas]
+        demandasInativas = [...demandasInativas, ...resLocacao.inativas]
 
-        if (isAdmin || isCaptador || isCorretor) {
-          const res = await fetchDemandas(
-            'demandas_vendas',
-            'corretor_id',
-            'Venda',
-            'necessidades_especificas',
-          )
-          todasDemandas = [...todasDemandas, ...res.demandas]
-          demandasInativas = [...demandasInativas, ...res.inativas]
-        }
+        const visVendas = isAdmin || isCaptador || isCorretor ? 'all' : 'own'
+        const resVendas = await fetchDemandas(
+          'demandas_vendas',
+          'corretor_id',
+          'Venda',
+          'necessidades_especificas',
+          visVendas,
+        )
+        todasDemandas = [...todasDemandas, ...resVendas.demandas]
+        demandasInativas = [...demandasInativas, ...resVendas.inativas]
 
         let imoveisBase = supabase
           .from('imoveis_captados')
@@ -152,11 +186,22 @@ export function useSdrQueries() {
           .in('status_captacao', ['ativo', 'em captacao', 'em_captacao'])
           .limit(300)
 
+        if (applyDateFilter) {
+          qActive = qActive.gte('created_at', startIso).lte('created_at', endIso)
+        }
+
         const [{ data: imCreated }, { data: imActive }] = await Promise.all([qCreated, qActive])
 
         const imCombinedMap = new Map()
         ;[...(imCreated || []), ...(imActive || [])].forEach((item: any) => {
-          imCombinedMap.set(item.id, item)
+          imCombinedMap.set(item.id, {
+            ...item,
+            dormitorios: Number(item.dormitorios) || 0,
+            vagas: Number(item.vagas) || 0,
+            banheiros: Number(item.banheiros) || 0,
+            preco: Number(item.preco) || 0,
+            valor: Number(item.valor) || 0,
+          })
         })
 
         const imoveisLivresFiltered = Array.from(imCombinedMap.values())
@@ -185,7 +230,15 @@ export function useSdrQueries() {
           }
 
           imoveisSobDemanda = (
-            imVList.map((m: any) => ({ ...m.imoveis_captados, match_info: m })) || []
+            imVList.map((m: any) => ({
+              ...m.imoveis_captados,
+              match_info: m,
+              dormitorios: Number(m.imoveis_captados?.dormitorios) || 0,
+              vagas: Number(m.imoveis_captados?.vagas) || 0,
+              banheiros: Number(m.imoveis_captados?.banheiros) || 0,
+              preco: Number(m.imoveis_captados?.preco) || 0,
+              valor: Number(m.imoveis_captados?.valor) || 0,
+            })) || []
           ).sort(
             (a: any, b: any) =>
               new Date(b.updated_at || b.created_at).getTime() -
