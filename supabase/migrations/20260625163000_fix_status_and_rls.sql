@@ -63,6 +63,6 @@ CREATE POLICY "Corretores can read venda and ambos properties" ON public.imoveis
   FOR SELECT
   TO authenticated
   USING (
-    ((SELECT role FROM public.users WHERE id = auth.uid()) = 'corretor' OR (SELECT role FROM public.users WHERE id = auth.uid()) = 'broker')
+    (SELECT role FROM public.users WHERE id = auth.uid()) = 'corretor'
     AND (tipo = 'Venda' OR tipo = 'Ambos' OR tipo IS NULL)
   );
