@@ -22,7 +22,7 @@ DROP POLICY IF EXISTS "SDRs can read locacao and ambos properties" ON public.imo
 CREATE POLICY "SDRs can read locacao and ambos properties" ON public.imoveis_captados
 FOR SELECT TO authenticated
 USING (
-  ((SELECT role FROM public.users WHERE id = auth.uid()) = 'sdr')
+  ((SELECT role::text FROM public.users WHERE id = auth.uid()) = 'sdr')
   AND (tipo IN ('Locação', 'Aluguel', 'Ambos', 'Ambas', 'locacao', 'aluguel', 'ambos'))
 );
 
@@ -30,6 +30,6 @@ DROP POLICY IF EXISTS "Corretores can read venda and ambos properties" ON public
 CREATE POLICY "Corretores can read venda and ambos properties" ON public.imoveis_captados
 FOR SELECT TO authenticated
 USING (
-  ((SELECT role FROM public.users WHERE id = auth.uid()) IN ('corretor', 'broker'))
+  ((SELECT role::text FROM public.users WHERE id = auth.uid()) IN ('corretor', 'broker'))
   AND (tipo IN ('Venda', 'Ambos', 'Ambas', 'venda', 'ambos'))
 );
