@@ -70,7 +70,7 @@ export default function MatchInteligentes() {
         `)
         .eq('status', 'pendente')
         .order('score', { ascending: false })
-        .limit(100)
+        .limit(1000)
 
       if (role === 'sdr') {
         query = query.in('demanda_tipo', ['Locação', 'Aluguel'])
