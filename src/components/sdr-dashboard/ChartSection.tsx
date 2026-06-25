@@ -27,7 +27,7 @@ interface Props {
 
 export function ChartSection({ data, title, label }: Props) {
   return (
-    <div className="mb-8">
+    <div className="mb-8 w-full">
       <h3 className="text-xl font-bold text-[#1A3A52] mb-6">{title}</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 w-full">
         {/* Property Type Chart */}
@@ -126,7 +126,7 @@ function EmptyState() {
 
 function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <Card className="rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.05)] border-gray-100 bg-white flex flex-col min-w-0">
+    <Card className="rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.05)] border-gray-100 bg-white flex flex-col min-w-0 h-full">
       <CardHeader className="bg-gray-50/50 border-b border-gray-100 pb-4 shrink-0">
         <CardTitle className="text-[15px] font-bold text-[#1A3A52]">{title}</CardTitle>
       </CardHeader>

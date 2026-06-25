@@ -50,8 +50,14 @@ export function processComparativeChartData(
   imoveis: any[],
 ): { demandStats: ChartDataGroup; inventoryStats: ChartDataGroup } {
   const sharedState = {
-    tipoColorMap: {} as Record<string, string>,
-    tipoColorIdx: 0,
+    tipoColorMap: {
+      Apartamento: '#3b82f6',
+      Casa: '#10b981',
+      Comercial: '#f59e0b',
+      'Terreno/Lote': '#ef4444',
+      Outros: '#94a3b8',
+    } as Record<string, string>,
+    tipoColorIdx: 4,
     bairroColorMap: {} as Record<string, string>,
     bairroColorIdx: 0,
   }
@@ -89,12 +95,30 @@ export function processComparativeChartData(
       if (typeof t === 'string' && t.includes(',')) t = t.split(',')[0]
       t = t.trim()
       if (!t) t = 'Outros'
+
+      const isComm = isCommercial(t)
+      if (isComm) {
+        if (t.toLowerCase().includes('lote') || t.toLowerCase().includes('terreno')) {
+          t = 'Terreno/Lote'
+        } else {
+          t = 'Comercial'
+        }
+      } else {
+        if (t.toLowerCase() === 'apto' || t.toLowerCase().includes('apartamento')) {
+          t = 'Apartamento'
+        } else if (t.toLowerCase().includes('casa')) {
+          t = 'Casa'
+        } else {
+          t = t.charAt(0).toUpperCase() + t.slice(1).toLowerCase()
+        }
+      }
+
       tipoCount[t] = (tipoCount[t] || 0) + 1
 
       // Dormitórios
       let dNum =
         typeof item.dormitorios === 'number' ? item.dormitorios : parseInt(item.dormitorios) || 0
-      if (isCommercial(t)) {
+      if (isCommercial(t) || t === 'Terreno/Lote' || item.dormitorios == null) {
         dNum = 0
       }
       const labelDorm = dNum >= 4 ? '4+' : `${dNum}`
@@ -102,7 +126,10 @@ export function processComparativeChartData(
 
       // Vagas
       const vField = itemType === 'demanda' ? item.vagas_estacionamento : item.vagas
-      const vNum = typeof vField === 'number' ? vField : parseInt(vField) || 0
+      let vNum = typeof vField === 'number' ? vField : parseInt(vField) || 0
+      if (isCommercial(t) || t === 'Terreno/Lote' || vField == null) {
+        vNum = 0
+      }
       const labelVaga = vNum >= 3 ? '3+' : `${vNum}`
       vagasCount[labelVaga] = (vagasCount[labelVaga] || 0) + 1
 
@@ -113,7 +140,12 @@ export function processComparativeChartData(
         if (b.includes('-')) b = b.split('-')[0]
         b = b.trim()
         if (b.length > 25) b = b.substring(0, 25) + '...'
-        if (b && b.toLowerCase() !== 'não informado' && b.toLowerCase() !== 'nao informado') {
+        if (
+          b &&
+          b.toLowerCase() !== 'não informado' &&
+          b.toLowerCase() !== 'nao informado' &&
+          b.toLowerCase() !== 'indiferente'
+        ) {
           bairrosCount[b] = (bairrosCount[b] || 0) + 1
         }
       }

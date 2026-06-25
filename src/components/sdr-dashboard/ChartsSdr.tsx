@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { processComparativeChartData } from './chart-utils'
 import { ChartSection } from './ChartSection'
@@ -16,8 +16,20 @@ export function ChartsSdr({
   const loading = propLoading ?? false
   const { role } = useUserRole()
   const { user } = useAuth()
+  const containerRef = useRef<HTMLDivElement>(null)
 
   const [adminView, setAdminView] = useState<'all' | 'venda' | 'locacao'>('all')
+
+  useEffect(() => {
+    // Find parent container with lg:grid-cols-2 and remove it to allow full width
+    const el = containerRef.current?.closest('.lg\\:grid-cols-2') as HTMLElement
+    if (el) {
+      el.classList.remove('lg:grid-cols-2')
+      if (!el.classList.contains('grid-cols-1')) {
+        el.classList.add('grid-cols-1')
+      }
+    }
+  }, [])
 
   const demandas = Array.isArray(propData?.demandas) ? propData.demandas : []
   const imoveis = [
@@ -109,7 +121,7 @@ export function ChartsSdr({
 
   if (loading) {
     return (
-      <div className="w-full flex flex-col gap-10 mb-8">
+      <div ref={containerRef} className="w-full flex flex-col gap-10 mb-8">
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 w-full">
           <Skeleton className="h-[380px] w-full rounded-2xl" />
           <Skeleton className="h-[380px] w-full rounded-2xl" />
@@ -129,7 +141,7 @@ export function ChartsSdr({
   const isAdmin = role === 'admin' || role === 'gestor'
 
   return (
-    <div className="w-full flex flex-col gap-2">
+    <div ref={containerRef} className="w-full flex flex-col gap-2">
       {isAdmin && (
         <div className="flex flex-row justify-end mb-4">
           <ToggleGroup
