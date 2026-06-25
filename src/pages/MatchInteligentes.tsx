@@ -190,9 +190,9 @@ export default function MatchInteligentes() {
       const finalMatches = enrichedMatches.filter((m: any) => {
         if (!m.imovel || !m.demanda) return false
 
-        // Strict filtering: ensure only active demands are displayed
+        // Strict filtering: ensure only active or open demands are displayed
         const status = m.demanda.status_demanda?.toLowerCase() || ''
-        if (status !== 'ativo') return false
+        if (status !== 'ativo' && status !== 'aberta') return false
 
         if (role === 'admin' || role === 'gestor') return true
 
