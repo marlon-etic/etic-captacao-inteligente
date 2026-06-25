@@ -19,7 +19,7 @@ END $$;
 
 ALTER TABLE public.demandas_locacao
 ADD CONSTRAINT chk_status_demanda_locacao
-CHECK (lower(status_demanda) IN ('ativo', 'aberta', 'pausada', 'fechada', 'perdida', 'perdido', 'concluída', 'concluida', 'pendente', 'cancelada'));
+CHECK (lower(status_demanda) IN ('ativo', 'aberta', 'pausada', 'fechada', 'fechado', 'perdida', 'perdido', 'concluída', 'concluida', 'pendente', 'cancelada', 'atendida', 'ganho', 'em busca', 'sem_resposta_24h', 'impossivel', 'perdida_baixa', 'arquivada')) NOT VALID;
 
 
 -- Fix check constraint on demandas_vendas to include 'perdida'
@@ -41,7 +41,7 @@ END $$;
 
 ALTER TABLE public.demandas_vendas
 ADD CONSTRAINT chk_status_demanda_vendas
-CHECK (lower(status_demanda) IN ('ativo', 'aberta', 'pausada', 'fechada', 'perdida', 'perdido', 'concluída', 'concluida', 'pendente', 'cancelada'));
+CHECK (lower(status_demanda) IN ('ativo', 'aberta', 'pausada', 'fechada', 'fechado', 'perdida', 'perdido', 'concluída', 'concluida', 'pendente', 'cancelada', 'atendida', 'ganho', 'em busca', 'sem_resposta_24h', 'impossivel', 'perdida_baixa', 'arquivada')) NOT VALID;
 
 
 -- Update RLS policies for imoveis_captados
