@@ -24,7 +24,9 @@ import {
   Search,
   RefreshCw,
   Zap,
+  ExternalLink,
 } from 'lucide-react'
+import { getPropertyPublicUrl } from '@/lib/propertyUrl'
 import { cn } from '@/lib/utils'
 import { SupabaseDemand } from '@/hooks/use-supabase-demands'
 import { supabase } from '@/lib/supabase/client'
@@ -685,13 +687,25 @@ export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDeman
                   return (
                     <div
                       key={imovel.id}
-                      className="bg-white p-3.5 rounded-lg border border-[#E5E5E5] shadow-sm flex flex-col lg:flex-row gap-4 items-start lg:items-center hover:border-[#1A3A52]/30 transition-colors pointer-events-none"
+                      className="bg-white p-3.5 rounded-lg border border-[#E5E5E5] shadow-sm flex flex-col lg:flex-row gap-4 items-start lg:items-center hover:border-[#1A3A52]/30 transition-colors pointer-events-auto"
                     >
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-2">
-                          <span className="font-black text-[#1A3A52] text-[14px] truncate">
-                            {imovel.codigo_imovel || 'Sem código'}
-                          </span>
+                          {imovel.codigo_imovel ? (
+                            <a
+                              href={getPropertyPublicUrl(imovel.codigo_imovel)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="font-black text-blue-600 hover:text-blue-800 hover:underline text-[14px] truncate flex items-center gap-1.5 pointer-events-auto"
+                            >
+                              {imovel.codigo_imovel}
+                              <ExternalLink size={12} className="shrink-0" />
+                            </a>
+                          ) : (
+                            <span className="font-black text-[#1A3A52] text-[14px] truncate">
+                              Sem código
+                            </span>
+                          )}
                           <Badge
                             variant="outline"
                             className={cn(

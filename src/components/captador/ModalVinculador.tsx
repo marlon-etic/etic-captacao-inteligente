@@ -9,6 +9,7 @@ import { Demand } from './BuscarDemandas'
 import { calculateMatching, getScoreBadgeColor } from '@/lib/matching'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
+import { getPropertyPublicUrl } from '@/lib/propertyUrl'
 
 export function ModalVinculador({
   demanda,
@@ -210,7 +211,7 @@ export function ModalVinculador({
                         </Badge>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-y-1 mb-2">
+                      <div className="grid grid-cols-2 gap-y-2 mb-2">
                         <p className="text-sm font-bold text-gray-900">
                           R$ {(imovel.preco || imovel.valor || 0).toLocaleString('pt-BR')}
                         </p>
@@ -224,21 +225,28 @@ export function ModalVinculador({
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100">
-                        <p className="text-xs text-gray-500 line-clamp-1 flex items-center gap-1">
-                          <MapPin size={12} className="text-gray-400 shrink-0" />
-                          {imovel.localizacao_texto ||
-                            imovel.endereco ||
-                            'Localização não informada'}
+                      <div className="flex flex-col gap-1.5 mb-2">
+                        <p className="text-xs text-gray-600 line-clamp-1 flex items-center gap-1.5">
+                          <MapPin size={14} className="text-pink-500 shrink-0" />
+                          <span className="font-semibold text-gray-700">Bairro:</span>{' '}
+                          {imovel.localizacao_texto || 'Não informado'}
                         </p>
+                        <p className="text-xs text-gray-600 line-clamp-1 flex items-center gap-1.5">
+                          <MapPin size={14} className="text-transparent shrink-0" />
+                          <span className="font-semibold text-gray-700">Localização:</span>{' '}
+                          {imovel.endereco || 'Não informada'}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center justify-end mt-2 pt-3 border-t border-gray-100">
                         <a
-                          href={`/app/admin/properties?id=${imovel.id}`}
+                          href={getPropertyPublicUrl(imovel.codigo_imovel)}
                           target="_blank"
                           rel="noopener noreferrer"
                           onClick={(e) => e.stopPropagation()}
-                          className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1 font-medium bg-blue-50 px-2 py-1 rounded"
+                          className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1.5 font-bold bg-blue-50 px-3 py-1.5 rounded-lg transition-colors hover:bg-blue-100"
                         >
-                          Ver <ExternalLink size={12} />
+                          Ver Imóvel <ExternalLink size={14} />
                         </a>
                       </div>
                     </div>
