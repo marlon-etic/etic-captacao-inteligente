@@ -97,148 +97,104 @@ export function processComparativeChartData(
       if (!t) t = 'Outros'
 
       const isComm = isCommercial(t)
-      if (isComm) {
-        if (t.toLowerCase().includes('lote') || t.toLowerCase().includes('terreno')) {
-          t = 'Terreno/Lote'
-        } else {
-          t = 'Comercial'
-        }
-      } else {
-        if (t.toLowerCase() === 'apto' || t.toLowerCase().includes('apartamento')) {
-          t = 'Apartamento'
-        } else if (t.toLowerCase().includes('casa')) {
-          t = 'Casa'
-        } else {
-          t = t.charAt(0).toUpperCase() + t.slice(1).toLowerCase()
-        }
-      }
 
       tipoCount[t] = (tipoCount[t] || 0) + 1
 
-      // Dormitórios
-      let dNum =
-        typeof item.dormitorios === 'number' ? item.dormitorios : parseInt(item.dormitorios) || 0
-      if (isCommercial(t) || t === 'Terreno/Lote' || item.dormitorios == null) {
-        dNum = 0
-      }
-      const labelDorm = dNum >= 4 ? '4+' : `${dNum}`
-      dormsCount[labelDorm] = (dormsCount[labelDorm] || 0) + 1
+      // Dormitórios and Vagas
+      const d = isComm ? 0 : (item.dormitorios ?? item.quartos ?? 0)
+      const v = isComm ? 0 : (item.vagas ?? item.vagas_estacionamento ?? 0)
 
-      // Vagas
-      const vField = itemType === 'demanda' ? item.vagas_estacionamento : item.vagas
-      let vNum = typeof vField === 'number' ? vField : parseInt(vField) || 0
-      if (isCommercial(t) || t === 'Terreno/Lote' || vField == null) {
-        vNum = 0
-      }
-      const labelVaga = vNum >= 3 ? '3+' : `${vNum}`
-      vagasCount[labelVaga] = (vagasCount[labelVaga] || 0) + 1
+      const dStr = d >= 4 ? '4+' : String(d)
+      const vStr = v >= 4 ? '4+' : String(v)
+
+      dormsCount[dStr] = (dormsCount[dStr] || 0) + 1
+      vagasCount[vStr] = (vagasCount[vStr] || 0) + 1
 
       // Bairros
-      const extractBairro = (bStr: string) => {
-        let b = bStr
-        if (b.includes(',')) b = b.split(',')[0]
-        if (b.includes('-')) b = b.split('-')[0]
-        b = b.trim()
-        if (b.length > 25) b = b.substring(0, 25) + '...'
-        if (
-          b &&
-          b.toLowerCase() !== 'não informado' &&
-          b.toLowerCase() !== 'nao informado' &&
-          b.toLowerCase() !== 'indiferente'
-        ) {
-          bairrosCount[b] = (bairrosCount[b] || 0) + 1
-        }
-      }
-
+      let bArray: string[] = []
       if (itemType === 'demanda') {
-        const bArray = Array.isArray(item.bairros) ? item.bairros : []
-        if (bArray.length > 0) {
-          bArray.forEach((b) => extractBairro(typeof b === 'string' ? b : String(b)))
-        } else if (item.localizacoes && Array.isArray(item.localizacoes)) {
-          item.localizacoes.forEach((b: any) =>
-            extractBairro(typeof b === 'string' ? b : String(b)),
-          )
+        if (Array.isArray(item.bairros) && item.bairros.length > 0) {
+          bArray = item.bairros
+        } else if (Array.isArray(item.localizacoes) && item.localizacoes.length > 0) {
+          bArray = item.localizacoes
+        } else if (typeof item.bairros === 'string') {
+          try {
+            bArray = JSON.parse(item.bairros)
+            if (!Array.isArray(bArray)) bArray = [item.bairros]
+          } catch {
+            bArray = [item.bairros]
+          }
         }
       } else {
-        const bStr = item.localizacao_texto || item.endereco || ''
-        if (bStr) extractBairro(bStr)
+        if (item.localizacao_texto) {
+          bArray = [item.localizacao_texto]
+        } else if (item.endereco) {
+          const parts = item.endereco.split(',')
+          if (parts.length > 1) {
+            bArray = [parts[1].trim()]
+          } else {
+            bArray = [item.endereco]
+          }
+        }
       }
+
+      bArray.forEach((b) => {
+        if (!b) return
+        const bClean = String(b).trim()
+        if (bClean && bClean.toLowerCase() !== 'não informado') {
+          bairrosCount[bClean] = (bairrosCount[bClean] || 0) + 1
+        }
+      })
     })
 
-    const formatDonut = (
-      countMap: Record<string, number>,
-      colors: string[],
-      suffix1: string,
-      suffix2: string,
-    ) => {
-      const data = Object.keys(countMap)
-        .map((k) => {
-          let numKey = parseInt(k)
-          let idx = isNaN(numKey) ? 0 : numKey
-          if (idx >= colors.length) idx = colors.length - 1
+    const tipoData = Object.entries(tipoCount)
+      .map(([name, value]) => ({ name, value, fill: getTipoColor(name) }))
+      .sort((a, b) => b.value - a.value)
 
-          return {
-            name: k === '0' ? 'Não inf./Comercial' : k + (k.includes('+') ? suffix2 : suffix1),
-            value: countMap[k],
-            fill: colors[idx],
-            sortKey: k === '0' ? -1 : idx,
-          }
-        })
-        .sort((a, b) => a.sortKey - b.sortKey)
+    const bairrosData = Object.entries(bairrosCount)
+      .map(([name, value]) => ({ name, value, fill: getBairroColor(name) }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 10)
 
-      const config: Record<string, any> = { value: { label: labelStr } }
-      data.forEach((d) => {
-        config[d.name] = { label: d.name, color: d.fill }
-      })
-      return { data, config }
+    const dormsData = Object.entries(dormsCount)
+      .map(([name, value]) => ({ name, value, fill: '#3b82f6' }))
+      .sort((a, b) => a.name.localeCompare(b.name))
+
+    const vagasData = Object.entries(vagasCount)
+      .map(([name, value]) => ({ name, value, fill: '#10b981' }))
+      .sort((a, b) => a.name.localeCompare(b.name))
+
+    const tipoConfig: Record<string, any> = {}
+    tipoData.forEach((d) => {
+      tipoConfig[d.name] = { label: d.name, color: d.fill }
+    })
+
+    const bairrosConfig: Record<string, any> = {}
+    bairrosData.forEach((d) => {
+      bairrosConfig[d.name] = { label: d.name, color: d.fill }
+    })
+
+    const dormsConfig = {
+      value: { label: 'Dormitórios', color: '#3b82f6' },
+    }
+    const vagasConfig = {
+      value: { label: 'Vagas', color: '#10b981' },
     }
 
-    const dormsFormat = formatDonut(
-      dormsCount,
-      ['#94a3b8', '#3b82f6', '#60a5fa', '#93c5fd', '#1d4ed8'],
-      ' Quarto(s)',
-      ' Quartos',
-    )
-    const vagasFormat = formatDonut(
-      vagasCount,
-      ['#94a3b8', '#10b981', '#34d399', '#047857'],
-      ' Vaga(s)',
-      ' Vagas',
-    )
-
-    const formatBar = (countMap: Record<string, number>, colorGetter: (name: string) => string) =>
-      Object.keys(countMap)
-        .map((k) => ({ name: k, value: countMap[k], fill: colorGetter(k) }))
-        .sort((a, b) => b.value - a.value)
-        .slice(0, 6)
-
-    const tData = formatBar(tipoCount, getTipoColor)
-    const bData = formatBar(bairrosCount, getBairroColor)
-
-    const tConfig: Record<string, any> = { value: { label: labelStr } }
-    tData.forEach((d) => {
-      tConfig[d.name] = { label: d.name, color: d.fill }
-    })
-
-    const bConfig: Record<string, any> = { value: { label: labelStr } }
-    bData.forEach((d) => {
-      bConfig[d.name] = { label: d.name, color: d.fill }
-    })
-
     return {
-      tipoData: tData,
-      bairrosData: bData,
-      dormsData: dormsFormat.data,
-      vagasData: vagasFormat.data,
-      dormsConfig: dormsFormat.config,
-      vagasConfig: vagasFormat.config,
-      tipoConfig: tConfig,
-      bairrosConfig: bConfig,
+      tipoData,
+      bairrosData,
+      dormsData,
+      vagasData,
+      tipoConfig,
+      bairrosConfig,
+      dormsConfig,
+      vagasConfig,
     }
   }
 
-  const demandStats = processItems(demandas, 'demanda', 'Demandas')
-  const inventoryStats = processItems(imoveis, 'imovel', 'Imóveis')
-
-  return { demandStats, inventoryStats }
+  return {
+    demandStats: processItems(demandas, 'demanda', 'Demandas'),
+    inventoryStats: processItems(imoveis, 'imovel', 'Imóveis'),
+  }
 }

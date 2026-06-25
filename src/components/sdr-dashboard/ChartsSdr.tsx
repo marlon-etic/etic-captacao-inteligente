@@ -21,14 +21,34 @@ export function ChartsSdr({
   const [adminView, setAdminView] = useState<'all' | 'venda' | 'locacao'>('all')
 
   useEffect(() => {
-    // Find parent container with lg:grid-cols-2 and remove it to allow full width
-    const el = containerRef.current?.closest('.lg\\:grid-cols-2') as HTMLElement
-    if (el) {
-      el.classList.remove('lg:grid-cols-2')
-      if (!el.classList.contains('grid-cols-1')) {
-        el.classList.add('grid-cols-1')
+    // Find parent containers with grid layout and remove to allow full width for charts
+    const parentGrids = [
+      containerRef.current?.closest('.lg\\:grid-cols-2'),
+      containerRef.current?.closest('.md\\:grid-cols-2'),
+      containerRef.current?.closest('.grid-cols-2'),
+      containerRef.current?.closest('.xl\\:grid-cols-2'),
+      containerRef.current?.closest('.xl\\:col-span-1'),
+      containerRef.current?.closest('.lg\\:col-span-1'),
+    ]
+
+    parentGrids.forEach((el) => {
+      if (el) {
+        el.classList.remove(
+          'lg:grid-cols-2',
+          'md:grid-cols-2',
+          'grid-cols-2',
+          'xl:grid-cols-2',
+          'xl:col-span-1',
+          'lg:col-span-1',
+        )
+        if (!el.classList.contains('grid-cols-1')) {
+          el.classList.add('grid-cols-1')
+        }
+        if (!el.classList.contains('col-span-full')) {
+          el.classList.add('col-span-full')
+        }
       }
-    }
+    })
   }, [])
 
   const demandas = Array.isArray(propData?.demandas) ? propData.demandas : []
@@ -114,79 +134,74 @@ export function ChartsSdr({
     return { filteredDemandas: fDemandas, filteredImoveis: fImoveis }
   }, [demandas, imoveis, role, user?.id, adminView])
 
-  const { demandStats, inventoryStats } = useMemo(
-    () => processComparativeChartData(filteredDemandas, filteredImoveis),
-    [filteredDemandas, filteredImoveis],
-  )
+  const { demandStats, inventoryStats } = useMemo(() => {
+    return processComparativeChartData(filteredDemandas, filteredImoveis)
+  }, [filteredDemandas, filteredImoveis])
 
   if (loading) {
     return (
-      <div ref={containerRef} className="w-full flex flex-col gap-10 mb-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 w-full">
-          <Skeleton className="h-[380px] w-full rounded-2xl" />
-          <Skeleton className="h-[380px] w-full rounded-2xl" />
-          <Skeleton className="h-[380px] w-full rounded-2xl" />
-          <Skeleton className="h-[380px] w-full rounded-2xl" />
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 w-full">
-          <Skeleton className="h-[380px] w-full rounded-2xl" />
-          <Skeleton className="h-[380px] w-full rounded-2xl" />
-          <Skeleton className="h-[380px] w-full rounded-2xl" />
-          <Skeleton className="h-[380px] w-full rounded-2xl" />
-        </div>
+      <div className="flex flex-col gap-6 w-full col-span-full">
+        <Skeleton className="h-[400px] w-full rounded-xl" />
+        <Skeleton className="h-[400px] w-full rounded-xl" />
       </div>
     )
   }
 
-  const isAdmin = role === 'admin' || role === 'gestor'
-
   return (
-    <div ref={containerRef} className="w-full flex flex-col gap-2">
-      {isAdmin && (
-        <div className="flex flex-row justify-end mb-4">
+    <div ref={containerRef} className="flex flex-col gap-8 w-full col-span-full animate-fade-in">
+      {(role === 'admin' || role === 'gestor') && (
+        <div className="flex justify-center md:justify-start">
           <ToggleGroup
             type="single"
             value={adminView}
             onValueChange={(v) => {
-              if (v) setAdminView(v as any)
+              if (v) setAdminView(v as 'all' | 'venda' | 'locacao')
             }}
-            className="bg-white border rounded-md p-1 shadow-sm"
+            className="bg-muted p-1 rounded-lg"
           >
             <ToggleGroupItem
               value="all"
-              className="h-8 px-3 text-xs data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+              className="rounded-md px-4 data-[state=on]:bg-background data-[state=on]:shadow-sm"
             >
               Visão Geral
             </ToggleGroupItem>
             <ToggleGroupItem
               value="venda"
-              className="h-8 px-3 text-xs data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+              className="rounded-md px-4 data-[state=on]:bg-background data-[state=on]:shadow-sm"
             >
-              Apenas Venda
+              Vendas
             </ToggleGroupItem>
             <ToggleGroupItem
               value="locacao"
-              className="h-8 px-3 text-xs data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+              className="rounded-md px-4 data-[state=on]:bg-background data-[state=on]:shadow-sm"
             >
-              Apenas Locação
+              Locação
             </ToggleGroupItem>
           </ToggleGroup>
         </div>
       )}
 
-      <ChartSection
-        title="Análise de Demanda (O que os clientes procuram)"
-        data={demandStats}
-        label="Demandas"
-      />
+      {/* Demand Analysis (Top Row) */}
+      <div className="w-full">
+        <ChartSection
+          title="Análise de Demandas"
+          description="Perfil das demandas dos clientes no período selecionado"
+          data={demandStats}
+        />
+      </div>
 
-      <div className="w-full h-[1px] bg-gray-200/60 my-6" />
-
-      <ChartSection
-        title="Análise de Captação (O que temos no inventário)"
-        data={inventoryStats}
-        label="Imóveis"
-      />
+      {/* Capturing Analysis (Bottom Row) */}
+      <div className="w-full">
+        <ChartSection
+          title="Análise de Captação"
+          description={
+            role === 'captador'
+              ? 'Perfil dos seus imóveis captados no período'
+              : 'Perfil do inventário de imóveis captados no período'
+          }
+          data={inventoryStats}
+        />
+      </div>
     </div>
   )
 }
