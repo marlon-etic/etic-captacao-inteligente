@@ -1816,6 +1816,16 @@ export type Database = {
         }
         Relationships: []
       }
+      vw_foco_captacao_v6: {
+        Row: {
+          bairro_alvo: string | null
+          qtd_clientes_aguardando: number | null
+          ticket_medio: number | null
+          tipo: string | null
+          tipo_imovel: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       append_captador_busca: {
@@ -1863,6 +1873,14 @@ export type Database = {
       fn_diagnose_oauth_setup: { Args: never; Returns: Json }
       fn_escalate_all_expired_demands: { Args: never; Returns: undefined }
       fn_executar_marcar_demandas_cron: { Args: never; Returns: undefined }
+      fn_gerar_match_inteligente_v4: {
+        Args: { p_imovel_id: string }
+        Returns: undefined
+      }
+      fn_gerar_match_inteligente_v6: {
+        Args: { p_imovel_id: string }
+        Returns: undefined
+      }
       fn_hard_reset_imoveis: { Args: never; Returns: undefined }
       fn_logar_falhas_api: {
         Args: {

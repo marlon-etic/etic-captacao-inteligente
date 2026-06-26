@@ -8,6 +8,7 @@ import { ImoveisPerdidosTable } from '@/components/dashboard/ImoveisPerdidosTabl
 import { ModalDetalhesImovel } from '@/components/dashboard/ModalDetalhesImovel'
 import { BuscarDemandas } from '@/components/captador/BuscarDemandas'
 import { DemandasAbertasWidget } from '@/components/dashboard/DemandasAbertasWidget'
+import { DashboardFoco } from '@/components/dashboard/DashboardFoco'
 import { useCaptadorDashboard } from '@/hooks/use-captador-dashboard'
 import { CaptadorEngajamentoModal } from '@/components/dashboard/CaptadorEngajamentoModal'
 import { usePeriodStore } from '@/stores/use-period-store'
