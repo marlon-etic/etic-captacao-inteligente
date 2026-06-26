@@ -110,6 +110,8 @@ export function CaptadorDashboard() {
         </p>
       </div>
 
+      <DashboardFoco />
+
       <div className="mb-6 animate-in fade-in duration-500 delay-100">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-black text-[#1A3A52]">🔥 Demandas Abertas (Real-time)</h2>

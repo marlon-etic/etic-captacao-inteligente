@@ -1,116 +1,88 @@
 import { useEffect, useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Target, Building2, Home } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
-import { cn } from '@/lib/utils'
+import { Target, Building2, Home } from 'lucide-react'
+import { Card, CardContent } from '@/components/ui/card'
+import { Skeleton } from '@/components/ui/skeleton'
 
-interface FocoData {
-  tipo: string
-  tipo_imovel: string
-  bairro_alvo: string
-  qtd_clientes_aguardando: number
-  ticket_medio: number
-}
-
-export function DashboardFoco({ className }: { className?: string }) {
-  const [data, setData] = useState<FocoData[]>([])
+export function DashboardFoco() {
+  const [focoData, setFocoData] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    async function fetchData() {
+    async function fetchFoco() {
       try {
-        const { data: result, error } = await supabase
-          .from('vw_foco_captacao_v6')
-          .select('*')
-          .order('qtd_clientes_aguardando', { ascending: false })
-          .limit(6)
-
-        if (!error && result) {
-          setData(result)
-        }
-      } catch (err) {
-        console.error('Failed to fetch foco captacao', err)
+        const { data, error } = await supabase.from('vw_foco_captacao_v6').select('*').limit(6)
+        if (data && !error) setFocoData(data)
+      } catch (e) {
+        console.error(e)
       } finally {
         setLoading(false)
       }
     }
-    fetchData()
+    fetchFoco()
   }, [])
 
   if (loading) {
     return (
-      <Card className={cn('rounded-xl shadow-sm bg-white animate-pulse', className)}>
-        <CardHeader className="pb-2">
-          <div className="h-6 bg-muted rounded w-1/3 mb-2"></div>
-          <div className="h-4 bg-muted rounded w-2/3"></div>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-16 bg-muted rounded-lg w-full"></div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      <div className="mb-6 animate-in fade-in duration-500">
+        <div className="flex items-center gap-2 mb-4">
+          <Target className="w-5 h-5 text-[#2E5F8A]" />
+          <h2 className="text-xl font-black text-[#1A3A52]">Prioridades de Captação</h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-[90px] w-full rounded-xl" />
+          ))}
+        </div>
+      </div>
     )
   }
 
-  if (data.length === 0) {
-    return null
-  }
+  if (focoData.length === 0) return null
 
   return (
-    <Card className={cn('rounded-xl shadow-sm bg-white', className)}>
-      <CardHeader className="pb-2">
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <Target className="h-5 w-5 text-red-500" />
-          Foco de Captação
-        </CardTitle>
-        <p className="text-sm text-muted-foreground">
-          Bairros com clientes aguardando e sem imóveis disponíveis.
-        </p>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-3">
-          {data.map((item, index) => {
-            const isComercial = item.tipo_imovel?.toLowerCase().includes('comercial')
-            return (
-              <div
-                key={index}
-                className="flex items-center justify-between p-3 rounded-lg border-l-4 border-l-blue-500 bg-muted/30 hover:bg-muted/50 transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  {isComercial ? (
-                    <div className="p-2 bg-blue-100 text-blue-600 rounded-md">
-                      <Building2 className="h-4 w-4" />
-                    </div>
-                  ) : (
-                    <div className="p-2 bg-emerald-100 text-emerald-600 rounded-md">
-                      <Home className="h-4 w-4" />
-                    </div>
-                  )}
-                  <div>
-                    <p className="font-medium text-sm text-foreground">
-                      {item.bairro_alvo} • {item.tipo}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {item.qtd_clientes_aguardando} cliente(s) aguardando
-                    </p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="font-semibold text-sm">
+    <div className="mb-6 animate-in fade-in duration-500">
+      <div className="flex items-center gap-2 mb-4">
+        <Target className="w-5 h-5 text-[#2E5F8A]" />
+        <h2 className="text-xl font-black text-[#1A3A52]">Prioridades de Captação</h2>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {focoData.map((item, idx) => (
+          <Card
+            key={idx}
+            className="overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-all"
+          >
+            <CardContent className="p-4 flex items-start gap-4">
+              <div className="p-3 bg-blue-50 rounded-lg text-blue-600">
+                {item.tipo_imovel === 'Comercial' ? (
+                  <Building2 className="w-6 h-6" />
+                ) : (
+                  <Home className="w-6 h-6" />
+                )}
+              </div>
+              <div>
+                <h3 className="font-bold text-[#1A3A52] line-clamp-1">
+                  {item.bairro_alvo || 'Região Indefinida'}
+                </h3>
+                <div className="flex items-center gap-3 mt-1 text-sm">
+                  <span className="text-emerald-600 font-medium">
+                    {item.qtd_clientes_aguardando} clientes
+                  </span>
+                  <span className="text-gray-400 font-medium text-xs">
+                    Ticket:{' '}
                     {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
-                      item.ticket_medio,
+                      item.ticket_medio || 0,
                     )}
-                  </p>
-                  <p className="text-[10px] text-muted-foreground uppercase">Ticket Médio</p>
+                  </span>
+                </div>
+                <div className="text-xs text-gray-500 mt-1">
+                  {item.tipo} • {item.tipo_imovel}
                 </div>
               </div>
-            )
-          })}
-        </div>
-      </CardContent>
-    </Card>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
   )
 }
