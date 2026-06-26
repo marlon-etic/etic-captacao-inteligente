@@ -14,7 +14,7 @@ export function useSdrQueries() {
     const role = user?.user_metadata?.role || user?.app_metadata?.role || 'sdr'
     const isAdmin = role === 'admin' || role === 'gestor'
     const isCaptador = role === 'captador'
-    const isCorretor = role === 'corretor'
+    const isCorretor = role === 'corretor' || role === 'broker'
     const isSdr = role === 'sdr'
 
     async function fetchData() {
@@ -86,9 +86,7 @@ export function useSdrQueries() {
             .in('status_demanda', ['aberta', 'em busca', 'em visita'])
 
           if (visibility === 'own') queryActive = queryActive.eq(ownerField, user.id)
-          if (applyDateFilter) {
-            queryActive = queryActive.gte('created_at', startIso).lte('created_at', endIso)
-          }
+          // Always show active demands regardless of created_at period filter
 
           let inativasQuery = supabase
             .from(tabela)
@@ -98,9 +96,7 @@ export function useSdrQueries() {
             .lt('updated_at', seteDiasAtrasIso)
 
           if (visibility === 'own') inativasQuery = inativasQuery.eq(ownerField, user.id)
-          if (applyDateFilter) {
-            inativasQuery = inativasQuery.gte('created_at', startIso).lte('created_at', endIso)
-          }
+          // Inactive demands can also be exempt from period filter if we want all inactive
 
           const [{ data: dCreated }, { data: dActive }, { data: inativas }] = await Promise.all([
             queryCreated,
@@ -166,10 +162,8 @@ export function useSdrQueries() {
         let imoveisBase = supabase
           .from('imoveis_captados')
           .select(
-            'id, codigo_imovel, endereco, preco, valor, created_at, updated_at, tipo, tipo_imovel, etapa_funil, status_captacao, dormitorios, vagas, banheiros, fotos, observacoes, localizacao_texto, user_captador_id, imovel_demand_match(id, demanda_id, tipo_vinculacao)',
+            'id, codigo_imovel, endereco, preco, valor, created_at, updated_at, tipo, tipo_imovel, etapa_funil, status_captacao, dormitorios, vagas, banheiros, fotos, observacoes, localizacao_texto, user_captador_id, demanda_locacao_id, demanda_venda_id, imovel_demand_match(id, demanda_id, tipo_vinculacao)',
           )
-          .is('demanda_locacao_id', null)
-          .is('demanda_venda_id', null)
 
         if (!isAdmin) {
           if (isCaptador) imoveisBase = imoveisBase.eq('user_captador_id', user.id)
@@ -178,17 +172,15 @@ export function useSdrQueries() {
         }
 
         let qCreated = imoveisBase
-        if (applyDateFilter)
-          qCreated = qCreated.gte('created_at', startIso).lte('created_at', endIso)
-        qCreated = qCreated.order('updated_at', { ascending: false, nullsFirst: false }).limit(300)
-
-        let qActive = imoveisBase
-          .in('status_captacao', ['ativo', 'em captacao', 'em_captacao'])
-          .limit(300)
-
         if (applyDateFilter) {
-          qActive = qActive.gte('created_at', startIso).lte('created_at', endIso)
+          qCreated = qCreated.gte('created_at', startIso).lte('created_at', endIso)
         }
+        qCreated = qCreated.order('updated_at', { ascending: false, nullsFirst: false }).limit(500)
+
+        // Active Stock: Do NOT apply date filter
+        let qActive = imoveisBase
+          .in('status_captacao', ['ativo', 'em captacao', 'em_captacao', 'Ativo'])
+          .limit(1000)
 
         const [{ data: imCreated }, { data: imActive }] = await Promise.all([qCreated, qActive])
 
@@ -204,18 +196,25 @@ export function useSdrQueries() {
           })
         })
 
-        const imoveisLivresFiltered = Array.from(imCombinedMap.values())
-          .filter((i: any) => !i.imovel_demand_match || i.imovel_demand_match.length === 0)
+        const todosImoveis = Array.from(imCombinedMap.values())
+
+        const imoveisLivresFiltered = todosImoveis
+          .filter(
+            (i: any) =>
+              (!i.imovel_demand_match || i.imovel_demand_match.length === 0) &&
+              !i.demanda_locacao_id &&
+              !i.demanda_venda_id,
+          )
           .sort(
             (a: any, b: any) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime(),
           )
 
         const sdrDemandaIds = todasDemandas.map((d: any) => d.id) || []
         let imoveisSobDemanda: any[] = []
+        let imVList: any[] = []
 
         if (sdrDemandaIds.length > 0) {
           const chunkSize = 150
-          let imVList: any[] = []
 
           for (let i = 0; i < sdrDemandaIds.length; i += chunkSize) {
             const chunk = sdrDemandaIds.slice(i, i + chunkSize)
@@ -229,7 +228,7 @@ export function useSdrQueries() {
             if (imV) imVList = [...imVList, ...imV]
           }
 
-          imoveisSobDemanda = (
+          imoveisSobDemanda =
             imVList.map((m: any) => ({
               ...m.imoveis_captados,
               match_info: m,
@@ -239,15 +238,6 @@ export function useSdrQueries() {
               preco: Number(m.imoveis_captados?.preco) || 0,
               valor: Number(m.imoveis_captados?.valor) || 0,
             })) || []
-          ).sort(
-            (a: any, b: any) =>
-              new Date(b.updated_at || b.created_at).getTime() -
-              new Date(a.updated_at || a.created_at).getTime(),
-          )
-
-          if (isCaptador) {
-            imoveisSobDemanda = imoveisSobDemanda.filter((i: any) => i.user_captador_id === user.id)
-          }
 
           for (const d of todasDemandas) {
             d.imovel_demand_match = imVList.filter((m: any) => m.demanda_id === d.id)
@@ -256,6 +246,25 @@ export function useSdrQueries() {
           for (const d of todasDemandas) {
             d.imovel_demand_match = []
           }
+        }
+
+        const alreadyInSobDemanda = new Set(imoveisSobDemanda.map((i) => i.id))
+        const directlyLinkedImoveis = todosImoveis.filter(
+          (i: any) =>
+            (i.demanda_locacao_id ||
+              i.demanda_venda_id ||
+              (i.imovel_demand_match && i.imovel_demand_match.length > 0)) &&
+            !alreadyInSobDemanda.has(i.id),
+        )
+
+        imoveisSobDemanda = [...imoveisSobDemanda, ...directlyLinkedImoveis].sort(
+          (a: any, b: any) =>
+            new Date(b.updated_at || b.created_at).getTime() -
+            new Date(a.updated_at || a.created_at).getTime(),
+        )
+
+        if (isCaptador && !isAdmin) {
+          imoveisSobDemanda = imoveisSobDemanda.filter((i: any) => i.user_captador_id === user.id)
         }
 
         if (!isCaptador) {
