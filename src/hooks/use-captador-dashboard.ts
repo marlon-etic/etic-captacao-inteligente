@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { usePeriodStore } from '@/stores/use-period-store'
 import { useAuth } from '@/hooks/use-auth'
@@ -14,6 +14,7 @@ export function useCaptadorDashboard() {
   const [perdidos, setPerdidos] = useState<any[]>([])
   const [charts, setCharts] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const fetchData = useCallback(async () => {
     if (!user) return
@@ -59,7 +60,33 @@ export function useCaptadorDashboard() {
         queryImv = queryImv.in('tipo', [transactionType, 'Ambos'])
       }
 
-      const { data: imoveisData, error: errImv } = await queryImv
+      const locacaoPromise =
+        transactionType === 'Todos' || transactionType === 'Locação'
+          ? supabase
+              .from('demandas_locacao')
+              .select('*, imovel_demand_match(id)')
+              .gte('created_at', startIso)
+              .lte('created_at', endIso)
+              .limit(500)
+          : Promise.resolve({ data: [], error: null })
+
+      const vendasPromise =
+        transactionType === 'Todos' || transactionType === 'Venda'
+          ? supabase
+              .from('demandas_vendas')
+              .select('*, imovel_demand_match(id)')
+              .gte('created_at', startIso)
+              .lte('created_at', endIso)
+              .limit(500)
+          : Promise.resolve({ data: [], error: null })
+
+      const [imoveisResult, locResult, venResult] = await Promise.all([
+        queryImv,
+        locacaoPromise,
+        vendasPromise,
+      ])
+
+      const { data: imoveisData, error: errImv } = imoveisResult
 
       if (errImv) throw errImv
 
@@ -69,26 +96,8 @@ export function useCaptadorDashboard() {
       )
       const receita = convertidos.reduce((acc, i) => acc + Number(i.preco || i.valor || 0), 0)
 
-      let demLocData: any[] = []
-      let demVenData: any[] = []
-
-      if (transactionType === 'Todos' || transactionType === 'Locação') {
-        const { data } = await supabase
-          .from('demandas_locacao')
-          .select('*, imovel_demand_match(id)')
-          .gte('created_at', startIso)
-          .lte('created_at', endIso)
-        demLocData = data || []
-      }
-
-      if (transactionType === 'Todos' || transactionType === 'Venda') {
-        const { data } = await supabase
-          .from('demandas_vendas')
-          .select('*, imovel_demand_match(id)')
-          .gte('created_at', startIso)
-          .lte('created_at', endIso)
-        demVenData = data || []
-      }
+      const demLocData: any[] = locResult.data || []
+      const demVenData: any[] = venResult.data || []
 
       let todasDemandas = [
         ...demLocData.map((d) => ({ ...d, tipo: 'Locação' })),
@@ -296,6 +305,10 @@ export function useCaptadorDashboard() {
 
   useEffect(() => {
     if (!user) return
+    const debouncedRefetch = () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+      debounceRef.current = setTimeout(() => fetchData(), 500)
+    }
     const ch = supabase
       .channel('dashboard_updates')
       .on(
@@ -306,7 +319,7 @@ export function useCaptadorDashboard() {
           table: 'imoveis_captados',
           filter: `user_captador_id=eq.${user.id}`,
         },
-        fetchData,
+        debouncedRefetch,
       )
       .on(
         'postgres_changes',
@@ -315,7 +328,7 @@ export function useCaptadorDashboard() {
           schema: 'public',
           table: 'demandas_locacao',
         },
-        fetchData,
+        debouncedRefetch,
       )
       .on(
         'postgres_changes',
@@ -324,11 +337,12 @@ export function useCaptadorDashboard() {
           schema: 'public',
           table: 'demandas_vendas',
         },
-        fetchData,
+        debouncedRefetch,
       )
       .subscribe()
     return () => {
       supabase.removeChannel(ch)
+      if (debounceRef.current) clearTimeout(debounceRef.current)
     }
   }, [user, fetchData])
 

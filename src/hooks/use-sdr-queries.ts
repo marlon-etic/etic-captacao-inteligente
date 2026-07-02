@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/use-auth'
 import { useSdrStore } from '@/hooks/use-sdr-store'
@@ -8,6 +8,7 @@ export function useSdrQueries() {
   const { periodo, dataCustomStart, dataCustomEnd } = useSdrStore()
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     if (!user) return
@@ -292,28 +293,38 @@ export function useSdrQueries() {
 
     fetchData()
 
+    const debouncedRefetch = () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+      debounceRef.current = setTimeout(() => fetchData(), 500)
+    }
+
     const channel = supabase
       .channel('sdr_queries_changes')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'demandas_locacao' },
-        fetchData,
+        debouncedRefetch,
       )
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'demandas_vendas' }, fetchData)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'demandas_vendas' },
+        debouncedRefetch,
+      )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'imovel_demand_match' },
-        fetchData,
+        debouncedRefetch,
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'imoveis_captados' },
-        fetchData,
+        debouncedRefetch,
       )
       .subscribe()
 
     return () => {
       supabase.removeChannel(channel)
+      if (debounceRef.current) clearTimeout(debounceRef.current)
     }
   }, [user, periodo, dataCustomStart, dataCustomEnd])
 

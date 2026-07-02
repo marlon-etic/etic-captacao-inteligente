@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from 'react'
 import { PeriodSelector } from '@/components/dashboard/PeriodSelector'
 import { MetricsCards } from '@/components/dashboard/MetricsCards'
 import { DashboardCharts } from '@/components/dashboard/DashboardCharts'
+import { ChartsSdr } from '@/components/sdr-dashboard/ChartsSdr'
 import { ImoveisCadastradosList } from '@/components/dashboard/ImoveisCadastradosList'
 import { DemandasAbertasTable } from '@/components/dashboard/DemandasAbertasTable'
 import { ImoveisPerdidosTable } from '@/components/dashboard/ImoveisPerdidosTable'
@@ -212,6 +213,13 @@ export function CaptadorDashboard() {
           />
 
           <DashboardCharts charts={charts} loading={loading} onFilterClick={handleFilterClick} />
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6 mb-8">
+            <ChartsSdr
+              data={{ demandas, imoveisLivres: [], imoveisSobDemanda: imoveis }}
+              loading={loading}
+            />
+          </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-8">
             <div className="lg:col-span-7 flex flex-col gap-6">
