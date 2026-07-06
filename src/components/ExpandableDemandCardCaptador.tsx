@@ -283,6 +283,15 @@ export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDeman
       if (error) throw error
 
       if (finalizar) {
+        const table = demand.tipo === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
+        await supabase
+          .from(table)
+          .update({
+            motivo_perda: reason,
+            motivo_perda_descricao: obs,
+          })
+          .eq('id', demand.id)
+
         window.dispatchEvent(
           new CustomEvent('demanda-updated', {
             detail: {
@@ -354,7 +363,8 @@ export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDeman
 
   const handleProrrogar = async (e: React.MouseEvent) => {
     e.stopPropagation()
-    if (!prazo || prazo.prorrogacoes_usadas >= 3) return
+    const maxProrrogacoes = demand.is_prioritaria ? 1 : 3
+    if (!prazo || prazo.prorrogacoes_usadas >= maxProrrogacoes) return
 
     setIsSubmitting(true)
     try {
@@ -634,25 +644,31 @@ export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDeman
                     <span className="truncate">NÃO ENCONTREI</span>
                   </Button>
                 </div>
-                {prazo && prazo.prorrogacoes_usadas < 3 && prazo.status !== 'respondido' && (
-                  <Button
-                    variant="outline"
-                    onClick={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      handleProrrogar(e)
-                    }}
-                    disabled={isSubmitting}
-                    className="w-full h-[40px] text-[12px] font-bold border-[#1A3A52]/20 text-[#1A3A52] hover:bg-[#F8FAFC] relative z-10"
-                  >
-                    <Clock className="w-4 h-4 mr-1.5" /> Prorrogar Prazo (+48h)
-                  </Button>
-                )}
-                {prazo && prazo.prorrogacoes_usadas >= 3 && prazo.status !== 'respondido' && (
-                  <div className="text-[11px] text-center text-[#EF4444] font-bold mt-1">
-                    Máximo de 3 prorrogações atingido.
-                  </div>
-                )}
+                {prazo &&
+                  prazo.prorrogacoes_usadas < (demand.is_prioritaria ? 1 : 3) &&
+                  prazo.status !== 'respondido' && (
+                    <Button
+                      variant="outline"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        handleProrrogar(e)
+                      }}
+                      disabled={isSubmitting}
+                      className="w-full h-[40px] text-[12px] font-bold border-[#1A3A52]/20 text-[#1A3A52] hover:bg-[#F8FAFC] relative z-10"
+                    >
+                      <Clock className="w-4 h-4 mr-1.5" /> Prorrogar Prazo (+48h)
+                    </Button>
+                  )}
+                {prazo &&
+                  prazo.prorrogacoes_usadas >= (demand.is_prioritaria ? 1 : 3) &&
+                  prazo.status !== 'respondido' && (
+                    <div className="text-[11px] text-center text-[#EF4444] font-bold mt-1">
+                      {demand.is_prioritaria
+                        ? 'Prorrogação já utilizada para demanda prioritária.'
+                        : 'Máximo de 3 prorrogações atingido.'}
+                    </div>
+                  )}
               </div>
             )}
 

@@ -573,16 +573,18 @@ export const DemandCard = React.memo(function DemandCard({
                   </Button>
                 </>
               )}
-              {isPending && !isLost && (prazoDb?.prorrogacoes_usadas || 0) < 3 && (
-                <Button
-                  className="h-11 min-h-[44px] flex-1 font-bold text-[13px] px-2 shadow-sm transition-all duration-150 ease-in-out hover:scale-[1.02] active:shadow-inner bg-[#3B82F6] hover:bg-[#2563EB] text-white border-none relative z-10 w-full lg:w-auto whitespace-nowrap"
-                  onClick={handleProrrogar}
-                  disabled={isExtending}
-                  aria-label={`Prorrogar Prazo da demanda ${demand.clientName}`}
-                >
-                  <Clock className="w-[16px] h-[16px] mr-1.5" /> Prorrogar (+48h)
-                </Button>
-              )}
+              {isPending &&
+                !isLost &&
+                (prazoDb?.prorrogacoes_usadas || 0) < (isPrioritized ? 1 : 3) && (
+                  <Button
+                    className="h-11 min-h-[44px] flex-1 font-bold text-[13px] px-2 shadow-sm transition-all duration-150 ease-in-out hover:scale-[1.02] active:shadow-inner bg-[#3B82F6] hover:bg-[#2563EB] text-white border-none relative z-10 w-full lg:w-auto whitespace-nowrap"
+                    onClick={handleProrrogar}
+                    disabled={isExtending}
+                    aria-label={`Prorrogar Prazo da demanda ${demand.clientName}`}
+                  >
+                    <Clock className="w-[16px] h-[16px] mr-1.5" /> Prorrogar (+48h)
+                  </Button>
+                )}
             </>
           )}
 
@@ -648,7 +650,11 @@ export const DemandCard = React.memo(function DemandCard({
               const table = demand.type === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
               const { error } = await supabase
                 .from(table)
-                .update({ status_demanda: 'Perdida' })
+                .update({
+                  status_demanda: 'Perdida',
+                  motivo_perda: reason,
+                  motivo_perda_descricao: obs,
+                })
                 .eq('id', demand.id)
 
               if (error) throw error
