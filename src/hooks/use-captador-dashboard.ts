@@ -105,7 +105,7 @@ export function useCaptadorDashboard() {
       ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 
       // Smart Demand Filtering: exclude old inactive requests
-      const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
+      const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000
       todasDemandas = todasDemandas.filter((d) => {
         const status = d.status_demanda?.toLowerCase() || ''
 
@@ -114,7 +114,7 @@ export function useCaptadorDashboard() {
           // keep them in the dataset for "perdidos" metrics, but we filter them out of emBusca
         }
 
-        const isRecent = Date.now() - new Date(d.created_at).getTime() <= SEVEN_DAYS_MS
+        const isRecent = Date.now() - new Date(d.created_at).getTime() <= THIRTY_DAYS_MS
         const isEmBusca = d.status_demanda === 'em busca'
         const hasInteraction =
           (d.captadores_busca && d.captadores_busca.length > 0) ||
@@ -132,7 +132,11 @@ export function useCaptadorDashboard() {
         (i) => i.demanda_locacao_id || i.demanda_venda_id,
       ).length
       const aleatorios = (imoveisData || []).length - sobDemanda
-      const semResposta = todasDemandas.filter((d) => d.status_demanda === 'aberta').length
+      const semResposta = todasDemandas.filter(
+        (d) =>
+          d.status_demanda === 'aberta' ||
+          (d.status_demanda?.toLowerCase() === 'perdida' && d.motivo_perda === 'Sem Resposta'),
+      ).length
 
       const emBusca = todasDemandas.filter((d) => {
         const status = d.status_demanda?.toLowerCase() || ''
@@ -141,10 +145,14 @@ export function useCaptadorDashboard() {
       const perdidosInatividade = todasDemandas.filter(
         (d) => d.status_demanda?.toLowerCase() === 'perdida' && d.motivo_perda === 'Inatividade',
       ).length
+      const perdidosSemResposta = todasDemandas.filter(
+        (d) => d.status_demanda?.toLowerCase() === 'perdida' && d.motivo_perda === 'Sem Resposta',
+      ).length
       const perdidosOutros = todasDemandas.filter(
         (d) =>
           d.status_demanda?.toLowerCase() === 'perdida' &&
           d.motivo_perda !== 'Inatividade' &&
+          d.motivo_perda !== 'Sem Resposta' &&
           d.motivo_perda != null,
       ).length
       const captados = convertidos.length || 0
@@ -162,6 +170,7 @@ export function useCaptadorDashboard() {
         semResposta,
         emBusca,
         perdidosInatividade,
+        perdidosSemResposta,
         perdidosOutros,
         captados,
       })

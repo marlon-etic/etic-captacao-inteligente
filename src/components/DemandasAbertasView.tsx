@@ -45,8 +45,8 @@ export function DemandasAbertasView() {
         }
 
         // Smart Demand Filtering: exclude old inactive requests
-        const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
-        const isRecent = Date.now() - new Date(d.created_at).getTime() <= SEVEN_DAYS_MS
+        const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000
+        const isRecent = Date.now() - new Date(d.created_at).getTime() <= THIRTY_DAYS_MS
         const hasEngagement =
           d.status_demanda === 'em busca' ||
           isPrioritizada ||

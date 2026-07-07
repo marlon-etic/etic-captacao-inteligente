@@ -702,8 +702,8 @@ export function BuscarDemandas() {
         d.status,
       )
 
-      const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
-      const isRecent = Date.now() - new Date(d.created_at).getTime() <= SEVEN_DAYS_MS
+      const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000
+      const isRecent = Date.now() - new Date(d.created_at).getTime() <= THIRTY_DAYS_MS
       const isEmBusca = d.status === 'em busca'
       const hasInteraction = d.captadores_busca?.length > 0 || d.imoveiVinculados > 0
       const hasEngagement = isEmBusca || hasInteraction

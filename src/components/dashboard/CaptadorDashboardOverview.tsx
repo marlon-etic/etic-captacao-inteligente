@@ -86,7 +86,7 @@ export function CaptadorDashboardOverview() {
               {metrics?.perdidosInatividade || 0}
             </div>
             <p className="text-xs text-amber-600/80 dark:text-amber-400/80">
-              Regra de 48h sem interação
+              Regra de 72h Sem Resposta e 30d de inatividade
             </p>
           </CardContent>
         </Card>

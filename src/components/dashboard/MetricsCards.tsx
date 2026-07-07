@@ -100,7 +100,9 @@ export function MetricsCards({ metrics, loading, activeFilter, onCardClick }: Me
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-black text-amber-900">{metrics?.semResposta || 0}</div>
-            <p className="text-xs font-bold text-amber-600 mt-1">Demandas abertas ag. ação</p>
+            <p className="text-xs font-bold text-amber-600 mt-1">
+              Demandas abertas e sem resposta 72h
+            </p>
           </CardContent>
         </Card>
       </div>

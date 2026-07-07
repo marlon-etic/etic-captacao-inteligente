@@ -12,24 +12,28 @@ Deno.serve(async (req: Request) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
     const supabase = createClient(supabaseUrl, supabaseKey)
 
-    // Call existing sem resposta function
+    // Call updated sem resposta function (now includes 72h "Estou Buscando" rule)
     const { data: result1, error: err1 } = await supabase.rpc('fn_marcar_demandas_sem_resposta')
     if (err1) throw err1
 
-    // Call new global escalation function
+    // Call global escalation function
     const { error: err2 } = await supabase.rpc('fn_escalate_all_expired_demands')
     if (err2) throw err2
 
+    // Call 30-day inactivity rule function
+    const { error: err3 } = await supabase.rpc('fn_marcar_demandas_perdidas_inatividade')
+    if (err3) console.error('Error calling fn_marcar_demandas_perdidas_inatividade:', err3)
+
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        message: 'Demandas processadas e escaladas com sucesso',
-        data: result1 
+      JSON.stringify({
+        success: true,
+        message: 'Demandas processadas: 72h Sem Resposta + 30d Inatividade + Escalation',
+        data: result1,
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
-      }
+      },
     )
   } catch (error: any) {
     return new Response(JSON.stringify({ error: error.message }), {
