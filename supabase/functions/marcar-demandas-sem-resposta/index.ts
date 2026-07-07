@@ -21,15 +21,15 @@ Deno.serve(async (req: Request) => {
     if (err2) throw err2
 
     return new Response(
-      JSON.stringify({
-        success: true,
+      JSON.stringify({ 
+        success: true, 
         message: 'Demandas processadas e escaladas com sucesso',
-        data: result1,
+        data: result1 
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
-      },
+      }
     )
   } catch (error: any) {
     return new Response(JSON.stringify({ error: error.message }), {
