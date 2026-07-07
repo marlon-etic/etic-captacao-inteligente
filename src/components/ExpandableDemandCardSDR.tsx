@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { SupabaseDemand } from '@/hooks/use-supabase-demands'
 import { cn } from '@/lib/utils'
+import { isDemandGloballyLost } from '@/lib/demand-status'
 import {
   MapPin,
   Clock,
@@ -62,7 +63,7 @@ export function ExpandableDemandCardSDR({
 
   const isHighUrgency = demand.nivel_urgencia === 'Alta' || demand.nivel_urgencia === 'Urgente'
   const isPrioritized = demand.is_prioritaria
-  const isLost = demand.status_demanda === 'impossivel'
+  const isLost = isDemandGloballyLost(demand.status_demanda)
   const isNew = hoursElapsed <= 24 && isPending && !isLost && !isPrioritized
 
   const canMarkLost =
@@ -83,7 +84,7 @@ export function ExpandableDemandCardSDR({
     icon: Search,
   }
 
-  if (demand.status_demanda === 'impossivel') {
+  if (isDemandGloballyLost(demand.status_demanda)) {
     statusConfig = { label: 'PERDIDA / CANCELADA', bg: 'bg-gray-500', text: 'text-white', icon: X }
   } else if (demand.status_demanda === 'atendida' || demand.status_demanda === 'ganho') {
     statusConfig = {

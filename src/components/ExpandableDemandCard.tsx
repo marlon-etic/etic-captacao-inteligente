@@ -20,6 +20,7 @@ import {
   Search,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { isDemandGloballyLost } from '@/lib/demand-status'
 import { SupabaseDemand } from '@/hooks/use-supabase-demands'
 import useAppStore from '@/stores/useAppStore'
 import { supabase } from '@/lib/supabase/client'
@@ -192,7 +193,7 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
     icon: Lock,
   }
 
-  if (demand.status_demanda === 'impossivel' || demand.status_demanda === 'PERDIDA_BAIXA') {
+  if (isDemandGloballyLost(demand.status_demanda)) {
     statusConfig = {
       label: demand.status_demanda === 'PERDIDA_BAIXA' ? 'BAIXA AUTOMÁTICA' : 'PERDIDA / CANCELADA',
       bg: 'bg-gray-500',
