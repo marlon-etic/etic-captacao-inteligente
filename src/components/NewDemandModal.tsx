@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/form'
 import { useNavigate } from 'react-router-dom'
 import { cn, convertTiposToString } from '@/lib/utils'
+import { Star } from 'lucide-react'
 import { useKeyboard } from '@/hooks/use-keyboard'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { supabase } from '@/lib/supabase/client'
@@ -52,6 +53,7 @@ export const formSchema = z
     parkingSpots: z.coerce.number({ invalid_type_error: 'Obrigatório' }).min(0, 'Valor inválido'),
     timeframe: z.string().min(1, 'Selecione a urgência'),
     description: z.string().optional(),
+    isPrioritaria: z.boolean().default(false),
   })
   .refine((data) => data.minBudget < data.maxBudget, {
     message: 'Mínimo deve ser menor que máximo',
@@ -160,6 +162,7 @@ export function NewDemandModal({
       parkingSpots: '' as any,
       timeframe: '',
       description: '',
+      isPrioritaria: false,
     },
   })
 
@@ -210,6 +213,10 @@ export function NewDemandModal({
               observacoes: values.description || null,
               status_demanda: 'aberta',
               sdr_id: authData.user.id,
+              is_prioritaria: values.isPrioritaria,
+              data_prazo_resposta: values.isPrioritaria
+                ? new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+                : null,
             })
             .select('*')
             .single()
@@ -246,6 +253,10 @@ export function NewDemandModal({
               necessidades_especificas: values.description || null,
               status_demanda: 'aberta',
               corretor_id: authData.user.id,
+              is_prioritaria: values.isPrioritaria,
+              data_prazo_resposta: values.isPrioritaria
+                ? new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+                : null,
             })
             .select('*')
             .single()
@@ -282,6 +293,7 @@ export function NewDemandModal({
             : 0,
         timeframe: values.timeframe,
         description: values.description || 'Nova demanda via modal rápido',
+        isPrioritized: values.isPrioritaria,
       })
 
       toast({
@@ -573,6 +585,34 @@ export function NewDemandModal({
                     placeholder="Detalhes adicionais da demanda..."
                     className="md:col-span-2"
                     multiline
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="isPrioritaria"
+                    render={({ field }) => (
+                      <FormItem className="md:col-span-2">
+                        <FormControl>
+                          <label className="flex items-center gap-3 cursor-pointer bg-[#FFFBEB] border border-[#FCD34D] rounded-[8px] px-4 py-3 hover:bg-[#FEF3C7] transition-colors">
+                            <input
+                              type="checkbox"
+                              checked={field.value}
+                              onChange={(e) => field.onChange(e.target.checked)}
+                              className="w-5 h-5 text-[#F59E0B] rounded border-[#FCD34D] focus:ring-[#F59E0B]"
+                            />
+                            <div className="flex flex-col">
+                              <span className="text-[14px] font-bold text-[#854D0E] flex items-center gap-1.5">
+                                <Star className="w-4 h-4 fill-current" /> Demanda Prioritária
+                              </span>
+                              <span className="text-[12px] text-[#B45309]">
+                                Marca esta demanda como prioritária com prazo de resposta de 24h
+                              </span>
+                            </div>
+                          </label>
+                        </FormControl>
+                        <FormMessage className="min-h-[16px] mt-1" />
+                      </FormItem>
+                    )}
                   />
 
                   {/* Spacer for mobile to avoid the fixed footer covering last input */}

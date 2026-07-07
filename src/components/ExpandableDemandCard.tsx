@@ -27,6 +27,8 @@ import { useToast } from '@/hooks/use-toast'
 import { CapturePropertyModal } from './CapturePropertyModal'
 import { DemandDetailsModal } from './DemandDetailsModal'
 import { NaoEncontreiModal } from './NaoEncontreiModal'
+import { PrioritizeModal } from './PrioritizeModal'
+import { toggleDemandPriority } from '@/services/priority-service'
 import { PrazoCounter } from './PrazoCounter'
 import { RespostasBadge, RespostasHistory } from './RespostasHistory'
 
@@ -39,6 +41,7 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
   const [isNaoEncontreiModalOpen, setIsNaoEncontreiModalOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isPrioritizing, setIsPrioritizing] = useState(false)
+  const [isPrioritizeModalOpen, setIsPrioritizeModalOpen] = useState(false)
 
   const isOwnerOrAdmin =
     currentUser?.role === 'admin' ||
@@ -100,30 +103,73 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
     e.preventDefault()
     e.stopPropagation()
     if (isPrioritizing || !isOwnerOrAdmin) return
+
+    if (demand.is_prioritaria) {
+      setIsPrioritizing(true)
+      try {
+        const { error } = await toggleDemandPriority(
+          demand.id,
+          demand.tipo === 'Aluguel' ? 'Aluguel' : 'Venda',
+          true,
+        )
+        if (error) throw error
+
+        window.dispatchEvent(
+          new CustomEvent('demanda-updated', {
+            detail: {
+              tipo: demand.tipo,
+              data: { id: demand.id, is_prioritaria: false },
+            },
+          }),
+        )
+
+        toast({
+          title: 'Prioridade Removida',
+          description: 'A demanda voltou à posição normal.',
+        })
+      } catch (err: any) {
+        toast({
+          title: 'Erro',
+          description: 'Não foi possível remover a prioridade.',
+          variant: 'destructive',
+        })
+      } finally {
+        setIsPrioritizing(false)
+      }
+    } else {
+      setIsPrioritizeModalOpen(true)
+    }
+  }
+
+  const handlePrioritizeConfirm = async (reason: string) => {
     setIsPrioritizing(true)
-
-    const table = demand.tipo === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
-    const newStatus = !demand.is_prioritaria
-
     try {
-      const { error } = await supabase
-        .from(table)
-        .update({ is_prioritaria: newStatus })
-        .eq('id', demand.id)
-
+      const { error } = await toggleDemandPriority(
+        demand.id,
+        demand.tipo === 'Aluguel' ? 'Aluguel' : 'Venda',
+        false,
+        reason,
+      )
       if (error) throw error
 
+      window.dispatchEvent(
+        new CustomEvent('demanda-updated', {
+          detail: {
+            tipo: demand.tipo,
+            data: { id: demand.id, is_prioritaria: true, motivo_priorizacao: reason },
+          },
+        }),
+      )
+
       toast({
-        title: newStatus ? '⭐ Demanda Priorizada' : 'Prioridade Removida',
-        description: newStatus
-          ? 'A demanda subiu para o topo do feed dos captadores.'
-          : 'A demanda voltou à posição normal.',
-        className: newStatus ? 'bg-[#FCD34D] text-[#854D0E] border-none' : '',
+        title: '⭐ Demanda Priorizada',
+        description: 'A demanda subiu para o topo do feed dos captadores.',
+        className: 'bg-[#FCD34D] text-[#854D0E] border-none',
       })
     } catch (err: any) {
       toast({
         title: 'Erro',
-        description: 'Não foi possível alterar a prioridade.',
+        description: 'Não foi possível priorizar a demanda.',
         variant: 'destructive',
       })
     } finally {
@@ -520,6 +566,13 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
         isOpen={isNaoEncontreiModalOpen}
         onClose={() => setIsNaoEncontreiModalOpen(false)}
         onConfirm={handleNaoEncontreiConfirm}
+      />
+
+      <PrioritizeModal
+        open={isPrioritizeModalOpen}
+        onOpenChange={setIsPrioritizeModalOpen}
+        onConfirm={handlePrioritizeConfirm}
+        similarCount={demand.interestedClientsCount || 0}
       />
     </>
   )

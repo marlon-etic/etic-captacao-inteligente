@@ -149,6 +149,36 @@ export function ListasSdr({
     }
   }
 
+  const handleDeprioritize = async (demand: any) => {
+    if (isPrioritizing) return
+    setIsPrioritizing(true)
+    try {
+      const demandType = isLocacao ? 'Aluguel' : 'Venda'
+      const { error } = await toggleDemandPriority(demand.id, demandType, true)
+      if (error) throw error
+      toast({
+        title: 'Prioridade Removida',
+        description: 'A demanda voltou à posição normal.',
+      })
+      window.dispatchEvent(
+        new CustomEvent('demanda-updated', {
+          detail: {
+            tipo: demandType,
+            data: { id: demand.id, is_prioritaria: false },
+          },
+        }),
+      )
+    } catch (err: any) {
+      toast({
+        title: 'Erro ao despriorizar',
+        description: err.message || 'Tente novamente.',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsPrioritizing(false)
+    }
+  }
+
   const allProperties = [...imoveisLivresList, ...imoveisSobDemandaList]
 
   let listData: any[] = []
@@ -194,6 +224,17 @@ export function ListasSdr({
               onClick={() => setPrioritizeDemand(d)}
             >
               <Star className="w-3 h-3 mr-1" /> Priorizar
+            </Button>
+          )}
+          {canPrioritize && d.is_prioritaria && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-[10px] font-bold border-gray-300 text-gray-600 hover:bg-gray-100"
+              onClick={() => handleDeprioritize(d)}
+              disabled={isPrioritizing}
+            >
+              <Star className="w-3 h-3 mr-1 fill-current" /> Despriorizar
             </Button>
           )}
         </TableCell>

@@ -161,6 +161,40 @@ export function ExpandableDemandCardSDR({
     }
   }
 
+  const handleDeprioritize = async (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (isPrioritizing) return
+    setIsPrioritizing(true)
+    try {
+      const demandType = demand.tipo === 'Venda' ? 'Venda' : 'Aluguel'
+      const { error } = await toggleDemandPriority(demand.id, demandType, true)
+      if (error) throw error
+
+      window.dispatchEvent(
+        new CustomEvent('demanda-updated', {
+          detail: {
+            tipo: demand.tipo,
+            data: { id: demand.id, is_prioritaria: false, motivo_priorizacao: null },
+          },
+        }),
+      )
+
+      toast({
+        title: 'Prioridade Removida',
+        description: 'A demanda voltou à posição normal.',
+      })
+    } catch (err: any) {
+      toast({
+        title: 'Erro ao despriorizar',
+        description: err.message || 'Tente novamente.',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsPrioritizing(false)
+    }
+  }
+
   return (
     <>
       <Card
@@ -324,6 +358,18 @@ export function ExpandableDemandCardSDR({
                 disabled={isPrioritizing}
               >
                 <Star className="w-3 h-3 mr-1" /> Priorizar
+              </Button>
+            )}
+
+            {isPrioritized && canPrioritize && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 px-2 font-bold text-[11px] border-none shadow-sm relative z-10 transition-all bg-gray-100 text-gray-600 hover:bg-gray-200"
+                onClick={handleDeprioritize}
+                disabled={isPrioritizing}
+              >
+                <Star className="w-3 h-3 mr-1 fill-current" /> Despriorizar
               </Button>
             )}
           </div>

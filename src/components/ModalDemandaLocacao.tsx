@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { z } from 'zod'
 import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Check, X } from 'lucide-react'
+import { Check, X, Star } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import {
   Form,
@@ -63,6 +63,7 @@ const formSchema = z
     vagas_estacionamento: z.coerce.number().min(0, 'Mínimo 0').max(10, 'Máximo 10'),
     nivel_urgencia: z.enum(['Baixa', 'Média', 'Alta']).default('Média'),
     observacoes: z.string().optional(),
+    is_prioritaria: z.boolean().default(false),
   })
   .refine((data) => data.valor_maximo >= data.valor_minimo, {
     message: 'Valor máximo deve ser maior que o mínimo',
@@ -127,6 +128,7 @@ export function ModalDemandaLocacao({ isOpen, onClose }: Props) {
       vagas_estacionamento: 0 as any,
       nivel_urgencia: 'Média',
       observacoes: '',
+      is_prioritaria: false,
     },
     mode: 'onTouched',
   })
@@ -175,6 +177,10 @@ export function ModalDemandaLocacao({ isOpen, onClose }: Props) {
         payload.sdr_id = authData.user.id
         payload.observacoes = values.observacoes || null
         payload.tipo_demanda = 'Locação'
+        payload.is_prioritaria = values.is_prioritaria
+        if (values.is_prioritaria) {
+          payload.data_prazo_resposta = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+        }
       }
 
       const { data, error } = await supabase.from(tableName).insert(payload).select('*').single()
@@ -204,6 +210,7 @@ export function ModalDemandaLocacao({ isOpen, onClose }: Props) {
         parkingSpots: Number(values.vagas_estacionamento),
         timeframe: values.nivel_urgencia,
         description: values.observacoes || '',
+        isPrioritized: values.is_prioritaria,
       })
 
       toast({
@@ -517,6 +524,33 @@ export function ModalDemandaLocacao({ isOpen, onClose }: Props) {
                           placeholder="Detalhes adicionais..."
                           {...field}
                         />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="is_prioritaria"
+                  render={({ field }) => (
+                    <FormItem className="md:col-span-2">
+                      <FormControl>
+                        <label className="flex items-center gap-3 cursor-pointer bg-[#FFFBEB] border border-[#FCD34D] rounded-lg px-4 py-3 hover:bg-[#FEF3C7] transition-colors">
+                          <input
+                            type="checkbox"
+                            checked={field.value}
+                            onChange={(e) => field.onChange(e.target.checked)}
+                            className="w-5 h-5 text-[#F59E0B] rounded border-[#FCD34D] focus:ring-[#F59E0B]"
+                          />
+                          <div className="flex flex-col">
+                            <span className="text-[14px] font-bold text-[#854D0E] flex items-center gap-1.5">
+                              <Star className="w-4 h-4 fill-current" /> Demanda Prioritária
+                            </span>
+                            <span className="text-[12px] text-[#B45309]">
+                              Marca esta demanda como prioritária com prazo de resposta de 24h
+                            </span>
+                          </div>
+                        </label>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
