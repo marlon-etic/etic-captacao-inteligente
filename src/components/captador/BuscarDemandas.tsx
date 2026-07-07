@@ -12,6 +12,7 @@ const ModalVinculador = lazy(() =>
   import('./ModalVinculador').then((m) => ({ default: m.ModalVinculador })),
 )
 import { ModalSugerirLinks } from './ModalSugerirLinks'
+import { isDemandLost } from '@/lib/demand-status'
 import useAppStore from '@/stores/useAppStore'
 import { useTimeElapsed } from '@/hooks/use-time-elapsed'
 import { useToast } from '@/hooks/use-toast'
@@ -414,7 +415,7 @@ export function BuscarDemandas() {
   const { toast } = useToast()
   const [searchParams, setSearchParams] = useSearchParams()
 
-  const loadDemands = useCallback(async (useCache = true) => {
+  const loadDemands = useCallback(async (useCache = true, isBackground = false) => {
     try {
       if (useCache) {
         const cached = sessionStorage.getItem('buscar_demandas_cache')
@@ -425,7 +426,7 @@ export function BuscarDemandas() {
           setLoading(true)
         }
       } else {
-        setLoading(true)
+        if (!isBackground) setLoading(true)
       }
       setError(null)
 
@@ -515,9 +516,7 @@ export function BuscarDemandas() {
 
       enriched.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 
-      const filteredEnriched = enriched.filter(
-        (d) => d.status !== 'Perdida' && d.status !== 'PERDIDA_BAIXA',
-      )
+      const filteredEnriched = enriched.filter((d) => !isDemandLost(d.status))
 
       setDemands(filteredEnriched)
       sessionStorage.setItem('buscar_demandas_cache', JSON.stringify(filteredEnriched))
@@ -525,7 +524,7 @@ export function BuscarDemandas() {
       console.error('[BuscarDemandas] ❌ Erro:', err)
       setError('Erro ao carregar demandas. Verifique a conexão ou tente novamente.')
     } finally {
-      setLoading(false)
+      if (!isBackground) setLoading(false)
     }
   }, [])
 
@@ -538,18 +537,32 @@ export function BuscarDemandas() {
     const channel1 = supabase
       .channel('public:imoveis_captados_bd')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'imoveis_captados' }, () => {
-        loadDemands(false)
+        loadDemands(false, true)
       })
       .subscribe()
 
     const channel2 = supabase
       .channel('public:demandas_bd')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'demandas_locacao' }, () => {
-        loadDemands(false)
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'demandas_vendas' }, () => {
-        loadDemands(false)
-      })
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'demandas_locacao' },
+        (payload) => {
+          if (payload.eventType === 'UPDATE' && isDemandLost(payload.new?.status_demanda)) {
+            setDemands((prev) => prev.filter((d) => d.id !== payload.new.id))
+          }
+          loadDemands(false, true)
+        },
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'demandas_vendas' },
+        (payload) => {
+          if (payload.eventType === 'UPDATE' && isDemandLost(payload.new?.status_demanda)) {
+            setDemands((prev) => prev.filter((d) => d.id !== payload.new.id))
+          }
+          loadDemands(false, true)
+        },
+      )
       .subscribe()
 
     return () => {

@@ -234,7 +234,7 @@ export function MyDemandsView({ filterType }: Props) {
 
       toast({
         title: 'Demanda Marcada como Perdida',
-        description: `Motivo: ${reason}`,
+        description: `Motivo: ${reason}. Os captadores associados foram notificados.`,
         className: 'bg-[#EF4444] text-white border-none',
       })
     } catch (e: any) {

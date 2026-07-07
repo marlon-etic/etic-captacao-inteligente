@@ -375,12 +375,8 @@ export const processRealtimeNotification = async (
 
       if (payload.eventType === 'UPDATE') {
         const ganho = demanda.status_demanda === 'ganho' && oldDemanda.status_demanda !== 'ganho'
-        const perdido =
-          demanda.status_demanda &&
-          demanda.status_demanda.includes('PERDIDA') &&
-          oldDemanda.status_demanda !== demanda.status_demanda
 
-        if (ganho || perdido) {
+        if (ganho) {
           admins.forEach((id) => usersToNotify.add(id))
           if (ownerId) usersToNotify.add(ownerId)
 
@@ -388,10 +384,10 @@ export const processRealtimeNotification = async (
             createNotification(
               userId,
               'status_atualizado',
-              ganho ? 'Demanda Ganha! 🏆' : 'Demanda Perdida',
-              `A demanda de ${demanda.nome_cliente || demanda.cliente_nome || 'Cliente'} foi marcada como ${ganho ? 'ganha' : 'perdida'}.`,
+              'Demanda Ganha! 🏆',
+              `A demanda de ${demanda.nome_cliente || demanda.cliente_nome || 'Cliente'} foi marcada como ganha.`,
               { demanda_id: demanda.id, status: demanda.status_demanda },
-              ganho ? 'alta' : 'normal',
+              'alta',
             ),
           )
           await Promise.all(promises)
