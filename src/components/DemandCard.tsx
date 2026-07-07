@@ -773,6 +773,7 @@ export const DemandCard = React.memo(function DemandCard({
                   status_demanda: 'Perdida',
                   motivo_perda: reason,
                   motivo_perda_descricao: obs,
+                  updated_at: new Date().toISOString(),
                 })
                 .eq('id', demand.id)
 

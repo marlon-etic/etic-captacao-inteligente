@@ -760,7 +760,15 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
             .single()
           const table = loc ? 'demandas_locacao' : 'demandas_vendas'
 
-          await supabase.from(table).update({ status_demanda: 'impossivel' }).eq('id', id)
+          await supabase
+            .from(table)
+            .update({
+              status_demanda: 'impossivel',
+              motivo_perda: reason,
+              motivo_perda_descricao: obs,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', id)
 
           await supabase.from('audit_log').insert({
             usuario_id: authData.user.id,
