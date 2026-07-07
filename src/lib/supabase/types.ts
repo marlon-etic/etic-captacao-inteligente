@@ -1897,6 +1897,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      fn_marcar_demandas_perdidas_inatividade: {
+        Args: never
+        Returns: undefined
+      }
       fn_marcar_demandas_sem_resposta: {
         Args: never
         Returns: {
