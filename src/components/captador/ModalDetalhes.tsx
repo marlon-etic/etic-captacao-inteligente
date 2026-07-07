@@ -227,12 +227,18 @@ export function ModalDetalhes({
               Status e Metadados
             </h3>
             <div className="flex flex-wrap gap-3">
-              <div
-                className={`px-3 py-1.5 border rounded-lg text-sm font-semibold flex items-center gap-2 ${getUrgencyColor(demanda.urgencia)}`}
-              >
-                <div className="w-2 h-2 bg-current rounded-full animate-pulse" />
-                Urgência: {demanda.urgencia}
-              </div>
+              {demanda.is_prioritaria ? (
+                <div className="px-3 py-1.5 border rounded-lg text-sm font-semibold flex items-center gap-2 text-red-700 bg-red-50 border-red-200">
+                  <div className="w-2 h-2 bg-current rounded-full animate-pulse" />🔴 PRIORITÁRIA
+                </div>
+              ) : (
+                <div
+                  className={`px-3 py-1.5 border rounded-lg text-sm font-semibold flex items-center gap-2 ${getUrgencyColor(demanda.urgencia)}`}
+                >
+                  <div className="w-2 h-2 bg-current rounded-full animate-pulse" />
+                  Urgência: {demanda.urgencia}
+                </div>
+              )}
               <div className="px-3 py-1.5 border rounded-lg text-sm font-semibold bg-gray-50 text-gray-700 border-gray-200 capitalize">
                 Status: {demanda.status}
               </div>
@@ -247,7 +253,7 @@ export function ModalDetalhes({
         </div>
 
         <div className="p-6 bg-gray-50 border-t border-gray-100 rounded-b-xl flex justify-end gap-3 shrink-0">
-          {onTogglePriority && demanda?.is_prioritaria && (
+          {onTogglePriority && currentUser?.role !== 'captador' && demanda?.is_prioritaria && (
             <Button
               onClick={onTogglePriority}
               variant="outline"
@@ -256,7 +262,7 @@ export function ModalDetalhes({
               ⭐ Despriorizar
             </Button>
           )}
-          {onTogglePriority && !demanda?.is_prioritaria && (
+          {onTogglePriority && currentUser?.role !== 'captador' && !demanda?.is_prioritaria && (
             <Button
               onClick={onTogglePriority}
               variant="outline"

@@ -379,21 +379,23 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
             📅 {new Date(demand.created_at).toLocaleDateString('pt-BR')}
           </span>
           <div className="flex items-center gap-2 flex-wrap pr-8 pointer-events-auto">
-            <div
-              className={cn(
-                'flex items-center gap-2 font-black text-[11px] uppercase tracking-widest px-2 py-1 rounded shadow-sm',
-                statusConfig.bg,
-                statusConfig.text,
-              )}
-            >
-              <statusConfig.icon className="w-3.5 h-3.5" />
-              {statusConfig.label}
-              {isBrandNew && (
-                <span className="ml-1 bg-white/20 px-1.5 py-0.5 rounded-sm text-[9px] animate-pulse">
-                  NOVA
-                </span>
-              )}
-            </div>
+            {!demand.is_prioritaria && (
+              <div
+                className={cn(
+                  'flex items-center gap-2 font-black text-[11px] uppercase tracking-widest px-2 py-1 rounded shadow-sm',
+                  statusConfig.bg,
+                  statusConfig.text,
+                )}
+              >
+                <statusConfig.icon className="w-3.5 h-3.5" />
+                {statusConfig.label}
+                {isBrandNew && (
+                  <span className="ml-1 bg-white/20 px-1.5 py-0.5 rounded-sm text-[9px] animate-pulse">
+                    NOVA
+                  </span>
+                )}
+              </div>
+            )}
 
             {demand.is_prioritaria && (
               <Badge className="bg-[#F44336] text-white hover:bg-[#d32f2f] text-[10px] font-black px-2 py-1 flex items-center gap-1 shadow-sm border-none">

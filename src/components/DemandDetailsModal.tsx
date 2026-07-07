@@ -314,7 +314,7 @@ export function DemandDetailsModal({
             </Button>
           )}
 
-          {!onEncontrei && onPrioritize && (
+          {!onEncontrei && onPrioritize && currentUser?.role !== 'captador' && (
             <Button
               className="min-h-[48px] w-full sm:flex-1 text-[14px] font-bold bg-[#F44336] hover:bg-[#d32f2f] text-white border-none relative z-10"
               onClick={(e) => {
