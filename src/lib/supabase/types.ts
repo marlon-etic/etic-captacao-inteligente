@@ -261,6 +261,7 @@ export type Database = {
           marcada_sem_resposta: boolean | null
           motivo_perda: string | null
           motivo_perda_descricao: string | null
+          motivo_priorizacao: string | null
           nivel_urgencia: string | null
           nome_cliente: string | null
           observacoes: string | null
@@ -307,6 +308,7 @@ export type Database = {
           marcada_sem_resposta?: boolean | null
           motivo_perda?: string | null
           motivo_perda_descricao?: string | null
+          motivo_priorizacao?: string | null
           nivel_urgencia?: string | null
           nome_cliente?: string | null
           observacoes?: string | null
@@ -353,6 +355,7 @@ export type Database = {
           marcada_sem_resposta?: boolean | null
           motivo_perda?: string | null
           motivo_perda_descricao?: string | null
+          motivo_priorizacao?: string | null
           nivel_urgencia?: string | null
           nome_cliente?: string | null
           observacoes?: string | null
@@ -453,6 +456,7 @@ export type Database = {
           marcada_sem_resposta: boolean | null
           motivo_perda: string | null
           motivo_perda_descricao: string | null
+          motivo_priorizacao: string | null
           necessidades_especificas: string | null
           nivel_urgencia: string | null
           nome_cliente: string | null
@@ -496,6 +500,7 @@ export type Database = {
           marcada_sem_resposta?: boolean | null
           motivo_perda?: string | null
           motivo_perda_descricao?: string | null
+          motivo_priorizacao?: string | null
           necessidades_especificas?: string | null
           nivel_urgencia?: string | null
           nome_cliente?: string | null
@@ -539,6 +544,7 @@ export type Database = {
           marcada_sem_resposta?: boolean | null
           motivo_perda?: string | null
           motivo_perda_descricao?: string | null
+          motivo_priorizacao?: string | null
           necessidades_especificas?: string | null
           nivel_urgencia?: string | null
           nome_cliente?: string | null
