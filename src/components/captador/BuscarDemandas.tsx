@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback, Suspense, lazy } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
+import { PrioritizeModal } from '@/components/PrioritizeModal'
+import { toggleDemandPriority } from '@/services/priority-service'
 
 const ModalDetalhes = lazy(() =>
   import('./ModalDetalhes').then((m) => ({ default: m.ModalDetalhes })),
@@ -33,6 +35,8 @@ export interface Demand {
   imoveis: { id: string; codigo_imovel: string; captador_id: string; user_captador_id: string }[]
   captadores_busca: any[]
   links_sugeridos?: string[]
+  is_prioritaria?: boolean
+  motivo_priorizacao?: string
   criador_nome: string
   criador_id: string
 }
@@ -45,6 +49,7 @@ const DemandCard = React.memo(function DemandCard({
   currentUser,
   onReload,
   onSugerirLinks,
+  onTogglePriority,
 }: {
   demand: Demand
   onVerDetalhes: () => void
@@ -53,7 +58,13 @@ const DemandCard = React.memo(function DemandCard({
   currentUser: any
   onReload: () => void
   onSugerirLinks: () => void
+  onTogglePriority: () => void
 }) {
+  const canPrioritizeDemand =
+    currentUser?.role === 'admin' ||
+    currentUser?.role === 'gestor' ||
+    (demand.criador_id === currentUser?.id &&
+      (currentUser?.role === 'sdr' || currentUser?.role === 'corretor'))
   const timeInfo = useTimeElapsed(demand.created_at)
   const { toast } = useToast()
 
@@ -124,6 +135,11 @@ const DemandCard = React.memo(function DemandCard({
           <span className="text-[11px] font-bold px-2.5 py-1 bg-[#F5F5F5] border border-[#E5E5E5] text-[#333333] rounded-md">
             {demand.tipo === 'locacao' ? '🏠 Locação' : '🏢 Venda'}
           </span>
+          {demand.is_prioritaria && (
+            <span className="text-[11px] font-bold px-2.5 py-1 bg-[#F44336] text-white rounded-md shadow-sm uppercase tracking-wider">
+              🔴 PRIORITÁRIA
+            </span>
+          )}
           <span
             className={`text-[11px] font-bold px-2.5 py-1 rounded-md border ${getUrgencyColor(demand.urgencia)}`}
           >
@@ -234,6 +250,15 @@ const DemandCard = React.memo(function DemandCard({
             {isBuscando ? '✅ Buscando' : '🔍 Estou Buscando'}
           </Button>
         )}
+        {canPrioritizeDemand && (
+          <Button
+            onClick={onTogglePriority}
+            variant="outline"
+            className={`w-full text-[12px] h-9 font-bold shadow-sm ${demand.is_prioritaria ? 'border-[#F44336] text-[#F44336] hover:bg-red-50' : 'border-[#F59E0B] text-[#B45309] hover:bg-amber-50'}`}
+          >
+            {demand.is_prioritaria ? '⭐ Despriorizar' : '⭐ Priorizar'}
+          </Button>
+        )}
         <Button
           onClick={onDarPerdido}
           variant="outline"
@@ -319,6 +344,8 @@ const DemandCardWrapper = React.memo(function DemandCardWrapper({
   setSelectedVinculador,
   setSelectedPerdido,
   setSelectedSugerirLinks,
+  setSelectedPrioritize,
+  onDeprioritize,
   currentUser,
   onReload,
 }: any) {
@@ -338,6 +365,13 @@ const DemandCardWrapper = React.memo(function DemandCardWrapper({
     () => setSelectedSugerirLinks(demand),
     [demand, setSelectedSugerirLinks],
   )
+  const handleTogglePriority = useCallback(() => {
+    if (demand.is_prioritaria) {
+      onDeprioritize(demand)
+    } else {
+      setSelectedPrioritize(demand)
+    }
+  }, [demand, setSelectedPrioritize, onDeprioritize])
 
   return (
     <DemandCard
@@ -346,6 +380,7 @@ const DemandCardWrapper = React.memo(function DemandCardWrapper({
       onVincular={handleVincular}
       onDarPerdido={handleDarPerdido}
       onSugerirLinks={handleSugerirLinks}
+      onTogglePriority={handleTogglePriority}
       currentUser={currentUser}
       onReload={onReload}
     />
@@ -372,6 +407,8 @@ export function BuscarDemandas() {
   const [selectedVinculador, setSelectedVinculador] = useState<Demand | null>(null)
   const [selectedPerdido, setSelectedPerdido] = useState<Demand | null>(null)
   const [selectedSugerirLinks, setSelectedSugerirLinks] = useState<Demand | null>(null)
+  const [selectedPrioritize, setSelectedPrioritize] = useState<Demand | null>(null)
+  const [isPrioritizing, setIsPrioritizing] = useState(false)
 
   const { currentUser } = useAppStore()
   const { toast } = useToast()
@@ -395,7 +432,7 @@ export function BuscarDemandas() {
       const { data: demandsLoc, error: errLoc } = await supabase
         .from('demandas_locacao')
         .select(`
-          id, nome_cliente, telefone, email, sdr_id, created_at, valor_minimo, valor_maximo, bairros, dormitorios, banheiros, vagas_estacionamento, urgencia, status_demanda, captadores_busca, links_sugeridos,
+          id, nome_cliente, telefone, email, sdr_id, created_at, valor_minimo, valor_maximo, bairros, dormitorios, banheiros, vagas_estacionamento, urgencia, status_demanda, captadores_busca, links_sugeridos, is_prioritaria, motivo_priorizacao,
           criador:users!fk_demandas_locacao_sdr(nome, email),
           imoveis_captados!imoveis_captados_demanda_locacao_id_fkey(id, codigo_imovel, user_captador_id, captador_id)
         `)
@@ -407,7 +444,7 @@ export function BuscarDemandas() {
       const { data: demandsVen, error: errVen } = await supabase
         .from('demandas_vendas')
         .select(`
-          id, nome_cliente, telefone, email, corretor_id, created_at, valor_minimo, valor_maximo, bairros, dormitorios, banheiros, vagas_estacionamento, urgencia, status_demanda, captadores_busca, links_sugeridos,
+          id, nome_cliente, telefone, email, corretor_id, created_at, valor_minimo, valor_maximo, bairros, dormitorios, banheiros, vagas_estacionamento, urgencia, status_demanda, captadores_busca, links_sugeridos, is_prioritaria, motivo_priorizacao,
           criador:users!demandas_vendas_corretor_id_fkey(nome, email),
           imoveis_captados!imoveis_captados_demanda_venda_id_fkey(id, codigo_imovel, user_captador_id, captador_id)
         `)
@@ -439,6 +476,8 @@ export function BuscarDemandas() {
           imoveis: imoveis as any,
           captadores_busca: demand.captadores_busca || [],
           links_sugeridos: demand.links_sugeridos || [],
+          is_prioritaria: demand.is_prioritaria || false,
+          motivo_priorizacao: demand.motivo_priorizacao || null,
           criador_nome:
             (demand.criador as any)?.nome || (demand.criador as any)?.email || 'Desconhecido',
           criador_id: demand.sdr_id || '',
@@ -466,6 +505,8 @@ export function BuscarDemandas() {
           imoveis: imoveis as any,
           captadores_busca: demand.captadores_busca || [],
           links_sugeridos: demand.links_sugeridos || [],
+          is_prioritaria: demand.is_prioritaria || false,
+          motivo_priorizacao: demand.motivo_priorizacao || null,
           criador_nome:
             (demand.criador as any)?.nome || (demand.criador as any)?.email || 'Desconhecido',
           criador_id: demand.corretor_id || '',
@@ -727,6 +768,70 @@ export function BuscarDemandas() {
     }
   }
 
+  const handlePrioritizeConfirm = async (reason: string) => {
+    if (!selectedPrioritize) return
+    setIsPrioritizing(true)
+    try {
+      const demandType = selectedPrioritize.tipo === 'venda' ? 'Venda' : 'Aluguel'
+      const { error } = await toggleDemandPriority(selectedPrioritize.id, demandType, false, reason)
+      if (error) throw error
+
+      window.dispatchEvent(
+        new CustomEvent('demanda-updated', {
+          detail: {
+            tipo: demandType,
+            data: { id: selectedPrioritize.id, is_prioritaria: true, motivo_priorizacao: reason },
+          },
+        }),
+      )
+
+      toast({
+        title: '⭐ Demanda Priorizada',
+        description: 'A demanda subiu para o topo do feed dos captadores.',
+        className: 'bg-[#FCD34D] text-[#854D0E] border-none',
+      })
+      setSelectedPrioritize(null)
+      loadDemands(false)
+    } catch (err: any) {
+      toast({
+        title: 'Erro ao priorizar',
+        description: err.message || 'Tente novamente.',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsPrioritizing(false)
+    }
+  }
+
+  const handleDeprioritize = async (demand: Demand) => {
+    setIsPrioritizing(true)
+    try {
+      const demandType = demand.tipo === 'venda' ? 'Venda' : 'Aluguel'
+      const { error } = await toggleDemandPriority(demand.id, demandType, true)
+      if (error) throw error
+
+      window.dispatchEvent(
+        new CustomEvent('demanda-updated', {
+          detail: {
+            tipo: demandType,
+            data: { id: demand.id, is_prioritaria: false },
+          },
+        }),
+      )
+
+      toast({ title: 'Prioridade Removida', description: 'A demanda voltou à posição normal.' })
+      loadDemands(false)
+    } catch (err: any) {
+      toast({
+        title: 'Erro ao despriorizar',
+        description: err.message || 'Tente novamente.',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsPrioritizing(false)
+    }
+  }
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="bg-white border rounded-xl p-5 space-y-4 shadow-[0_2px_8px_rgba(26,58,82,0.05)] border-[#E5E5E5]">
@@ -822,6 +927,8 @@ export function BuscarDemandas() {
               setSelectedVinculador={setSelectedVinculador}
               setSelectedPerdido={setSelectedPerdido}
               setSelectedSugerirLinks={setSelectedSugerirLinks}
+              setSelectedPrioritize={setSelectedPrioritize}
+              onDeprioritize={handleDeprioritize}
               currentUser={currentUser}
               onReload={() => loadDemands(false)}
             />
@@ -839,6 +946,15 @@ export function BuscarDemandas() {
             onVincular={() => {
               setSelectedDetalhes(null)
               setSelectedVinculador(selectedDetalhes)
+            }}
+            onTogglePriority={() => {
+              const d = selectedDetalhes
+              setSelectedDetalhes(null)
+              if (d.is_prioritaria) {
+                handleDeprioritize(d)
+              } else {
+                setSelectedPrioritize(d)
+              }
             }}
           />
         )}
@@ -873,6 +989,15 @@ export function BuscarDemandas() {
             setSelectedSugerirLinks(null)
             loadDemands(false)
           }}
+        />
+      )}
+
+      {selectedPrioritize && (
+        <PrioritizeModal
+          open={!!selectedPrioritize}
+          onOpenChange={(open) => !open && setSelectedPrioritize(null)}
+          onConfirm={handlePrioritizeConfirm}
+          similarCount={0}
         />
       )}
     </div>

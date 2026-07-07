@@ -25,7 +25,10 @@ import {
   MessageCircle,
   X,
   RefreshCw,
+  Star,
 } from 'lucide-react'
+import { PrioritizeModal } from '@/components/PrioritizeModal'
+import { toggleDemandPriority } from '@/services/priority-service'
 
 interface DemandCardProps {
   demand: Demand
@@ -60,6 +63,8 @@ export const DemandCard = React.memo(function DemandCard({
   const prevStatus = useRef(demand.status)
   const [isJustLost, setIsJustLost] = useState(false)
   const [isJustPrioritized, setIsJustPrioritized] = useState(false)
+  const [isPrioritizeModalOpen, setIsPrioritizeModalOpen] = useState(false)
+  const [isPrioritizing, setIsPrioritizing] = useState(false)
 
   const creator = users.find((u) => u.id === demand.createdBy)
   const creatorName = creator?.name || 'Desconhecido'
@@ -122,6 +127,79 @@ export const DemandCard = React.memo(function DemandCard({
       (demand.createdBy === currentUser?.id &&
         (currentUser?.role === 'sdr' || currentUser?.role === 'corretor')))
 
+  const canPrioritize =
+    !isLost &&
+    (currentUser?.role === 'admin' ||
+      currentUser?.role === 'gestor' ||
+      (demand.createdBy === currentUser?.id &&
+        (currentUser?.role === 'sdr' || currentUser?.role === 'corretor')))
+
+  const handleTogglePriority = async (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (isPrioritizing) return
+    if (demand.isPrioritized) {
+      setIsPrioritizing(true)
+      try {
+        const { error } = await toggleDemandPriority(demand.id, isSale ? 'Venda' : 'Aluguel', true)
+        if (error) throw error
+        window.dispatchEvent(
+          new CustomEvent('demanda-updated', {
+            detail: {
+              tipo: demand.type,
+              data: { id: demand.id, is_prioritaria: false },
+            },
+          }),
+        )
+        toast({ title: 'Prioridade Removida', description: 'A demanda voltou à posição normal.' })
+      } catch {
+        toast({
+          title: 'Erro',
+          description: 'Não foi possível remover a prioridade.',
+          variant: 'destructive',
+        })
+      } finally {
+        setIsPrioritizing(false)
+      }
+    } else {
+      setIsPrioritizeModalOpen(true)
+    }
+  }
+
+  const handlePrioritizeConfirm = async (reason: string) => {
+    setIsPrioritizing(true)
+    try {
+      const { error } = await toggleDemandPriority(
+        demand.id,
+        isSale ? 'Venda' : 'Aluguel',
+        false,
+        reason,
+      )
+      if (error) throw error
+      window.dispatchEvent(
+        new CustomEvent('demanda-updated', {
+          detail: {
+            tipo: demand.type,
+            data: { id: demand.id, is_prioritaria: true, motivo_priorizacao: reason },
+          },
+        }),
+      )
+      toast({
+        title: '⭐ Demanda Priorizada',
+        description: 'A demanda subiu para o topo do feed dos captadores.',
+        className: 'bg-[#FCD34D] text-[#854D0E] border-none',
+      })
+    } catch {
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível priorizar a demanda.',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsPrioritizing(false)
+    }
+  }
+
   let cardBg = 'bg-[#FFFFFF] border-[#E5E5E5]'
   let headerBg = 'bg-[#F5F5F5]/50 border-[#E5E5E5]'
   if (isLost) {
@@ -156,7 +234,7 @@ export const DemandCard = React.memo(function DemandCard({
           isJustPrioritized && 'animate-bounce-scale',
         )}
       >
-        🔴 PRIORIZADA
+        🔴 PRIORITÁRIA
       </Badge>
     )
   } else if (isNew) {
@@ -606,6 +684,29 @@ export const DemandCard = React.memo(function DemandCard({
             </Button>
           )}
 
+          {canPrioritize && (
+            <Button
+              className={cn(
+                'h-11 min-h-[44px] flex-1 font-bold text-[13px] relative z-10 transition-all duration-150 ease-in-out active:shadow-inner w-full lg:w-auto',
+                demand.isPrioritized
+                  ? 'bg-[#FCD34D] hover:bg-[#F59E0B] text-[#854D0E] border-none'
+                  : 'bg-white text-[#1A3A52] hover:bg-gray-100 border border-[#1A3A52]/30',
+              )}
+              onClick={handleTogglePriority}
+              disabled={isPrioritizing}
+              aria-label={
+                demand.isPrioritized
+                  ? `Despriorizar demanda ${demand.clientName}`
+                  : `Priorizar demanda ${demand.clientName}`
+              }
+            >
+              <Star
+                className={cn('w-[16px] h-[16px] mr-1.5', demand.isPrioritized && 'fill-current')}
+              />
+              {demand.isPrioritized ? 'Despriorizar' : 'Priorizar'}
+            </Button>
+          )}
+
           {canMarkLost && (
             <Button
               variant="destructive"
@@ -638,8 +739,26 @@ export const DemandCard = React.memo(function DemandCard({
           open={showDetails}
           onOpenChange={setShowDetails}
           demand={demand as any}
+          onPrioritize={() => {
+            setShowDetails(false)
+            if (demand.isPrioritized) {
+              handleTogglePriority({
+                preventDefault: () => {},
+                stopPropagation: () => {},
+              } as React.MouseEvent)
+            } else {
+              setIsPrioritizeModalOpen(true)
+            }
+          }}
         />
       )}
+
+      <PrioritizeModal
+        open={isPrioritizeModalOpen}
+        onOpenChange={setIsPrioritizeModalOpen}
+        onConfirm={handlePrioritizeConfirm}
+        similarCount={demand.interestedClientsCount || 0}
+      />
 
       {showLostModal && (
         <LostModal

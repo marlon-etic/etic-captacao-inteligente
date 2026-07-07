@@ -396,7 +396,7 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
             </div>
 
             {demand.is_prioritaria && (
-              <Badge className="bg-[#FCD34D] text-[#854D0E] hover:bg-[#FCD34D] text-[10px] font-black px-2 py-1 flex items-center gap-1 shadow-sm border border-[#F59E0B]">
+              <Badge className="bg-[#F44336] text-white hover:bg-[#d32f2f] text-[10px] font-black px-2 py-1 flex items-center gap-1 shadow-sm border-none">
                 <Star className="w-3 h-3 fill-current" /> PRIORITÁRIA
               </Badge>
             )}

@@ -11,11 +11,13 @@ export function ModalDetalhes({
   onClose,
   onReload,
   onVincular,
+  onTogglePriority,
 }: {
   demanda: Demand | null
   onClose: () => void
   onReload?: () => void
   onVincular?: () => void
+  onTogglePriority?: () => void
 }) {
   const { currentUser } = useAppStore()
   const { toast } = useToast()
@@ -244,7 +246,25 @@ export function ModalDetalhes({
           </div>
         </div>
 
-        <div className="p-6 bg-gray-50 border-t border-gray-100 rounded-b-xl flex justify-end shrink-0">
+        <div className="p-6 bg-gray-50 border-t border-gray-100 rounded-b-xl flex justify-end gap-3 shrink-0">
+          {onTogglePriority && demanda?.is_prioritaria && (
+            <Button
+              onClick={onTogglePriority}
+              variant="outline"
+              className="font-bold border-[#F44336] text-[#F44336] hover:bg-red-50"
+            >
+              ⭐ Despriorizar
+            </Button>
+          )}
+          {onTogglePriority && !demanda?.is_prioritaria && (
+            <Button
+              onClick={onTogglePriority}
+              variant="outline"
+              className="font-bold border-[#F59E0B] text-[#B45309] hover:bg-amber-50"
+            >
+              ⭐ Priorizar
+            </Button>
+          )}
           <Button onClick={onClose} variant="outline" className="font-bold border-gray-300">
             Fechar
           </Button>

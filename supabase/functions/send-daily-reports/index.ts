@@ -4,8 +4,8 @@ import { corsHeaders } from '../_shared/cors.ts'
 
 // Interface mock para simular o serviço de email (ex: SendGrid, Resend)
 async function sendEmailMock(options: { to: string; subject: string; html: string }) {
-  console.log(`[EMAIL SENT] To: ${options.to} | Subject: ${options.subject}`);
-  return true;
+  console.log(`[EMAIL SENT] To: ${options.to} | Subject: ${options.subject}`)
+  return true
 }
 
 async function calculateAggregatedMetrics(supabase: any, dateRange: any) {
@@ -175,11 +175,18 @@ async function getCorretoresData(supabase: any, dateRange: any) {
   return corretores.sort((a, b) => b.totalDemands - a.totalDemands).slice(0, 3)
 }
 
-function generateUnifiedEmailHTML(aggregated: any, captadores: any[], corretores: any[], baseUrl: string): string {
+function generateUnifiedEmailHTML(
+  aggregated: any,
+  captadores: any[],
+  corretores: any[],
+  baseUrl: string,
+): string {
   const dashboardUrl = `${baseUrl}/app/analytics`
   const yesterdayDate = new Date(Date.now() - 24 * 60 * 60 * 1000).toLocaleDateString('pt-BR')
 
-  const captadoresTableHTML = captadores.length > 0 ? `
+  const captadoresTableHTML =
+    captadores.length > 0
+      ? `
     <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
       <thead>
         <tr style="background: #f3f4f6;">
@@ -192,7 +199,9 @@ function generateUnifiedEmailHTML(aggregated: any, captadores: any[], corretores
         </tr>
       </thead>
       <tbody>
-        ${captadores.map((c, idx) => `
+        ${captadores
+          .map(
+            (c, idx) => `
           <tr style="border-bottom: 1px solid #e5e5e5; ${idx === 0 ? 'background: #f0f9ff;' : ''}">
             <td style="padding: 12px;"><strong>${c.name}</strong></td>
             <td style="padding: 12px; text-align: center;">${c.totalCaptured}</td>
@@ -201,12 +210,17 @@ function generateUnifiedEmailHTML(aggregated: any, captadores: any[], corretores
             <td style="padding: 12px; text-align: center; color: #22c55e;"><strong>${c.closedDeals}</strong></td>
             <td style="padding: 12px; text-align: center;">${c.conversionRate}%</td>
           </tr>
-        `).join('')}
+        `,
+          )
+          .join('')}
       </tbody>
     </table>
-  ` : '<p style="color: #999;">Nenhuma atividade de captadores no dia anterior.</p>'
+  `
+      : '<p style="color: #999;">Nenhuma atividade de captadores no dia anterior.</p>'
 
-  const corretoresTableHTML = corretores.length > 0 ? `
+  const corretoresTableHTML =
+    corretores.length > 0
+      ? `
     <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
       <thead>
         <tr style="background: #f3f4f6;">
@@ -219,7 +233,9 @@ function generateUnifiedEmailHTML(aggregated: any, captadores: any[], corretores
         </tr>
       </thead>
       <tbody>
-        ${corretores.map((c, idx) => `
+        ${corretores
+          .map(
+            (c, idx) => `
           <tr style="border-bottom: 1px solid #e5e5e5; ${idx === 0 ? 'background: #f0f9ff;' : ''}">
             <td style="padding: 12px;"><strong>${c.name}</strong></td>
             <td style="padding: 12px; text-align: center;">${c.totalDemands}</td>
@@ -228,10 +244,13 @@ function generateUnifiedEmailHTML(aggregated: any, captadores: any[], corretores
             <td style="padding: 12px; text-align: center; color: #22c55e;"><strong>${c.closedDeals}</strong></td>
             <td style="padding: 12px; text-align: center;">${c.conversionRate}%</td>
           </tr>
-        `).join('')}
+        `,
+          )
+          .join('')}
       </tbody>
     </table>
-  ` : '<p style="color: #999;">Nenhuma atividade de corretores/SDRs no dia anterior.</p>'
+  `
+      : '<p style="color: #999;">Nenhuma atividade de corretores/SDRs no dia anterior.</p>'
 
   return `
     <!DOCTYPE html>
@@ -330,12 +349,12 @@ Deno.serve(async (req: Request) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    
+
     const supabase = createClient(supabaseUrl, supabaseServiceKey, {
       auth: {
         autoRefreshToken: false,
-        persistSession: false
-      }
+        persistSession: false,
+      },
     })
 
     console.log('[sendUnifiedDailyReport] Iniciando envio de relatório unificado diário')
@@ -344,7 +363,11 @@ Deno.serve(async (req: Request) => {
     const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000)
     const today = new Date()
 
-    const startOfYesterday = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate())
+    const startOfYesterday = new Date(
+      yesterday.getFullYear(),
+      yesterday.getMonth(),
+      yesterday.getDate(),
+    )
     const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate())
 
     const dateRange = {
@@ -380,36 +403,43 @@ Deno.serve(async (req: Request) => {
     const logUserId = adminUser?.id
 
     if (logUserId) {
-      await supabase.from('analytics_email_logs').insert([{
-        user_id: logUserId,
-        status: 'sent',
-        metrics_data: {
-          aggregated,
-          captadores_count: captadores.length,
-          corretores_count: corretores.length,
+      await supabase.from('analytics_email_logs').insert([
+        {
+          user_id: logUserId,
+          status: 'sent',
+          metrics_data: {
+            aggregated,
+            captadores_count: captadores.length,
+            corretores_count: corretores.length,
+          },
         },
-      }])
+      ])
     } else {
-      console.warn('Admin user marlon@eticimoveis.com.br not found. Could not insert email log due to not-null user_id constraint.')
+      console.warn(
+        'Admin user marlon@eticimoveis.com.br not found. Could not insert email log due to not-null user_id constraint.',
+      )
     }
 
     console.log(`[sendUnifiedDailyReport] Concluído. Email enviado para ${targetEmail}`)
 
-    return new Response(JSON.stringify({ 
-      success: true, 
-      results: { 
-        target: targetEmail,
-        captadores: captadores.length,
-        corretores: corretores.length
-      }
-    }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    })
+    return new Response(
+      JSON.stringify({
+        success: true,
+        results: {
+          target: targetEmail,
+          captadores: captadores.length,
+          corretores: corretores.length,
+        },
+      }),
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      },
+    )
   } catch (error: any) {
     console.error('[sendUnifiedDailyReport] Erro geral:', error)
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 500
+      status: 500,
     })
   }
 })
