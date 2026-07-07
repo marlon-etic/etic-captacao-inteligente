@@ -595,6 +595,24 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
         <div className="bg-[#FAFAFA] p-4 border-t border-[#E5E5E5] rounded-b-[16px] animate-in fade-in slide-in-from-top-2 relative z-0">
           <RespostasHistory respostas={respostasNaoEncontrei} />
         </div>
+
+        {isOwnerOrAdmin &&
+          !isDemandGloballyLost(demand.status_demanda) &&
+          currentUser?.role !== 'captador' && (
+            <div className="p-4 pt-3 border-t border-[#E5E5E5] bg-white z-10 relative pointer-events-auto rounded-b-[16px]">
+              <Button
+                variant="destructive"
+                className="w-full font-bold min-h-[44px] bg-[#F44336] hover:bg-[#d32f2f] text-white"
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  setShowLostModal(true)
+                }}
+              >
+                <X className="w-4 h-4 mr-1.5" /> Marcar como Perdida
+              </Button>
+            </div>
+          )}
       </Card>
 
       <DemandDetailsModal
@@ -640,6 +658,12 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
         onOpenChange={setIsPrioritizeModalOpen}
         onConfirm={handlePrioritizeConfirm}
         similarCount={demand.interestedClientsCount || 0}
+      />
+
+      <LostModal
+        open={showLostModal}
+        onOpenChange={setShowLostModal}
+        onConfirm={handleLostConfirm}
       />
     </>
   )

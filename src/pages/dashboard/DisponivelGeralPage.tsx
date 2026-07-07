@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ArrowLeft, RefreshCw } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
@@ -50,6 +50,20 @@ export default function DisponivelGeralPage() {
   const { demands, loading, refresh } = useAllDemands()
   const { currentUser } = useAppStore()
   const [selectedDemand, setSelectedDemand] = useState<SupabaseDemand | null>(null)
+
+  useEffect(() => {
+    const handleDemandUpdate = (e: Event) => {
+      const detail = (e as CustomEvent).detail
+      if (
+        detail?.data?.status_demanda === 'perdida' ||
+        detail?.data?.db_status_demanda === 'perdida'
+      ) {
+        refresh()
+      }
+    }
+    window.addEventListener('demanda-updated', handleDemandUpdate)
+    return () => window.removeEventListener('demanda-updated', handleDemandUpdate)
+  }, [refresh])
 
   const role = currentUser?.role
   const isCaptador = role === 'captador'
