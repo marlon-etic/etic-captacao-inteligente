@@ -17,6 +17,7 @@ import { supabase } from '@/lib/supabase/client'
 import { useToast } from '@/hooks/use-toast'
 import { SyncIndicator } from './SyncIndicator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { isDemandLost } from '@/lib/demand-status'
 
 interface Props {
   filterType?: 'Venda' | 'Aluguel'
@@ -189,7 +190,11 @@ export function MyDemandsView({ filterType }: Props) {
       ? `${currentObs}\n\n[PERDIDO - ${new Date().toLocaleDateString()}]: ${reason} - ${obs}`
       : `[PERDIDO - ${new Date().toLocaleDateString()}]: ${reason} - ${obs}`
 
-    const updateData: any = { status_demanda: 'Perdida' }
+    const updateData: any = {
+      status_demanda: 'Perdida',
+      motivo_perda: reason,
+      motivo_perda_descricao: obs,
+    }
     if (actionDemand.tipo === 'Aluguel') {
       updateData.observacoes = newObs
     } else {
@@ -199,6 +204,27 @@ export function MyDemandsView({ filterType }: Props) {
     try {
       const { error } = await supabase.from(table).update(updateData).eq('id', actionDemand.id)
       if (error) throw error
+
+      await supabase.from('audit_log').insert({
+        usuario_id: currentUser?.id || null,
+        acao: 'UPDATE',
+        tabela: table,
+        registro_id: actionDemand.id,
+        dados_novos: {
+          status_demanda: 'Perdida',
+          motivo_perda: reason,
+          motivo_perda_descricao: obs,
+        },
+      })
+
+      window.dispatchEvent(
+        new CustomEvent('demanda-updated', {
+          detail: {
+            tipo: actionDemand.tipo,
+            data: { id: actionDemand.id, status_demanda: 'Perdida', db_status_demanda: 'Perdida' },
+          },
+        }),
+      )
 
       setHiddenDemands((prev) => {
         const next = new Set(prev)
@@ -225,11 +251,7 @@ export function MyDemandsView({ filterType }: Props) {
     const now = Date.now()
     return demands.filter((d) => {
       const statusLower = d.status_demanda?.toLowerCase() || ''
-      const isPerdida =
-        statusLower === 'impossivel' ||
-        statusLower === 'perdida_baixa' ||
-        statusLower === 'localmente_perdida' ||
-        statusLower === 'perdida'
+      const isPerdida = isDemandLost(d.status_demanda)
 
       const isFechada =
         statusLower === 'atendida' || statusLower === 'ganho' || statusLower === 'fechada'

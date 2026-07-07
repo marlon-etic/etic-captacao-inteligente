@@ -778,7 +778,31 @@ export const DemandCard = React.memo(function DemandCard({
 
               if (error) throw error
 
-              markDemandLost(demand.id, reason, obs)
+              await supabase.from('audit_log').insert({
+                usuario_id: currentUser?.id || null,
+                acao: 'UPDATE',
+                tabela: table,
+                registro_id: demand.id,
+                dados_novos: {
+                  status_demanda: 'Perdida',
+                  motivo_perda: reason,
+                  motivo_perda_descricao: obs,
+                },
+              })
+
+              window.dispatchEvent(
+                new CustomEvent('demanda-updated', {
+                  detail: {
+                    tipo: demand.type,
+                    data: {
+                      id: demand.id,
+                      status_demanda: 'Perdida',
+                      db_status_demanda: 'Perdida',
+                    },
+                  },
+                }),
+              )
+
               toast({
                 title: 'Sucesso',
                 description: 'Demanda marcada como perdida com sucesso.',

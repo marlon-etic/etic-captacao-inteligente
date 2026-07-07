@@ -762,6 +762,18 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
           await supabase.from(table).update({ status_demanda: 'impossivel' }).eq('id', id)
 
+          await supabase.from('audit_log').insert({
+            usuario_id: authData.user.id,
+            acao: 'UPDATE',
+            tabela: table,
+            registro_id: id,
+            dados_novos: {
+              status_demanda: 'impossivel',
+              motivo_perda: reason,
+              motivo_perda_descricao: obs,
+            },
+          })
+
           toast({
             title: 'Demanda arquivada',
             description: 'A demanda foi marcada como perdida e sincronizada.',

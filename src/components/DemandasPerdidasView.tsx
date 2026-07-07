@@ -6,6 +6,7 @@ import { useAllDemands } from '@/hooks/use-all-demands'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { RefreshCw, Search } from 'lucide-react'
+import { isDemandGloballyLost, isDemandLocallyLost } from '@/lib/demand-status'
 
 export function DemandasPerdidasView() {
   const { demands, loading, refresh } = useAllDemands()
@@ -36,13 +37,8 @@ export function DemandasPerdidasView() {
     return demands
       .filter((d) => {
         const isGloballyLost =
-          d.status_demanda === 'impossivel' ||
-          d.status_demanda === 'PERDIDA_BAIXA' ||
-          d.status_demanda === 'perdida' ||
-          d.db_status_demanda === 'impossivel' ||
-          d.db_status_demanda === 'PERDIDA_BAIXA' ||
-          d.db_status_demanda === 'perdida'
-        const isLocallyLost = d.status_demanda === 'localmente_perdida'
+          isDemandGloballyLost(d.db_status_demanda) || isDemandGloballyLost(d.status_demanda)
+        const isLocallyLost = isDemandLocallyLost(d.status_demanda)
         if (!isGloballyLost && !isLocallyLost) return false
 
         if (searchTerm) {

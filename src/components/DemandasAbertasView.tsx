@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { RefreshCw, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { isDemandLost } from '@/lib/demand-status'
 
 export function DemandasAbertasView() {
   const location = useLocation()
@@ -32,11 +33,7 @@ export function DemandasAbertasView() {
 
         // Ensure we only show ACTIVE demands in this view
         // Lost demands (impossivel / PERDIDA_BAIXA) should never show here
-        if (
-          d.status_demanda === 'impossivel' ||
-          d.status_demanda === 'PERDIDA_BAIXA' ||
-          d.status_demanda === 'localmente_perdida'
-        ) {
+        if (isDemandLost(d.status_demanda)) {
           return false
         }
 

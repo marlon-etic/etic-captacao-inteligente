@@ -12,6 +12,7 @@ import useAppStore from '@/stores/useAppStore'
 import { toast } from '@/hooks/use-toast'
 import { supabase } from '@/lib/supabase/client'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { isDemandLost } from '@/lib/demand-status'
 
 interface Props {
   filterType?: 'Venda' | 'Aluguel'
@@ -124,10 +125,7 @@ export function MyDemandsViewCaptador({ filterType }: Props) {
 
   const tabFilteredDemands = useMemo(() => {
     return demands.filter((d) => {
-      const isPerdida =
-        d.status_demanda === 'impossivel' ||
-        d.status_demanda === 'PERDIDA_BAIXA' ||
-        d.status_demanda === 'localmente_perdida'
+      const isPerdida = isDemandLost(d.status_demanda)
       const prazoStatus = d.prazos_captacao?.[0]?.status
       const isAtendida = d.status_demanda === 'atendida' || d.status_demanda === 'ganho'
       const isVencida =

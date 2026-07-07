@@ -8,6 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { SyncIndicator } from '@/components/SyncIndicator'
 import { cn } from '@/lib/utils'
 import useAppStore from '@/stores/useAppStore'
+import { isDemandGloballyLost, isDemandLocallyLost } from '@/lib/demand-status'
 
 export default function PerdidosPage() {
   const { currentUser } = useAppStore()
@@ -22,9 +23,8 @@ export default function PerdidosPage() {
   const lostDemands = useMemo(() => {
     return [...locacoes, ...vendas]
       .filter((d) => {
-        const isGloballyLost =
-          d.db_status_demanda === 'impossivel' || d.db_status_demanda === 'PERDIDA_BAIXA'
-        const isLocallyLost = d.status_demanda === 'localmente_perdida'
+        const isGloballyLost = isDemandGloballyLost(d.db_status_demanda)
+        const isLocallyLost = isDemandLocallyLost(d.status_demanda)
         return isGloballyLost || isLocallyLost
       })
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
@@ -158,9 +158,7 @@ export default function PerdidosPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-[16px] md:gap-[24px]">
             {visibleDemands.map((demand, index) => {
               const isAluguel = demand.tipo === 'Aluguel'
-              const isGloballyLost =
-                demand.db_status_demanda === 'impossivel' ||
-                demand.db_status_demanda === 'PERDIDA_BAIXA'
+              const isGloballyLost = isDemandGloballyLost(demand.db_status_demanda)
 
               let reason = 'Motivo não especificado'
               let obs = ''

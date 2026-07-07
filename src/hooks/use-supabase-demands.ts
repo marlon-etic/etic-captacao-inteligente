@@ -226,18 +226,9 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda', options?: { onlyMi
         })
 
         if (data) {
-          const filteredData = data.filter((d: any) => {
-            if (
-              !options?.onlyMine &&
-              (d.status_demanda === 'Perdida' || d.status_demanda === 'PERDIDA_BAIXA')
-            ) {
-              return false
-            }
-            return true
-          })
-          sessionStorage.setItem(cacheKey, JSON.stringify(filteredData))
+          sessionStorage.setItem(cacheKey, JSON.stringify(data))
           setDemands((prev) => {
-            const fetchedFormatted = formatData(filteredData)
+            const fetchedFormatted = formatData(data)
             const fetchedIds = new Set(fetchedFormatted.map((f) => f.id))
             const recentLocal = prev.filter(
               (p) => !fetchedIds.has(p.id) && Date.now() - new Date(p.created_at).getTime() < 5000,
@@ -411,8 +402,11 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda', options?: { onlyMi
                   d.status_demanda === 'prioritaria' ||
                   d.status_demanda === 'atendida' ||
                   d.status_demanda === 'sem_resposta_24h' ||
+                  d.status_demanda === 'em busca' ||
                   d.status_demanda === 'impossivel' ||
-                  d.status_demanda === 'PERDIDA_BAIXA'
+                  d.status_demanda === 'PERDIDA_BAIXA' ||
+                  d.status_demanda === 'Perdida' ||
+                  d.status_demanda === 'perdida'
                 ) {
                   const newDemand = formatData([
                     { ...d, imoveis_captados: [], respostas_captador: [], prazos_captacao: [] },
