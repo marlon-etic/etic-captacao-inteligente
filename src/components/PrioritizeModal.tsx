@@ -8,13 +8,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 
 interface Props {
@@ -29,12 +23,12 @@ export function PrioritizeModal({ open, onOpenChange, onConfirm, similarCount }:
   const [error, setError] = useState('')
 
   const handleConfirm = () => {
-    if (!reason) {
-      setError('Selecione um motivo para a priorização')
+    if (!reason.trim()) {
+      setError('Informe um motivo para a priorização')
       return
     }
     setError('')
-    onConfirm(reason)
+    onConfirm(reason.trim())
     onOpenChange(false)
   }
 
@@ -64,40 +58,15 @@ export function PrioritizeModal({ open, onOpenChange, onConfirm, similarCount }:
             <Label className="text-[12px] md:text-[13px] lg:text-[14px] leading-[16px] md:leading-[18px] lg:leading-[20px] font-bold">
               Motivo da Priorização
             </Label>
-            <Select
+            <Textarea
               value={reason}
-              onValueChange={(val) => {
-                setReason(val)
+              onChange={(e) => {
+                setReason(e.target.value)
                 setError('')
               }}
-            >
-              <SelectTrigger className="min-h-[48px] md:min-h-[44px] lg:min-h-[40px] text-[14px] leading-[20px]">
-                <SelectValue placeholder="Selecione um motivo..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem
-                  value="Múltiplos clientes interessados"
-                  className="min-h-[44px] text-[14px] leading-[20px]"
-                >
-                  Múltiplos clientes interessados
-                </SelectItem>
-                <SelectItem
-                  value="Cliente com urgência alta"
-                  className="min-h-[44px] text-[14px] leading-[20px]"
-                >
-                  Cliente com urgência alta
-                </SelectItem>
-                <SelectItem
-                  value="Perfil de alto valor"
-                  className="min-h-[44px] text-[14px] leading-[20px]"
-                >
-                  Perfil de alto valor
-                </SelectItem>
-                <SelectItem value="Outro" className="min-h-[44px] text-[14px] leading-[20px]">
-                  Outro
-                </SelectItem>
-              </SelectContent>
-            </Select>
+              placeholder="Descreva o motivo da priorização..."
+              className="min-h-[80px] text-[14px] leading-[20px] resize-none"
+            />
             {error && <p className="text-[12px] font-medium text-destructive mt-1">{error}</p>}
           </div>
         </div>
@@ -111,6 +80,7 @@ export function PrioritizeModal({ open, onOpenChange, onConfirm, similarCount }:
           </Button>
           <Button
             onClick={handleConfirm}
+            disabled={!reason.trim()}
             className="w-full sm:w-[48%] bg-red-600 hover:bg-red-700 text-white min-h-[48px] md:min-h-[44px] lg:min-h-[40px] text-[14px] font-bold leading-[20px]"
           >
             ✅ Confirmar

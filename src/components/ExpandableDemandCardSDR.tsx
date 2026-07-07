@@ -25,6 +25,8 @@ import { useToast } from '@/hooks/use-toast'
 import { RespostasBadge, RespostasHistory } from './RespostasHistory'
 import { useMatchCount } from '@/hooks/use-match-count'
 import { useNavigate } from 'react-router-dom'
+import { PrioritizeModal } from './PrioritizeModal'
+import { toggleDemandPriority } from '@/services/priority-service'
 
 export function ExpandableDemandCardSDR({
   demand,
@@ -37,6 +39,10 @@ export function ExpandableDemandCardSDR({
   const { toast } = useToast()
   const navigate = useNavigate()
   const { count: matchCount } = useMatchCount('demanda', demand.id || '')
+  const [isPrioritizeModalOpen, setIsPrioritizeModalOpen] = useState(false)
+  const [isPrioritizing, setIsPrioritizing] = useState(false)
+
+  const canPrioritize = ['sdr', 'admin', 'gestor'].includes(currentUser?.role)
 
   const { text: timeElapsedText, hoursElapsed } = useTimeElapsed(demand.created_at)
 
@@ -122,222 +128,261 @@ export function ExpandableDemandCardSDR({
     progressColor = 'bg-gray-100 text-gray-600 border-gray-200'
   }
 
+  const handlePrioritize = async (reason: string) => {
+    if (isPrioritizing) return
+    setIsPrioritizing(true)
+    try {
+      const demandType = demand.tipo === 'Venda' ? 'Venda' : 'Aluguel'
+      const { error } = await toggleDemandPriority(demand.id, demandType, false, reason)
+      if (error) throw error
+
+      toast({
+        title: '⭐ Demanda Priorizada',
+        description: 'Os captadores foram notificados. Prazo de 24h iniciado.',
+        className: 'bg-[#FCD34D] text-[#854D0E] border-none',
+      })
+
+      window.dispatchEvent(
+        new CustomEvent('demanda-updated', {
+          detail: {
+            tipo: demand.tipo,
+            data: { id: demand.id, is_prioritaria: true, motivo_priorizacao: reason },
+          },
+        }),
+      )
+    } catch (err: any) {
+      toast({
+        title: 'Erro ao priorizar',
+        description: err.message || 'Tente novamente.',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsPrioritizing(false)
+    }
+  }
+
   return (
-    <Card
-      id={`demand-card-${demand.id}`}
-      className={cn(
-        'w-full h-full relative overflow-hidden rounded-[16px] border shadow-sm hover:shadow-md transition-all duration-200 bg-gradient-to-b flex flex-col z-0',
-        isPrioritized
-          ? 'from-[#FFFBEB] to-white border-[#FCD34D]'
-          : isNew
-            ? 'from-[#F2FBF5] to-white border-[#4CAF50]'
-            : isLost
-              ? 'bg-[#F5F5F5] opacity-90 border-[#E5E5E5]'
-              : 'from-[#FFFFFF] to-white border-[#E5E5E5]',
-      )}
-    >
-      <div
+    <>
+      <Card
+        id={`demand-card-${demand.id}`}
         className={cn(
-          'px-4 py-2.5 flex items-center shadow-sm border-b bg-white flex-wrap gap-2 justify-between relative z-10 pointer-events-none',
-          isPrioritized ? 'border-[#FCD34D]/50' : 'border-[#E5E5E5]/50',
+          'w-full h-full relative overflow-hidden rounded-[16px] border shadow-sm hover:shadow-md transition-all duration-200 bg-gradient-to-b flex flex-col z-0',
+          isPrioritized
+            ? 'from-[#FFFBEB] to-white border-[#FCD34D]'
+            : isNew
+              ? 'from-[#F2FBF5] to-white border-[#4CAF50]'
+              : isLost
+                ? 'bg-[#F5F5F5] opacity-90 border-[#E5E5E5]'
+                : 'from-[#FFFFFF] to-white border-[#E5E5E5]',
         )}
       >
-        <div className="flex items-center gap-2 flex-wrap">
-          <div
-            className={cn(
-              'flex items-center gap-2 font-black text-[11px] uppercase tracking-widest px-2 py-1 rounded shadow-sm',
-              statusConfig.bg,
-              statusConfig.text,
-            )}
-          >
-            <statusConfig.icon className="w-3.5 h-3.5" />
-            {statusConfig.label}
-          </div>
-
-          {isPrioritized && (
-            <Badge className="bg-[#F44336] text-[#FFFFFF] hover:bg-[#d32f2f] text-[10px] font-black px-2 py-1 flex items-center gap-1 shadow-sm border-none">
-              <Star className="w-3 h-3 fill-current" /> PRIORITÁRIA
-            </Badge>
+        <div
+          className={cn(
+            'px-4 py-2.5 flex items-center shadow-sm border-b bg-white flex-wrap gap-2 justify-between relative z-10 pointer-events-none',
+            isPrioritized ? 'border-[#FCD34D]/50' : 'border-[#E5E5E5]/50',
           )}
+        >
+          <div className="flex items-center gap-2 flex-wrap">
+            <div
+              className={cn(
+                'flex items-center gap-2 font-black text-[11px] uppercase tracking-widest px-2 py-1 rounded shadow-sm',
+                statusConfig.bg,
+                statusConfig.text,
+              )}
+            >
+              <statusConfig.icon className="w-3.5 h-3.5" />
+              {statusConfig.label}
+            </div>
 
-          {isNew && !isPrioritized && (
-            <Badge className="bg-[#4CAF50] text-[#FFFFFF] border-none font-bold text-[10px] px-2 py-1 shadow-sm uppercase tracking-wider animate-pulse flex items-center gap-1 pointer-events-auto">
-              <Zap className="w-3 h-3 fill-current" /> NOVA DEMANDA
-            </Badge>
-          )}
-
-          <Badge
-            className={cn(
-              'border font-bold text-[10px] px-2 py-1 shadow-sm uppercase tracking-wider flex items-center gap-1 pointer-events-auto',
-              progressColor,
-            )}
-          >
-            {progressStatus}
-          </Badge>
-
-          {matchCount > 0 &&
-            !isLost &&
-            demand.status_demanda !== 'atendida' &&
-            demand.status_demanda !== 'ganho' && (
-              <Badge
-                onClick={(e) => {
-                  e.stopPropagation()
-                  e.preventDefault()
-                  navigate('/app/match-inteligentes')
-                }}
-                className="bg-[#3B82F6] hover:bg-[#2563EB] text-white border-none font-bold text-[10px] px-2 py-1 shadow-sm cursor-pointer animate-pulse flex items-center gap-1 pointer-events-auto"
-              >
-                <Zap className="w-3 h-3 fill-current" /> {matchCount} MATCH
-                {matchCount !== 1 ? 'ES' : ''}
+            {isPrioritized && (
+              <Badge className="bg-[#F44336] text-[#FFFFFF] hover:bg-[#d32f2f] text-[10px] font-black px-2 py-1 flex items-center gap-1 shadow-sm border-none">
+                <Star className="w-3 h-3 fill-current" /> PRIORITÁRIA
               </Badge>
             )}
 
-          <RespostasBadge respostas={respostasNaoEncontrei} />
+            {isNew && !isPrioritized && (
+              <Badge className="bg-[#4CAF50] text-[#FFFFFF] border-none font-bold text-[10px] px-2 py-1 shadow-sm uppercase tracking-wider animate-pulse flex items-center gap-1 pointer-events-auto">
+                <Zap className="w-3 h-3 fill-current" /> NOVA DEMANDA
+              </Badge>
+            )}
 
-          {activeCaptadores.length > 0 && (
-            <Badge className="bg-purple-100 text-purple-800 hover:bg-purple-100 text-[10px] font-black px-2 py-1 flex items-center gap-1 shadow-sm border border-purple-200">
-              👀 {activeCaptadores.length} captadores buscando - Adicione imóveis ou marque visitas
+            <Badge
+              className={cn(
+                'border font-bold text-[10px] px-2 py-1 shadow-sm uppercase tracking-wider flex items-center gap-1 pointer-events-auto',
+                progressColor,
+              )}
+            >
+              {progressStatus}
             </Badge>
-          )}
-        </div>
 
-        {isPending && !isLost && (
-          <span
-            className={cn(
-              'text-[11px] font-black whitespace-nowrap shrink-0 transition-colors duration-200 bg-white px-2 py-0.5 rounded border shadow-sm',
-              slaLevel === 'red'
-                ? 'text-[#F44336] border-[#F44336]/30'
-                : slaLevel === 'yellow'
-                  ? 'text-[#FF9800] border-[#FF9800]/30'
-                  : 'text-[#4CAF50] border-[#4CAF50]/30',
+            {matchCount > 0 &&
+              !isLost &&
+              demand.status_demanda !== 'atendida' &&
+              demand.status_demanda !== 'ganho' && (
+                <Badge
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    e.preventDefault()
+                    navigate('/app/match-inteligentes')
+                  }}
+                  className="bg-[#3B82F6] hover:bg-[#2563EB] text-white border-none font-bold text-[10px] px-2 py-1 shadow-sm cursor-pointer animate-pulse flex items-center gap-1 pointer-events-auto"
+                >
+                  <Zap className="w-3 h-3 fill-current" /> {matchCount} MATCH
+                  {matchCount !== 1 ? 'ES' : ''}
+                </Badge>
+              )}
+
+            <RespostasBadge respostas={respostasNaoEncontrei} />
+
+            {activeCaptadores.length > 0 && (
+              <Badge className="bg-purple-100 text-purple-800 hover:bg-purple-100 text-[10px] font-black px-2 py-1 flex items-center gap-1 shadow-sm border border-purple-200">
+                👀 {activeCaptadores.length} captadores buscando - Adicione imóveis ou marque
+                visitas
+              </Badge>
             )}
-          >
-            {slaText}
-          </span>
-        )}
-      </div>
-
-      <div className="p-4 flex flex-col gap-3 flex-1 relative z-0 pointer-events-none">
-        <h3
-          className="text-[18px] font-black text-[#1A3A52] leading-tight pr-2 line-clamp-2"
-          title={demand.nome_cliente}
-        >
-          {demand.nome_cliente}
-        </h3>
-
-        <div className="flex flex-col gap-1.5 mt-1">
-          <div className="flex items-center gap-2 text-[14px] text-[#333333]">
-            <MapPin className="w-4 h-4 text-pink-500 shrink-0" />
-            <span className="font-medium line-clamp-1" title={demand.bairros?.join(', ')}>
-              {demand.bairros?.join(', ') || 'Sem localização'}
-            </span>
           </div>
-        </div>
-
-        <div className="flex items-center gap-2 mt-1">
-          <DollarSign className="w-5 h-5 text-[#10B981] shrink-0" />
-          <span className="text-[20px] font-black text-[#10B981] tracking-tight">
-            Até {formatPrice(demand.valor_maximo)}
-          </span>
-        </div>
-
-        <div className="flex items-center gap-3 text-[12px] font-bold text-[#666666] bg-[#F8FAFC] p-2.5 rounded-lg mt-1 border border-[#E5E5E5] flex-wrap shadow-sm">
-          <span className={isHighUrgency ? 'text-[#F44336]' : 'text-[#FF9800]'}>
-            Urgência: {demand.nivel_urgencia}
-          </span>
-          <span className="opacity-50">|</span>
-          <span className="flex items-center gap-1">
-            <Clock className="w-3.5 h-3.5" /> {timeElapsedText}
-          </span>
-        </div>
-
-        <div className="flex items-start gap-2.5 bg-[#E8F5E9] text-[#065F46] p-3 rounded-lg text-[13px] mt-1 border border-[#A7F3D0] shadow-sm">
-          <Info className="w-4 h-4 shrink-0 mt-0.5 text-[#10B981]" />
-          <p className="leading-snug font-medium line-clamp-3">
-            {demand.observacoes || 'Nenhuma observação específica fornecida.'}
-          </p>
-        </div>
-
-        <div className="flex items-center justify-between mt-auto pt-3 border-t border-[#E5E5E5] flex-wrap gap-2 pointer-events-auto">
-          <Badge
-            className={cn(
-              'border-none px-3 h-6 flex items-center justify-center font-bold text-[11px] shadow-sm',
-              capturedCount > 0
-                ? 'bg-[#10B981] text-white'
-                : 'bg-white text-[#999999] border border-[#E5E5E5]',
-            )}
-          >
-            {capturedCount} imóveis captados
-          </Badge>
 
           {isPending && !isLost && (
-            <Button
-              variant="outline"
-              size="sm"
+            <span
               className={cn(
-                'h-7 px-2 font-bold text-[11px] border-none shadow-sm relative z-10 transition-all',
-                isPrioritized
-                  ? 'bg-[#F44336]/10 text-[#F44336] hover:bg-[#F44336]/20'
-                  : 'bg-[#FCD34D]/20 text-[#B45309] hover:bg-[#FCD34D]/40',
+                'text-[11px] font-black whitespace-nowrap shrink-0 transition-colors duration-200 bg-white px-2 py-0.5 rounded border shadow-sm',
+                slaLevel === 'red'
+                  ? 'text-[#F44336] border-[#F44336]/30'
+                  : slaLevel === 'yellow'
+                    ? 'text-[#FF9800] border-[#FF9800]/30'
+                    : 'text-[#4CAF50] border-[#4CAF50]/30',
               )}
-              onClick={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                onAction?.('prioritize', demand)
-              }}
             >
-              <Star className="w-3 h-3 mr-1" /> {isPrioritized ? 'Remover Prioridade' : 'Priorizar'}
-            </Button>
+              {slaText}
+            </span>
           )}
         </div>
 
-        <RespostasHistory respostas={respostasNaoEncontrei} />
-      </div>
-
-      <div className="px-4 pb-4 pt-2 mt-auto bg-white pointer-events-auto rounded-b-[14px]">
-        <div className="grid grid-cols-2 gap-2 relative z-10">
-          <Button
-            variant="outline"
-            className="w-full font-bold border-[#2E5F8A]/30 text-[#1A3A52] hover:bg-gray-100 min-h-[44px]"
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              onAction?.('details', demand)
-            }}
+        <div className="p-4 flex flex-col gap-3 flex-1 relative z-0 pointer-events-none">
+          <h3
+            className="text-[18px] font-black text-[#1A3A52] leading-tight pr-2 line-clamp-2"
+            title={demand.nome_cliente}
           >
-            Ver Detalhes
-          </Button>
+            {demand.nome_cliente}
+          </h3>
 
-          {canMarkLost && (
-            <Button
-              variant="destructive"
-              className="w-full font-bold min-h-[44px]"
-              onClick={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                onAction?.('lost', demand)
-              }}
+          <div className="flex flex-col gap-1.5 mt-1">
+            <div className="flex items-center gap-2 text-[14px] text-[#333333]">
+              <MapPin className="w-4 h-4 text-pink-500 shrink-0" />
+              <span className="font-medium line-clamp-1" title={demand.bairros?.join(', ')}>
+                {demand.bairros?.join(', ') || 'Sem localização'}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 mt-1">
+            <DollarSign className="w-5 h-5 text-[#10B981] shrink-0" />
+            <span className="text-[20px] font-black text-[#10B981] tracking-tight">
+              Até {formatPrice(demand.valor_maximo)}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-3 text-[12px] font-bold text-[#666666] bg-[#F8FAFC] p-2.5 rounded-lg mt-1 border border-[#E5E5E5] flex-wrap shadow-sm">
+            <span className={isHighUrgency ? 'text-[#F44336]' : 'text-[#FF9800]'}>
+              Urgência: {demand.nivel_urgencia}
+            </span>
+            <span className="opacity-50">|</span>
+            <span className="flex items-center gap-1">
+              <Clock className="w-3.5 h-3.5" /> {timeElapsedText}
+            </span>
+          </div>
+
+          <div className="flex items-start gap-2.5 bg-[#E8F5E9] text-[#065F46] p-3 rounded-lg text-[13px] mt-1 border border-[#A7F3D0] shadow-sm">
+            <Info className="w-4 h-4 shrink-0 mt-0.5 text-[#10B981]" />
+            <p className="leading-snug font-medium line-clamp-3">
+              {demand.observacoes || 'Nenhuma observação específica fornecida.'}
+            </p>
+          </div>
+
+          <div className="flex items-center justify-between mt-auto pt-3 border-t border-[#E5E5E5] flex-wrap gap-2 pointer-events-auto">
+            <Badge
+              className={cn(
+                'border-none px-3 h-6 flex items-center justify-center font-bold text-[11px] shadow-sm',
+                capturedCount > 0
+                  ? 'bg-[#10B981] text-white'
+                  : 'bg-white text-[#999999] border border-[#E5E5E5]',
+              )}
             >
-              <X className="w-4 h-4 mr-1.5" /> Perdida
-            </Button>
-          )}
+              {capturedCount} imóveis captados
+            </Badge>
 
-          {!canMarkLost && (
+            {isPending && !isLost && !isPrioritized && canPrioritize && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 px-2 font-bold text-[11px] border-none shadow-sm relative z-10 transition-all bg-[#FCD34D]/20 text-[#B45309] hover:bg-[#FCD34D]/40"
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  setIsPrioritizeModalOpen(true)
+                }}
+                disabled={isPrioritizing}
+              >
+                <Star className="w-3 h-3 mr-1" /> Priorizar
+              </Button>
+            )}
+          </div>
+
+          <RespostasHistory respostas={respostasNaoEncontrei} />
+        </div>
+
+        <div className="px-4 pb-4 pt-2 mt-auto bg-white pointer-events-auto rounded-b-[14px]">
+          <div className="grid grid-cols-2 gap-2 relative z-10">
             <Button
               variant="outline"
-              className="w-full font-bold border-[#E5E5E5] text-[#333333] hover:bg-gray-100 min-h-[44px]"
+              className="w-full font-bold border-[#2E5F8A]/30 text-[#1A3A52] hover:bg-gray-100 min-h-[44px]"
               onClick={(e) => {
                 e.preventDefault()
                 e.stopPropagation()
-                logSolicitorContactAttempt(demand.id, 'whatsapp', 'Olá')
-                toast({ title: 'Aviso', description: 'Função de contato iniciada.' })
+                onAction?.('details', demand)
               }}
             >
-              <MessageCircle className="w-4 h-4 mr-1.5" /> Contato
+              Ver Detalhes
             </Button>
-          )}
+
+            {canMarkLost && (
+              <Button
+                variant="destructive"
+                className="w-full font-bold min-h-[44px]"
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  onAction?.('lost', demand)
+                }}
+              >
+                <X className="w-4 h-4 mr-1.5" /> Perdida
+              </Button>
+            )}
+
+            {!canMarkLost && (
+              <Button
+                variant="outline"
+                className="w-full font-bold border-[#E5E5E5] text-[#333333] hover:bg-gray-100 min-h-[44px]"
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  logSolicitorContactAttempt(demand.id, 'whatsapp', 'Olá')
+                  toast({ title: 'Aviso', description: 'Função de contato iniciada.' })
+                }}
+              >
+                <MessageCircle className="w-4 h-4 mr-1.5" /> Contato
+              </Button>
+            )}
+          </div>
         </div>
-      </div>
-    </Card>
+      </Card>
+
+      <PrioritizeModal
+        open={isPrioritizeModalOpen}
+        onOpenChange={setIsPrioritizeModalOpen}
+        onConfirm={handlePrioritize}
+        similarCount={demand.interestedClientsCount || 0}
+      />
+    </>
   )
 }

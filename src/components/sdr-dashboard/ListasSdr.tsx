@@ -31,6 +31,10 @@ import {
 } from '@/components/ui/select'
 import { useToast } from '@/components/ui/use-toast'
 import { supabase } from '@/lib/supabase/client'
+import { PrioritizeModal } from '@/components/PrioritizeModal'
+import { toggleDemandPriority } from '@/services/priority-service'
+import useAppStore from '@/stores/useAppStore'
+import { Star } from 'lucide-react'
 
 export function ListasSdr({
   data,
@@ -42,11 +46,16 @@ export function ListasSdr({
   isLocacao: boolean
 }) {
   const { cardFiltrado } = useSdrStore()
+  const { currentUser } = useAppStore()
   const [selectedProperty, setSelectedProperty] = useState<any>(null)
   const [selectedDemand, setSelectedDemand] = useState<any>(null)
   const [linkingDemandaId, setLinkingDemandaId] = useState<string>('')
   const [isLinking, setIsLinking] = useState(false)
+  const [prioritizeDemand, setPrioritizeDemand] = useState<any>(null)
+  const [isPrioritizing, setIsPrioritizing] = useState(false)
   const { toast } = useToast()
+
+  const canPrioritize = ['sdr', 'admin', 'gestor'].includes(currentUser?.role)
 
   if (loading) return null
 
@@ -108,6 +117,38 @@ export function ListasSdr({
     }
   }
 
+  const handlePrioritize = async (reason: string) => {
+    if (!prioritizeDemand || isPrioritizing) return
+    setIsPrioritizing(true)
+    try {
+      const demandType = isLocacao ? 'Aluguel' : 'Venda'
+      const { error } = await toggleDemandPriority(prioritizeDemand.id, demandType, false, reason)
+      if (error) throw error
+      toast({
+        title: '⭐ Demanda Priorizada',
+        description: 'Os captadores foram notificados. Prazo de 24h iniciado.',
+        className: 'bg-[#FCD34D] text-[#854D0E] border-none',
+      })
+      setPrioritizeDemand(null)
+      window.dispatchEvent(
+        new CustomEvent('demanda-updated', {
+          detail: {
+            tipo: demandType,
+            data: { id: prioritizeDemand.id, is_prioritaria: true },
+          },
+        }),
+      )
+    } catch (err: any) {
+      toast({
+        title: 'Erro ao priorizar',
+        description: err.message || 'Tente novamente.',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsPrioritizing(false)
+    }
+  }
+
   const allProperties = [...imoveisLivresList, ...imoveisSobDemandaList]
 
   let listData: any[] = []
@@ -117,7 +158,7 @@ export function ListasSdr({
   if (cardFiltrado === 'novas' || cardFiltrado === 'nenhum') {
     listData =
       demandasList.filter((d: any) => !d?.status_demanda || d.status_demanda === 'aberta') || []
-    columns = ['Cliente', 'Specs', 'Data', 'Status']
+    columns = ['Cliente', 'Specs', 'Data', 'Status', 'Ações']
     renderRow = (d) => (
       <TableRow
         key={d.id}
@@ -134,9 +175,27 @@ export function ListasSdr({
           {format(new Date(d.created_at), 'dd/MM/yyyy')}
         </TableCell>
         <TableCell>
-          <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-200 border-none font-bold uppercase tracking-wider text-[10px]">
-            Nova
-          </Badge>
+          {d.is_prioritaria ? (
+            <Badge className="bg-[#F44336] text-white border-none font-bold uppercase tracking-wider text-[10px] flex items-center gap-1 w-fit">
+              <Star className="w-3 h-3 fill-current" /> PRIORITÁRIA
+            </Badge>
+          ) : (
+            <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-200 border-none font-bold uppercase tracking-wider text-[10px]">
+              Nova
+            </Badge>
+          )}
+        </TableCell>
+        <TableCell onClick={(e) => e.stopPropagation()}>
+          {canPrioritize && !d.is_prioritaria && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-[10px] font-bold border-[#FCD34D] text-[#B45309] hover:bg-[#FCD34D]/20"
+              onClick={() => setPrioritizeDemand(d)}
+            >
+              <Star className="w-3 h-3 mr-1" /> Priorizar
+            </Button>
+          )}
         </TableCell>
       </TableRow>
     )
@@ -147,7 +206,7 @@ export function ListasSdr({
           d?.status_demanda?.toLowerCase() || '',
         ),
       ) || []
-    columns = ['Cliente', 'Budget', 'Criada em', 'Status']
+    columns = ['Cliente', 'Budget', 'Criada em', 'Status', 'Ações']
     renderRow = (d) => (
       <TableRow
         key={d.id}
@@ -162,9 +221,27 @@ export function ListasSdr({
           {format(new Date(d.created_at), 'dd/MM/yyyy')}
         </TableCell>
         <TableCell>
-          <Badge className="bg-blue-100 text-blue-800 border-none font-bold uppercase tracking-wider text-[10px]">
-            Em Busca
-          </Badge>
+          {d.is_prioritaria ? (
+            <Badge className="bg-[#F44336] text-white border-none font-bold uppercase tracking-wider text-[10px] flex items-center gap-1 w-fit">
+              <Star className="w-3 h-3 fill-current" /> PRIORITÁRIA
+            </Badge>
+          ) : (
+            <Badge className="bg-blue-100 text-blue-800 border-none font-bold uppercase tracking-wider text-[10px]">
+              Em Busca
+            </Badge>
+          )}
+        </TableCell>
+        <TableCell onClick={(e) => e.stopPropagation()}>
+          {canPrioritize && !d.is_prioritaria && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-[10px] font-bold border-[#FCD34D] text-[#B45309] hover:bg-[#FCD34D]/20"
+              onClick={() => setPrioritizeDemand(d)}
+            >
+              <Star className="w-3 h-3 mr-1" /> Priorizar
+            </Button>
+          )}
         </TableCell>
       </TableRow>
     )
@@ -500,6 +577,13 @@ export function ListasSdr({
           )}
         </DialogContent>
       </Dialog>
+
+      <PrioritizeModal
+        open={!!prioritizeDemand}
+        onOpenChange={(open) => !open && setPrioritizeDemand(null)}
+        onConfirm={handlePrioritize}
+        similarCount={prioritizeDemand?.interestedClientsCount || 0}
+      />
     </div>
   )
 }

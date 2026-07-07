@@ -8,10 +8,20 @@ export async function toggleDemandPriority(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const table = type === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
-    const updateData: Record<string, unknown> = { is_prioritaria: !isPrioritaria }
+    const now = new Date()
+    const updateData: Record<string, unknown> = {
+      is_prioritaria: !isPrioritaria,
+      updated_at: now.toISOString(),
+    }
 
     if (!isPrioritaria && motivo) {
       updateData.motivo_priorizacao = motivo
+      updateData.data_prazo_resposta = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString()
+    }
+
+    if (isPrioritaria) {
+      updateData.motivo_priorizacao = null
+      updateData.data_prazo_resposta = null
     }
 
     const { error } = await supabase.from(table).update(updateData).eq('id', demandId)
