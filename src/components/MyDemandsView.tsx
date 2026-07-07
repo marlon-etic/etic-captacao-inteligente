@@ -290,7 +290,7 @@ export function MyDemandsView({ filterType }: Props) {
 
   const filteredDemands = useMemo(() => {
     return tabFilteredDemands.filter((d) => {
-      if (hiddenDemands.has(d.id)) return false
+      if (activeTab !== 'perdidas' && hiddenDemands.has(d.id)) return false
 
       // Visibility is already global by role (Venda/Locação) in backend and hook
 
@@ -319,7 +319,7 @@ export function MyDemandsView({ filterType }: Props) {
 
       return true
     })
-  }, [tabFilteredDemands, filters, currentUser, hiddenDemands])
+  }, [tabFilteredDemands, filters, currentUser, hiddenDemands, activeTab])
 
   const handleClear = () =>
     handleFilterChange({

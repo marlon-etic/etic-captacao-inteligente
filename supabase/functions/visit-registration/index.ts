@@ -10,10 +10,13 @@ Deno.serve(async (req: Request) => {
   try {
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
-      return new Response(JSON.stringify({ success: false, error: 'Unauthorized', message: 'Missing JWT' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json', ...corsHeaders },
-      })
+      return new Response(
+        JSON.stringify({ success: false, error: 'Unauthorized', message: 'Missing JWT' }),
+        {
+          status: 401,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        },
+      )
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
@@ -26,13 +29,19 @@ Deno.serve(async (req: Request) => {
 
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
 
-    const { data: { user }, error: authError } = await supabaseAuthClient.auth.getUser()
+    const {
+      data: { user },
+      error: authError,
+    } = await supabaseAuthClient.auth.getUser()
 
     if (authError || !user) {
-      return new Response(JSON.stringify({ success: false, error: 'Unauthorized', message: 'Invalid JWT' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json', ...corsHeaders },
-      })
+      return new Response(
+        JSON.stringify({ success: false, error: 'Unauthorized', message: 'Invalid JWT' }),
+        {
+          status: 401,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        },
+      )
     }
 
     const { data: userData, error: userError } = await supabaseAdmin
@@ -42,20 +51,34 @@ Deno.serve(async (req: Request) => {
       .single()
 
     if (userError || !userData || userData.role !== 'sdr') {
-      return new Response(JSON.stringify({ success: false, error: 'Forbidden', message: 'User does not have the required sdr role' }), {
-        status: 403,
-        headers: { 'Content-Type': 'application/json', ...corsHeaders },
-      })
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Forbidden',
+          message: 'User does not have the required sdr role',
+        }),
+        {
+          status: 403,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        },
+      )
     }
 
     const body = await req.json()
     const { property_link_id, notes } = body
 
     if (!property_link_id) {
-      return new Response(JSON.stringify({ success: false, error: 'Bad Request', message: 'property_link_id is required' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json', ...corsHeaders },
-      })
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Bad Request',
+          message: 'property_link_id is required',
+        }),
+        {
+          status: 400,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        },
+      )
     }
 
     // Check if property_link_id exists
@@ -66,10 +89,13 @@ Deno.serve(async (req: Request) => {
       .single()
 
     if (linkError || !linkData) {
-      return new Response(JSON.stringify({ success: false, error: 'Not Found', message: 'Property link not found' }), {
-        status: 404,
-        headers: { 'Content-Type': 'application/json', ...corsHeaders },
-      })
+      return new Response(
+        JSON.stringify({ success: false, error: 'Not Found', message: 'Property link not found' }),
+        {
+          status: 404,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        },
+      )
     }
 
     // Check for duplicate visit today
@@ -87,10 +113,17 @@ Deno.serve(async (req: Request) => {
     }
 
     if (existingVisit) {
-      return new Response(JSON.stringify({ success: false, error: 'Visit already recorded today', message: 'A visit has already been recorded for this property today.' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json', ...corsHeaders },
-      })
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Visit already recorded today',
+          message: 'A visit has already been recorded for this property today.',
+        }),
+        {
+          status: 400,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        },
+      )
     }
 
     // Insert new visit
@@ -104,7 +137,7 @@ Deno.serve(async (req: Request) => {
         visited_at: now,
         visited_date: today,
         created_at: now,
-        updated_at: now
+        updated_at: now,
       })
       .select('id, visited_at')
       .single()
@@ -113,20 +146,25 @@ Deno.serve(async (req: Request) => {
       throw insertError
     }
 
-    return new Response(JSON.stringify({
-      success: true,
-      visit_id: newVisit.id,
-      visited_at: newVisit.visited_at,
-      sdr_name: userData.nome
-    }), {
-      status: 201,
-      headers: { 'Content-Type': 'application/json', ...corsHeaders },
-    })
-
+    return new Response(
+      JSON.stringify({
+        success: true,
+        visit_id: newVisit.id,
+        visited_at: newVisit.visited_at,
+        sdr_name: userData.nome,
+      }),
+      {
+        status: 201,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      },
+    )
   } catch (error: any) {
-    return new Response(JSON.stringify({ success: false, error: 'Internal Server Error', message: error.message }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json', ...corsHeaders },
-    })
+    return new Response(
+      JSON.stringify({ success: false, error: 'Internal Server Error', message: error.message }),
+      {
+        status: 500,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      },
+    )
   }
 })

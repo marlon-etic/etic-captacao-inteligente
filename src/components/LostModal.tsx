@@ -20,6 +20,17 @@ import { Label } from '@/components/ui/label'
 import { trackEvent } from '@/lib/analytics'
 import { useAuth } from '@/hooks/use-auth'
 
+const LOST_REASONS = [
+  'Cliente já alugou',
+  'Cliente já comprou',
+  'Cliente desistiu da busca',
+  'Cliente alugou com terceiros',
+  'Cliente comprou com terceiros',
+  'Cliente com imóvel fora do perfil',
+  'Cliente com imóvel fora da localização',
+  'Cliente sem imóveis no perfil.',
+] as const
+
 interface Props {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -86,32 +97,20 @@ export function LostModal({ open, onOpenChange, onConfirm }: Props) {
                   <SelectValue placeholder="Selecione um motivo..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem
-                    value="Já alugou/comprou com outro"
-                    className="min-h-[44px] text-[14px] cursor-pointer"
-                  >
-                    Já alugou/comprou com outro
-                  </SelectItem>
-                  <SelectItem
-                    value="Parou de procurar"
-                    className="min-h-[44px] text-[14px] cursor-pointer"
-                  >
-                    Parou de procurar
-                  </SelectItem>
-                  <SelectItem
-                    value="Alugou/comprou com a Étic"
-                    className="min-h-[44px] text-[14px] cursor-pointer text-[#10B981] font-bold"
-                  >
-                    Alugou/comprou com a Étic (Sucesso)
-                  </SelectItem>
-                  <SelectItem value="Outro" className="min-h-[44px] text-[14px] cursor-pointer">
-                    Outro motivo
-                  </SelectItem>
+                  {LOST_REASONS.map((r) => (
+                    <SelectItem
+                      key={r}
+                      value={r}
+                      className="min-h-[44px] text-[14px] cursor-pointer"
+                    >
+                      {r}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               {error && <p className="text-[13px] font-bold text-destructive mt-1">{error}</p>}
             </div>
-            {(reason === 'Outro' || reason) && (
+            {reason && (
               <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
                 <Label className="text-[14px] font-bold text-[#1A3A52]">
                   Observações (Opcional)
