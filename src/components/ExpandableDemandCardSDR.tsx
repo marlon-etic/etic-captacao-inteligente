@@ -27,6 +27,8 @@ import { useMatchCount } from '@/hooks/use-match-count'
 import { useNavigate } from 'react-router-dom'
 import { PrioritizeModal } from './PrioritizeModal'
 import { toggleDemandPriority } from '@/services/priority-service'
+import { LostModal } from './LostModal'
+import { supabase } from '@/lib/supabase/client'
 
 export function ExpandableDemandCardSDR({
   demand,
@@ -41,6 +43,7 @@ export function ExpandableDemandCardSDR({
   const { count: matchCount } = useMatchCount('demanda', demand.id || '')
   const [isPrioritizeModalOpen, setIsPrioritizeModalOpen] = useState(false)
   const [isPrioritizing, setIsPrioritizing] = useState(false)
+  const [showLostModal, setShowLostModal] = useState(false)
 
   const canPrioritize = ['sdr', 'admin', 'gestor', 'corretor'].includes(currentUser?.role)
 
@@ -192,6 +195,60 @@ export function ExpandableDemandCardSDR({
       })
     } finally {
       setIsPrioritizing(false)
+    }
+  }
+
+  const handleLostConfirm = async (reason: string, obs: string) => {
+    try {
+      const table = demand.tipo === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
+      const { error } = await supabase
+        .from(table)
+        .update({
+          status_demanda: 'perdida',
+          motivo_perda: reason,
+          motivo_perda_descricao: obs,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', demand.id)
+
+      if (error) throw error
+
+      await supabase.from('audit_log').insert({
+        usuario_id: currentUser?.id || null,
+        acao: 'UPDATE',
+        tabela: table,
+        registro_id: demand.id,
+        dados_novos: {
+          status_demanda: 'perdida',
+          motivo_perda: reason,
+          motivo_perda_descricao: obs,
+        },
+      })
+
+      window.dispatchEvent(
+        new CustomEvent('demanda-updated', {
+          detail: {
+            tipo: demand.tipo,
+            data: {
+              id: demand.id,
+              status_demanda: 'perdida',
+              db_status_demanda: 'perdida',
+            },
+          },
+        }),
+      )
+
+      toast({
+        title: 'Sucesso',
+        description: 'Demanda marcada como perdida com sucesso.',
+        className: 'bg-[#10B981] text-white border-none',
+      })
+    } catch (err: any) {
+      toast({
+        title: 'Falha ao marcar como perdida',
+        description: err.message,
+        variant: 'destructive',
+      })
     }
   }
 
@@ -400,7 +457,7 @@ export function ExpandableDemandCardSDR({
                 onClick={(e) => {
                   e.preventDefault()
                   e.stopPropagation()
-                  onAction?.('lost', demand)
+                  setShowLostModal(true)
                 }}
               >
                 <X className="w-4 h-4 mr-1.5" /> Perdida
@@ -430,6 +487,12 @@ export function ExpandableDemandCardSDR({
         onOpenChange={setIsPrioritizeModalOpen}
         onConfirm={handlePrioritize}
         similarCount={demand.interestedClientsCount || 0}
+      />
+
+      <LostModal
+        open={showLostModal}
+        onOpenChange={setShowLostModal}
+        onConfirm={handleLostConfirm}
       />
     </>
   )

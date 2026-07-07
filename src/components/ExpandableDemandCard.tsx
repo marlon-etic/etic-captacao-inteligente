@@ -31,6 +31,7 @@ import { PrioritizeModal } from './PrioritizeModal'
 import { toggleDemandPriority } from '@/services/priority-service'
 import { PrazoCounter } from './PrazoCounter'
 import { RespostasBadge, RespostasHistory } from './RespostasHistory'
+import { LostModal } from './LostModal'
 
 export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
   const { currentUser, users } = useAppStore()
@@ -42,6 +43,7 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isPrioritizing, setIsPrioritizing] = useState(false)
   const [isPrioritizeModalOpen, setIsPrioritizeModalOpen] = useState(false)
+  const [showLostModal, setShowLostModal] = useState(false)
 
   const isOwnerOrAdmin =
     currentUser?.role === 'admin' ||
@@ -292,6 +294,60 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
       })
     } finally {
       setIsSubmitting(false)
+    }
+  }
+
+  const handleLostConfirm = async (reason: string, obs: string) => {
+    try {
+      const table = demand.tipo === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
+      const { error } = await supabase
+        .from(table)
+        .update({
+          status_demanda: 'perdida',
+          motivo_perda: reason,
+          motivo_perda_descricao: obs,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', demand.id)
+
+      if (error) throw error
+
+      await supabase.from('audit_log').insert({
+        usuario_id: currentUser?.id || null,
+        acao: 'UPDATE',
+        tabela: table,
+        registro_id: demand.id,
+        dados_novos: {
+          status_demanda: 'perdida',
+          motivo_perda: reason,
+          motivo_perda_descricao: obs,
+        },
+      })
+
+      window.dispatchEvent(
+        new CustomEvent('demanda-updated', {
+          detail: {
+            tipo: demand.tipo,
+            data: {
+              id: demand.id,
+              status_demanda: 'perdida',
+              db_status_demanda: 'perdida',
+            },
+          },
+        }),
+      )
+
+      toast({
+        title: 'Sucesso',
+        description: 'Demanda marcada como perdida com sucesso.',
+        className: 'bg-[#10B981] text-white border-none',
+      })
+    } catch (err: any) {
+      toast({
+        title: 'Falha ao marcar como perdida',
+        description: err.message,
+        variant: 'destructive',
+      })
     }
   }
 
@@ -550,6 +606,14 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
             ? () => {
                 setIsDetailsModalOpen(false)
                 setTimeout(() => setIsCaptureModalOpen(true), 300)
+              }
+            : undefined
+        }
+        onLost={
+          isOwnerOrAdmin
+            ? () => {
+                setIsDetailsModalOpen(false)
+                setTimeout(() => setShowLostModal(true), 300)
               }
             : undefined
         }

@@ -770,7 +770,7 @@ export const DemandCard = React.memo(function DemandCard({
               const { error } = await supabase
                 .from(table)
                 .update({
-                  status_demanda: 'Perdida',
+                  status_demanda: 'perdida',
                   motivo_perda: reason,
                   motivo_perda_descricao: obs,
                   updated_at: new Date().toISOString(),
@@ -797,8 +797,8 @@ export const DemandCard = React.memo(function DemandCard({
                     tipo: demand.type,
                     data: {
                       id: demand.id,
-                      status_demanda: 'Perdida',
-                      db_status_demanda: 'Perdida',
+                      status_demanda: 'perdida',
+                      db_status_demanda: 'perdida',
                     },
                   },
                 }),
