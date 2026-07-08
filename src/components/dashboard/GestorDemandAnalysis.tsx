@@ -9,6 +9,7 @@ import {
   ChartLegend,
   ChartLegendContent,
 } from '@/components/ui/chart'
+import { RESIDENTIAL_TIPO_IMOVEL } from '@/lib/residential-filter'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts'
 
 export function GestorDemandAnalysis() {
@@ -20,13 +21,17 @@ export function GestorDemandAnalysis() {
       supabase
         .from('demandas_locacao')
         .select(
-          'id, status_demanda, created_at, orcamento_max, valor_maximo, bairros, localizacoes, dormitorios, quartos, vagas',
-        ),
+          'id, status_demanda, created_at, orcamento_max, valor_maximo, bairros, localizacoes, dormitorios, quartos, vagas, tipo_imovel',
+        )
+        .in('tipo_imovel', RESIDENTIAL_TIPO_IMOVEL)
+        .or('dormitorios.gt.0,quartos.gt.0'),
       supabase
         .from('demandas_vendas')
         .select(
-          'id, status_demanda, created_at, orcamento_max, valor_maximo, bairros, localizacoes, dormitorios, quartos, vagas',
-        ),
+          'id, status_demanda, created_at, orcamento_max, valor_maximo, bairros, localizacoes, dormitorios, quartos, vagas, tipo_imovel',
+        )
+        .in('tipo_imovel', RESIDENTIAL_TIPO_IMOVEL)
+        .or('dormitorios.gt.0,quartos.gt.0'),
     ]).then(([resLoc, resVen]) => {
       const loc = (resLoc.data || []).map((d) => ({ ...d, tipo_geral: 'Locação' }))
       const ven = (resVen.data || []).map((d) => ({ ...d, tipo_geral: 'Venda' }))

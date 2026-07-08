@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart'
-import { isResidential, hasBedrooms } from '@/lib/residential-filter'
+import { isResidential, hasBedrooms, RESIDENTIAL_TIPO_IMOVEL } from '@/lib/residential-filter'
 
 export function NeighborhoodsChart({
   demands,
@@ -19,6 +19,8 @@ export function NeighborhoodsChart({
     supabase
       .from('imoveis_captados')
       .select('localizacao_texto, tipo_imovel, dormitorios')
+      .in('tipo_imovel', RESIDENTIAL_TIPO_IMOVEL)
+      .gt('dormitorios', 0)
       .then(({ data }) => setImoveis(data || []))
   }, [])
 

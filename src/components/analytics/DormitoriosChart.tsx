@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart'
-import { isResidential, hasBedrooms } from '@/lib/residential-filter'
+import { isResidential, hasBedrooms, RESIDENTIAL_TIPO_IMOVEL } from '@/lib/residential-filter'
 
 export function DormitoriosChart() {
   const [imoveis, setImoveis] = useState<any[]>([])
@@ -11,6 +11,8 @@ export function DormitoriosChart() {
     supabase
       .from('imoveis_captados')
       .select('tipo_imovel, dormitorios')
+      .in('tipo_imovel', RESIDENTIAL_TIPO_IMOVEL)
+      .gt('dormitorios', 0)
       .then(({ data }) => setImoveis(data || []))
   }, [])
 
@@ -19,14 +21,15 @@ export function DormitoriosChart() {
     imoveis
       .filter((i) => isResidential(i.tipo_imovel) && hasBedrooms(i.dormitorios))
       .forEach((i) => {
-        const label = `${i.dormitorios} dormitório${i.dormitorios > 1 ? 's' : ''}`
+        const dorms = i.dormitorios
+        const label = dorms >= 4 ? '4+ dormitórios' : `${dorms} dormitório${dorms > 1 ? 's' : ''}`
         map.set(label, (map.get(label) || 0) + 1)
       })
     return Array.from(map.entries())
       .map(([name, value]) => ({
         name,
         value,
-        sortKey: parseInt(name) || 0,
+        sortKey: name.startsWith('4+') ? 4 : parseInt(name) || 0,
       }))
       .sort((a, b) => a.sortKey - b.sortKey)
       .map(({ name, value }) => ({ name, value }))

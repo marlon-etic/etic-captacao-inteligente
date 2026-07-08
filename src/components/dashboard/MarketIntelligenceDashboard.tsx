@@ -13,6 +13,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 
 import { TrendingUp, Home, MapPin, Bed, CarFront } from 'lucide-react'
 import { useAuth } from '@/hooks/use-auth'
 import { useUserRole } from '@/hooks/use-user-role'
+import { RESIDENTIAL_TIPO_IMOVEL, isResidential, hasBedrooms } from '@/lib/residential-filter'
 
 const isAtiva = (d: any) => {
   const s = (d.status_demanda || '').toLowerCase()
@@ -80,18 +81,24 @@ export function MarketIntelligenceDashboard() {
         .select(
           'tipo, tipo_imovel, preco, valor, dormitorios, vagas, endereco, localizacao_texto, etapa_funil, status_captacao',
         )
+        .in('tipo_imovel', RESIDENTIAL_TIPO_IMOVEL)
+        .gt('dormitorios', 0)
 
       let locacaoQuery = supabase
         .from('demandas_locacao')
         .select(
           'sdr_id, tipo_imovel, valor_maximo, orcamento_max, dormitorios, quartos, vagas, vagas_estacionamento, bairros, localizacoes, status_demanda',
         )
+        .in('tipo_imovel', RESIDENTIAL_TIPO_IMOVEL)
+        .or('dormitorios.gt.0,quartos.gt.0')
 
       let vendasQuery = supabase
         .from('demandas_vendas')
         .select(
           'corretor_id, tipo_imovel, valor_maximo, orcamento_max, dormitorios, quartos, vagas, vagas_estacionamento, bairros, localizacoes, status_demanda',
         )
+        .in('tipo_imovel', RESIDENTIAL_TIPO_IMOVEL)
+        .or('dormitorios.gt.0,quartos.gt.0')
 
       let fetchLocacao = true
       let fetchVendas = true
@@ -115,9 +122,21 @@ export function MarketIntelligenceDashboard() {
           fetchVendas ? vendasQuery : Promise.resolve({ data: [] }),
         ])
 
-        const loc = (resLoc.data || []).map((d) => ({ ...d, tipo_geral: 'Locação' }))
-        const ven = (resVen.data || []).map((d) => ({ ...d, tipo_geral: 'Venda' }))
-        const imv = resImv.data || []
+        const loc = (resLoc.data || [])
+          .filter((d) => {
+            const beds = d.dormitorios ?? d.quartos ?? 0
+            return beds > 0 && isResidential(d.tipo_imovel)
+          })
+          .map((d) => ({ ...d, tipo_geral: 'Locação' }))
+        const ven = (resVen.data || [])
+          .filter((d) => {
+            const beds = d.dormitorios ?? d.quartos ?? 0
+            return beds > 0 && isResidential(d.tipo_imovel)
+          })
+          .map((d) => ({ ...d, tipo_geral: 'Venda' }))
+        const imv = (resImv.data || []).filter(
+          (i) => isResidential(i.tipo_imovel) && hasBedrooms(i.dormitorios),
+        )
 
         setData({ demandas: [...loc, ...ven], imoveis: imv })
       } catch (error) {

@@ -13,6 +13,8 @@ import { useIsMobile } from '@/hooks/use-mobile'
 import { GestorPropertyGrid } from './GestorPropertyGrid'
 import { GestorDemandAnalysis } from './GestorDemandAnalysis'
 import { GestorMarketIntelligence } from './GestorMarketIntelligence'
+import { DormitoriosChart } from '@/components/analytics/DormitoriosChart'
+import { NeighborhoodsChart } from '@/components/analytics/NeighborhoodsChart'
 
 export function GestorCharts({ demands }: { demands: Demand[] }) {
   const isMobile = useIsMobile()
@@ -158,6 +160,14 @@ export function GestorCharts({ demands }: { demands: Demand[] }) {
 
       <div className="mt-8 mb-8">
         <GestorPropertyGrid />
+      </div>
+
+      <div className="mt-8 mb-8">
+        <h2 className="text-xl font-bold tracking-tight mb-4">Análise de Captação</h2>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <DormitoriosChart />
+          <NeighborhoodsChart />
+        </div>
       </div>
 
       <div className="mt-4">
