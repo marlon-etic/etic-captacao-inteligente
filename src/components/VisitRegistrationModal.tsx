@@ -10,9 +10,10 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import { Loader2, Calendar } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
-import { recordVisitWithDetails } from '@/services/sdr-actions'
+import { supabase } from '@/lib/supabase/client'
 
 interface Props {
   open: boolean
@@ -36,6 +37,7 @@ export function VisitRegistrationModal({
   const { toast } = useToast()
   const [visitDate, setVisitDate] = useState(new Date().toISOString().split('T')[0])
   const [visitTime, setVisitTime] = useState('10:00')
+  const [notes, setNotes] = useState('')
   const [loading, setLoading] = useState(false)
 
   const handleSubmit = async () => {
@@ -43,12 +45,15 @@ export function VisitRegistrationModal({
     setLoading(true)
     try {
       const visitedAt = new Date(`${visitDate}T${visitTime}:00`).toISOString()
-      const { error } = await recordVisitWithDetails({
-        property_link_id: propertyLinkId,
-        imovel_id: imovelId,
-        demanda_id: demandId,
-        tipo_demanda: tipoDemanda,
-        visited_at: visitedAt,
+      const { error } = await supabase.functions.invoke('visit-registration', {
+        body: {
+          property_link_id: propertyLinkId,
+          imovel_id: imovelId,
+          demanda_id: demandId,
+          tipo_demanda: tipoDemanda,
+          visited_at: visitedAt,
+          notes: notes || undefined,
+        },
       })
       if (error) throw error
       toast({
@@ -57,6 +62,7 @@ export function VisitRegistrationModal({
         className: 'bg-[#10B981] text-white border-none',
       })
       onOpenChange(false)
+      setNotes('')
     } catch (err: any) {
       toast({
         title: 'Erro ao registrar visita',
@@ -99,6 +105,17 @@ export function VisitRegistrationModal({
                 onChange={(e) => setVisitTime(e.target.value)}
               />
             </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="visit-notes">Observações (Opcional)</Label>
+            <Textarea
+              id="visit-notes"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Detalhes da visita, observações relevantes..."
+              className="resize-none"
+              rows={3}
+            />
           </div>
         </div>
         <DialogFooter>

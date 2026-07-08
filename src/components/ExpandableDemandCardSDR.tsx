@@ -19,6 +19,7 @@ import {
   Handshake,
   Star,
   Zap,
+  Calendar,
 } from 'lucide-react'
 import { useSlaCountdown, useTimeElapsed } from '@/hooks/useTimeElapsed'
 import useAppStore from '@/stores/useAppStore'
@@ -31,6 +32,7 @@ import { toggleDemandPriority } from '@/services/priority-service'
 import { LostModal } from './LostModal'
 import { supabase } from '@/lib/supabase/client'
 import { DemandMatchModal } from './DemandMatchModal'
+import { VisitRegistrationModal } from './VisitRegistrationModal'
 
 export function ExpandableDemandCardSDR({
   demand,
@@ -47,6 +49,7 @@ export function ExpandableDemandCardSDR({
   const [isPrioritizing, setIsPrioritizing] = useState(false)
   const [showLostModal, setShowLostModal] = useState(false)
   const [showMatchModal, setShowMatchModal] = useState(false)
+  const [showVisitModal, setShowVisitModal] = useState(false)
 
   const canPrioritize = ['sdr', 'admin', 'gestor', 'corretor'].includes(currentUser?.role)
 
@@ -452,6 +455,19 @@ export function ExpandableDemandCardSDR({
             <Zap className="w-4 h-4 mr-2" /> VISUALIZAR OS MATCHES
             {matchCount > 0 && ` (${matchCount})`}
           </Button>
+          {isPending && !isLost && (
+            <Button
+              variant="outline"
+              className="w-full font-bold border-blue-600/30 text-blue-600 hover:bg-blue-50 min-h-[44px] mb-2 relative z-10"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                setShowVisitModal(true)
+              }}
+            >
+              <Calendar className="w-4 h-4 mr-2" /> Registrar Visita
+            </Button>
+          )}
           <div className="grid grid-cols-2 gap-2 relative z-10">
             <Button
               variant="outline"
@@ -511,6 +527,17 @@ export function ExpandableDemandCardSDR({
       />
 
       <DemandMatchModal demand={demand} open={showMatchModal} onOpenChange={setShowMatchModal} />
+
+      <VisitRegistrationModal
+        open={showVisitModal}
+        onOpenChange={setShowVisitModal}
+        demandId={demand.id || ''}
+        tipoDemanda={demand.tipo || ''}
+        imovelId={demand.imoveis_captados?.[0]?.id}
+        propertyLabel={
+          demand.imoveis_captados?.[0]?.endereco || demand.imoveis_captados?.[0]?.localizacao_texto
+        }
+      />
     </>
   )
 }
