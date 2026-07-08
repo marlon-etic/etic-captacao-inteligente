@@ -29,7 +29,7 @@ BEGIN
 END $$;
 
 -- 3. Add new constraint: when resposta = 'perdido', motivo must be one of the 9 standardized reasons
-DROP CONSTRAINT IF EXISTS check_perdido_motivo_standardized;
+ALTER TABLE public.respostas_captador DROP CONSTRAINT IF EXISTS check_perdido_motivo_standardized;
 DO $$
 BEGIN
   IF NOT EXISTS (
