@@ -281,9 +281,14 @@ const DemandCard = React.memo(function DemandCard({
 })
 
 const PERDIDO_REASONS = [
-  'Preço fora da realidade',
-  'Localização indisponível',
-  'Tipologia não encontrada',
+  'Sem imóveis no perfil - Valor (Aluguel)',
+  'Sem imóveis no perfil - Localização (Aluguel)',
+  'Imóvel de perfil inexistente (Aluguel)',
+  'Sem imóveis no perfil - Valor (Venda)',
+  'Sem imóveis no perfil - Localização (Venda)',
+  'Imóvel de perfil inexistente (Venda)',
+  'Abaixo valor mínimo R$ 2.000,00',
+  'Abaixo valor mínimo R$ 250.000,00',
   'Outros',
 ] as const
 
