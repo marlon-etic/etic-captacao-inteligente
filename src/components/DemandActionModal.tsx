@@ -286,7 +286,11 @@ function NaoEncontreiForm({
     setIsLoading(true)
     await new Promise((resolve) => setTimeout(resolve, 50))
 
-    const res = submitDemandResponse(demandId, 'nao_encontrei', data)
+    const res = submitDemandResponse(
+      demandId,
+      data.continueSearch ? 'nao_encontrei' : 'perdido',
+      data,
+    )
     setIsLoading(false)
     if (!res.success) {
       toast({ title: 'Atenção', description: res.message, variant: 'destructive' })

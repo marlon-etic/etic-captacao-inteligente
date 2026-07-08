@@ -94,12 +94,15 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda', options?: { onlyMi
       (st === 'aberta' || st === 'sem_resposta_24h' || st === 'prioritaria')
     ) {
       const myResp = respostas.find(
-        (r: any) => r.captador_id === currentUserRef.current?.id && r.resposta === 'nao_encontrei',
+        (r: any) =>
+          r.captador_id === currentUserRef.current?.id &&
+          (r.resposta === 'nao_encontrei' || r.resposta === 'perdido'),
       )
       if (
         myResp &&
-        myResp.motivo !== 'Buscando outras opções' &&
-        !myResp.observacao?.includes('[CONTINUA_BUSCANDO]')
+        (myResp.resposta === 'perdido' ||
+          (myResp.motivo !== 'Buscando outras opções' &&
+            !myResp.observacao?.includes('[CONTINUA_BUSCANDO]')))
       ) {
         st = 'localmente_perdida'
       }

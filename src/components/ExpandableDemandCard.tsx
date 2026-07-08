@@ -181,7 +181,7 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
   }
 
   const respostasNaoEncontrei = (demand.respostas_captador || []).filter(
-    (r: any) => r.resposta === 'nao_encontrei',
+    (r: any) => r.resposta === 'nao_encontrei' || r.resposta === 'perdido',
   )
   const isNaoEncontrei = respostasNaoEncontrei.length > 0
   const latestResp = respostasNaoEncontrei[0]
@@ -270,7 +270,7 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
     try {
       const payload = {
         captador_id: currentUser?.id,
-        resposta: 'nao_encontrei',
+        resposta: 'perdido',
         motivo: reason,
         observacao: obs,
         demanda_locacao_id: demand.tipo === 'Aluguel' ? demand.id : null,
@@ -279,6 +279,18 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
 
       const { error } = await supabase.from('respostas_captador').insert(payload)
       if (error) throw error
+
+      window.dispatchEvent(
+        new CustomEvent('demanda-updated', {
+          detail: {
+            tipo: demand.tipo,
+            data: {
+              id: demand.id,
+              respostas_captador: [payload, ...(demand.respostas_captador || [])],
+            },
+          },
+        }),
+      )
 
       toast({
         title: 'Feedback Enviado',

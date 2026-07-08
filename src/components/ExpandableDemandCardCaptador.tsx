@@ -102,13 +102,15 @@ export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDeman
   }
 
   const respostasNaoEncontrei = (demand.respostas_captador || []).filter(
-    (r: any) => r.resposta === 'nao_encontrei',
+    (r: any) => r.resposta === 'nao_encontrei' || r.resposta === 'perdido',
   )
   const isNaoEncontrei = respostasNaoEncontrei.length > 0
   const latestResp = respostasNaoEncontrei[0]
 
   const isGloballyLost =
-    demand.db_status_demanda === 'impossivel' || demand.db_status_demanda === 'PERDIDA_BAIXA'
+    demand.db_status_demanda === 'impossivel' ||
+    demand.db_status_demanda === 'PERDIDA_BAIXA' ||
+    demand.db_status_demanda === 'perdida'
   const isLocallyLost = demand.status_demanda === 'localmente_perdida'
   const isOwnerOrAdmin =
     currentUser?.role === 'admin' ||
@@ -204,7 +206,7 @@ export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDeman
           .delete()
           .eq('captador_id', currentUser?.id)
           .eq(demand.tipo === 'Aluguel' ? 'demanda_locacao_id' : 'demanda_venda_id', demand.id)
-          .eq('resposta', 'nao_encontrei')
+          .in('resposta', ['nao_encontrei', 'perdido'])
 
         if (error) throw error
 
@@ -271,7 +273,7 @@ export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDeman
 
       const payload = {
         captador_id: currentUser?.id,
-        resposta: 'nao_encontrei',
+        resposta: finalizar ? 'perdido' : 'nao_encontrei',
         motivo: reason,
         observacao: finalObs,
         demanda_locacao_id: demand.tipo === 'Aluguel' ? demand.id : null,

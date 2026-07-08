@@ -37,7 +37,9 @@ export default function PerdidosPage() {
     setIsReopening(demand.id)
 
     const isGloballyLost =
-      demand.db_status_demanda === 'impossivel' || demand.db_status_demanda === 'PERDIDA_BAIXA'
+      demand.db_status_demanda === 'impossivel' ||
+      demand.db_status_demanda === 'PERDIDA_BAIXA' ||
+      demand.db_status_demanda === 'perdida'
     const isLocallyLost = demand.status_demanda === 'localmente_perdida'
     const isCaptador = currentUser?.role === 'captador'
     const isOwnerOrAdmin =
@@ -52,7 +54,7 @@ export default function PerdidosPage() {
           .delete()
           .eq('captador_id', currentUser?.id)
           .eq(demand.tipo === 'Aluguel' ? 'demanda_locacao_id' : 'demanda_venda_id', demand.id)
-          .eq('resposta', 'nao_encontrei')
+          .in('resposta', ['nao_encontrei', 'perdido'])
 
         if (error) throw error
 
@@ -169,10 +171,12 @@ export default function PerdidosPage() {
                   : 'Timeout Expirado'
               } else {
                 const meuDescarte = demand.respostas_captador?.find(
-                  (r) => r.captador_id === currentUser?.id && r.resposta === 'nao_encontrei',
+                  (r) =>
+                    r.captador_id === currentUser?.id &&
+                    (r.resposta === 'nao_encontrei' || r.resposta === 'perdido'),
                 )
                 const qualquerDescarte = demand.respostas_captador?.find(
-                  (r) => r.resposta === 'nao_encontrei',
+                  (r) => r.resposta === 'nao_encontrei' || r.resposta === 'perdido',
                 )
 
                 const r = meuDescarte || qualquerDescarte

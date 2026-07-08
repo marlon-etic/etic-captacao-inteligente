@@ -74,7 +74,7 @@ export function ExpandableDemandCardSDR({
       currentUser?.id === demand.corretor_id)
 
   const respostasNaoEncontrei = (demand.respostas_captador || []).filter(
-    (r: any) => r.resposta === 'nao_encontrei',
+    (r: any) => r.resposta === 'nao_encontrei' || r.resposta === 'perdido',
   )
 
   let statusConfig = {
