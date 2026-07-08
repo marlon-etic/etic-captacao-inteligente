@@ -4,7 +4,7 @@
     "monitor-realtime": 5,
     "marcar-demandas-sem-resposta": 5,
     "send-daily-reports": 2,
-    "visit-registration": 1,
+    "visit-registration": 2,
     "feedback-registration": 1,
     "negotiation-registration": 1
   }
