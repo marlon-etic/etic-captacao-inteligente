@@ -2,6 +2,13 @@ import React, { useState, useEffect, useCallback, Suspense, lazy } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { PrioritizeModal } from '@/components/PrioritizeModal'
 import { toggleDemandPriority } from '@/services/priority-service'
 
@@ -273,6 +280,13 @@ const DemandCard = React.memo(function DemandCard({
   )
 })
 
+const PERDIDO_REASONS = [
+  'Preço fora da realidade',
+  'Localização indisponível',
+  'Tipologia não encontrada',
+  'Outros',
+] as const
+
 function ModalDarPerdido({
   demanda,
   onClose,
@@ -280,15 +294,19 @@ function ModalDarPerdido({
 }: {
   demanda: Demand
   onClose: () => void
-  onConfirm: (motivo: string) => Promise<void>
+  onConfirm: (motivo: string, observacao: string) => Promise<void>
 }) {
   const [motivo, setMotivo] = useState('')
+  const [observacao, setObservacao] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  const isOutros = motivo === 'Outros'
+  const canSubmit = motivo !== '' && (!isOutros || observacao.trim().length > 0)
+
   const handleSubmit = async () => {
-    if (!motivo.trim()) return
+    if (!canSubmit) return
     setIsSubmitting(true)
-    await onConfirm(motivo)
+    await onConfirm(motivo, observacao.trim())
     setIsSubmitting(false)
   }
 
@@ -315,12 +333,43 @@ function ModalDarPerdido({
             <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">
               Motivo da desistência
             </label>
-            <textarea
+            <Select
               value={motivo}
-              onChange={(e) => setMotivo(e.target.value)}
-              className="w-full border border-gray-200 rounded-lg p-3 text-sm min-h-[100px] focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-red-500"
-              placeholder="Ex: Não encontrei imóvel no perfil, imóveis da região não aceitam pets, etc."
+              onValueChange={(val) => {
+                setMotivo(val)
+                if (val !== 'Outros') setObservacao('')
+              }}
+            >
+              <SelectTrigger className="min-h-[48px] text-sm font-medium border-gray-200 focus:ring-red-500/50">
+                <SelectValue placeholder="Selecione um motivo..." />
+              </SelectTrigger>
+              <SelectContent>
+                {PERDIDO_REASONS.map((r) => (
+                  <SelectItem key={r} value={r} className="min-h-[44px] text-sm cursor-pointer">
+                    {r}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">
+              Observações{' '}
+              {isOutros ? (
+                <span className="text-red-500">*</span>
+              ) : (
+                <span className="text-gray-400 font-normal normal-case">(Opcional)</span>
+              )}
+            </label>
+            <textarea
+              value={observacao}
+              onChange={(e) => setObservacao(e.target.value.slice(0, 500))}
+              className="w-full border border-gray-200 rounded-lg p-3 text-sm min-h-[80px] focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-red-500"
+              placeholder={isOutros ? 'Descreva o motivo...' : 'Detalhes adicionais...'}
             />
+            <div className="text-right text-[11px] text-gray-400 font-medium">
+              {observacao.length}/500
+            </div>
           </div>
         </div>
         <div className="p-4 bg-gray-50 flex justify-end gap-3 border-t border-gray-100">
@@ -329,7 +378,7 @@ function ModalDarPerdido({
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={!motivo.trim() || isSubmitting}
+            disabled={!canSubmit || isSubmitting}
             className="bg-red-600 hover:bg-red-700 text-white font-bold"
           >
             {isSubmitting ? 'Enviando...' : 'Confirmar Perdido'}
@@ -769,7 +818,7 @@ export function BuscarDemandas() {
     setFilteredDemands(filtered)
   }, [demands, filterStatusDemanda, filterType, filterUrgency, filterBairro, searchQuery])
 
-  const handleDarPerdidoConfirm = async (motivo: string) => {
+  const handleDarPerdidoConfirm = async (motivo: string, observacao: string) => {
     if (!selectedPerdido || !currentUser) return
     try {
       console.log(`[NOTIFICACAO] Atualizando status para Perdido na demanda ${selectedPerdido.id}`)
@@ -777,6 +826,7 @@ export function BuscarDemandas() {
         captador_id: currentUser.id,
         resposta: 'perdido',
         motivo: motivo,
+        observacao: observacao || null,
         demanda_locacao_id: selectedPerdido.tipo === 'locacao' ? selectedPerdido.id : null,
         demanda_venda_id: selectedPerdido.tipo === 'venda' ? selectedPerdido.id : null,
       })
