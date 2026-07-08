@@ -18,8 +18,8 @@ BEGIN
     AND lower(COALESCE(tipo_imovel, 'casa')) NOT IN
       ('comercial', 'loja', 'galpão', 'sala', 'pavilhão', 'laje corporativa', 'prédio', 'ponto comercial');
 
-  -- Temporarily disable match trigger to avoid ON CONFLICT error in fn_gerar_match_inteligente_v4
-  ALTER TABLE public.imoveis_captados DISABLE TRIGGER tr_executar_match_v4;
+  -- Temporarily disable match trigger to avoid ON CONFLICT error in fn_gerar_match_inteligente_v6
+  ALTER TABLE public.imoveis_captados DISABLE TRIGGER tgr_match_automatico_v6;
 
   -- imoveis_captados: set dormitorios to 0 for residential properties where NULL
   UPDATE public.imoveis_captados
@@ -29,7 +29,7 @@ BEGIN
       ('comercial', 'loja', 'galpão', 'sala', 'pavilhão', 'laje corporativa', 'prédio', 'ponto comercial');
 
   -- Re-enable the trigger
-  ALTER TABLE public.imoveis_captados ENABLE TRIGGER tr_executar_match_v4;
+  ALTER TABLE public.imoveis_captados ENABLE TRIGGER tgr_match_automatico_v6;
 
   -- demandas_locacao: set dormitorios to 0 where still NULL for residential
   UPDATE public.demandas_locacao
