@@ -28,31 +28,7 @@ BEGIN
   END LOOP;
 END $$;
 
--- 3. Add new constraint: when resposta = 'perdido', motivo must be one of the 9 standardized reasons
-ALTER TABLE public.respostas_captador DROP CONSTRAINT IF EXISTS check_perdido_motivo_standardized;
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint
-    WHERE conname = 'check_perdido_motivo_standardized'
-      AND conrelid = 'public.respostas_captador'::regclass
-  ) THEN
-    ALTER TABLE public.respostas_captador ADD CONSTRAINT check_perdido_motivo_standardized
-    CHECK (
-      resposta != 'perdido' OR motivo IN (
-        'Sem imóveis no perfil - Valor (Aluguel)',
-        'Sem imóveis no perfil - Localização (Aluguel)',
-        'Imóvel de perfil inexistente (Aluguel)',
-        'Sem imóveis no perfil - Valor (Venda)',
-        'Sem imóveis no perfil - Localização (Venda)',
-        'Imóvel de perfil inexistente (Venda)',
-        'Abaixo valor mínimo R$ 2.000,00',
-        'Abaixo valor mínimo R$ 250.000,00',
-        'Outros'
-      )
-    );
-  END IF;
-END $$;
+-- 3. (Constraint moved to migration 20260708184000 — must normalize existing data first)
 
 -- 4. Ensure RLS policies allow authenticated users to insert their own responses
 DROP POLICY IF EXISTS "Captadores insert respostas" ON public.respostas_captador;
