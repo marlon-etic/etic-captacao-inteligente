@@ -35,6 +35,7 @@ export interface Demand {
   imoveiVinculados: number
   imoveis: { id: string; codigo_imovel: string; captador_id: string; user_captador_id: string }[]
   captadores_busca: any[]
+  respostas_captador?: any[]
   links_sugeridos?: string[]
   is_prioritaria?: boolean
   motivo_priorizacao?: string
@@ -435,7 +436,8 @@ export function BuscarDemandas() {
         .select(`
           id, nome_cliente, telefone, email, sdr_id, created_at, valor_minimo, valor_maximo, bairros, dormitorios, banheiros, vagas_estacionamento, urgencia, status_demanda, captadores_busca, links_sugeridos, is_prioritaria, motivo_priorizacao,
           criador:users!fk_demandas_locacao_sdr(nome, email),
-          imoveis_captados!imoveis_captados_demanda_locacao_id_fkey(id, codigo_imovel, user_captador_id, captador_id)
+          imoveis_captados!imoveis_captados_demanda_locacao_id_fkey(id, codigo_imovel, user_captador_id, captador_id),
+          respostas_captador(id, captador_id, resposta, motivo, created_at)
         `)
         .order('created_at', { ascending: false })
         .limit(100)
@@ -447,7 +449,8 @@ export function BuscarDemandas() {
         .select(`
           id, nome_cliente, telefone, email, corretor_id, created_at, valor_minimo, valor_maximo, bairros, dormitorios, banheiros, vagas_estacionamento, urgencia, status_demanda, captadores_busca, links_sugeridos, is_prioritaria, motivo_priorizacao,
           criador:users!demandas_vendas_corretor_id_fkey(nome, email),
-          imoveis_captados!imoveis_captados_demanda_venda_id_fkey(id, codigo_imovel, user_captador_id, captador_id)
+          imoveis_captados!imoveis_captados_demanda_venda_id_fkey(id, codigo_imovel, user_captador_id, captador_id),
+          respostas_captador(id, captador_id, resposta, motivo, created_at)
         `)
         .order('created_at', { ascending: false })
         .limit(100)
@@ -476,6 +479,7 @@ export function BuscarDemandas() {
           imoveiVinculados: imoveis.length,
           imoveis: imoveis as any,
           captadores_busca: demand.captadores_busca || [],
+          respostas_captador: demand.respostas_captador || [],
           links_sugeridos: demand.links_sugeridos || [],
           is_prioritaria: demand.is_prioritaria || false,
           motivo_priorizacao: demand.motivo_priorizacao || null,
@@ -505,6 +509,7 @@ export function BuscarDemandas() {
           imoveiVinculados: imoveis.length,
           imoveis: imoveis as any,
           captadores_busca: demand.captadores_busca || [],
+          respostas_captador: demand.respostas_captador || [],
           links_sugeridos: demand.links_sugeridos || [],
           is_prioritaria: demand.is_prioritaria || false,
           motivo_priorizacao: demand.motivo_priorizacao || null,
@@ -516,7 +521,14 @@ export function BuscarDemandas() {
 
       enriched.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 
-      const filteredEnriched = enriched.filter((d) => !isDemandLost(d.status))
+      const filteredEnriched = enriched
+        .filter((d) => !isDemandLost(d.status))
+        .filter((d) => {
+          if (currentUser?.role !== 'captador') return true
+          return !(d.respostas_captador || []).some(
+            (r: any) => r.captador_id === currentUser?.id && r.resposta === 'perdido',
+          )
+        })
 
       setDemands(filteredEnriched)
       sessionStorage.setItem('buscar_demandas_cache', JSON.stringify(filteredEnriched))
@@ -763,19 +775,28 @@ export function BuscarDemandas() {
       console.log(`[NOTIFICACAO] Atualizando status para Perdido na demanda ${selectedPerdido.id}`)
       const { error } = await supabase.from('respostas_captador').insert({
         captador_id: currentUser.id,
-        resposta: 'nao_encontrei',
+        resposta: 'perdido',
         motivo: motivo,
         demanda_locacao_id: selectedPerdido.tipo === 'locacao' ? selectedPerdido.id : null,
         demanda_venda_id: selectedPerdido.tipo === 'venda' ? selectedPerdido.id : null,
       })
       if (error) throw error
+
+      const removedId = selectedPerdido.id
+      setDemands((prev) => {
+        const updated = prev.filter((d) => d.id !== removedId)
+        sessionStorage.setItem('buscar_demandas_cache', JSON.stringify(updated))
+        return updated
+      })
+      setFilteredDemands((prev) => prev.filter((d) => d.id !== removedId))
+
       toast({
         title: 'Perdido Registrado',
         description: 'O dono da demanda foi notificado com sucesso.',
         className: 'bg-[#10B981] text-white border-none',
       })
       setSelectedPerdido(null)
-      loadDemands(false)
+      loadDemands(false, true)
     } catch (err: any) {
       toast({ title: 'Erro ao dar perdido', description: err.message, variant: 'destructive' })
     }
