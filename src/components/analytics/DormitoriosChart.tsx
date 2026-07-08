@@ -4,21 +4,13 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart'
 import { isResidential, hasBedrooms } from '@/lib/residential-filter'
 
-export function NeighborhoodsChart({
-  demands,
-  onBarClick,
-  selected,
-}: {
-  demands?: any
-  onBarClick?: any
-  selected?: any
-}) {
+export function DormitoriosChart() {
   const [imoveis, setImoveis] = useState<any[]>([])
 
   useEffect(() => {
     supabase
       .from('imoveis_captados')
-      .select('localizacao_texto, tipo_imovel, dormitorios')
+      .select('tipo_imovel, dormitorios')
       .then(({ data }) => setImoveis(data || []))
   }, [])
 
@@ -27,52 +19,43 @@ export function NeighborhoodsChart({
     imoveis
       .filter((i) => isResidential(i.tipo_imovel) && hasBedrooms(i.dormitorios))
       .forEach((i) => {
-        const b = i.localizacao_texto?.split(',')[0].trim()
-        if (b) map.set(b, (map.get(b) || 0) + 1)
+        const label = `${i.dormitorios} dormitório${i.dormitorios > 1 ? 's' : ''}`
+        map.set(label, (map.get(label) || 0) + 1)
       })
     return Array.from(map.entries())
-      .map(([name, value]) => ({ name, value }))
-      .sort((a, b) => b.value - a.value)
-      .slice(0, 10)
+      .map(([name, value]) => ({
+        name,
+        value,
+        sortKey: parseInt(name) || 0,
+      }))
+      .sort((a, b) => a.sortKey - b.sortKey)
+      .map(({ name, value }) => ({ name, value }))
   }, [imoveis])
 
   return (
     <div className="bg-white p-6 rounded-xl border-[2px] border-[#2E5F8A]/20 shadow-sm flex flex-col h-[450px]">
-      <h3 className="text-[18px] font-bold text-[#1A3A52] mb-1">Top Bairros (Imóveis)</h3>
+      <h3 className="text-[18px] font-bold text-[#1A3A52] mb-1">Dormitórios</h3>
       <p className="text-[12px] text-[#999999] mb-4 font-medium">
-        Bairros com mais captações residenciais cadastradas
+        Distribuição de imóveis residenciais por número de dormitórios
       </p>
       <div className="flex-1 w-full relative overflow-hidden">
         <ChartContainer
-          config={{ value: { label: 'Imóveis', color: '#1A3A52' } }}
+          config={{ value: { label: 'Imóveis', color: '#10b981' } }}
           className="h-full w-full absolute inset-0"
         >
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-              data={data}
-              layout="vertical"
-              margin={{ top: 10, right: 20, left: 10, bottom: 5 }}
-              onClick={(state) => state?.activeLabel && onBarClick?.(state.activeLabel)}
-            >
-              <CartesianGrid strokeDasharray="3 3" horizontal={false} opacity={0.3} />
-              <XAxis type="number" hide />
-              <YAxis
+            <BarChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
+              <XAxis
                 dataKey="name"
-                type="category"
                 axisLine={false}
                 tickLine={false}
-                width={130}
                 tick={{ fontSize: 11, fill: '#333333', fontWeight: 600 }}
-                tickFormatter={(val) => (val.length > 20 ? val.substring(0, 20) + '...' : val)}
+                dy={10}
               />
+              <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#999999' }} />
               <Tooltip cursor={{ fill: 'rgba(26,58,82,0.05)' }} content={<ChartTooltipContent />} />
-              <Bar
-                dataKey="value"
-                fill="#1A3A52"
-                radius={[0, 4, 4, 0]}
-                fillOpacity={selected ? 0.8 : 1}
-                cursor="pointer"
-              />
+              <Bar dataKey="value" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={50} />
             </BarChart>
           </ResponsiveContainer>
         </ChartContainer>
