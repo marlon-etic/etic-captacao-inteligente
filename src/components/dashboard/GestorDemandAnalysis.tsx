@@ -24,14 +24,14 @@ export function GestorDemandAnalysis() {
           'id, status_demanda, created_at, orcamento_max, valor_maximo, bairros, localizacoes, dormitorios, quartos, vagas, tipo_imovel',
         )
         .in('tipo_imovel', RESIDENTIAL_TIPO_IMOVEL)
-        .or('dormitorios.gt.0,quartos.gt.0'),
+        .gt('dormitorios', 0),
       supabase
         .from('demandas_vendas')
         .select(
           'id, status_demanda, created_at, orcamento_max, valor_maximo, bairros, localizacoes, dormitorios, quartos, vagas, tipo_imovel',
         )
         .in('tipo_imovel', RESIDENTIAL_TIPO_IMOVEL)
-        .or('dormitorios.gt.0,quartos.gt.0'),
+        .gt('dormitorios', 0),
     ]).then(([resLoc, resVen]) => {
       const loc = (resLoc.data || []).map((d) => ({ ...d, tipo_geral: 'Locação' }))
       const ven = (resVen.data || []).map((d) => ({ ...d, tipo_geral: 'Venda' }))
@@ -42,6 +42,10 @@ export function GestorDemandAnalysis() {
 
   const chartsData = useMemo(() => {
     const now = new Date().getTime()
+    const validDemandas = demandas.filter((d) => {
+      const dorms = d.dormitorios ?? d.quartos ?? 0
+      return dorms > 0
+    })
     const isNova = (d: any) =>
       d.created_at &&
       Math.ceil(Math.abs(now - new Date(d.created_at).getTime()) / (1000 * 60 * 60 * 24)) <= 30
@@ -57,7 +61,7 @@ export function GestorDemandAnalysis() {
 
     const process = (keyFn: (d: any) => string) => {
       const map = new Map<string, { name: string; Ativas: number; Novas: number; total: number }>()
-      demandas.forEach((d) => {
+      validDemandas.forEach((d) => {
         const k = keyFn(d)
         if (!k || k === 'Não Info') return
         if (!map.has(k)) map.set(k, { name: k, Ativas: 0, Novas: 0, total: 0 })

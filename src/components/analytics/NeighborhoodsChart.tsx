@@ -29,6 +29,7 @@ export function NeighborhoodsChart({
     imoveis
       .filter((i) => isResidential(i.tipo_imovel) && hasBedrooms(i.dormitorios))
       .forEach((i) => {
+        if (!i.dormitorios || i.dormitorios <= 0) return
         const b = i.localizacao_texto?.split(',')[0].trim()
         if (b) map.set(b, (map.get(b) || 0) + 1)
       })

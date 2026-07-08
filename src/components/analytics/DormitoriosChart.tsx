@@ -22,6 +22,7 @@ export function DormitoriosChart() {
       .filter((i) => isResidential(i.tipo_imovel) && hasBedrooms(i.dormitorios))
       .forEach((i) => {
         const dorms = i.dormitorios
+        if (!dorms || dorms <= 0) return
         const label = dorms >= 4 ? '4+ dormitórios' : `${dorms} dormitório${dorms > 1 ? 's' : ''}`
         map.set(label, (map.get(label) || 0) + 1)
       })
