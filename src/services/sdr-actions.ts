@@ -7,6 +7,20 @@ export const recordVisit = async (property_link_id: string, notes?: string) => {
   return { data, error }
 }
 
+export const recordVisitWithDetails = async (params: {
+  property_link_id?: string
+  imovel_id?: string
+  demanda_id?: string
+  tipo_demanda?: string
+  visited_at?: string
+  notes?: string
+}) => {
+  const { data, error } = await supabase.functions.invoke('visit-registration', {
+    body: params,
+  })
+  return { data, error }
+}
+
 export const recordFeedback = async (
   property_link_id: string,
   interest_level: 'interested' | 'not_interested',

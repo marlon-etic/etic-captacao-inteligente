@@ -30,6 +30,7 @@ import { PrioritizeModal } from './PrioritizeModal'
 import { toggleDemandPriority } from '@/services/priority-service'
 import { LostModal } from './LostModal'
 import { supabase } from '@/lib/supabase/client'
+import { DemandMatchModal } from './DemandMatchModal'
 
 export function ExpandableDemandCardSDR({
   demand,
@@ -45,6 +46,7 @@ export function ExpandableDemandCardSDR({
   const [isPrioritizeModalOpen, setIsPrioritizeModalOpen] = useState(false)
   const [isPrioritizing, setIsPrioritizing] = useState(false)
   const [showLostModal, setShowLostModal] = useState(false)
+  const [showMatchModal, setShowMatchModal] = useState(false)
 
   const canPrioritize = ['sdr', 'admin', 'gestor', 'corretor'].includes(currentUser?.role)
 
@@ -438,6 +440,18 @@ export function ExpandableDemandCardSDR({
         </div>
 
         <div className="px-4 pb-4 pt-2 mt-auto bg-white pointer-events-auto rounded-b-[14px]">
+          <Button
+            variant="outline"
+            className="w-full font-bold border-[#3B82F6]/30 text-[#3B82F6] hover:bg-[#3B82F6]/5 min-h-[44px] mb-2 relative z-10"
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              setShowMatchModal(true)
+            }}
+          >
+            <Zap className="w-4 h-4 mr-2" /> VISUALIZAR OS MATCHES
+            {matchCount > 0 && ` (${matchCount})`}
+          </Button>
           <div className="grid grid-cols-2 gap-2 relative z-10">
             <Button
               variant="outline"
@@ -495,6 +509,8 @@ export function ExpandableDemandCardSDR({
         onOpenChange={setShowLostModal}
         onConfirm={handleLostConfirm}
       />
+
+      <DemandMatchModal demand={demand} open={showMatchModal} onOpenChange={setShowMatchModal} />
     </>
   )
 }
