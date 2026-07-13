@@ -115,10 +115,10 @@ BEGIN
         v_tipo_normalized := 'apartamento';
     ELSIF v_tipo_normalized LIKE '%casa%' OR v_tipo_normalized LIKE '%sobrado%' THEN
         v_tipo_normalized := 'casa';
-    ELSIF v_tipo_normalizado LIKE '%galp%' THEN
+    ELSIF v_tipo_normalized LIKE '%galp%' THEN
         v_tipo_normalized := 'galpao';
-    ELSIF v_tipo_normalizado LIKE '%comer%' OR v_tipo_normalizado LIKE '%sala%' OR v_tipo_normalizado LIKE '%predio%' THEN
-        v_tipo_normalizado := 'comercial';
+    ELSIF v_tipo_normalized LIKE '%comer%' OR v_tipo_normalized LIKE '%sala%' OR v_tipo_normalized LIKE '%predio%' THEN
+        v_tipo_normalized := 'comercial';
     END IF;
 
     FOR c IN
