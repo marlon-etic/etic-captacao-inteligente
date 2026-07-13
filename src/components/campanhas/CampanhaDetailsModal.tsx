@@ -164,11 +164,23 @@ export function CampanhaDetailsModal({ campanha, isOpen, onClose }: CampanhaDeta
                         <p className="text-xs text-[#999999]">
                           {item.imovel?.endereco || 'Endereço não informado'}
                         </p>
-                        {item.imovel?.preco && (
-                          <p className="text-xs text-[#666666] font-medium">
-                            {formatCurrency(item.imovel.preco)}
+                        {item.imovel?.localizacao_texto && (
+                          <p className="text-xs text-[#666666] font-medium flex items-center gap-1 mt-0.5">
+                            <span>📍 {item.imovel.localizacao_texto}</span>
                           </p>
                         )}
+                        <div className="flex items-center gap-2 mt-0.5">
+                          {item.imovel?.preco && (
+                            <p className="text-xs text-[#666666] font-medium">
+                              {formatCurrency(item.imovel.preco)}
+                            </p>
+                          )}
+                          {item.imovel?.status_captacao && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600 font-bold">
+                              {item.imovel.status_captacao}
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <div className="text-right">
                         <p className="text-xs font-bold text-[#1A3A52] flex items-center gap-1 justify-end">

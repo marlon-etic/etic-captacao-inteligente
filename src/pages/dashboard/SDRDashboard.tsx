@@ -5,6 +5,7 @@ import { ListasSdr } from '@/components/sdr-dashboard/ListasSdr'
 import { AlertasBannerSdr } from '@/components/sdr-dashboard/AlertasBannerSdr'
 import { ChartsSdr } from '@/components/sdr-dashboard/ChartsSdr'
 import { ActiveCampaignsWidget } from '@/components/campanhas/ActiveCampaignsWidget'
+import { DashboardFoco } from '@/components/dashboard/DashboardFoco'
 import { useAuth } from '@/hooks/use-auth'
 
 export function SDRDashboard() {
@@ -28,6 +29,8 @@ export function SDRDashboard() {
       </div>
 
       <AlertasBannerSdr data={data} loading={loading} isLocacao={isLocacao} />
+
+      <DashboardFoco />
 
       <ActiveCampaignsWidget />
 

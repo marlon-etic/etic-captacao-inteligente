@@ -1,11 +1,15 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useActiveCampaigns, type CampanhaRow } from '@/hooks/use-active-campaigns'
 import { CampanhaCard } from '@/components/campanhas/CampanhaCard'
+import { CampanhaDetailsModal } from '@/components/campanhas/CampanhaDetailsModal'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Megaphone } from 'lucide-react'
+import type { Campanha } from '@/services/campanhaService'
 
 export function ActiveCampaignsWidget() {
   const { campanhas } = useActiveCampaigns()
+  const [selectedCampanha, setSelectedCampanha] = useState<Campanha | null>(null)
+  const [detailsOpen, setDetailsOpen] = useState(false)
 
   const activeCampanhas = useMemo(
     () => campanhas.filter((c: CampanhaRow) => c.status === 'ativa'),
@@ -28,7 +32,15 @@ export function ActiveCampaignsWidget() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {activeCampanhas.map((campanha) => (
-            <CampanhaCard key={campanha.id} campanha={campanha as any} readOnly />
+            <CampanhaCard
+              key={campanha.id}
+              campanha={campanha as any}
+              readOnly
+              onClick={(c) => {
+                setSelectedCampanha(c as Campanha)
+                setDetailsOpen(true)
+              }}
+            />
           ))}
         </div>
       )}
@@ -48,5 +60,14 @@ export function ActiveCampaignsWidgetSkeleton() {
         ))}
       </div>
     </div>
+
+      <CampanhaDetailsModal
+        campanha={selectedCampanha}
+        isOpen={detailsOpen}
+        onClose={() => {
+          setDetailsOpen(false)
+          setSelectedCampanha(null)
+        }}
+      />
   )
 }

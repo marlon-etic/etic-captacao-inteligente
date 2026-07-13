@@ -10,6 +10,7 @@ export interface Campanha {
   data_fim: string
   meta: number
   progresso: number
+  bairro_alvo?: string | null
   created_at: string
   updated_at: string
 }
@@ -25,6 +26,8 @@ export interface CampanhaImovel {
     endereco: string | null
     preco: number | null
     valor: number | null
+    localizacao_texto: string | null
+    status_captacao: string | null
   } | null
   captador?: {
     nome: string | null
@@ -117,7 +120,7 @@ export async function fetchCampanhaImoveis(campanhaId: string): Promise<Campanha
     .from('campanhas_imoveis')
     .select(
       `*,
-      imovel:imoveis_captados(codigo_imovel, endereco, preco, valor),
+      imovel:imoveis_captados(codigo_imovel, endereco, preco, valor, localizacao_texto, status_captacao),
       captador:users(nome, email)
       `,
     )
