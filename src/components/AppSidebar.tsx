@@ -31,7 +31,7 @@ import { useUserRole } from '@/hooks/use-user-role'
 export function AppSidebar() {
   const { pathname } = useLocation()
   const { signOut } = useAuth()
-  const { isAdmin, isGestor, isCaptador } = useUserRole()
+  const { isAdmin, isGestor } = useUserRole()
 
   return (
     <Sidebar variant="inset">
@@ -86,20 +86,18 @@ export function AppSidebar() {
             </SidebarMenuItem>
           )}
 
-          {isCaptador && (
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                asChild
-                isActive={pathname.startsWith('/app/meus-captados')}
-                tooltip="Meus Captados"
-              >
-                <Link to="/app/meus-captados">
-                  <Building />
-                  <span>Meus Captados</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          )}
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              asChild
+              isActive={pathname.startsWith('/app/meus-captados')}
+              tooltip="Meus Captados"
+            >
+              <Link to="/app/meus-captados">
+                <Building />
+                <span>Meus Captados</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
 
           <SidebarMenuItem>
             <SidebarMenuButton
@@ -157,7 +155,7 @@ export function AppSidebar() {
         <SidebarSeparator className="my-2" />
 
         <SidebarMenu>
-          {(isAdmin || isGestor) && (
+          {isAdmin && (
             <>
               <SidebarMenuItem>
                 <SidebarMenuButton
@@ -171,7 +169,7 @@ export function AppSidebar() {
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
-              {isAdmin && (
+              {(isAdmin || isGestor) && (
                 <SidebarMenuItem>
                   <SidebarMenuButton
                     asChild
