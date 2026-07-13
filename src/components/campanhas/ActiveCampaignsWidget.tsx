@@ -60,14 +60,5 @@ export function ActiveCampaignsWidgetSkeleton() {
         ))}
       </div>
     </div>
-
-      <CampanhaDetailsModal
-        campanha={selectedCampanha}
-        isOpen={detailsOpen}
-        onClose={() => {
-          setDetailsOpen(false)
-          setSelectedCampanha(null)
-        }}
-      />
   )
 }
