@@ -2,13 +2,8 @@
 export type UserRole = 'sdr' | 'corretor' | 'broker' | 'captador' | 'admin' | 'gestor'
 
 // ✅ NORMALIZAR TIPO DE IMÓVEL COM LÓGICA INTELIGENTE E SUPORTE A "AMBOS"
-export function normalizeTipo(
-  tipo: string | null | undefined,
-  preco?: number,
-  valor?: number,
-): string {
-  if (!tipo || tipo === 'Desconhecido') {
-    // Se não tem tipo explícito, tentamos inferir com base nos preços
+export function normalizeTipo(tipo: unknown, preco?: number, valor?: number): string {
+  if (typeof tipo !== 'string' || !tipo || tipo === 'Desconhecido') {
     if (preco && preco > 0 && valor && valor > 0) return 'Ambos'
     if (preco && preco > 100000) return 'Venda'
     if (valor && valor > 0 && valor <= 100000) return 'Aluguel'

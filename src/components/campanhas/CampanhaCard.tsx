@@ -6,8 +6,9 @@ import { cn } from '@/lib/utils'
 
 interface CampanhaCardProps {
   campanha: Campanha
-  onToggle: (id: string, currentStatus: string) => void
-  onClick: (campanha: Campanha) => void
+  onToggle?: (id: string, currentStatus: string) => void
+  onClick?: (campanha: Campanha) => void
+  readOnly?: boolean
 }
 
 const tipoLabels: Record<string, string> = {
@@ -36,7 +37,7 @@ const formatDate = (iso: string) => {
   }
 }
 
-export function CampanhaCard({ campanha, onToggle, onClick }: CampanhaCardProps) {
+export function CampanhaCard({ campanha, onToggle, onClick, readOnly = false }: CampanhaCardProps) {
   const pct = Math.min(100, (campanha.progresso / campanha.meta) * 100)
   const isAtiva = campanha.status === 'ativa'
   const isFechada = campanha.status === 'fechada'
@@ -46,10 +47,11 @@ export function CampanhaCard({ campanha, onToggle, onClick }: CampanhaCardProps)
   return (
     <div
       className={cn(
-        'bg-white rounded-xl border shadow-sm p-5 transition-all duration-200 hover:shadow-md cursor-pointer',
+        'bg-white rounded-xl border shadow-sm p-5 transition-all duration-200 hover:shadow-md',
         isFechada ? 'border-gray-200 opacity-70' : 'border-[#E5E5E5]',
+        onClick ? 'cursor-pointer' : '',
       )}
-      onClick={() => onClick(campanha)}
+      onClick={onClick ? () => onClick(campanha) : undefined}
     >
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-3">
@@ -71,7 +73,7 @@ export function CampanhaCard({ campanha, onToggle, onClick }: CampanhaCardProps)
             </p>
           </div>
         </div>
-        {!isFechada && (
+        {!isFechada && !readOnly && onToggle && (
           <div onClick={(e) => e.stopPropagation()}>
             <Switch
               checked={isAtiva}

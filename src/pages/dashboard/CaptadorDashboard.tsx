@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Link } from 'react-router-dom'
 import { Target, Trophy, HelpCircle, X } from 'lucide-react'
+import { ActiveCampaignsWidget } from '@/components/campanhas/ActiveCampaignsWidget'
 
 export function CaptadorDashboard() {
   const { metrics, imoveis, demandas, perdidos, charts, loading, refetch } = useCaptadorDashboard()
@@ -112,6 +113,8 @@ export function CaptadorDashboard() {
       </div>
 
       <DashboardFoco />
+
+      <ActiveCampaignsWidget />
 
       <div className="mb-6 animate-in fade-in duration-500 delay-100">
         <div className="flex items-center justify-between mb-4">

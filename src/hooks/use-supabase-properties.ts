@@ -214,7 +214,7 @@ export function useSupabaseProperties(
 
         const formatted = (data || [])
           .map(formatProperty)
-          .filter((p: any) => isImovelVisivelParaRole(p, currentUser.role))
+          .filter((p: any) => isImovelVisivelParaRole(p.tipo, currentUser.role))
 
         if (resetPage) {
           setProperties(formatted)

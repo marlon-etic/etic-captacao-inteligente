@@ -4,6 +4,7 @@ import { MetricsCardsSdr } from '@/components/sdr-dashboard/MetricsCardsSdr'
 import { ListasSdr } from '@/components/sdr-dashboard/ListasSdr'
 import { AlertasBannerSdr } from '@/components/sdr-dashboard/AlertasBannerSdr'
 import { ChartsSdr } from '@/components/sdr-dashboard/ChartsSdr'
+import { ActiveCampaignsWidget } from '@/components/campanhas/ActiveCampaignsWidget'
 import { useAuth } from '@/hooks/use-auth'
 
 export function SDRDashboard() {
@@ -27,6 +28,8 @@ export function SDRDashboard() {
       </div>
 
       <AlertasBannerSdr data={data} loading={loading} isLocacao={isLocacao} />
+
+      <ActiveCampaignsWidget />
 
       <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col items-start gap-4">
         <FilterBar />
