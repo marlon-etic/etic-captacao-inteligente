@@ -88,7 +88,7 @@ export function FocoCaptacaoDetailsModal({ focoItem, isOpen, onClose }: Props) {
           const sorted = (data || []).sort((a: FocoDemand, b: FocoDemand) => {
             return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
           })
-          setDemands(sorted as FocoDemand[])
+          setDemands(sorted as unknown as FocoDemand[])
         }
       } catch (e) {
         console.error('[FocoModal] Error fetching foco demands:', e)
@@ -116,6 +116,11 @@ export function FocoCaptacaoDetailsModal({ focoItem, isOpen, onClose }: Props) {
               )}
               {focoItem.bairro_alvo || 'Região Indefinida'}
             </DialogTitle>
+            {focoItem.qtd_clientes_aguardando !== null && (
+              <span className="absolute left-1/2 -translate-x-1/2 bottom-2 text-xs font-medium bg-white/15 px-2 py-0.5 rounded-full">
+                {focoItem.qtd_clientes_aguardando} clientes aguardando
+              </span>
+            )}
             <DialogClose asChild>
               <button className="absolute right-4 top-[50%] -translate-y-[50%] h-10 w-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors text-white">
                 <X className="w-5 h-5" />
@@ -155,7 +160,14 @@ export function FocoCaptacaoDetailsModal({ focoItem, isOpen, onClose }: Props) {
                   </div>
                 ) : demands.length === 0 ? (
                   <div className="text-center py-12 text-[#999999] font-medium text-sm">
+                    <Users className="w-8 h-8 mx-auto mb-2 opacity-30" />
                     Nenhuma demanda encontrada para esta região.
+                    {(focoItem.qtd_clientes_aguardando ?? 0) > 0 && (
+                      <p className="text-xs text-[#CCCCCC] mt-1">
+                        O count indicava {focoItem.qtd_clientes_aguardando} cliente(s). As demandas
+                        podem ter sido atendidas.
+                      </p>
+                    )}
                   </div>
                 ) : (
                   <div className="divide-y divide-[#E5E5E5]">

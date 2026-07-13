@@ -6,6 +6,7 @@ import {
   DialogClose,
 } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import {
   X,
   MapPin,
@@ -16,6 +17,10 @@ import {
   Mail,
   Calendar,
   Building2,
+  Car,
+  MessageCircle,
+  Copy,
+  StickyNote,
 } from 'lucide-react'
 
 export interface FocoDemand {
@@ -34,6 +39,8 @@ export interface FocoDemand {
   telefone: string | null
   email: string | null
   tipo: string | null
+  observacoes?: string | null
+  vagas?: number | null
 }
 
 interface Props {
@@ -61,8 +68,25 @@ const formatDate = (iso: string) => {
   }
 }
 
+const formatPhoneForWhatsApp = (phone: string) => {
+  const digits = phone.replace(/\D/g, '')
+  if (digits.length === 0) return null
+  const withCountryCode = digits.startsWith('55') ? digits : `55${digits}`
+  return withCountryCode
+}
+
 export function FocoDemandDetailDialog({ demand, isOpen, onClose }: Props) {
   if (!demand) return null
+
+  const whatsappNumber = demand.telefone ? formatPhoneForWhatsApp(demand.telefone) : null
+  const whatsappMessage = demand.telefone
+    ? `Olá ${demand.nome_cliente || ''}, encontrei seu imóvel na região ${(demand.bairros || demand.localizacoes || []).join(', ')}!`
+    : ''
+
+  const handleCopyContact = () => {
+    const contact = [demand.nome_cliente, demand.telefone, demand.email].filter(Boolean).join(' | ')
+    navigator.clipboard.writeText(contact)
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={(v) => !v && onClose()}>
@@ -115,6 +139,13 @@ export function FocoDemandDetailDialog({ demand, isOpen, onClose }: Props) {
               <span className="font-bold text-[#1A3A52]">Dormitórios:</span>
               <span className="text-[#666666]">{demand.dormitorios || demand.quartos || 0}</span>
             </div>
+            {demand.vagas !== undefined && demand.vagas !== null && demand.vagas > 0 && (
+              <div className="flex items-center gap-2 text-sm">
+                <Car className="w-4 h-4 text-[#2E5F8A] shrink-0" />
+                <span className="font-bold text-[#1A3A52]">Vagas:</span>
+                <span className="text-[#666666]">{demand.vagas}</span>
+              </div>
+            )}
             <div className="flex items-center gap-2 text-sm">
               <Building2 className="w-4 h-4 text-[#2E5F8A] shrink-0" />
               <span className="font-bold text-[#1A3A52]">Tipo do Imóvel:</span>
@@ -146,6 +177,40 @@ export function FocoDemandDetailDialog({ demand, isOpen, onClose }: Props) {
               <span className="font-bold text-[#1A3A52]">Criada em:</span>
               <span className="text-[#666666]">{formatDate(demand.created_at || '')}</span>
             </div>
+          </div>
+
+          {demand.observacoes && (
+            <div className="bg-[#F8FAFC] border border-[#E5E5E5] rounded-lg p-3">
+              <p className="text-xs text-[#999999] font-bold uppercase mb-1 flex items-center gap-1">
+                <StickyNote className="w-3 h-3" />
+                Observações
+              </p>
+              <p className="text-sm text-[#666666]">{demand.observacoes}</p>
+            </div>
+          )}
+
+          <div className="flex items-center gap-2 pt-2">
+            {whatsappNumber && (
+              <a
+                href={`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(whatsappMessage)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1"
+              >
+                <Button className="w-full bg-[#25D366] hover:bg-[#1DA851] text-white gap-2">
+                  <MessageCircle className="w-4 h-4" />
+                  WhatsApp
+                </Button>
+              </a>
+            )}
+            <Button
+              variant="outline"
+              className="flex-1 gap-2 border-[#E5E5E5] hover:bg-[#F5F5F5]"
+              onClick={handleCopyContact}
+            >
+              <Copy className="w-4 h-4" />
+              Copiar Contato
+            </Button>
           </div>
         </div>
       </DialogContent>

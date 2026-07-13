@@ -2053,6 +2053,26 @@ export type Database = {
         Args: { p_imovel_id: string }
         Returns: undefined
       }
+      fn_get_foco_demandas: {
+        Args: { p_bairro?: string; p_tipo?: string; p_tipo_imovel?: string }
+        Returns: {
+          bairros: string[]
+          created_at: string
+          dormitorios: number
+          email: string
+          id: string
+          localizacoes: string[]
+          nivel_urgencia: string
+          nome_cliente: string
+          orcamento_max: number
+          quartos: number
+          status_demanda: string
+          telefone: string
+          tipo: string
+          tipo_imovel: string
+          valor_maximo: number
+        }[]
+      }
       fn_hard_reset_imoveis: { Args: never; Returns: undefined }
       fn_logar_falhas_api: {
         Args: {
