@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { LinkText } from '@/lib/link-formatter'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -580,8 +581,13 @@ export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDeman
           <div className="flex items-start gap-2.5 bg-[#E8F5E9] text-[#065F46] p-3 rounded-lg text-[13px] mt-1 border border-[#A7F3D0] shadow-sm pointer-events-none">
             <Info className="w-4 h-4 shrink-0 mt-0.5 text-[#10B981]" />
             <p className="leading-snug font-medium line-clamp-3">
-              {demand.observacoes ||
-                'Nenhum cliente específico — qualquer imóvel que se encaixe serve!'}
+              <LinkText
+                text={
+                  demand.observacoes ||
+                  'Nenhum cliente específico — qualquer imóvel que se encaixe serve!'
+                }
+                linkClassName="text-[#2E5F8A]"
+              />
             </p>
           </div>
 

@@ -9,6 +9,8 @@ export function useSdrQueries() {
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const isFetchingRef = useRef(false)
+  const lastFetchTimeRef = useRef(0)
 
   useEffect(() => {
     if (!user) return
@@ -19,6 +21,9 @@ export function useSdrQueries() {
     const isSdr = role === 'sdr'
 
     async function fetchData() {
+      if (isFetchingRef.current) return
+      isFetchingRef.current = true
+      lastFetchTimeRef.current = Date.now()
       setLoading(true)
       try {
         let start = new Date()
@@ -289,6 +294,7 @@ export function useSdrQueries() {
         console.error(e)
       } finally {
         setLoading(false)
+        isFetchingRef.current = false
       }
     }
 
@@ -296,7 +302,9 @@ export function useSdrQueries() {
 
     const debouncedRefetch = () => {
       if (debounceRef.current) clearTimeout(debounceRef.current)
-      debounceRef.current = setTimeout(() => fetchData(), 1500)
+      const timeSinceLastFetch = Date.now() - lastFetchTimeRef.current
+      const delay = Math.max(2000, 3000 - timeSinceLastFetch)
+      debounceRef.current = setTimeout(() => fetchData(), delay)
     }
 
     const channel = supabase

@@ -3,12 +3,11 @@ import { supabase } from '@/lib/supabase/client'
 let cachedMatches: any[] | null = null
 let lastRole: string | null = null
 let lastFetchTime: number = 0
-const CACHE_TTL = 30000 // 30 seconds
+const CACHE_TTL = 30000
 
 export async function getPendingMatches(limit: number = 50, role?: string | null) {
-  // Intelligent Local Caching
   if (cachedMatches && role === lastRole && Date.now() - lastFetchTime < CACHE_TTL) {
-    return cachedMatches
+    return cachedMatches.filter((m) => m.score > 50)
   }
 
   const { data, error } = await supabase
@@ -30,11 +29,11 @@ export async function getPendingMatches(limit: number = 50, role?: string | null
     throw error
   }
 
-  cachedMatches = data || []
+  cachedMatches = (data || []).filter((m) => m.score > 50)
   lastRole = role || null
   lastFetchTime = Date.now()
 
-  return data || []
+  return cachedMatches
 }
 
 export async function updateMatchStatus(matchId: string, status: string) {
@@ -54,6 +53,7 @@ export async function findNewMatches(onMatchFound: (match: any) => void, role?: 
       .from('matches_sugestoes')
       .select('id, score, imovel_id, imoveis_captados!inner(id, codigo_imovel)')
       .eq('status', 'pendente')
+      .gt('score', 50)
       .order('created_at', { ascending: false })
       .limit(1)
 
