@@ -170,9 +170,9 @@ export function CampanhaDetailsModal({ campanha, isOpen, onClose }: CampanhaDeta
                           </p>
                         )}
                         <div className="flex items-center gap-2 mt-0.5">
-                          {item.imovel?.preco && (
+                          {(item.imovel?.preco || item.imovel?.valor) && (
                             <p className="text-xs text-[#666666] font-medium">
-                              {formatCurrency(item.imovel.preco)}
+                              {formatCurrency(item.imovel?.preco || item.imovel?.valor || 0)}
                             </p>
                           )}
                           {item.imovel?.status_captacao && (

@@ -10,6 +10,10 @@ interface CampanhaRow {
   meta: number
   progresso: number
   data_fim: string
+  data_inicio: string
+  bairro_alvo: string | null
+  created_at: string
+  updated_at: string
 }
 
 interface CampanhaImovelRow {

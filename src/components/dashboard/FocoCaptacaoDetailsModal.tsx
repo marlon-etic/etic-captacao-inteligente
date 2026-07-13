@@ -33,6 +33,7 @@ interface FocoDemand {
   status_demanda: string | null
   tipo_imovel: string | null
   created_at: string | null
+  tipo: string | null
 }
 
 interface Props {
@@ -74,27 +75,23 @@ export function FocoCaptacaoDetailsModal({ focoItem, isOpen, onClose }: Props) {
       setLoading(true)
       try {
         const bairro = focoItem!.bairro_alvo || ''
-        const isVenda = focoItem!.tipo?.toLowerCase().includes('venda')
-        const table = isVenda ? 'demandas_vendas' : 'demandas_locacao'
-        const fields =
-          'id, nome_cliente, bairros, localizacoes, valor_maximo, orcamento_max, dormitorios, quartos, nivel_urgencia, status_demanda, tipo_imovel, created_at'
+        const { data, error } = await supabase.rpc('fn_get_foco_demandas', {
+          p_bairro: bairro,
+          p_tipo: focoItem!.tipo,
+          p_tipo_imovel: focoItem!.tipo_imovel,
+        })
 
-        let query = supabase
-          .from(table)
-          .select(fields)
-          .in('status_demanda', ['aberta', 'em busca', 'em visita'])
-
-        if (bairro && bairro !== 'Sem Bairro') {
-          query = query.or(
-            `bairros.cs.${JSON.stringify([bairro])},localizacoes.cs.${JSON.stringify([bairro])}`,
-          )
+        if (error) {
+          console.error('[FocoModal] RPC error:', error)
+          setDemands([])
+        } else {
+          const sorted = (data || []).sort((a: FocoDemand, b: FocoDemand) => {
+            return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+          })
+          setDemands(sorted as FocoDemand[])
         }
-
-        const { data, error } = await query.order('created_at', { ascending: false }).limit(30)
-        if (error) throw error
-        setDemands((data || []) as FocoDemand[])
       } catch (e) {
-        console.error('Error fetching foco demands:', e)
+        console.error('[FocoModal] Error fetching foco demands:', e)
         setDemands([])
       } finally {
         setLoading(false)
@@ -173,9 +170,14 @@ export function FocoCaptacaoDetailsModal({ focoItem, isOpen, onClose }: Props) {
                             {(demand.bairros || demand.localizacoes || ['Sem bairro']).join(', ')}
                           </p>
                         </div>
-                        <Badge variant="outline" className="text-xs">
-                          {demand.status_demanda || 'aberta'}
-                        </Badge>
+                        <div className="flex flex-col items-end gap-1">
+                          <Badge variant="outline" className="text-xs">
+                            {demand.status_demanda || 'aberta'}
+                          </Badge>
+                          <span className="text-[10px] text-[#999999] font-medium">
+                            {demand.tipo}
+                          </span>
+                        </div>
                       </div>
                       <div className="flex flex-wrap items-center gap-3 text-xs text-[#666666] font-medium">
                         <span className="flex items-center gap-1">
