@@ -236,6 +236,36 @@ export type Database = {
         }
         Relationships: []
       }
+      demand_status_log: {
+        Row: {
+          alterado_por: string | null
+          created_at: string
+          demanda_id: string
+          id: string
+          status_anterior: string | null
+          status_novo: string
+          tipo_demanda: string
+        }
+        Insert: {
+          alterado_por?: string | null
+          created_at?: string
+          demanda_id: string
+          id?: string
+          status_anterior?: string | null
+          status_novo: string
+          tipo_demanda: string
+        }
+        Update: {
+          alterado_por?: string | null
+          created_at?: string
+          demanda_id?: string
+          id?: string
+          status_anterior?: string | null
+          status_novo?: string
+          tipo_demanda?: string
+        }
+        Relationships: []
+      }
       demandas_locacao: {
         Row: {
           bairros: string[] | null

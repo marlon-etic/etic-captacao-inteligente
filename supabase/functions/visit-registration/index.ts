@@ -4,8 +4,7 @@ import { createClient } from 'jsr:@supabase/supabase-js@2'
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers':
-    'authorization, x-client-info, x-supabase-client-platform, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, x-supabase-client-platform, apikey, content-type',
 }
 
 Deno.serve(async (req: Request) => {
@@ -16,13 +15,10 @@ Deno.serve(async (req: Request) => {
   try {
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Unauthorized', message: 'Missing JWT' }),
-        {
-          status: 401,
-          headers: { 'Content-Type': 'application/json', ...corsHeaders },
-        },
-      )
+      return new Response(JSON.stringify({ success: false, error: 'Unauthorized', message: 'Missing JWT' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      })
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
@@ -34,18 +30,12 @@ Deno.serve(async (req: Request) => {
     })
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
 
-    const {
-      data: { user },
-      error: authError,
-    } = await supabaseAuthClient.auth.getUser()
+    const { data: { user }, error: authError } = await supabaseAuthClient.auth.getUser()
     if (authError || !user) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Unauthorized', message: 'Invalid JWT' }),
-        {
-          status: 401,
-          headers: { 'Content-Type': 'application/json', ...corsHeaders },
-        },
-      )
+      return new Response(JSON.stringify({ success: false, error: 'Unauthorized', message: 'Invalid JWT' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      })
     }
 
     const { data: userData, error: userError } = await supabaseAdmin
@@ -55,27 +45,17 @@ Deno.serve(async (req: Request) => {
       .single()
 
     if (userError || !userData || !['sdr', 'corretor', 'admin', 'gestor'].includes(userData.role)) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: 'Forbidden',
-          message: 'User does not have the required role',
-        }),
-        {
-          status: 403,
-          headers: { 'Content-Type': 'application/json', ...corsHeaders },
-        },
-      )
+      return new Response(JSON.stringify({ success: false, error: 'Forbidden', message: 'User does not have the required role' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      })
     }
 
     const body = await req.json()
     const { property_link_id, notes, visited_at, imovel_id, demanda_id, tipo_demanda } = body
 
-    const normalizedTipo =
-      tipo_demanda === 'Aluguel' || tipo_demanda === 'Locação' ? 'Locação' : 'Venda'
-    const visitTimestamp = visited_at
-      ? new Date(visited_at).toISOString()
-      : new Date().toISOString()
+    const normalizedTipo = (tipo_demanda === 'Aluguel' || tipo_demanda === 'Locação') ? 'Locação' : 'Venda'
+    const visitTimestamp = visited_at ? new Date(visited_at).toISOString() : new Date().toISOString()
     const visitDateOnly = visitTimestamp.split('T')[0]
 
     let matchId = property_link_id
@@ -118,28 +98,23 @@ Deno.serve(async (req: Request) => {
     }
 
     if (demanda_id) {
-      await supabaseAdmin.from('visitas_imovel').insert({
-        demanda_id,
-        tipo_demanda: normalizedTipo,
-        imovel_id: imovel_id || null,
-        user_sdr_id: user.id,
-        data_visita: visitTimestamp,
-        qtd_imoveis_visitados: 1,
-      })
+      await supabaseAdmin
+        .from('visitas_imovel')
+        .insert({
+          demanda_id,
+          tipo_demanda: normalizedTipo,
+          imovel_id: imovel_id || null,
+          user_sdr_id: user.id,
+          data_visita: visitTimestamp,
+          qtd_imoveis_visitados: 1,
+        })
     }
 
     if (!matchId && !demanda_id) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: 'Bad Request',
-          message: 'property_link_id or (imovel_id + demanda_id) or demanda_id is required',
-        }),
-        {
-          status: 400,
-          headers: { 'Content-Type': 'application/json', ...corsHeaders },
-        },
-      )
+      return new Response(JSON.stringify({ success: false, error: 'Bad Request', message: 'property_link_id or (imovel_id + demanda_id) or demanda_id is required' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      })
     }
 
     if (matchId) {
@@ -150,17 +125,10 @@ Deno.serve(async (req: Request) => {
         .single()
 
       if (linkError || !linkData) {
-        return new Response(
-          JSON.stringify({
-            success: false,
-            error: 'Not Found',
-            message: 'Property link not found',
-          }),
-          {
-            status: 404,
-            headers: { 'Content-Type': 'application/json', ...corsHeaders },
-          },
-        )
+        return new Response(JSON.stringify({ success: false, error: 'Not Found', message: 'Property link not found' }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        })
       }
 
       const { data: existingVisit } = await supabaseAdmin
@@ -172,17 +140,10 @@ Deno.serve(async (req: Request) => {
         .maybeSingle()
 
       if (existingVisit) {
-        return new Response(
-          JSON.stringify({
-            success: false,
-            error: 'Visit already recorded',
-            message: 'A visit has already been recorded for this property on this date.',
-          }),
-          {
-            status: 400,
-            headers: { 'Content-Type': 'application/json', ...corsHeaders },
-          },
-        )
+        return new Response(JSON.stringify({ success: false, error: 'Visit already recorded', message: 'A visit has already been recorded for this property on this date.' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        })
       }
 
       const { data: newVisit, error: insertError } = await supabaseAdmin
@@ -209,8 +170,7 @@ Deno.serve(async (req: Request) => {
           .eq('id', linkData.imovel_id)
           .maybeSingle()
 
-        const captadorId =
-          linkData.captador_id || imovelData?.user_captador_id || imovelData?.captador_id
+        const captadorId = linkData.captador_id || imovelData?.user_captador_id || imovelData?.captador_id
 
         if (captadorId) {
           const propertyInfo = imovelData?.endereco || imovelData?.localizacao_texto || 'imóvel'
@@ -221,58 +181,52 @@ Deno.serve(async (req: Request) => {
             minute: '2-digit',
           })
 
-          await supabaseAdmin.from('notificacoes').insert({
-            usuario_id: captadorId,
-            tipo: 'visita_registrada',
-            titulo: 'Visita Registrada',
-            mensagem: `Uma visita foi registrada para o imóvel "${propertyInfo}" em ${visitDateFormatted}.`,
-            dados_relacionados: {
-              visit_id: newVisit?.id || null,
-              imovel_id: linkData.imovel_id,
-              demanda_id: linkData.demanda_id,
-              sdr_name: userData.nome,
-              visited_at: visitTimestamp,
-            },
-            prioridade: 'normal',
-            lido: false,
-          })
+          await supabaseAdmin
+            .from('notificacoes')
+            .insert({
+              usuario_id: captadorId,
+              tipo: 'visita_registrada',
+              titulo: 'Visita Registrada',
+              mensagem: `Uma visita foi registrada para o imóvel "${propertyInfo}" em ${visitDateFormatted}.`,
+              dados_relacionados: {
+                visit_id: newVisit?.id || null,
+                imovel_id: linkData.imovel_id,
+                demanda_id: linkData.demanda_id,
+                sdr_name: userData.nome,
+                visited_at: visitTimestamp,
+              },
+              prioridade: 'normal',
+              lido: false,
+            })
         }
       }
 
-      return new Response(
-        JSON.stringify({
-          success: true,
-          visit_id: newVisit.id,
-          visited_at: newVisit.visited_at,
-          sdr_name: userData.nome,
-        }),
-        {
-          status: 201,
-          headers: { 'Content-Type': 'application/json', ...corsHeaders },
-        },
-      )
-    }
-
-    return new Response(
-      JSON.stringify({
+      return new Response(JSON.stringify({
         success: true,
-        visit_id: null,
-        visited_at: visitTimestamp,
+        visit_id: newVisit.id,
+        visited_at: newVisit.visited_at,
         sdr_name: userData.nome,
-        message: 'Visit recorded for demand',
-      }),
-      {
+      }), {
         status: 201,
         headers: { 'Content-Type': 'application/json', ...corsHeaders },
-      },
-    )
+      })
+    }
+
+    return new Response(JSON.stringify({
+      success: true,
+      visit_id: null,
+      visited_at: visitTimestamp,
+      sdr_name: userData.nome,
+      message: 'Visit recorded for demand',
+    }), {
+      status: 201,
+      headers: { 'Content-Type': 'application/json', ...corsHeaders },
+    })
+
   } catch (error: any) {
-    return new Response(
-      JSON.stringify({ success: false, error: 'Internal Server Error', message: error.message }),
-      {
-        status: 500,
-        headers: { 'Content-Type': 'application/json', ...corsHeaders },
-      },
-    )
+    return new Response(JSON.stringify({ success: false, error: 'Internal Server Error', message: error.message }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json', ...corsHeaders },
+    })
   }
 })
