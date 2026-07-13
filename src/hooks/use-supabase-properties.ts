@@ -111,6 +111,27 @@ export function useSupabaseProperties(
         setSyncing(true)
         const currentPage = resetPage ? 1 : page
 
+        const {
+          data: { user: authUser },
+        } = await supabase.auth.getUser()
+        if (!authUser) {
+          console.warn(
+            '[useSupabaseProperties] No authenticated user found via supabase.auth.getUser()',
+          )
+          return
+        }
+        const verifiedUserId = authUser.id
+
+        if (import.meta.env.DEV) {
+          console.log('[useSupabaseProperties] auth.uid():', verifiedUserId)
+          console.log('[useSupabaseProperties] store currentUser.id:', currentUser.id)
+          if (verifiedUserId !== currentUser.id) {
+            console.warn(
+              '[useSupabaseProperties] ⚠️ ID mismatch! auth.uid() !== store.currentUser.id — using auth.uid() for filtering',
+            )
+          }
+        }
+
         let query = supabase.from('imoveis_captados').select(
           `
         *,
@@ -169,7 +190,7 @@ export function useSupabaseProperties(
 
         // Captador ALWAYS sees only their properties, or if explicitly requested onlyMine
         if (options?.onlyMine || currentUser.role === 'captador') {
-          query = query.eq('user_captador_id', currentUser.id)
+          query = query.eq('user_captador_id', verifiedUserId)
         }
 
         const limit = options?.pageSize || 20
@@ -181,6 +202,15 @@ export function useSupabaseProperties(
         const { data, error, count } = await query
 
         if (error) throw error
+
+        if (import.meta.env.DEV) {
+          console.log(
+            '[useSupabaseProperties] Query returned',
+            data?.length || 0,
+            'properties, total count:',
+            count,
+          )
+        }
 
         const formatted = (data || [])
           .map(formatProperty)
@@ -219,12 +249,13 @@ export function useSupabaseProperties(
 
   // State Reset requirement: When filter changes, clear properties and reset page
   useEffect(() => {
+    if (!currentUser?.id) return
     setPage(1)
     setProperties([])
     setHasMore(false)
     fetchProperties(true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filterType, options?.onlyMine, options?.statusFilter])
+  }, [filterType, options?.onlyMine, options?.statusFilter, currentUser?.id])
 
   const loadMore = useCallback(() => {
     if (!loading && hasMore) {
@@ -237,5 +268,5 @@ export function useSupabaseProperties(
     return fetchProperties(true)
   }, [fetchProperties])
 
-  return { properties, loading, syncing, hasMore, loadMore, refresh }
+  return { properties, loading: loading && !!currentUser, syncing, hasMore, loadMore, refresh }
 }
