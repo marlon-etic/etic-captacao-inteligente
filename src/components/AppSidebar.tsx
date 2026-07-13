@@ -13,6 +13,7 @@ import {
   Shield,
   Zap,
   Activity,
+  Megaphone,
 } from 'lucide-react'
 import {
   Sidebar,
@@ -170,6 +171,20 @@ export function AppSidebar() {
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+              {isAdmin && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={pathname.startsWith('/app/campanhas')}
+                    tooltip="Campanhas de Captação"
+                  >
+                    <Link to="/app/campanhas">
+                      <Megaphone />
+                      <span>Campanhas</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
               <SidebarMenuItem>
                 <SidebarMenuButton
                   asChild

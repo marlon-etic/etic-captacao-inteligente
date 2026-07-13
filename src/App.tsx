@@ -52,6 +52,7 @@ import MatchInteligentes from '@/pages/MatchInteligentes'
 import BuscarImoveisPage from '@/pages/dashboard/BuscarImoveisPage'
 import { SDRDashboard } from '@/pages/dashboard/SDRDashboard'
 import { SdrStoreProvider } from '@/hooks/use-sdr-store'
+import CampanhasPage from '@/pages/admin/CampanhasPage'
 
 // Landlord Panel Imports
 import LandlordLogin from '@/pages/auth/LandlordLogin'
@@ -360,6 +361,14 @@ const AppRoutes = () => {
         <Route path="todos-captados" element={<TodosCaptadosPage />} />
         <Route path="match-inteligentes" element={<MatchInteligentes />} />
         <Route path="buscar-imoveis" element={<BuscarImoveisPage />} />
+        <Route
+          path="campanhas"
+          element={
+            <AdminRoute>
+              <CampanhasPage />
+            </AdminRoute>
+          }
+        />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>
