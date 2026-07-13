@@ -84,24 +84,22 @@ export function DemandMatchModal({ demand, open, onOpenChange }: Props) {
           : { data: [] }
       const visitedLinkIds = new Set((visitData || []).map((v: any) => v.property_link_id))
 
-      const matched = useMemo(() => {
-        return (rawProps || [])
-          .filter((p: any) => isResidential(p.tipo_imovel) && hasBedrooms(p.dormitorios))
-          .map((p: any) => {
-            const result = calculateMatching(p, demand)
-            const existing = (existingMatches || []).find((m: any) => m.imovel_id === p.id)
-            return {
-              ...p,
-              score: result.score,
-              details: result.details,
-              isLinked: !!existing,
-              hasVisit: existing ? visitedLinkIds.has(existing.id) : false,
-              matchId: existing?.id,
-            }
-          })
-          .filter((m: any) => m.score > 50)
-          .sort((a: any, b: any) => b.score - a.score)
-      }, [rawProps, existingMatches, visitedLinkIds])
+      const matched = (rawProps || [])
+        .filter((p: any) => isResidential(p.tipo_imovel) && hasBedrooms(p.dormitorios))
+        .map((p: any) => {
+          const result = calculateMatching(p, demand)
+          const existing = (existingMatches || []).find((m: any) => m.imovel_id === p.id)
+          return {
+            ...p,
+            score: result.score,
+            details: result.details,
+            isLinked: !!existing,
+            hasVisit: existing ? visitedLinkIds.has(existing.id) : false,
+            matchId: existing?.id,
+          }
+        })
+        .filter((m: any) => m.score > 50)
+        .sort((a: any, b: any) => b.score - a.score)
 
       setProperties(matched)
       setLoading(false)
