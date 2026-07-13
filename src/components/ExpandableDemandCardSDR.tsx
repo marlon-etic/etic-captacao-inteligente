@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, memo, useMemo, useCallback } from 'react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -32,9 +32,10 @@ import { toggleDemandPriority } from '@/services/priority-service'
 import { LostModal } from './LostModal'
 import { supabase } from '@/lib/supabase/client'
 import { DemandMatchModal } from './DemandMatchModal'
-import { VisitRegistrationModal } from './VisitRegistrationModal'
+import { VisitRegistrationModal, type LinkedProperty } from './VisitRegistrationModal'
+import { DemandLifecycleTimeline } from './DemandLifecycleTimeline'
 
-export function ExpandableDemandCardSDR({
+function ExpandableDemandCardSDRComponent({
   demand,
   onAction,
 }: {
@@ -50,6 +51,8 @@ export function ExpandableDemandCardSDR({
   const [showLostModal, setShowLostModal] = useState(false)
   const [showMatchModal, setShowMatchModal] = useState(false)
   const [showVisitModal, setShowVisitModal] = useState(false)
+  const [showTimeline, setShowTimeline] = useState(false)
+  const [linkedProperties, setLinkedProperties] = useState<LinkedProperty[]>([])
 
   const canPrioritize = ['sdr', 'admin', 'gestor', 'corretor'].includes(currentUser?.role)
 
@@ -78,8 +81,12 @@ export function ExpandableDemandCardSDR({
       currentUser?.id === demand.sdr_id ||
       currentUser?.id === demand.corretor_id)
 
-  const respostasNaoEncontrei = (demand.respostas_captador || []).filter(
-    (r: any) => r.resposta === 'nao_encontrei' || r.resposta === 'perdido',
+  const respostasNaoEncontrei = useMemo(
+    () =>
+      (demand.respostas_captador || []).filter(
+        (r: any) => r.resposta === 'nao_encontrei' || r.resposta === 'perdido',
+      ),
+    [demand.respostas_captador],
   )
 
   let statusConfig = {
@@ -107,17 +114,22 @@ export function ExpandableDemandCardSDR({
     }
   }
 
-  const formatPrice = (val: number) => {
-    return new Intl.NumberFormat('pt-BR', {
+  const formatPrice = useMemo(() => {
+    const formatter = new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL',
       maximumFractionDigits: 0,
-    }).format(val)
-  }
+    })
+    return (val: number) => formatter.format(val)
+  }, [])
 
   const capturedCount = demand.imoveis_captados?.length || 0
-  const activeCaptadores = (demand.captadores_busca || []).filter(
-    (c: any) => new Date(c.data_clique).getTime() > Date.now() - 24 * 3600000,
+  const activeCaptadores = useMemo(
+    () =>
+      (demand.captadores_busca || []).filter(
+        (c: any) => new Date(c.data_clique).getTime() > Date.now() - 24 * 3600000,
+      ),
+    [demand.captadores_busca],
   )
 
   let progressStatus = 'Aguardando'
@@ -257,6 +269,29 @@ export function ExpandableDemandCardSDR({
       })
     }
   }
+
+  const handleOpenVisitModal = useCallback(async () => {
+    try {
+      const { data: matches } = await supabase
+        .from('imovel_demand_match')
+        .select('id, imovel_id, imoveis_captados(endereco, codigo_imovel, localizacao_texto)')
+        .eq('demanda_id', demand.id)
+
+      const props: LinkedProperty[] = (matches || []).map((m: any) => ({
+        matchId: m.id,
+        imovelId: m.imovel_id,
+        label:
+          m.imoveis_captados?.endereco ||
+          m.imoveis_captados?.localizacao_texto ||
+          m.imoveis_captados?.codigo_imovel ||
+          'Imóvel',
+      }))
+      setLinkedProperties(props)
+    } catch (err) {
+      console.error('Error fetching linked properties:', err)
+    }
+    setShowVisitModal(true)
+  }, [demand.id])
 
   return (
     <>
@@ -440,6 +475,18 @@ export function ExpandableDemandCardSDR({
           </div>
 
           <RespostasHistory respostas={respostasNaoEncontrei} />
+
+          <div className="pointer-events-auto mt-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full font-bold text-[#1A3A52] hover:bg-gray-100 text-[11px]"
+              onClick={() => setShowTimeline(!showTimeline)}
+            >
+              {showTimeline ? 'Ocultar' : 'Ver'} Linha do Tempo
+            </Button>
+            {showTimeline && <DemandLifecycleTimeline demand={demand} />}
+          </div>
         </div>
 
         <div className="px-4 pb-4 pt-2 mt-auto bg-white pointer-events-auto rounded-b-[14px]">
@@ -462,7 +509,7 @@ export function ExpandableDemandCardSDR({
               onClick={(e) => {
                 e.preventDefault()
                 e.stopPropagation()
-                setShowVisitModal(true)
+                handleOpenVisitModal()
               }}
             >
               <Calendar className="w-4 h-4 mr-2" /> Registrar Visita
@@ -537,7 +584,10 @@ export function ExpandableDemandCardSDR({
         propertyLabel={
           demand.imoveis_captados?.[0]?.endereco || demand.imoveis_captados?.[0]?.localizacao_texto
         }
+        linkedProperties={linkedProperties}
       />
     </>
   )
 }
+
+export const ExpandableDemandCardSDR = memo(ExpandableDemandCardSDRComponent)

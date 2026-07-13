@@ -32,6 +32,7 @@ interface MatchProperty {
   score: number
   details: any
   isLinked: boolean
+  hasVisit: boolean
   matchId?: string
 }
 
@@ -73,6 +74,16 @@ export function DemandMatchModal({ demand, open, onOpenChange }: Props) {
           .limit(200),
       ])
 
+      const matchIds = (existingMatches || []).map((m: any) => m.id)
+      const { data: visitData } =
+        matchIds.length > 0
+          ? await supabase
+              .from('visit_records')
+              .select('property_link_id')
+              .in('property_link_id', matchIds)
+          : { data: [] }
+      const visitedLinkIds = new Set((visitData || []).map((v: any) => v.property_link_id))
+
       const matched = (rawProps || [])
         .filter((p: any) => isResidential(p.tipo_imovel) && hasBedrooms(p.dormitorios))
         .map((p: any) => {
@@ -83,6 +94,7 @@ export function DemandMatchModal({ demand, open, onOpenChange }: Props) {
             score: result.score,
             details: result.details,
             isLinked: !!existing,
+            hasVisit: existing ? visitedLinkIds.has(existing.id) : false,
             matchId: existing?.id,
           }
         })
@@ -239,6 +251,11 @@ export function DemandMatchModal({ demand, open, onOpenChange }: Props) {
                         {prop.isLinked && (
                           <Badge className="bg-[#10B981] text-white text-[10px] border-none">
                             ✓ Vinculado
+                          </Badge>
+                        )}
+                        {prop.hasVisit && (
+                          <Badge className="bg-purple-500 text-white text-[10px] border-none">
+                            Visitado
                           </Badge>
                         )}
                       </div>

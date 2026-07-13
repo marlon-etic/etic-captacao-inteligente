@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, memo } from 'react'
 import { useSdrStore } from '@/hooks/use-sdr-store'
 import {
   Table,
@@ -36,7 +36,7 @@ import { toggleDemandPriority } from '@/services/priority-service'
 import useAppStore from '@/stores/useAppStore'
 import { Star } from 'lucide-react'
 
-export function ListasSdr({
+function ListasSdrBase({
   data,
   loading,
   isLocacao,
@@ -628,3 +628,5 @@ export function ListasSdr({
     </div>
   )
 }
+
+export const ListasSdr = memo(ListasSdrBase)

@@ -295,7 +295,7 @@ export function useSdrQueries() {
 
     const debouncedRefetch = () => {
       if (debounceRef.current) clearTimeout(debounceRef.current)
-      debounceRef.current = setTimeout(() => fetchData(), 500)
+      debounceRef.current = setTimeout(() => fetchData(), 1500)
     }
 
     const channel = supabase

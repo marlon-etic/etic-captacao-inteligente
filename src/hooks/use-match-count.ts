@@ -36,7 +36,7 @@ export function useMatchCount(type: 'imovel' | 'demanda', id: string) {
     }
 
     loadMatchCount()
-    const interval = setInterval(loadMatchCount, 30000)
+    const interval = setInterval(loadMatchCount, 60000)
 
     const channel = supabase
       .channel(`match_count_realtime_${id}`)
