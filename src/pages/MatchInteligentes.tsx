@@ -189,6 +189,7 @@ export default function MatchInteligentes() {
       // Filter matches depending on if SDR/Corretor wants to see only their demands
       const finalMatches = enrichedMatches.filter((m: any) => {
         if (!m.imovel || !m.demanda) return false
+        if (m.score <= 50) return false
 
         // Strict filtering: ensure only active or open demands are displayed
         const status = m.demanda.status_demanda?.toLowerCase() || ''

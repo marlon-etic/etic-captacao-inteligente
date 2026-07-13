@@ -98,7 +98,7 @@ export function DemandMatchModal({ demand, open, onOpenChange }: Props) {
             matchId: existing?.id,
           }
         })
-        .filter((m: any) => m.score > 0)
+        .filter((m: any) => m.score > 50)
         .sort((a: any, b: any) => b.score - a.score)
 
       setProperties(matched)

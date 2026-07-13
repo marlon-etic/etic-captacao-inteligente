@@ -15,6 +15,7 @@ export async function getPendingMatches(limit: number = 50, role?: string | null
     .from('matches_sugestoes')
     .select('id, imovel_id, demanda_id, demanda_tipo, score, status')
     .eq('status', 'pendente')
+    .gt('score', 50)
     .order('score', { ascending: false })
     .limit(limit)
 

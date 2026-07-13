@@ -144,6 +144,7 @@ export function useSdrQueries() {
             .select(
               'id, codigo_imovel, endereco, preco, valor, created_at, updated_at, tipo, tipo_imovel, etapa_funil, status_captacao, dormitorios, vagas, banheiros, fotos, observacoes, localizacao_texto, user_captador_id, demanda_locacao_id, demanda_venda_id, imovel_demand_match(id, demanda_id, tipo_vinculacao)',
             )
+            .not('status_captacao', 'in', '("perdido","removido")')
 
           if (!isAdmin) {
             if (isCaptador) q = q.eq('user_captador_id', user.id)
@@ -228,10 +229,10 @@ export function useSdrQueries() {
                 .select(
                   'id, demanda_id, tipo_vinculacao, compatibilidade_pct, imovel_id, imoveis_captados(id, codigo_imovel, endereco, preco, valor, created_at, updated_at, user_captador_id, tipo, tipo_imovel, etapa_funil, status_captacao, dormitorios, vagas, banheiros, fotos, observacoes, localizacao_texto, users!imoveis_captados_user_captador_id_fkey(nome))',
                 )
-                .in('demanda_id', chunk),
+                .in('demanda_id', chunk)
+                .gt('compatibilidade_pct', 50),
             )
           }
-
           const chunkResults = await Promise.all(chunkPromises)
           chunkResults.forEach(({ data }) => {
             if (data) imVList.push(...data)
