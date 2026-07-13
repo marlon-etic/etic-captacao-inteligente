@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Navigate } from 'react-router-dom'
-import { Megaphone, Plus, Loader2, Filter, Archive, History } from 'lucide-react'
+import { Megaphone, Plus, Loader2, Filter, History } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -20,8 +20,8 @@ import {
   fetchCampanhas,
   updateCampanhaStatus,
   closeCampanha,
-  fetchCampanhasHistorico,
 } from '@/services/campanhaService'
+import { CampanhaHistoricoDashboard } from '@/components/campanhas/CampanhaHistoricoDashboard'
 import { useToast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 
@@ -36,7 +36,6 @@ export function Campanhas() {
   const [filterTipo, setFilterTipo] = useState('todos')
   const [filterStatus, setFilterStatus] = useState('todos')
   const [showHistory, setShowHistory] = useState(false)
-  const [historico, setHistorico] = useState<any[]>([])
 
   const role = user?.user_metadata?.role || user?.app_metadata?.role
   const isOwner =
@@ -59,13 +58,6 @@ export function Campanhas() {
       loadCampanhas()
     }
   }, [role, isOwner, loadCampanhas])
-
-  useEffect(() => {
-    if (!showHistory) return
-    fetchCampanhasHistorico()
-      .then(setHistorico)
-      .catch(() => setHistorico([]))
-  }, [showHistory])
 
   useEffect(() => {
     if (role !== 'admin' && !isOwner) return
@@ -119,13 +111,6 @@ export function Campanhas() {
     return true
   })
 
-  const tipoLabels: Record<string, string> = {
-    apartamento: 'Apartamento',
-    casa: 'Casa',
-    galpao: 'Galpão',
-    comercial: 'Comercial',
-  }
-
   return (
     <div className="max-w-[1400px] mx-auto space-y-6 pb-12 animate-fade-in-up">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-[#2E5F8A]/20 pb-6">
@@ -158,39 +143,7 @@ export function Campanhas() {
       </div>
 
       {showHistory ? (
-        <div className="bg-white rounded-xl shadow-sm border border-[#E5E5E5] overflow-hidden">
-          <div className="p-4 border-b border-[#E5E5E5] bg-[#F5F5F5]">
-            <h2 className="font-bold text-[#1A3A52] flex items-center gap-2">
-              <Archive className="w-5 h-5" /> Campanhas Arquivadas
-            </h2>
-          </div>
-          {historico.length === 0 ? (
-            <div className="text-center py-12 text-[#999999] font-medium">
-              Nenhuma campanha arquivada.
-            </div>
-          ) : (
-            <div className="divide-y divide-[#E5E5E5]">
-              {historico.map((h) => (
-                <div
-                  key={h.id}
-                  className="p-4 flex items-center justify-between hover:bg-[#F8FAFC]"
-                >
-                  <div>
-                    <p className="font-bold text-[#1A3A52]">
-                      {tipoLabels[h.tipo_imovel] || h.tipo_imovel}
-                    </p>
-                    <p className="text-xs text-[#999999]">
-                      {h.total_imoveis} imóveis · {h.total_captadores} captadores
-                    </p>
-                  </div>
-                  <p className="text-xs text-[#999999] font-medium">
-                    {new Date(h.data_fechamento).toLocaleDateString('pt-BR')}
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        <CampanhaHistoricoDashboard />
       ) : (
         <>
           <div className="flex flex-col sm:flex-row gap-3 bg-white p-4 rounded-xl shadow-sm border border-[#E5E5E5]">

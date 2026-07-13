@@ -53,6 +53,7 @@ import BuscarImoveisPage from '@/pages/dashboard/BuscarImoveisPage'
 import { SDRDashboard } from '@/pages/dashboard/SDRDashboard'
 import { SdrStoreProvider } from '@/hooks/use-sdr-store'
 import CampanhasPage from '@/pages/admin/CampanhasPage'
+import CampanhaHistoricoPage from '@/pages/admin/CampanhaHistoricoPage'
 
 // Landlord Panel Imports
 import LandlordLogin from '@/pages/auth/LandlordLogin'
@@ -366,6 +367,14 @@ const AppRoutes = () => {
           element={
             <AdminRoute>
               <CampanhasPage />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="campanhas/historico"
+          element={
+            <AdminRoute>
+              <CampanhaHistoricoPage />
             </AdminRoute>
           }
         />
