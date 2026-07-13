@@ -10,10 +10,13 @@ Deno.serve(async (req: Request) => {
   try {
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
-      return new Response(JSON.stringify({ success: false, error: 'Unauthorized', message: 'Missing JWT' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json', ...corsHeaders },
-      })
+      return new Response(
+        JSON.stringify({ success: false, error: 'Unauthorized', message: 'Missing JWT' }),
+        {
+          status: 401,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        },
+      )
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
@@ -26,13 +29,19 @@ Deno.serve(async (req: Request) => {
 
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
 
-    const { data: { user }, error: authError } = await supabaseAuthClient.auth.getUser()
+    const {
+      data: { user },
+      error: authError,
+    } = await supabaseAuthClient.auth.getUser()
 
     if (authError || !user) {
-      return new Response(JSON.stringify({ success: false, error: 'Unauthorized', message: 'Invalid JWT' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json', ...corsHeaders },
-      })
+      return new Response(
+        JSON.stringify({ success: false, error: 'Unauthorized', message: 'Invalid JWT' }),
+        {
+          status: 401,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        },
+      )
     }
 
     const { data: userData, error: userError } = await supabaseAdmin
@@ -42,27 +51,48 @@ Deno.serve(async (req: Request) => {
       .single()
 
     if (userError || !userData || userData.role !== 'sdr') {
-      return new Response(JSON.stringify({ success: false, error: 'Forbidden', message: 'User does not have the required sdr role' }), {
-        status: 403,
-        headers: { 'Content-Type': 'application/json', ...corsHeaders },
-      })
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Forbidden',
+          message: 'User does not have the required sdr role',
+        }),
+        {
+          status: 403,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        },
+      )
     }
 
     const body = await req.json()
     const { property_link_id, interest_level, feedback_text } = body
 
     if (!property_link_id || !interest_level) {
-      return new Response(JSON.stringify({ success: false, error: 'Bad Request', message: 'property_link_id and interest_level are required' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json', ...corsHeaders },
-      })
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Bad Request',
+          message: 'property_link_id and interest_level are required',
+        }),
+        {
+          status: 400,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        },
+      )
     }
 
     if (interest_level !== 'interested' && interest_level !== 'not_interested') {
-      return new Response(JSON.stringify({ success: false, error: 'Bad Request', message: 'interest_level must be "interested" or "not_interested"' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json', ...corsHeaders },
-      })
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Bad Request',
+          message: 'interest_level must be "interested" or "not_interested"',
+        }),
+        {
+          status: 400,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        },
+      )
     }
 
     // Check if property_link_id exists
@@ -73,10 +103,13 @@ Deno.serve(async (req: Request) => {
       .single()
 
     if (linkError || !linkData) {
-      return new Response(JSON.stringify({ success: false, error: 'Not Found', message: 'Property link not found' }), {
-        status: 404,
-        headers: { 'Content-Type': 'application/json', ...corsHeaders },
-      })
+      return new Response(
+        JSON.stringify({ success: false, error: 'Not Found', message: 'Property link not found' }),
+        {
+          status: 404,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        },
+      )
     }
 
     // Check for duplicate feedback
@@ -91,10 +124,17 @@ Deno.serve(async (req: Request) => {
     }
 
     if (existingFeedback) {
-      return new Response(JSON.stringify({ success: false, error: 'Feedback already provided', message: 'Feedback has already been recorded for this property.' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json', ...corsHeaders },
-      })
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Feedback already provided',
+          message: 'Feedback has already been recorded for this property.',
+        }),
+        {
+          status: 400,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        },
+      )
     }
 
     // Insert new feedback
@@ -106,7 +146,7 @@ Deno.serve(async (req: Request) => {
         sdr_user_id: user.id,
         interest_level,
         feedback_text: feedback_text || null,
-        created_at: now
+        created_at: now,
       })
       .select('id, created_at')
       .single()
@@ -115,20 +155,25 @@ Deno.serve(async (req: Request) => {
       throw insertError
     }
 
-    return new Response(JSON.stringify({
-      success: true,
-      feedback_id: newFeedback.id,
-      interest_level: interest_level,
-      created_at: newFeedback.created_at
-    }), {
-      status: 201,
-      headers: { 'Content-Type': 'application/json', ...corsHeaders },
-    })
-
+    return new Response(
+      JSON.stringify({
+        success: true,
+        feedback_id: newFeedback.id,
+        interest_level: interest_level,
+        created_at: newFeedback.created_at,
+      }),
+      {
+        status: 201,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      },
+    )
   } catch (error: any) {
-    return new Response(JSON.stringify({ success: false, error: 'Internal Server Error', message: error.message }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json', ...corsHeaders },
-    })
+    return new Response(
+      JSON.stringify({ success: false, error: 'Internal Server Error', message: error.message }),
+      {
+        status: 500,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      },
+    )
   }
 })

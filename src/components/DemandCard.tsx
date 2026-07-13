@@ -29,6 +29,7 @@ import {
 } from 'lucide-react'
 import { PrioritizeModal } from '@/components/PrioritizeModal'
 import { toggleDemandPriority } from '@/services/priority-service'
+import { DemandCampaignSection } from '@/components/DemandCampaignSection'
 
 interface DemandCardProps {
   demand: Demand
@@ -561,6 +562,16 @@ export const DemandCard = React.memo(function DemandCard({
               value={`${demand.bedrooms ?? 0} dorm, ${demand.bathrooms ?? 0} banh, ${demand.parkingSpots ?? 0} vagas`}
             />
             <InfoItem label="Solicitado por" value={creatorName} />
+          </div>
+
+          <div className="pointer-events-auto relative z-10">
+            <DemandCampaignSection
+              demandId={demand.id}
+              demandType={demand.type}
+              minBudget={demand.minBudget}
+              maxBudget={demand.maxBudget}
+              tipoImovel={(demand as any).tipo_imovel}
+            />
           </div>
 
           <div className="flex items-center justify-between text-[12px] font-bold text-[#666666] mt-auto pt-2">
