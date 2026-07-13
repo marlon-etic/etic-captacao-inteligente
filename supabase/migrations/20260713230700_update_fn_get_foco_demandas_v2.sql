@@ -1,3 +1,5 @@
+DROP FUNCTION IF EXISTS public.fn_get_foco_demandas(TEXT, TEXT, TEXT);
+
 CREATE OR REPLACE FUNCTION public.fn_get_foco_demandas(
   p_bairro TEXT DEFAULT NULL,
   p_tipo TEXT DEFAULT NULL,
