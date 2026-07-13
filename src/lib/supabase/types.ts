@@ -215,6 +215,138 @@ export type Database = {
           },
         ]
       }
+      campanhas: {
+        Row: {
+          created_at: string
+          data_fim: string
+          data_inicio: string
+          faixa_valor_max: number
+          faixa_valor_min: number
+          id: string
+          meta: number
+          progresso: number
+          status: string
+          tipo_imovel: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          data_fim: string
+          data_inicio?: string
+          faixa_valor_max?: number
+          faixa_valor_min?: number
+          id?: string
+          meta?: number
+          progresso?: number
+          status?: string
+          tipo_imovel: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          data_fim?: string
+          data_inicio?: string
+          faixa_valor_max?: number
+          faixa_valor_min?: number
+          id?: string
+          meta?: number
+          progresso?: number
+          status?: string
+          tipo_imovel?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      campanhas_historico: {
+        Row: {
+          campanha_id: string
+          data_fechamento: string
+          faixa_valor: Json
+          id: string
+          tipo_imovel: string
+          total_captadores: number
+          total_imoveis: number
+        }
+        Insert: {
+          campanha_id: string
+          data_fechamento?: string
+          faixa_valor: Json
+          id?: string
+          tipo_imovel: string
+          total_captadores?: number
+          total_imoveis?: number
+        }
+        Update: {
+          campanha_id?: string
+          data_fechamento?: string
+          faixa_valor?: Json
+          id?: string
+          tipo_imovel?: string
+          total_captadores?: number
+          total_imoveis?: number
+        }
+        Relationships: []
+      }
+      campanhas_imoveis: {
+        Row: {
+          campanha_id: string
+          captador_id: string | null
+          data_adicionado: string
+          id: string
+          imovel_id: string
+        }
+        Insert: {
+          campanha_id: string
+          captador_id?: string | null
+          data_adicionado?: string
+          id?: string
+          imovel_id: string
+        }
+        Update: {
+          campanha_id?: string
+          captador_id?: string | null
+          data_adicionado?: string
+          id?: string
+          imovel_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campanhas_imoveis_campanha_id_fkey"
+            columns: ["campanha_id"]
+            isOneToOne: false
+            referencedRelation: "campanhas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campanhas_imoveis_captador_id_fkey"
+            columns: ["captador_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campanhas_imoveis_captador_id_fkey"
+            columns: ["captador_id"]
+            isOneToOne: false
+            referencedRelation: "vw_engajamento_captadores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campanhas_imoveis_captador_id_fkey"
+            columns: ["captador_id"]
+            isOneToOne: false
+            referencedRelation: "vw_engajamento_sdr_corretor"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campanhas_imoveis_imovel_id_fkey"
+            columns: ["imovel_id"]
+            isOneToOne: false
+            referencedRelation: "imoveis_captados"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cron_execution_log: {
         Row: {
           error_message: string | null
@@ -1897,6 +2029,7 @@ export type Database = {
       }
       fn_clean_expired_cache: { Args: never; Returns: undefined }
       fn_cleanup_inactive_demands: { Args: never; Returns: Json }
+      fn_close_expired_campanhas: { Args: never; Returns: undefined }
       fn_diagnose_and_fix_auth: {
         Args: {
           p_email: string
