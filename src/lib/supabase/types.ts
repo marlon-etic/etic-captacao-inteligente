@@ -2064,12 +2064,14 @@ export type Database = {
           localizacoes: string[]
           nivel_urgencia: string
           nome_cliente: string
+          observacoes: string
           orcamento_max: number
           quartos: number
           status_demanda: string
           telefone: string
           tipo: string
           tipo_imovel: string
+          vagas: number
           valor_maximo: number
         }[]
       }

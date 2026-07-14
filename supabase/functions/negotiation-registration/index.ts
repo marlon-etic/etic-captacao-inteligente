@@ -10,13 +10,10 @@ Deno.serve(async (req: Request) => {
   try {
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Unauthorized', message: 'Missing JWT' }),
-        {
-          status: 401,
-          headers: { 'Content-Type': 'application/json', ...corsHeaders },
-        },
-      )
+      return new Response(JSON.stringify({ success: false, error: 'Unauthorized', message: 'Missing JWT' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      })
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
@@ -29,19 +26,13 @@ Deno.serve(async (req: Request) => {
 
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
 
-    const {
-      data: { user },
-      error: authError,
-    } = await supabaseAuthClient.auth.getUser()
+    const { data: { user }, error: authError } = await supabaseAuthClient.auth.getUser()
 
     if (authError || !user) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Unauthorized', message: 'Invalid JWT' }),
-        {
-          status: 401,
-          headers: { 'Content-Type': 'application/json', ...corsHeaders },
-        },
-      )
+      return new Response(JSON.stringify({ success: false, error: 'Unauthorized', message: 'Invalid JWT' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      })
     }
 
     const { data: userData, error: userError } = await supabaseAdmin
@@ -51,48 +42,27 @@ Deno.serve(async (req: Request) => {
       .single()
 
     if (userError || !userData || (userData.role !== 'sdr' && userData.role !== 'corretor')) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: 'Forbidden',
-          message: 'User does not have the required role (sdr or corretor)',
-        }),
-        {
-          status: 403,
-          headers: { 'Content-Type': 'application/json', ...corsHeaders },
-        },
-      )
+      return new Response(JSON.stringify({ success: false, error: 'Forbidden', message: 'User does not have the required role (sdr or corretor)' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      })
     }
 
     const body = await req.json()
     const { property_link_id, negotiation_status, notes } = body
 
     if (!property_link_id || !negotiation_status) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: 'Bad Request',
-          message: 'property_link_id and negotiation_status are required',
-        }),
-        {
-          status: 400,
-          headers: { 'Content-Type': 'application/json', ...corsHeaders },
-        },
-      )
+      return new Response(JSON.stringify({ success: false, error: 'Bad Request', message: 'property_link_id and negotiation_status are required' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      })
     }
 
     if (negotiation_status !== 'negotiated' && negotiation_status !== 'failed') {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: 'Bad Request',
-          message: 'negotiation_status must be "negotiated" or "failed"',
-        }),
-        {
-          status: 400,
-          headers: { 'Content-Type': 'application/json', ...corsHeaders },
-        },
-      )
+      return new Response(JSON.stringify({ success: false, error: 'Bad Request', message: 'negotiation_status must be "negotiated" or "failed"' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      })
     }
 
     // Check if property_link_id exists
@@ -103,13 +73,10 @@ Deno.serve(async (req: Request) => {
       .single()
 
     if (linkError || !linkData) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Not Found', message: 'Property link not found' }),
-        {
-          status: 404,
-          headers: { 'Content-Type': 'application/json', ...corsHeaders },
-        },
-      )
+      return new Response(JSON.stringify({ success: false, error: 'Not Found', message: 'Property link not found' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      })
     }
 
     // Check for duplicate negotiation
@@ -124,17 +91,10 @@ Deno.serve(async (req: Request) => {
     }
 
     if (existingNegotiation) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: 'Negotiation already recorded',
-          message: 'A negotiation has already been recorded for this property.',
-        }),
-        {
-          status: 400,
-          headers: { 'Content-Type': 'application/json', ...corsHeaders },
-        },
-      )
+      return new Response(JSON.stringify({ success: false, error: 'Negotiation already recorded', message: 'A negotiation has already been recorded for this property.' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      })
     }
 
     // Insert new negotiation
@@ -148,7 +108,7 @@ Deno.serve(async (req: Request) => {
         notes: notes || null,
         negotiation_date: now,
         created_at: now,
-        updated_at: now,
+        updated_at: now
       })
       .select('id, negotiation_date')
       .single()
@@ -157,25 +117,20 @@ Deno.serve(async (req: Request) => {
       throw insertError
     }
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        negotiation_id: newNegotiation.id,
-        status: negotiation_status,
-        negotiation_date: newNegotiation.negotiation_date,
-      }),
-      {
-        status: 201,
-        headers: { 'Content-Type': 'application/json', ...corsHeaders },
-      },
-    )
+    return new Response(JSON.stringify({
+      success: true,
+      negotiation_id: newNegotiation.id,
+      status: negotiation_status,
+      negotiation_date: newNegotiation.negotiation_date
+    }), {
+      status: 201,
+      headers: { 'Content-Type': 'application/json', ...corsHeaders },
+    })
+
   } catch (error: any) {
-    return new Response(
-      JSON.stringify({ success: false, error: 'Internal Server Error', message: error.message }),
-      {
-        status: 500,
-        headers: { 'Content-Type': 'application/json', ...corsHeaders },
-      },
-    )
+    return new Response(JSON.stringify({ success: false, error: 'Internal Server Error', message: error.message }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json', ...corsHeaders },
+    })
   }
 })
