@@ -218,6 +218,7 @@ export type Database = {
       campanhas: {
         Row: {
           bairro_alvo: string | null
+          bairros_alvo: string[] | null
           created_at: string
           data_fim: string
           data_inicio: string
@@ -232,6 +233,7 @@ export type Database = {
         }
         Insert: {
           bairro_alvo?: string | null
+          bairros_alvo?: string[] | null
           created_at?: string
           data_fim: string
           data_inicio?: string
@@ -246,6 +248,7 @@ export type Database = {
         }
         Update: {
           bairro_alvo?: string | null
+          bairros_alvo?: string[] | null
           created_at?: string
           data_fim?: string
           data_inicio?: string
