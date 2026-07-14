@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Navigate } from 'react-router-dom'
-import { Megaphone, Plus, Loader2, Filter, History } from 'lucide-react'
+import { Megaphone, Plus, Loader2, Filter, History, Trash2, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -10,6 +10,16 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { CampanhaCard } from '@/components/campanhas/CampanhaCard'
 import { NewCampanhaModal } from '@/components/campanhas/NewCampanhaModal'
 import { CampanhaDetailsModal } from '@/components/campanhas/CampanhaDetailsModal'
@@ -37,6 +47,8 @@ export function Campanhas() {
   const [filterTipo, setFilterTipo] = useState('todos')
   const [filterStatus, setFilterStatus] = useState('todos')
   const [showHistory, setShowHistory] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<Campanha | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const role = user?.user_metadata?.role || user?.app_metadata?.role
   const isOwner =
@@ -101,13 +113,22 @@ export function Campanhas() {
     }
   }
 
-  const handleDelete = async (id: string) => {
+  const handleDeleteClick = (campanha: Campanha) => {
+    setDeleteTarget(campanha)
+  }
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return
+    setIsDeleting(true)
     try {
-      await deleteCampanha(id)
+      await deleteCampanha(deleteTarget.id)
       toast({ title: '✅ Campanha excluída', className: 'bg-emerald-600 text-white' })
       loadCampanhas()
+      setDeleteTarget(null)
     } catch (err: any) {
       toast({ title: 'Erro', description: err.message, variant: 'destructive' })
+    } finally {
+      setIsDeleting(false)
     }
   }
 
@@ -202,7 +223,7 @@ export function Campanhas() {
                   campanha={c}
                   onToggle={handleToggle}
                   onClick={handleCardClick}
-                  onDelete={handleDelete}
+                  onDelete={handleDeleteClick}
                 />
               ))}
             </div>
@@ -224,6 +245,42 @@ export function Campanhas() {
           setSelectedCampanha(null)
         }}
       />
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-[#1A3A52]">
+              <AlertTriangle className="w-5 h-5 text-red-500" />
+              Confirmar Exclusão
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir a campanha{' '}
+              <strong className="text-[#1A3A52]">{deleteTarget?.tipo_imovel}</strong>? Esta ação não
+              pode ser desfeita e todos os vínculos de imóveis serão removidos.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Excluindo...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Excluir Campanha
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

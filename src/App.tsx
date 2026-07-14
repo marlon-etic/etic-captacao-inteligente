@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, lazy, Suspense } from 'react'
 import type { ReactNode, FC } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { Toaster } from '@/components/ui/toaster'
@@ -16,56 +16,71 @@ import { findNewMatches } from '@/services/matchingService'
 import { supabase } from '@/lib/supabase/client'
 import Layout from '@/components/Layout'
 import Index from '@/pages/Index'
-import EsqueciSenha from '@/pages/EsqueciSenha'
-import RedefinirSenha from '@/pages/RedefinirSenha'
-import DashboardRedirect from '@/pages/DashboardRedirect'
-import Demandas from '@/pages/Demandas'
-import NovaDemanda from '@/pages/NovaDemanda'
-import Ranking from '@/pages/Ranking'
-import Perfil from '@/pages/Perfil'
-import NotFound from '@/pages/NotFound'
-import Notificacoes from '@/pages/Notificacoes'
-import Ajuda from '@/pages/Ajuda'
-import { GestorDashboard } from '@/pages/dashboard/GestorDashboard'
-import { AnalyticsDashboard } from '@/pages/analytics/AnalyticsDashboard'
-import { PerformanceDashboard } from '@/pages/analytics/PerformanceDashboard'
-import { Usuarios } from '@/pages/admin/Usuarios'
-import { Auditoria } from '@/pages/admin/Auditoria'
-import RLSTester from '@/pages/admin/RLSTester'
-import E2ETester from '@/pages/admin/E2ETester'
-import PerformanceTester from '@/pages/admin/PerformanceTester'
-import RealtimeTester from '@/pages/admin/RealtimeTester'
-import IntegrationTester from '@/pages/admin/IntegrationTester'
-import ResilienceTester from '@/pages/admin/ResilienceTester'
-import FunctionalTester from '@/pages/admin/FunctionalTester'
-import GoLiveTester from '@/pages/admin/GoLiveTester'
-import HealthCheckTester from '@/pages/admin/HealthCheckTester'
-import DatabaseReset from '@/pages/admin/DatabaseReset'
-import AdminProperties from '@/pages/admin/AdminProperties'
-import PontuacaoPage from '@/pages/dashboard/PontuacaoPage'
-import HistoricoPage from '@/pages/dashboard/HistoricoPage'
-import PerdidosPage from '@/pages/dashboard/PerdidosPage'
-import DisponivelGeralPage from '@/pages/dashboard/DisponivelGeralPage'
-import TodosCaptadosPage from '@/pages/dashboard/TodosCaptadosPage'
-import MeusCaptadosPage from '@/pages/MeusCaptadosPage'
-import MatchInteligentes from '@/pages/MatchInteligentes'
-import BuscarImoveisPage from '@/pages/dashboard/BuscarImoveisPage'
-import { SDRDashboard } from '@/pages/dashboard/SDRDashboard'
+import { PageLoader } from '@/components/common/PageLoader'
 import { SdrStoreProvider } from '@/hooks/use-sdr-store'
-import CampanhasPage from '@/pages/admin/CampanhasPage'
-import CampanhaHistoricoPage from '@/pages/admin/CampanhaHistoricoPage'
-
-// Landlord Panel Imports
-import LandlordLogin from '@/pages/auth/LandlordLogin'
-import LandlordSignup from '@/pages/auth/LandlordSignup'
-import { LandlordLayout } from '@/components/landlord/LandlordLayout'
-import LandlordDashboard from '@/pages/landlord/LandlordDashboard'
-import LandlordProperties from '@/pages/landlord/LandlordProperties'
-import LandlordProposals from '@/pages/landlord/LandlordProposals'
-import LandlordSettings from '@/pages/landlord/LandlordSettings'
 import { useLandlordAuth } from '@/hooks/useLandlordAuth'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { useAuth } from '@/hooks/use-auth'
+
+const EsqueciSenha = lazy(() => import('@/pages/EsqueciSenha'))
+const RedefinirSenha = lazy(() => import('@/pages/RedefinirSenha'))
+const DashboardRedirect = lazy(() => import('@/pages/DashboardRedirect'))
+const Demandas = lazy(() => import('@/pages/Demandas'))
+const NovaDemanda = lazy(() => import('@/pages/NovaDemanda'))
+const Ranking = lazy(() => import('@/pages/Ranking'))
+const Perfil = lazy(() => import('@/pages/Perfil'))
+const NotFound = lazy(() => import('@/pages/NotFound'))
+const Notificacoes = lazy(() => import('@/pages/Notificacoes'))
+const Ajuda = lazy(() => import('@/pages/Ajuda'))
+const GestorDashboard = lazy(() =>
+  import('@/pages/dashboard/GestorDashboard').then((m) => ({ default: m.GestorDashboard })),
+)
+const AnalyticsDashboard = lazy(() =>
+  import('@/pages/analytics/AnalyticsDashboard').then((m) => ({ default: m.AnalyticsDashboard })),
+)
+const PerformanceDashboard = lazy(() =>
+  import('@/pages/analytics/PerformanceDashboard').then((m) => ({
+    default: m.PerformanceDashboard,
+  })),
+)
+const Usuarios = lazy(() => import('@/pages/admin/Usuarios').then((m) => ({ default: m.Usuarios })))
+const Auditoria = lazy(() =>
+  import('@/pages/admin/Auditoria').then((m) => ({ default: m.Auditoria })),
+)
+const RLSTester = lazy(() => import('@/pages/admin/RLSTester'))
+const E2ETester = lazy(() => import('@/pages/admin/E2ETester'))
+const PerformanceTester = lazy(() => import('@/pages/admin/PerformanceTester'))
+const RealtimeTester = lazy(() => import('@/pages/admin/RealtimeTester'))
+const IntegrationTester = lazy(() => import('@/pages/admin/IntegrationTester'))
+const ResilienceTester = lazy(() => import('@/pages/admin/ResilienceTester'))
+const FunctionalTester = lazy(() => import('@/pages/admin/FunctionalTester'))
+const GoLiveTester = lazy(() => import('@/pages/admin/GoLiveTester'))
+const HealthCheckTester = lazy(() => import('@/pages/admin/HealthCheckTester'))
+const DatabaseReset = lazy(() => import('@/pages/admin/DatabaseReset'))
+const AdminProperties = lazy(() => import('@/pages/admin/AdminProperties'))
+const PontuacaoPage = lazy(() => import('@/pages/dashboard/PontuacaoPage'))
+const HistoricoPage = lazy(() => import('@/pages/dashboard/HistoricoPage'))
+const PerdidosPage = lazy(() => import('@/pages/dashboard/PerdidosPage'))
+const DisponivelGeralPage = lazy(() => import('@/pages/dashboard/DisponivelGeralPage'))
+const TodosCaptadosPage = lazy(() => import('@/pages/dashboard/TodosCaptadosPage'))
+const MeusCaptadosPage = lazy(() => import('@/pages/MeusCaptadosPage'))
+const MatchInteligentes = lazy(() => import('@/pages/MatchInteligentes'))
+const BuscarImoveisPage = lazy(() => import('@/pages/dashboard/BuscarImoveisPage'))
+const SDRDashboard = lazy(() =>
+  import('@/pages/dashboard/SDRDashboard').then((m) => ({ default: m.SDRDashboard })),
+)
+const CampanhasPage = lazy(() => import('@/pages/admin/CampanhasPage'))
+const CampanhaHistoricoPage = lazy(() => import('@/pages/admin/CampanhaHistoricoPage'))
+
+const LandlordLogin = lazy(() => import('@/pages/auth/LandlordLogin'))
+const LandlordSignup = lazy(() => import('@/pages/auth/LandlordSignup'))
+const LandlordLayout = lazy(() =>
+  import('@/components/landlord/LandlordLayout').then((m) => ({ default: m.LandlordLayout })),
+)
+const LandlordDashboard = lazy(() => import('@/pages/landlord/LandlordDashboard'))
+const LandlordProperties = lazy(() => import('@/pages/landlord/LandlordProperties'))
+const LandlordProposals = lazy(() => import('@/pages/landlord/LandlordProposals'))
+const LandlordSettings = lazy(() => import('@/pages/landlord/LandlordSettings'))
 
 import { enableDebugLogging } from '@/debug'
 
@@ -206,28 +221,93 @@ const AppRoutes = () => {
   return (
     <Routes>
       <Route path="/" element={<Index />} />
-      <Route path="/esqueci-senha" element={<EsqueciSenha />} />
-      <Route path="/redefinir-senha" element={<RedefinirSenha />} />
-      <Route path="/diagnostico" element={<HealthCheckTester />} />
+      <Route
+        path="/esqueci-senha"
+        element={
+          <Suspense fallback={<PageLoader />}>
+            <EsqueciSenha />
+          </Suspense>
+        }
+      />
+      <Route
+        path="/redefinir-senha"
+        element={
+          <Suspense fallback={<PageLoader />}>
+            <RedefinirSenha />
+          </Suspense>
+        }
+      />
+      <Route
+        path="/diagnostico"
+        element={
+          <Suspense fallback={<PageLoader />}>
+            <HealthCheckTester />
+          </Suspense>
+        }
+      />
 
       {/* Landlord Auth Routes */}
-      <Route path="/landlord/login" element={<LandlordLogin />} />
-      <Route path="/landlord/signup" element={<LandlordSignup />} />
+      <Route
+        path="/landlord/login"
+        element={
+          <Suspense fallback={<PageLoader />}>
+            <LandlordLogin />
+          </Suspense>
+        }
+      />
+      <Route
+        path="/landlord/signup"
+        element={
+          <Suspense fallback={<PageLoader />}>
+            <LandlordSignup />
+          </Suspense>
+        }
+      />
 
       {/* Landlord Protected Routes */}
       <Route
         path="/landlord"
         element={
           <LandlordProtectedRoute>
-            <LandlordLayout />
+            <Suspense fallback={<PageLoader />}>
+              <LandlordLayout />
+            </Suspense>
           </LandlordProtectedRoute>
         }
       >
         <Route index element={<Navigate to="/landlord/dashboard" replace />} />
-        <Route path="dashboard" element={<LandlordDashboard />} />
-        <Route path="properties" element={<LandlordProperties />} />
-        <Route path="proposals" element={<LandlordProposals />} />
-        <Route path="settings" element={<LandlordSettings />} />
+        <Route
+          path="dashboard"
+          element={
+            <Suspense fallback={<PageLoader />}>
+              <LandlordDashboard />
+            </Suspense>
+          }
+        />
+        <Route
+          path="properties"
+          element={
+            <Suspense fallback={<PageLoader />}>
+              <LandlordProperties />
+            </Suspense>
+          }
+        />
+        <Route
+          path="proposals"
+          element={
+            <Suspense fallback={<PageLoader />}>
+              <LandlordProposals />
+            </Suspense>
+          }
+        />
+        <Route
+          path="settings"
+          element={
+            <Suspense fallback={<PageLoader />}>
+              <LandlordSettings />
+            </Suspense>
+          }
+        />
       </Route>
 
       {/* Redirects for common root routes to avoid 404s */}
@@ -239,22 +319,94 @@ const AppRoutes = () => {
       <Route path="/buscar-imoveis" element={<Navigate to="/app/buscar-imoveis" replace />} />
 
       <Route path="/app" element={<Layout />}>
-        <Route index element={<DashboardRedirect />} />
+        <Route
+          index
+          element={
+            <Suspense fallback={<PageLoader />}>
+              <DashboardRedirect />
+            </Suspense>
+          }
+        />
         <Route path="demandas" element={<Navigate to="/app" replace />} />
-        <Route path="nova-demanda" element={<NovaDemanda />} />
-        <Route path="ranking" element={<Ranking />} />
-        <Route path="perfil" element={<Perfil />} />
-        <Route path="notificacoes" element={<Notificacoes />} />
-        <Route path="ajuda" element={<Ajuda />} />
-        <Route path="gestor-dashboard" element={<GestorDashboard />} />
-        <Route path="sdr-corretor/dashboard" element={<SDRDashboard />} />
-        <Route path="analytics" element={<AnalyticsDashboard />} />
-        <Route path="performance" element={<PerformanceDashboard />} />
+        <Route
+          path="nova-demanda"
+          element={
+            <Suspense fallback={<PageLoader />}>
+              <NovaDemanda />
+            </Suspense>
+          }
+        />
+        <Route
+          path="ranking"
+          element={
+            <Suspense fallback={<PageLoader />}>
+              <Ranking />
+            </Suspense>
+          }
+        />
+        <Route
+          path="perfil"
+          element={
+            <Suspense fallback={<PageLoader />}>
+              <Perfil />
+            </Suspense>
+          }
+        />
+        <Route
+          path="notificacoes"
+          element={
+            <Suspense fallback={<PageLoader />}>
+              <Notificacoes />
+            </Suspense>
+          }
+        />
+        <Route
+          path="ajuda"
+          element={
+            <Suspense fallback={<PageLoader />}>
+              <Ajuda />
+            </Suspense>
+          }
+        />
+        <Route
+          path="gestor-dashboard"
+          element={
+            <Suspense fallback={<PageLoader />}>
+              <GestorDashboard />
+            </Suspense>
+          }
+        />
+        <Route
+          path="sdr-corretor/dashboard"
+          element={
+            <Suspense fallback={<PageLoader />}>
+              <SDRDashboard />
+            </Suspense>
+          }
+        />
+        <Route
+          path="analytics"
+          element={
+            <Suspense fallback={<PageLoader />}>
+              <AnalyticsDashboard />
+            </Suspense>
+          }
+        />
+        <Route
+          path="performance"
+          element={
+            <Suspense fallback={<PageLoader />}>
+              <PerformanceDashboard />
+            </Suspense>
+          }
+        />
         <Route
           path="usuarios"
           element={
             <AdminRoute>
-              <Usuarios />
+              <Suspense fallback={<PageLoader />}>
+                <Usuarios />
+              </Suspense>
             </AdminRoute>
           }
         />
@@ -262,7 +414,9 @@ const AppRoutes = () => {
           path="auditoria"
           element={
             <AdminRoute>
-              <Auditoria />
+              <Suspense fallback={<PageLoader />}>
+                <Auditoria />
+              </Suspense>
             </AdminRoute>
           }
         />
@@ -270,7 +424,9 @@ const AppRoutes = () => {
           path="rls-tester"
           element={
             <AdminRoute>
-              <RLSTester />
+              <Suspense fallback={<PageLoader />}>
+                <RLSTester />
+              </Suspense>
             </AdminRoute>
           }
         />
@@ -278,7 +434,9 @@ const AppRoutes = () => {
           path="e2e-tester"
           element={
             <AdminRoute>
-              <E2ETester />
+              <Suspense fallback={<PageLoader />}>
+                <E2ETester />
+              </Suspense>
             </AdminRoute>
           }
         />
@@ -286,7 +444,9 @@ const AppRoutes = () => {
           path="performance-tester"
           element={
             <AdminRoute>
-              <PerformanceTester />
+              <Suspense fallback={<PageLoader />}>
+                <PerformanceTester />
+              </Suspense>
             </AdminRoute>
           }
         />
@@ -294,7 +454,9 @@ const AppRoutes = () => {
           path="realtime-tester"
           element={
             <AdminRoute>
-              <RealtimeTester />
+              <Suspense fallback={<PageLoader />}>
+                <RealtimeTester />
+              </Suspense>
             </AdminRoute>
           }
         />
@@ -302,7 +464,9 @@ const AppRoutes = () => {
           path="integration-tester"
           element={
             <AdminRoute>
-              <IntegrationTester />
+              <Suspense fallback={<PageLoader />}>
+                <IntegrationTester />
+              </Suspense>
             </AdminRoute>
           }
         />
@@ -310,7 +474,9 @@ const AppRoutes = () => {
           path="resilience-tester"
           element={
             <AdminRoute>
-              <ResilienceTester />
+              <Suspense fallback={<PageLoader />}>
+                <ResilienceTester />
+              </Suspense>
             </AdminRoute>
           }
         />
@@ -318,7 +484,9 @@ const AppRoutes = () => {
           path="functional-tester"
           element={
             <AdminRoute>
-              <FunctionalTester />
+              <Suspense fallback={<PageLoader />}>
+                <FunctionalTester />
+              </Suspense>
             </AdminRoute>
           }
         />
@@ -326,7 +494,9 @@ const AppRoutes = () => {
           path="go-live-tester"
           element={
             <AdminRoute>
-              <GoLiveTester />
+              <Suspense fallback={<PageLoader />}>
+                <GoLiveTester />
+              </Suspense>
             </AdminRoute>
           }
         />
@@ -334,7 +504,9 @@ const AppRoutes = () => {
           path="health-check"
           element={
             <AdminRoute>
-              <HealthCheckTester />
+              <Suspense fallback={<PageLoader />}>
+                <HealthCheckTester />
+              </Suspense>
             </AdminRoute>
           }
         />
@@ -342,7 +514,9 @@ const AppRoutes = () => {
           path="database-reset"
           element={
             <AdminRoute>
-              <DatabaseReset />
+              <Suspense fallback={<PageLoader />}>
+                <DatabaseReset />
+              </Suspense>
             </AdminRoute>
           }
         />
@@ -350,23 +524,83 @@ const AppRoutes = () => {
           path="admin/properties"
           element={
             <AdminRoute>
-              <AdminProperties />
+              <Suspense fallback={<PageLoader />}>
+                <AdminProperties />
+              </Suspense>
             </AdminRoute>
           }
         />
-        <Route path="pontuacao" element={<PontuacaoPage />} />
-        <Route path="historico" element={<HistoricoPage />} />
-        <Route path="perdidos" element={<PerdidosPage />} />
-        <Route path="meus-captados" element={<MeusCaptadosPage />} />
-        <Route path="disponivel-geral" element={<DisponivelGeralPage />} />
-        <Route path="todos-captados" element={<TodosCaptadosPage />} />
-        <Route path="match-inteligentes" element={<MatchInteligentes />} />
-        <Route path="buscar-imoveis" element={<BuscarImoveisPage />} />
+        <Route
+          path="pontuacao"
+          element={
+            <Suspense fallback={<PageLoader />}>
+              <PontuacaoPage />
+            </Suspense>
+          }
+        />
+        <Route
+          path="historico"
+          element={
+            <Suspense fallback={<PageLoader />}>
+              <HistoricoPage />
+            </Suspense>
+          }
+        />
+        <Route
+          path="perdidos"
+          element={
+            <Suspense fallback={<PageLoader />}>
+              <PerdidosPage />
+            </Suspense>
+          }
+        />
+        <Route
+          path="meus-captados"
+          element={
+            <Suspense fallback={<PageLoader />}>
+              <MeusCaptadosPage />
+            </Suspense>
+          }
+        />
+        <Route
+          path="disponivel-geral"
+          element={
+            <Suspense fallback={<PageLoader />}>
+              <DisponivelGeralPage />
+            </Suspense>
+          }
+        />
+        <Route
+          path="todos-captados"
+          element={
+            <Suspense fallback={<PageLoader />}>
+              <TodosCaptadosPage />
+            </Suspense>
+          }
+        />
+        <Route
+          path="match-inteligentes"
+          element={
+            <Suspense fallback={<PageLoader />}>
+              <MatchInteligentes />
+            </Suspense>
+          }
+        />
+        <Route
+          path="buscar-imoveis"
+          element={
+            <Suspense fallback={<PageLoader />}>
+              <BuscarImoveisPage />
+            </Suspense>
+          }
+        />
         <Route
           path="campanhas"
           element={
             <AdminRoute>
-              <CampanhasPage />
+              <Suspense fallback={<PageLoader />}>
+                <CampanhasPage />
+              </Suspense>
             </AdminRoute>
           }
         />
@@ -374,12 +608,21 @@ const AppRoutes = () => {
           path="campanhas/historico"
           element={
             <AdminRoute>
-              <CampanhaHistoricoPage />
+              <Suspense fallback={<PageLoader />}>
+                <CampanhaHistoricoPage />
+              </Suspense>
             </AdminRoute>
           }
         />
       </Route>
-      <Route path="*" element={<NotFound />} />
+      <Route
+        path="*"
+        element={
+          <Suspense fallback={<PageLoader />}>
+            <NotFound />
+          </Suspense>
+        }
+      />
     </Routes>
   )
 }
