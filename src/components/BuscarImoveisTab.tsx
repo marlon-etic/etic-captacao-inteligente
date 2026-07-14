@@ -131,7 +131,9 @@ export function BuscarImoveisTab() {
     const field = userRole === 'corretor' ? 'corretor_id' : 'sdr_id'
     let query = supabase
       .from(table)
-      .select('*')
+      .select(
+        'id, nome_cliente, cliente_nome, bairros, valor_maximo, orcamento_max, dormitorios, vagas_estacionamento, nivel_urgencia, tipo_demanda, tipo, status_demanda, is_prioritaria, tipo_imovel, telefone, email, observacoes, necessidades_especificas, valor_minimo, created_at, updated_at',
+      )
       .in('status_demanda', ['aberta', 'atendida', 'em busca'])
     if (userRole !== 'admin' && userRole !== 'gestor') {
       query = query.eq(field, user?.id)

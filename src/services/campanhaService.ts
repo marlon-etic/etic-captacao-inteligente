@@ -48,7 +48,9 @@ export interface CampanhaHistorico {
 export async function fetchCampanhas(): Promise<Campanha[]> {
   const { data, error } = await supabase
     .from('campanhas')
-    .select('*')
+    .select(
+      'id, tipo_imovel, faixa_valor_min, faixa_valor_max, status, meta, progresso, data_fim, data_inicio, bairro_alvo, created_at, updated_at',
+    )
     .order('created_at', { ascending: false })
   if (error) throw error
   return (data || []) as Campanha[]
@@ -89,7 +91,9 @@ export async function updateCampanhaStatus(
 export async function closeCampanha(id: string): Promise<void> {
   const { data: campanha, error: err1 } = await supabase
     .from('campanhas')
-    .select('*')
+    .select(
+      'id, tipo_imovel, faixa_valor_min, faixa_valor_max, status, meta, progresso, data_fim, data_inicio, bairro_alvo, created_at, updated_at',
+    )
     .eq('id', id)
     .single()
   if (err1) throw err1
@@ -119,7 +123,7 @@ export async function fetchCampanhaImoveis(campanhaId: string): Promise<Campanha
   const { data, error } = await supabase
     .from('campanhas_imoveis')
     .select(
-      `*,
+      `id, campanha_id, imovel_id, captador_id, data_adicionado,
       imovel:imoveis_captados(codigo_imovel, endereco, preco, valor, localizacao_texto, status_captacao),
       captador:users(nome, email)
       `,
@@ -149,7 +153,9 @@ export async function checkDuplicateCampanha(
 export async function fetchCampanhasHistorico(): Promise<CampanhaHistorico[]> {
   const { data, error } = await supabase
     .from('campanhas_historico')
-    .select('*')
+    .select(
+      'id, campanha_id, tipo_imovel, faixa_valor, total_imoveis, total_captadores, data_fechamento',
+    )
     .order('data_fechamento', { ascending: false })
   if (error) throw error
   return (data || []) as CampanhaHistorico[]

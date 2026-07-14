@@ -105,7 +105,7 @@ export const checkinService = {
 
     let { data: resumo } = await supabase
       .from('resumo_diario_sdr')
-      .select('*')
+      .select('id, user_id, data, novos_clientes, visitas, fechamentos, conversao_pct, criado_em')
       .eq('user_id', userId)
       .eq('data', today)
       .single()
@@ -129,7 +129,7 @@ export const checkinService = {
 
     const { data: resumo } = await supabase
       .from('resumo_diario_sdr')
-      .select('*')
+      .select('id, user_id, data, novos_clientes, visitas, fechamentos, conversao_pct, criado_em')
       .eq('user_id', userId)
       .eq('data', yesterdayStr)
       .single()
@@ -176,7 +176,9 @@ export const checkinService = {
     const today = new Date().toISOString().split('T')[0]
     const { data } = await supabase
       .from('visitas_imovel')
-      .select('*')
+      .select(
+        'id, demanda_id, tipo_demanda, imovel_id, novo_imovel_endereco, novo_imovel_valor, user_sdr_id, data_visita, qtd_imoveis_visitados, created_at',
+      )
       .eq('user_sdr_id', userId)
       .gte('created_at', `${today}T00:00:00.000Z`)
     return data || []
@@ -186,7 +188,9 @@ export const checkinService = {
     const today = new Date().toISOString().split('T')[0]
     const { data } = await supabase
       .from('fechamentos')
-      .select('*')
+      .select(
+        'id, demanda_id, tipo_demanda, imovel_id, user_sdr_id, valor, data_prevista, status, created_at, is_test_data',
+      )
       .eq('user_sdr_id', userId)
       .gte('created_at', `${today}T00:00:00.000Z`)
     return data || []
@@ -203,7 +207,9 @@ export const checkinService = {
     const today = new Date().toISOString().split('T')[0]
     let { data } = await supabase
       .from('acompanhamento_diario')
-      .select('*')
+      .select(
+        'id, user_id, data_checkin, clientes_em_visita, clientes_em_fechamento, novas_demandas_dia, demandas_atualizadas, observacoes, created_at, updated_at',
+      )
       .eq('user_id', userId)
       .eq('data_checkin', today)
       .single()

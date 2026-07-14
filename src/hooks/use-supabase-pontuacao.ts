@@ -26,7 +26,9 @@ export function useSupabasePontuacao() {
       const data = await fetchWithResilience('pontuacoes', async () => {
         const { data: resData, error } = await supabase
           .from('pontuacao_captador')
-          .select('*')
+          .select(
+            'id, captador_id, demanda_locacao_id, demanda_venda_id, tipo_pontuacao, pontos, created_at',
+          )
           .order('created_at', { ascending: false })
         if (error) throw error
         return resData

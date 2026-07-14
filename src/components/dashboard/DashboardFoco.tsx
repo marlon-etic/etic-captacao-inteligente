@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { Target, Building2, Home } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
@@ -19,19 +19,20 @@ export function DashboardFoco() {
   const [selectedFoco, setSelectedFoco] = useState<FocoItem | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
 
-  useEffect(() => {
-    async function fetchFoco() {
-      try {
-        const { data, error } = await supabase.from('vw_foco_captacao_v6').select('*').limit(6)
-        if (data && !error) setFocoData(data as FocoItem[])
-      } catch (e) {
-        console.error(e)
-      } finally {
-        setLoading(false)
-      }
+  const fetchFoco = useCallback(async () => {
+    try {
+      const { data, error } = await supabase.from('vw_foco_captacao_v6').select('*').limit(6)
+      if (data && !error) setFocoData(data as FocoItem[])
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setLoading(false)
     }
-    fetchFoco()
   }, [])
+
+  useEffect(() => {
+    fetchFoco()
+  }, [fetchFoco])
 
   if (loading) {
     return (

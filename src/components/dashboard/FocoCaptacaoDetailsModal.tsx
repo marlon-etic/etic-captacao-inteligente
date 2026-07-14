@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -65,41 +65,40 @@ export function FocoCaptacaoDetailsModal({ focoItem, isOpen, onClose }: Props) {
   const [selectedDemand, setSelectedDemand] = useState<FocoDemand | null>(null)
   const [detailOpen, setDetailOpen] = useState(false)
 
-  useEffect(() => {
+  const fetchDemands = useCallback(async () => {
     if (!focoItem || !isOpen) {
       setDemands([])
       return
     }
+    setLoading(true)
+    try {
+      const bairro = focoItem.bairro_alvo || ''
+      const { data, error } = await supabase.rpc('fn_get_foco_demandas', {
+        p_bairro: bairro,
+        p_tipo: focoItem.tipo,
+        p_tipo_imovel: focoItem.tipo_imovel,
+      })
 
-    async function fetchDemands() {
-      setLoading(true)
-      try {
-        const bairro = focoItem!.bairro_alvo || ''
-        const { data, error } = await supabase.rpc('fn_get_foco_demandas', {
-          p_bairro: bairro,
-          p_tipo: focoItem!.tipo,
-          p_tipo_imovel: focoItem!.tipo_imovel,
-        })
-
-        if (error) {
-          console.error('[FocoModal] RPC error:', error)
-          setDemands([])
-        } else {
-          const sorted = (data || []).sort((a: FocoDemand, b: FocoDemand) => {
-            return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
-          })
-          setDemands(sorted as unknown as FocoDemand[])
-        }
-      } catch (e) {
-        console.error('[FocoModal] Error fetching foco demands:', e)
+      if (error) {
+        console.error('[FocoModal] RPC error:', error)
         setDemands([])
-      } finally {
-        setLoading(false)
+      } else {
+        const sorted = (data || []).sort((a: FocoDemand, b: FocoDemand) => {
+          return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+        })
+        setDemands(sorted as unknown as FocoDemand[])
       }
+    } catch (e) {
+      console.error('[FocoModal] Error fetching foco demands:', e)
+      setDemands([])
+    } finally {
+      setLoading(false)
     }
-
-    fetchDemands()
   }, [focoItem, isOpen])
+
+  useEffect(() => {
+    fetchDemands()
+  }, [fetchDemands])
 
   if (!focoItem) return null
 

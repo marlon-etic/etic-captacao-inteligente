@@ -26,7 +26,9 @@ export async function fetchCampanhasFechadas(): Promise<CampanhaFechada[]> {
   const [campanhasRes, historicoRes] = await Promise.all([
     supabase
       .from('campanhas')
-      .select('*')
+      .select(
+        'id, tipo_imovel, faixa_valor_min, faixa_valor_max, status, meta, progresso, data_fim, data_inicio, bairro_alvo, created_at, updated_at',
+      )
       .eq('status', 'fechada')
       .order('created_at', { ascending: false }),
     supabase.from('campanhas_historico').select('campanha_id, data_fechamento'),
@@ -55,7 +57,7 @@ export async function fetchImoveisByCampanhas(
   const { data, error } = await supabase
     .from('campanhas_imoveis')
     .select(
-      `*,
+      `id, campanha_id, imovel_id, captador_id, data_adicionado,
       imovel:imoveis_captados(codigo_imovel, endereco, preco),
       captador:users(nome, email)`,
     )
