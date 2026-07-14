@@ -4,9 +4,11 @@ import { MyDemandsView } from '@/components/MyDemandsView'
 import { CapturedPropertiesView } from '@/components/CapturedPropertiesView'
 import { ScrollableTabs } from '@/components/ScrollableTabs'
 import { BuscarImoveisTab } from '@/components/BuscarImoveisTab'
+import { UltimosImoveisTab } from '@/components/UltimosImoveisTab'
 import { MetricsCardsSdr } from '@/components/sdr-dashboard/MetricsCardsSdr'
 import { ChartsSdr } from '@/components/sdr-dashboard/ChartsSdr'
 import { ListasSdr } from '@/components/sdr-dashboard/ListasSdr'
+import { UltimosImoveisTab } from '@/components/UltimosImoveisTab'
 import { useSdrQueries } from '@/hooks/use-sdr-queries'
 import { useSdrStore } from '@/hooks/use-sdr-store'
 import {
@@ -29,6 +31,7 @@ export function CorretorDashboard() {
 
   const tabs = [
     { value: 'visao-geral', label: 'Visão Geral' },
+    { value: 'ultimos-imoveis', label: 'Últimos Imóveis' },
     { value: 'demandas', label: 'Demandas' },
     { value: 'cadastrados', label: 'Imóveis Vinculados' },
     { value: 'buscar-imoveis', label: 'Buscar Imóveis' },
@@ -79,6 +82,14 @@ export function CorretorDashboard() {
               source="linked"
               emptyStateText="Nenhum imóvel cadastrado ou vinculado no momento."
             />
+          </TabsContent>
+
+          <TabsContent value="ultimos-imoveis" className="m-0 border-none">
+            <UltimosImoveisTab />
+          </TabsContent>
+
+          <TabsContent value="ultimos-imoveis" className="m-0 border-none">
+            <UltimosImoveisTab />
           </TabsContent>
 
           <TabsContent value="buscar-imoveis" className="m-0 border-none">
