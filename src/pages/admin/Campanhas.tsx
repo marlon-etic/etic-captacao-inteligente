@@ -20,6 +20,7 @@ import {
   fetchCampanhas,
   updateCampanhaStatus,
   closeCampanha,
+  deleteCampanha,
 } from '@/services/campanhaService'
 import { CampanhaHistoricoDashboard } from '@/components/campanhas/CampanhaHistoricoDashboard'
 import { useToast } from '@/hooks/use-toast'
@@ -94,6 +95,16 @@ export function Campanhas() {
     try {
       await closeCampanha(id)
       toast({ title: '✅ Campanha fechada e arquivada', className: 'bg-emerald-600 text-white' })
+      loadCampanhas()
+    } catch (err: any) {
+      toast({ title: 'Erro', description: err.message, variant: 'destructive' })
+    }
+  }
+
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteCampanha(id)
+      toast({ title: '✅ Campanha excluída', className: 'bg-emerald-600 text-white' })
       loadCampanhas()
     } catch (err: any) {
       toast({ title: 'Erro', description: err.message, variant: 'destructive' })
@@ -191,6 +202,7 @@ export function Campanhas() {
                   campanha={c}
                   onToggle={handleToggle}
                   onClick={handleCardClick}
+                  onDelete={handleDelete}
                 />
               ))}
             </div>

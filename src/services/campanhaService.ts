@@ -10,7 +10,7 @@ export interface Campanha {
   data_fim: string
   meta: number
   progresso: number
-  bairro_alvo?: string | null
+  bairros_alvo?: string[] | null
   created_at: string
   updated_at: string
 }
@@ -49,7 +49,7 @@ export async function fetchCampanhas(): Promise<Campanha[]> {
   const { data, error } = await supabase
     .from('campanhas')
     .select(
-      'id, tipo_imovel, faixa_valor_min, faixa_valor_max, status, meta, progresso, data_fim, data_inicio, bairro_alvo, created_at, updated_at',
+      'id, tipo_imovel, faixa_valor_min, faixa_valor_max, status, meta, progresso, data_fim, data_inicio, bairros_alvo, created_at, updated_at',
     )
     .order('created_at', { ascending: false })
   if (error) throw error
@@ -63,6 +63,7 @@ export async function createCampanha(payload: {
   data_fim: string
   meta?: number
   activate_now?: boolean
+  bairros_alvo?: string[] | null
 }): Promise<Campanha> {
   const { data, error } = await supabase
     .from('campanhas')
@@ -73,6 +74,7 @@ export async function createCampanha(payload: {
       data_fim: payload.data_fim,
       meta: payload.meta || 5,
       status: payload.activate_now ? 'ativa' : 'pausada',
+      bairros_alvo: payload.bairros_alvo || null,
     })
     .select()
     .single()
@@ -92,7 +94,7 @@ export async function closeCampanha(id: string): Promise<void> {
   const { data: campanha, error: err1 } = await supabase
     .from('campanhas')
     .select(
-      'id, tipo_imovel, faixa_valor_min, faixa_valor_max, status, meta, progresso, data_fim, data_inicio, bairro_alvo, created_at, updated_at',
+      'id, tipo_imovel, faixa_valor_min, faixa_valor_max, status, meta, progresso, data_fim, data_inicio, bairros_alvo, created_at, updated_at',
     )
     .eq('id', id)
     .single()
@@ -117,6 +119,11 @@ export async function closeCampanha(id: string): Promise<void> {
     .update({ status: 'fechada' })
     .eq('id', id)
   if (err3) throw err3
+}
+
+export async function deleteCampanha(id: string): Promise<void> {
+  const { error } = await supabase.from('campanhas').delete().eq('id', id)
+  if (error) throw error
 }
 
 export async function fetchCampanhaImoveis(campanhaId: string): Promise<CampanhaImovel[]> {

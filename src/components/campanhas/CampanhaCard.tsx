@@ -1,6 +1,18 @@
-import { Building2, Calendar, TrendingUp, CheckCircle2 } from 'lucide-react'
+import { Building2, Calendar, TrendingUp, CheckCircle2, Trash2, MapPin } from 'lucide-react'
 import { Switch } from '@/components/ui/switch'
 import { Progress } from '@/components/ui/progress'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Campanha } from '@/services/campanhaService'
 import { cn } from '@/lib/utils'
 
@@ -8,6 +20,7 @@ interface CampanhaCardProps {
   campanha: Campanha
   onToggle?: (id: string, currentStatus: string) => void
   onClick?: (campanha: Campanha) => void
+  onDelete?: (id: string) => void
   readOnly?: boolean
 }
 
@@ -37,12 +50,20 @@ const formatDate = (iso: string) => {
   }
 }
 
-export function CampanhaCard({ campanha, onToggle, onClick, readOnly = false }: CampanhaCardProps) {
+export function CampanhaCard({
+  campanha,
+  onToggle,
+  onClick,
+  onDelete,
+  readOnly = false,
+}: CampanhaCardProps) {
   const pct = Math.min(100, (campanha.progresso / campanha.meta) * 100)
   const isAtiva = campanha.status === 'ativa'
   const isFechada = campanha.status === 'fechada'
   const goalReached = campanha.progresso >= campanha.meta
   const isExpired = new Date(campanha.data_fim) < new Date()
+  const bairrosList = campanha.bairros_alvo || []
+  const hasBairros = bairrosList.length > 0
 
   return (
     <div
@@ -73,14 +94,45 @@ export function CampanhaCard({ campanha, onToggle, onClick, readOnly = false }: 
             </p>
           </div>
         </div>
-        {!isFechada && !readOnly && onToggle && (
-          <div onClick={(e) => e.stopPropagation()}>
-            <Switch
-              checked={isAtiva}
-              onCheckedChange={() => onToggle(campanha.id, campanha.status)}
-            />
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          {!isFechada && !readOnly && onToggle && (
+            <div onClick={(e) => e.stopPropagation()}>
+              <Switch
+                checked={isAtiva}
+                onCheckedChange={() => onToggle(campanha.id, campanha.status)}
+              />
+            </div>
+          )}
+          {!isFechada && !readOnly && onDelete && (
+            <div onClick={(e) => e.stopPropagation()}>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <button className="h-8 w-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Excluir campanha?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Tem certeza de que deseja excluir esta campanha? Esta ação não pode ser
+                      desfeita e todos os vínculos de imóveis serão removidos.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => onDelete(campanha.id)}
+                      className="bg-red-500 hover:bg-red-600 text-white"
+                    >
+                      Excluir
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="mb-3">
@@ -118,6 +170,24 @@ export function CampanhaCard({ campanha, onToggle, onClick, readOnly = false }: 
           </span>
         )}
       </div>
+
+      {hasBairros && (
+        <div className="mt-2 pt-2 border-t border-[#F0F0F0]">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="inline-flex items-center gap-1 text-xs text-[#666666] font-medium cursor-help">
+                  <MapPin className="w-3 h-3 text-[#2E5F8A]" />
+                  {bairrosList.length} {bairrosList.length === 1 ? 'bairro' : 'bairros'}
+                </span>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-[250px]">
+                <p className="text-xs">{bairrosList.join(', ')}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+      )}
     </div>
   )
 }

@@ -7,7 +7,7 @@ import {
   DialogClose,
 } from '@/components/ui/dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { X, Building2, User, Calendar, Loader2, Trophy } from 'lucide-react'
+import { X, Building2, User, Calendar, Loader2, Trophy, MapPin } from 'lucide-react'
 import { Campanha, CampanhaImovel, fetchCampanhaImoveis } from '@/services/campanhaService'
 import { Progress } from '@/components/ui/progress'
 import { cn } from '@/lib/utils'
@@ -111,6 +111,25 @@ export function CampanhaDetailsModal({ campanha, isOpen, onClose }: CampanhaDeta
               </p>
             </div>
           </div>
+
+          {campanha.bairros_alvo && campanha.bairros_alvo.length > 0 && (
+            <div>
+              <h4 className="font-bold text-[#1A3A52] text-sm mb-2 flex items-center gap-1">
+                <MapPin className="w-4 h-4 text-[#2E5F8A]" />
+                Bairros de Foco
+              </h4>
+              <div className="flex flex-wrap gap-1.5">
+                {campanha.bairros_alvo.map((bairro) => (
+                  <span
+                    key={bairro}
+                    className="px-2 py-1 rounded-full bg-[#EFF6FF] text-[#1A3A52] text-xs font-medium"
+                  >
+                    {bairro}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div>
             <div className="flex items-center justify-between mb-1.5">

@@ -21,6 +21,8 @@ import { X, Loader2 } from 'lucide-react'
 import { createCampanha, checkDuplicateCampanha } from '@/services/campanhaService'
 import { useToast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
+import { BairroSelector } from '@/components/BairroSelector'
+import { REGIONS_DATA } from '@/lib/regions'
 
 interface NewCampanhaModalProps {
   isOpen: boolean
@@ -35,6 +37,7 @@ export function NewCampanhaModal({ isOpen, onClose, onSuccess }: NewCampanhaModa
   const [valorMax, setValorMax] = useState('')
   const [dataFim, setDataFim] = useState('')
   const [activateNow, setActivateNow] = useState(true)
+  const [bairros, setBairros] = useState<string[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
 
@@ -44,7 +47,28 @@ export function NewCampanhaModal({ isOpen, onClose, onSuccess }: NewCampanhaModa
     setValorMax('')
     setDataFim('')
     setActivateNow(true)
+    setBairros([])
     setErrors({})
+  }
+
+  const toggleAncora = (nome: string) => {
+    const region = REGIONS_DATA.find((r) => r.anchor === nome)
+    if (!region) return
+    const allItems = [nome, ...region.satellites]
+    const isSelected = bairros.includes(nome)
+    if (isSelected) {
+      setBairros((prev) => prev.filter((b) => !allItems.includes(b)))
+    } else {
+      setBairros((prev) => [...prev, ...allItems.filter((b) => !prev.includes(b))])
+    }
+  }
+
+  const toggleSatelite = (nome: string) => {
+    setBairros((prev) => (prev.includes(nome) ? prev.filter((b) => b !== nome) : [...prev, nome]))
+  }
+
+  const clearBairros = () => {
+    setBairros([])
   }
 
   const validate = (): boolean => {
@@ -90,6 +114,7 @@ export function NewCampanhaModal({ isOpen, onClose, onSuccess }: NewCampanhaModa
         faixa_valor_max: max,
         data_fim: new Date(dataFim).toISOString(),
         activate_now: activateNow,
+        bairros_alvo: bairros.length > 0 ? bairros : null,
       })
 
       toast({ title: '✅ Campanha criada com sucesso!', className: 'bg-emerald-600 text-white' })
@@ -203,6 +228,21 @@ export function NewCampanhaModal({ isOpen, onClose, onSuccess }: NewCampanhaModa
             {errors.dataFim && (
               <p className="text-red-500 text-xs mt-1 font-medium">{errors.dataFim}</p>
             )}
+          </div>
+
+          <div>
+            <Label className="font-bold text-[#333333] mb-1.5 block">
+              Bairros de Foco (opcional)
+            </Label>
+            <BairroSelector
+              selectedBairros={bairros}
+              toggleAncora={toggleAncora}
+              toggleSatelite={toggleSatelite}
+              onClear={clearBairros}
+            />
+            <p className="text-xs text-[#999999] mt-1">
+              Se vazio, a campanha abrangerá todos os bairros.
+            </p>
           </div>
 
           <div className="flex items-center justify-between rounded-lg border border-[#E0E0E0] bg-[#F5F5F5] p-3">

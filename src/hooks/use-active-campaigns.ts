@@ -11,7 +11,7 @@ interface CampanhaRow {
   progresso: number
   data_fim: string
   data_inicio: string
-  bairro_alvo: string | null
+  bairros_alvo: string[] | null
   created_at: string
   updated_at: string
 }
@@ -54,7 +54,7 @@ async function loadData() {
       supabase
         .from('campanhas')
         .select(
-          'id, tipo_imovel, faixa_valor_min, faixa_valor_max, status, meta, progresso, data_fim, data_inicio, bairro_alvo, created_at, updated_at',
+          'id, tipo_imovel, faixa_valor_min, faixa_valor_max, status, meta, progresso, data_fim, data_inicio, bairros_alvo, created_at, updated_at',
         )
         .eq('status', 'ativa'),
       supabase.from('campanhas_imoveis').select(
