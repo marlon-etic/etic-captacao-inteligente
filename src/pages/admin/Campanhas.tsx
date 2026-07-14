@@ -9,7 +9,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Switch } from '@/components/ui/switch'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,6 +21,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { CampanhaCard } from '@/components/campanhas/CampanhaCard'
 import { NewCampanhaModal } from '@/components/campanhas/NewCampanhaModal'
+import { EditCampanhaModal } from '@/components/campanhas/EditCampanhaModal'
 import { CampanhaDetailsModal } from '@/components/campanhas/CampanhaDetailsModal'
 import { useAuth } from '@/hooks/use-auth'
 import { supabase } from '@/lib/supabase/client'
@@ -34,7 +34,6 @@ import {
 } from '@/services/campanhaService'
 import { CampanhaHistoricoDashboard } from '@/components/campanhas/CampanhaHistoricoDashboard'
 import { useToast } from '@/hooks/use-toast'
-import { cn } from '@/lib/utils'
 
 export function Campanhas() {
   const { user } = useAuth()
@@ -42,6 +41,8 @@ export function Campanhas() {
   const [campanhas, setCampanhas] = useState<Campanha[]>([])
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
+  const [editTarget, setEditTarget] = useState<Campanha | null>(null)
+  const [editModalOpen, setEditModalOpen] = useState(false)
   const [selectedCampanha, setSelectedCampanha] = useState<Campanha | null>(null)
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [filterTipo, setFilterTipo] = useState('todos')
@@ -130,6 +131,16 @@ export function Campanhas() {
     } finally {
       setIsDeleting(false)
     }
+  }
+
+  const handleEditClick = (campanha: Campanha) => {
+    setEditTarget(campanha)
+    setEditModalOpen(true)
+  }
+
+  const handleEditSuccess = () => {
+    loadCampanhas()
+    setEditTarget(null)
   }
 
   const handleCardClick = (c: Campanha) => {
@@ -224,6 +235,7 @@ export function Campanhas() {
                   onToggle={handleToggle}
                   onClick={handleCardClick}
                   onDelete={handleDeleteClick}
+                  onEdit={handleEditClick}
                 />
               ))}
             </div>
@@ -235,6 +247,16 @@ export function Campanhas() {
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
         onSuccess={loadCampanhas}
+      />
+
+      <EditCampanhaModal
+        campanha={editTarget}
+        isOpen={editModalOpen}
+        onClose={() => {
+          setEditModalOpen(false)
+          setEditTarget(null)
+        }}
+        onSuccess={handleEditSuccess}
       />
 
       <CampanhaDetailsModal

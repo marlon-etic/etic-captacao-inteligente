@@ -121,6 +121,34 @@ export async function closeCampanha(id: string): Promise<void> {
   if (err3) throw err3
 }
 
+export async function updateCampanha(
+  id: string,
+  payload: {
+    tipo_imovel?: string
+    faixa_valor_min?: number
+    faixa_valor_max?: number
+    data_inicio?: string
+    data_fim?: string
+    meta?: number
+    status?: string
+    bairros_alvo?: string[] | null
+  },
+): Promise<Campanha> {
+  const { data, error } = await supabase
+    .from('campanhas')
+    .update({
+      ...payload,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', id)
+    .select(
+      'id, tipo_imovel, faixa_valor_min, faixa_valor_max, status, meta, progresso, data_fim, data_inicio, bairros_alvo, created_at, updated_at',
+    )
+    .single()
+  if (error) throw error
+  return data as Campanha
+}
+
 export async function deleteCampanha(id: string): Promise<void> {
   const { error } = await supabase.from('campanhas').delete().eq('id', id)
   if (error) throw error

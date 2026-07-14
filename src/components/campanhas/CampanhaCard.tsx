@@ -1,4 +1,4 @@
-import { Building2, Calendar, TrendingUp, CheckCircle2, Trash2, MapPin } from 'lucide-react'
+import { Building2, Calendar, TrendingUp, CheckCircle2, Trash2, MapPin, Pencil } from 'lucide-react'
 import { Switch } from '@/components/ui/switch'
 import { Progress } from '@/components/ui/progress'
 import {
@@ -20,7 +20,8 @@ interface CampanhaCardProps {
   campanha: Campanha
   onToggle?: (id: string, currentStatus: string) => void
   onClick?: (campanha: Campanha) => void
-  onDelete?: (id: string) => void
+  onDelete?: (campanha: Campanha) => void
+  onEdit?: (campanha: Campanha) => void
   readOnly?: boolean
 }
 
@@ -55,6 +56,7 @@ export function CampanhaCard({
   onToggle,
   onClick,
   onDelete,
+  onEdit,
   readOnly = false,
 }: CampanhaCardProps) {
   const pct = Math.min(100, (campanha.progresso / campanha.meta) * 100)
@@ -95,6 +97,25 @@ export function CampanhaCard({
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {!isFechada && !readOnly && onEdit && (
+            <div onClick={(e) => e.stopPropagation()}>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => onEdit(campanha)}
+                      className="h-8 w-8 flex items-center justify-center rounded-lg text-[#2E5F8A] hover:bg-[#2E5F8A]/10 transition-colors"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="text-xs">Editar campanha</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+          )}
           {!isFechada && !readOnly && onToggle && (
             <div onClick={(e) => e.stopPropagation()}>
               <Switch
@@ -122,7 +143,7 @@ export function CampanhaCard({
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancelar</AlertDialogCancel>
                     <AlertDialogAction
-                      onClick={() => onDelete(campanha.id)}
+                      onClick={() => onDelete(campanha)}
                       className="bg-red-500 hover:bg-red-600 text-white"
                     >
                       Excluir
