@@ -29,6 +29,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { getPropertyPublicUrl } from '@/lib/propertyUrl'
+import { useUserRole } from '@/hooks/use-user-role'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useToast } from '@/hooks/use-toast'
 import { VinculacaoModal, VinculacaoImovelData } from './VinculacaoModal'
@@ -64,6 +65,9 @@ export function UltimosImoveisTab() {
 
   const { imoveis, loading, syncing, refresh } = useUltimosImoveis(periodo, tipoFiltro)
   const { toast } = useToast()
+  const { role } = useUserRole()
+  const showRental = role === 'sdr' || role === 'captador' || role === 'admin' || role === 'gestor'
+  const showSale = role === 'corretor' || role === 'admin' || role === 'gestor'
 
   const handleCopyLink = async (e: React.MouseEvent, url: string) => {
     e.preventDefault()
@@ -119,7 +123,7 @@ export function UltimosImoveisTab() {
         </div>
       </div>
 
-      {loading ? (
+      {loading && imoveis.length === 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-[16px]">
           {[1, 2, 3, 4, 5, 6].map((i) => (
             <Skeleton key={i} className="h-[200px] rounded-[12px]" />
@@ -178,15 +182,18 @@ export function UltimosImoveisTab() {
 
                   <div className="space-y-2 pointer-events-auto">
                     <div className="font-black text-[18px] text-[#1A3A52] flex flex-col gap-1">
-                      {(imovel.tipo === 'Venda' || imovel.tipo === 'Ambos') && imovel.preco > 0 && (
-                        <div className="flex items-center gap-1.5">
-                          <DollarSign className="w-4 h-4 text-[#10B981]" />
-                          Venda: R$ {imovel.preco.toLocaleString('pt-BR')}
-                        </div>
-                      )}
-                      {(imovel.tipo === 'Aluguel' ||
-                        imovel.tipo === 'Locação' ||
-                        imovel.tipo === 'Ambos') &&
+                      {showSale &&
+                        (imovel.tipo === 'Venda' || imovel.tipo === 'Ambos') &&
+                        imovel.preco > 0 && (
+                          <div className="flex items-center gap-1.5">
+                            <DollarSign className="w-4 h-4 text-[#10B981]" />
+                            Venda: R$ {imovel.preco.toLocaleString('pt-BR')}
+                          </div>
+                        )}
+                      {showRental &&
+                        (imovel.tipo === 'Aluguel' ||
+                          imovel.tipo === 'Locação' ||
+                          imovel.tipo === 'Ambos') &&
                         (imovel.valor > 0 || (imovel.preco > 0 && imovel.preco <= 100000)) && (
                           <div className="flex items-center gap-1.5">
                             <DollarSign className="w-4 h-4 text-[#3B82F6]" />

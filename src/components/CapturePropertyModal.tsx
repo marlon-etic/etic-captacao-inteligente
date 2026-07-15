@@ -35,6 +35,7 @@ export function CapturePropertyModal({ demand, isOpen, onClose, onSuccess }: Pro
   const [code, setCode] = useState('')
   const [address, setAddress] = useState('')
   const [price, setPrice] = useState('')
+  const [rentalPrice, setRentalPrice] = useState('')
   const [bedrooms, setBedrooms] = useState('')
   const [parking, setParking] = useState('')
   const [tipo, setTipo] = useState('')
@@ -46,7 +47,7 @@ export function CapturePropertyModal({ demand, isOpen, onClose, onSuccess }: Pro
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   const { count: matchCount, matchedClients } = useQuickMatchCount({
-    preco: parseFloat(price) || undefined,
+    preco: parseFloat(price) || parseFloat(rentalPrice) || undefined,
     endereco: address,
     tipo,
     tipo_imovel,
@@ -67,7 +68,13 @@ export function CapturePropertyModal({ demand, isOpen, onClose, onSuccess }: Pro
         (demand as any).tipo === 'Locação'
       setTipo(isLocacao ? 'Locação' : 'Venda')
       setAddress(demand.bairros?.[0] || '')
-      setPrice(demand.valor_maximo?.toString() || '')
+      if (isLocacao) {
+        setRentalPrice(demand.valor_maximo?.toString() || '')
+        setPrice('')
+      } else {
+        setPrice(demand.valor_maximo?.toString() || '')
+        setRentalPrice('')
+      }
       setBedrooms(demand.dormitorios?.toString() || '')
       setParking(demand.vagas_estacionamento?.toString() || '')
       setTipoImovel('Apartamento')
@@ -162,23 +169,43 @@ export function CapturePropertyModal({ demand, isOpen, onClose, onSuccess }: Pro
 
   const validateAndNormalizeTipo = (
     preco: number,
-    demandaVendaId?: string | null,
-    demandaLocacaoId?: string | null,
+    valor: number,
     tipoAtual?: string,
   ): { isValid: boolean; tipo: 'Venda' | 'Locação' | 'Ambos'; erro?: string } => {
-    if (!preco || preco === 0) {
-      return { isValid: false, tipo: 'Ambos', erro: '❌ Preencha o valor do imóvel' }
+    if (tipoAtual === 'Locação') {
+      if (!valor || valor === 0) {
+        return { isValid: false, tipo: 'Locação', erro: '❌ Preencha o valor do aluguel' }
+      }
+      if (valor > 100000) {
+        return { isValid: false, tipo: 'Locação', erro: 'Aluguel deve ter valor até R$ 100.000' }
+      }
+      return { isValid: true, tipo: 'Locação' }
     }
-    if (tipoAtual === 'Locação' && preco > 100000) {
-      return { isValid: false, tipo: 'Locação', erro: 'Aluguel deve ter valor até R$ 100.000' }
+    if (tipoAtual === 'Venda') {
+      if (!preco || preco === 0) {
+        return { isValid: false, tipo: 'Venda', erro: '❌ Preencha o valor de venda' }
+      }
+      if (preco <= 100000) {
+        return { isValid: false, tipo: 'Venda', erro: 'Venda deve ter valor acima de R$ 100.000' }
+      }
+      return { isValid: true, tipo: 'Venda' }
     }
-    if (tipoAtual === 'Venda' && preco <= 100000) {
-      return { isValid: false, tipo: 'Venda', erro: 'Venda deve ter valor acima de R$ 100.000' }
+    if (tipoAtual === 'Ambos') {
+      if (!valor || valor === 0) {
+        return { isValid: false, tipo: 'Ambos', erro: '❌ Preencha o valor do aluguel' }
+      }
+      if (!preco || preco === 0) {
+        return { isValid: false, tipo: 'Ambos', erro: '❌ Preencha o valor de venda' }
+      }
+      if (valor > 100000) {
+        return { isValid: false, tipo: 'Ambos', erro: 'Aluguel deve ter valor até R$ 100.000' }
+      }
+      if (preco <= 100000) {
+        return { isValid: false, tipo: 'Ambos', erro: 'Venda deve ter valor acima de R$ 100.000' }
+      }
+      return { isValid: true, tipo: 'Ambos' }
     }
-    if (tipoAtual === 'Ambos' && preco <= 100000) {
-      return { isValid: false, tipo: 'Ambos', erro: 'Ambos deve ter valor acima de R$ 100.000' }
-    }
-    return { isValid: true, tipo: (tipoAtual as any) || 'Ambos' }
+    return { isValid: false, tipo: 'Ambos', erro: '❌ Tipo de transação inválido' }
   }
 
   const handleSubmit = async () => {
@@ -207,7 +234,18 @@ export function CapturePropertyModal({ demand, isOpen, onClose, onSuccess }: Pro
     }
 
     const parsedPrice = parseFloat(price)
-    if (!price || isNaN(parsedPrice) || parsedPrice <= 0) newErrors.price = 'Inválido'
+    const parsedRentalPrice = parseFloat(rentalPrice)
+
+    if (tipo === 'Ambos') {
+      if (!rentalPrice || isNaN(parsedRentalPrice) || parsedRentalPrice <= 0)
+        newErrors.rentalPrice = 'Inválido'
+      if (!price || isNaN(parsedPrice) || parsedPrice <= 0) newErrors.price = 'Inválido'
+    } else if (tipo === 'Locação') {
+      if (!rentalPrice || isNaN(parsedRentalPrice) || parsedRentalPrice <= 0)
+        newErrors.rentalPrice = 'Inválido'
+    } else if (tipo === 'Venda') {
+      if (!price || isNaN(parsedPrice) || parsedPrice <= 0) newErrors.price = 'Inválido'
+    }
 
     let parsedBedrooms = parseInt(bedrooms || '0', 10)
     let parsedParking = parseInt(parking || '0', 10)
@@ -228,7 +266,8 @@ export function CapturePropertyModal({ demand, isOpen, onClose, onSuccess }: Pro
       const payload = {
         codigo_imovel: code.toUpperCase(),
         endereco: bairrosArray.join(', '),
-        preco: parsedPrice,
+        preco: tipo === 'Venda' || tipo === 'Ambos' ? parsedPrice : 0,
+        valor: tipo === 'Locação' || tipo === 'Ambos' ? parsedRentalPrice : 0,
         status_captacao: 'pendente',
         user_captador_id: currentUser?.id,
         captador_id: currentUser?.id,
@@ -243,12 +282,7 @@ export function CapturePropertyModal({ demand, isOpen, onClose, onSuccess }: Pro
         etapa_funil: 'capturado',
       }
 
-      const validation = validateAndNormalizeTipo(
-        payload.preco,
-        payload.demanda_venda_id,
-        payload.demanda_locacao_id,
-        payload.tipo,
-      )
+      const validation = validateAndNormalizeTipo(payload.preco, payload.valor, payload.tipo)
 
       if (!validation.isValid) {
         toast({ title: validation.erro || 'Erro de validação', variant: 'destructive' })
@@ -351,24 +385,84 @@ export function CapturePropertyModal({ demand, isOpen, onClose, onSuccess }: Pro
                 )}
               </div>
 
-              <div>
-                <Label className="font-bold text-[#333333] mb-1.5 block">
-                  Preço (R$) <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  type="number"
-                  value={price}
-                  onChange={(e) => {
-                    setPrice(e.target.value)
-                    setErrors((prev) => ({ ...prev, price: '' }))
-                  }}
-                  placeholder="Ex: 500000"
-                  className={errors.price ? 'border-red-500 ring-red-500' : ''}
-                />
-                {errors.price && (
-                  <p className="text-red-500 text-xs mt-1 font-medium">{errors.price}</p>
-                )}
-              </div>
+              {tipo === 'Ambos' ? (
+                <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label className="font-bold text-[#333333] mb-1.5 block">
+                      Valor de Aluguel (R$) <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      type="number"
+                      value={rentalPrice}
+                      onChange={(e) => {
+                        setRentalPrice(e.target.value)
+                        setErrors((prev) => ({ ...prev, rentalPrice: '' }))
+                      }}
+                      placeholder="Ex: 2500"
+                      className={errors.rentalPrice ? 'border-red-500 ring-red-500' : ''}
+                    />
+                    {errors.rentalPrice && (
+                      <p className="text-red-500 text-xs mt-1 font-medium">{errors.rentalPrice}</p>
+                    )}
+                  </div>
+                  <div>
+                    <Label className="font-bold text-[#333333] mb-1.5 block">
+                      Valor de Venda (R$) <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      type="number"
+                      value={price}
+                      onChange={(e) => {
+                        setPrice(e.target.value)
+                        setErrors((prev) => ({ ...prev, price: '' }))
+                      }}
+                      placeholder="Ex: 500000"
+                      className={errors.price ? 'border-red-500 ring-red-500' : ''}
+                    />
+                    {errors.price && (
+                      <p className="text-red-500 text-xs mt-1 font-medium">{errors.price}</p>
+                    )}
+                  </div>
+                </div>
+              ) : tipo === 'Locação' ? (
+                <div>
+                  <Label className="font-bold text-[#333333] mb-1.5 block">
+                    Valor de Aluguel (R$) <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    type="number"
+                    value={rentalPrice}
+                    onChange={(e) => {
+                      setRentalPrice(e.target.value)
+                      setErrors((prev) => ({ ...prev, rentalPrice: '' }))
+                    }}
+                    placeholder="Ex: 2500"
+                    className={errors.rentalPrice ? 'border-red-500 ring-red-500' : ''}
+                  />
+                  {errors.rentalPrice && (
+                    <p className="text-red-500 text-xs mt-1 font-medium">{errors.rentalPrice}</p>
+                  )}
+                </div>
+              ) : (
+                <div>
+                  <Label className="font-bold text-[#333333] mb-1.5 block">
+                    Valor de Venda (R$) <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    type="number"
+                    value={price}
+                    onChange={(e) => {
+                      setPrice(e.target.value)
+                      setErrors((prev) => ({ ...prev, price: '' }))
+                    }}
+                    placeholder="Ex: 500000"
+                    className={errors.price ? 'border-red-500 ring-red-500' : ''}
+                  />
+                  {errors.price && (
+                    <p className="text-red-500 text-xs mt-1 font-medium">{errors.price}</p>
+                  )}
+                </div>
+              )}
 
               <div className="md:col-span-2">
                 <Label className="font-bold text-[#333333] mb-1.5 block">

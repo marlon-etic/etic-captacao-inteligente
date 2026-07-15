@@ -32,72 +32,75 @@ export function useUltimosImoveis(
   const { role } = useUserRole()
   const { currentUser, users } = useAppStore()
 
-  const fetchImoveis = useCallback(async () => {
-    try {
-      setLoading(true)
-      const tiposVisiveis = getTiposVisiveis(role)
+  const fetchImoveis = useCallback(
+    async (isBackground = false) => {
+      try {
+        if (!isBackground) setLoading(true)
+        const tiposVisiveis = getTiposVisiveis(role)
 
-      let query = supabase
-        .from('imoveis_captados')
-        .select(
-          'id, codigo_imovel, endereco, preco, valor, dormitorios, vagas, user_captador_id, captador_id, created_at, updated_at, tipo, demanda_locacao:demandas_locacao(sdr_id), demanda_venda:demandas_vendas(corretor_id)',
-        )
-        .order('updated_at', { ascending: false, nullsFirst: false })
-        .limit(100)
-      if (periodo !== 'todos') {
-        const date = new Date()
-        if (periodo === '24h') date.setHours(date.getHours() - 24)
-        if (periodo === '7d') date.setDate(date.getDate() - 7)
-        if (periodo === '30d') date.setDate(date.getDate() - 30)
-        query = query.gte('created_at', date.toISOString())
+        let query = supabase
+          .from('imoveis_captados')
+          .select(
+            'id, codigo_imovel, endereco, preco, valor, dormitorios, vagas, user_captador_id, captador_id, created_at, updated_at, tipo, demanda_locacao:demandas_locacao(sdr_id), demanda_venda:demandas_vendas(corretor_id)',
+          )
+          .order('created_at', { ascending: false })
+          .limit(100)
+
+        if (periodo !== 'todos') {
+          const date = new Date()
+          if (periodo === '24h') date.setHours(date.getHours() - 24)
+          if (periodo === '7d') date.setDate(date.getDate() - 7)
+          if (periodo === '30d') date.setDate(date.getDate() - 30)
+          query = query.gte('created_at', date.toISOString())
+        }
+
+        const { data, error } = await query
+
+        if (error) throw error
+
+        let result = (data || []).map((item) => {
+          const d_loc = item.demanda_locacao
+          const d_ven = item.demanda_venda
+          const userMap = new Map((users || []).map((u: any) => [u.id, u.name]))
+
+          const tipo = normalizeTipo(item.tipo, item.preco, item.valor)
+          const isMinhaDemanda =
+            (d_loc && (d_loc as any).sdr_id === currentUser?.id) ||
+            (d_ven && (d_ven as any).corretor_id === currentUser?.id)
+
+          return {
+            id: item.id,
+            codigo_imovel: item.codigo_imovel,
+            endereco: item.endereco,
+            preco: item.preco || 0,
+            valor: item.valor || 0,
+            dormitorios: item.dormitorios || 0,
+            vagas: item.vagas || 0,
+            captador_nome: userMap.get(item.user_captador_id || item.captador_id) || 'Captador',
+            created_at: item.created_at,
+            updated_at: item.updated_at,
+            tipo,
+            has_demanda: !!(d_loc || d_ven),
+            is_minha_demanda: !!isMinhaDemanda,
+            demanda_tipo: d_loc ? 'Aluguel' : d_ven ? 'Venda' : null,
+          } as UltimoImovel
+        })
+
+        result = result.filter((item) => tiposVisiveis.includes(item.tipo))
+
+        if (tipoFiltro === 'meus') {
+          result = result.filter((item) => item.is_minha_demanda)
+        }
+
+        setImoveis(result)
+      } catch (error) {
+        console.error('Error fetching ultimos imoveis:', error)
+      } finally {
+        if (!isBackground) setLoading(false)
       }
-
-      const { data, error } = await query
-
-      if (error) throw error
-
-      let result = (data || []).map((item) => {
-        const d_loc = item.demanda_locacao
-        const d_ven = item.demanda_venda
-        const userMap = new Map((users || []).map((u: any) => [u.id, u.name]))
-
-        const tipo = normalizeTipo(item.tipo, item.preco, item.valor)
-        const isMinhaDemanda =
-          (d_loc && (d_loc as any).sdr_id === currentUser?.id) ||
-          (d_ven && (d_ven as any).corretor_id === currentUser?.id)
-
-        return {
-          id: item.id,
-          codigo_imovel: item.codigo_imovel,
-          endereco: item.endereco,
-          preco: item.preco || 0,
-          valor: item.valor || 0,
-          dormitorios: item.dormitorios || 0,
-          vagas: item.vagas || 0,
-          captador_nome: userMap.get(item.user_captador_id || item.captador_id) || 'Captador',
-          created_at: item.created_at,
-          updated_at: item.updated_at,
-          tipo,
-          has_demanda: !!(d_loc || d_ven),
-          is_minha_demanda: !!isMinhaDemanda,
-          demanda_tipo: d_loc ? 'Aluguel' : d_ven ? 'Venda' : null,
-        } as UltimoImovel
-      })
-
-      // Exibe apenas os imóveis condizentes com o Role
-      result = result.filter((item) => tiposVisiveis.includes(item.tipo))
-
-      if (tipoFiltro === 'meus') {
-        result = result.filter((item) => item.is_minha_demanda)
-      }
-
-      setImoveis(result)
-    } catch (error) {
-      console.error('Error fetching ultimos imoveis:', error)
-    } finally {
-      setLoading(false)
-    }
-  }, [periodo, tipoFiltro, role, currentUser, users])
+    },
+    [periodo, tipoFiltro, role, currentUser, users],
+  )
 
   useEffect(() => {
     fetchImoveis()
@@ -110,10 +113,9 @@ export function useUltimosImoveis(
         .on(
           'postgres_changes',
           { event: 'INSERT', schema: 'public', table: 'imoveis_captados' },
-          (payload) => {
-            console.log('[REALTIME] INSERT imoveis_captados (useUltimosImoveis):', payload)
+          () => {
             setSyncing(true)
-            fetchImoveis().finally(() => {
+            fetchImoveis(true).finally(() => {
               setTimeout(() => setSyncing(false), 500)
             })
           },
@@ -121,10 +123,9 @@ export function useUltimosImoveis(
         .on(
           'postgres_changes',
           { event: 'UPDATE', schema: 'public', table: 'imoveis_captados' },
-          (payload) => {
-            console.log('[REALTIME] UPDATE imoveis_captados (useUltimosImoveis):', payload)
+          () => {
             setSyncing(true)
-            fetchImoveis().finally(() => {
+            fetchImoveis(true).finally(() => {
               setTimeout(() => setSyncing(false), 500)
             })
           },
@@ -132,16 +133,15 @@ export function useUltimosImoveis(
         .on(
           'postgres_changes',
           { event: 'DELETE', schema: 'public', table: 'imoveis_captados' },
-          (payload) => {
-            console.log('[REALTIME] DELETE imoveis_captados (useUltimosImoveis):', payload)
+          () => {
             setSyncing(true)
-            fetchImoveis().finally(() => {
+            fetchImoveis(true).finally(() => {
               setTimeout(() => setSyncing(false), 500)
             })
           },
         )
     },
-    onFallbackPoll: () => fetchImoveis(),
+    onFallbackPoll: () => fetchImoveis(true),
   })
 
   return { imoveis, loading, syncing, refresh: fetchImoveis }
