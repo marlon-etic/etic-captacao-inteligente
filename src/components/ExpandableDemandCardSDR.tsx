@@ -35,6 +35,8 @@ import { supabase } from '@/lib/supabase/client'
 import { DemandMatchModal } from './DemandMatchModal'
 import { VisitRegistrationModal, type LinkedProperty } from './VisitRegistrationModal'
 import { DemandLifecycleTimeline } from './DemandLifecycleTimeline'
+import { SugerirLinksModal } from './SugerirLinksModal'
+import { Link as LinkIcon } from 'lucide-react'
 
 function ExpandableDemandCardSDRComponent({
   demand,
@@ -54,8 +56,11 @@ function ExpandableDemandCardSDRComponent({
   const [showVisitModal, setShowVisitModal] = useState(false)
   const [showTimeline, setShowTimeline] = useState(false)
   const [linkedProperties, setLinkedProperties] = useState<LinkedProperty[]>([])
+  const [showLinksModal, setShowLinksModal] = useState(false)
 
   const canPrioritize = ['sdr', 'admin', 'gestor', 'corretor'].includes(currentUser?.role)
+  const canAddLinks = currentUser?.role === 'sdr' || currentUser?.role === 'admin'
+  const suggestedLinksCount = (demand.links_sugeridos as string[])?.length || 0
 
   const { text: timeElapsedText, hoursElapsed } = useTimeElapsed(demand.created_at)
 
@@ -294,6 +299,25 @@ function ExpandableDemandCardSDRComponent({
     setShowVisitModal(true)
   }, [demand.id])
 
+  const handleLinksSaved = useCallback(
+    (links: string[]) => {
+      window.dispatchEvent(
+        new CustomEvent('demanda-updated', {
+          detail: {
+            tipo: demand.tipo,
+            data: { id: demand.id, links_sugeridos: links },
+          },
+        }),
+      )
+      toast({
+        title: 'Links Enviados',
+        description: 'Os captadores já podem ver os links de referência.',
+        className: 'bg-[#10B981] text-white border-none',
+      })
+    },
+    [demand.id, demand.tipo],
+  )
+
   return (
     <>
       <Card
@@ -373,6 +397,13 @@ function ExpandableDemandCardSDRComponent({
               <Badge className="bg-purple-100 text-purple-800 hover:bg-purple-100 text-[10px] font-black px-2 py-1 flex items-center gap-1 shadow-sm border border-purple-200">
                 👀 {activeCaptadores.length} captadores buscando - Adicione imóveis ou marque
                 visitas
+              </Badge>
+            )}
+
+            {suggestedLinksCount > 0 && (
+              <Badge className="bg-cyan-100 text-cyan-800 hover:bg-cyan-100 text-[10px] font-black px-2 py-1 flex items-center gap-1 shadow-sm border border-cyan-200 pointer-events-auto">
+                <LinkIcon className="w-3 h-3" /> {suggestedLinksCount} link
+                {suggestedLinksCount !== 1 ? 's' : ''}
               </Badge>
             )}
           </div>
@@ -491,6 +522,31 @@ function ExpandableDemandCardSDRComponent({
             </Button>
             {showTimeline && <DemandLifecycleTimeline demand={demand} />}
           </div>
+
+          {canAddLinks && (
+            <div className="pointer-events-auto mt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className={cn(
+                  'w-full font-bold text-[11px] min-h-[36px] border-[#2E5F8A]/30 transition-all',
+                  suggestedLinksCount > 0
+                    ? 'bg-cyan-50 text-[#2E5F8A] hover:bg-cyan-100'
+                    : 'text-[#2E5F8A] hover:bg-[#2E5F8A]/5',
+                )}
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  setShowLinksModal(true)
+                }}
+              >
+                <LinkIcon className="w-3.5 h-3.5 mr-1.5" />
+                {suggestedLinksCount > 0
+                  ? `Gerenciar Links (${suggestedLinksCount})`
+                  : 'Adicionar Links'}
+              </Button>
+            </div>
+          )}
         </div>
 
         <div className="px-4 pb-4 pt-2 mt-auto bg-white pointer-events-auto rounded-b-[14px]">
@@ -589,6 +645,17 @@ function ExpandableDemandCardSDRComponent({
           demand.imoveis_captados?.[0]?.endereco || demand.imoveis_captados?.[0]?.localizacao_texto
         }
         linkedProperties={linkedProperties}
+      />
+
+      <SugerirLinksModal
+        demanda={{
+          id: demand.id,
+          tipo: demand.tipo,
+          links_sugeridos: demand.links_sugeridos as string[] | null,
+        }}
+        open={showLinksModal}
+        onOpenChange={setShowLinksModal}
+        onSuccess={handleLinksSaved}
       />
     </>
   )

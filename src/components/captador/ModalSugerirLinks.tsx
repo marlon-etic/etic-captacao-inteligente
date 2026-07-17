@@ -58,7 +58,10 @@ export function ModalSugerirLinks({
   const handleSubmit = async () => {
     setIsSubmitting(true)
     try {
-      const table = demanda.tipo === 'locacao' ? 'demandas_locacao' : 'demandas_vendas'
+      const table =
+        demanda.tipo === 'locacao' || demanda.tipo === 'Aluguel'
+          ? 'demandas_locacao'
+          : 'demandas_vendas'
       const { error } = await supabase
         .from(table)
         .update({ links_sugeridos: links })
