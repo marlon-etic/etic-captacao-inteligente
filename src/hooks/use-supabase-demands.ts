@@ -59,7 +59,14 @@ export interface SupabaseDemand {
   links_sugeridos?: string[]
 }
 
-export function useSupabaseDemands(type: 'Aluguel' | 'Venda', options?: { onlyMine?: boolean }) {
+export function useSupabaseDemands(
+  type: 'Aluguel' | 'Venda',
+  options?: {
+    onlyMine?: boolean
+    dateRange?: 'today' | '7days' | '30days' | 'all'
+    statusFilter?: 'active' | 'inactive' | 'all'
+  },
+) {
   const [demands, setDemands] = useState<SupabaseDemand[]>([])
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
@@ -228,6 +235,36 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda', options?: { onlyMi
             }
           }
 
+          if (options?.dateRange && options.dateRange !== 'all') {
+            const now = new Date()
+            let threshold: Date
+            if (options.dateRange === 'today') {
+              threshold = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+            } else if (options.dateRange === '7days') {
+              threshold = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+            } else {
+              threshold = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+            }
+            query = query.gte('created_at', threshold.toISOString())
+          }
+
+          if (options?.statusFilter && options.statusFilter !== 'all') {
+            if (options.statusFilter === 'active') {
+              query = query.not(
+                'status_demanda',
+                'in',
+                '("perdida","PERDIDA_BAIXA","impossivel","perdido")',
+              )
+            } else {
+              query = query.in('status_demanda', [
+                'perdida',
+                'PERDIDA_BAIXA',
+                'impossivel',
+                'perdido',
+              ])
+            }
+          }
+
           const { data: resData, error } = await query
           if (error) throw error
           return resData
@@ -252,7 +289,7 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda', options?: { onlyMi
         if (!isBackground) setLoading(false)
       }
     },
-    [type, formatData, sortDemands, fetchWithResilience],
+    [type, formatData, sortDemands, fetchWithResilience, options?.dateRange, options?.statusFilter],
   )
 
   useEffect(() => {
@@ -654,6 +691,31 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda', options?: { onlyMi
       }
     }
 
+    if (options?.dateRange && options.dateRange !== 'all') {
+      const now = new Date()
+      let threshold: Date
+      if (options.dateRange === 'today') {
+        threshold = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+      } else if (options.dateRange === '7days') {
+        threshold = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+      } else {
+        threshold = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+      }
+      query = query.gte('created_at', threshold.toISOString())
+    }
+
+    if (options?.statusFilter && options.statusFilter !== 'all') {
+      if (options.statusFilter === 'active') {
+        query = query.not(
+          'status_demanda',
+          'in',
+          '("perdida","PERDIDA_BAIXA","impossivel","perdido")',
+        )
+      } else {
+        query = query.in('status_demanda', ['perdida', 'PERDIDA_BAIXA', 'impossivel', 'perdido'])
+      }
+    }
+
     const { data: moreData, error } = await query
     if (error || !moreData) return
 
@@ -666,7 +728,7 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda', options?: { onlyMi
       const newOnes = formatted.filter((d) => !existingIds.has(d.id))
       return sortDemands([...prev, ...newOnes])
     })
-  }, [type, hasMore, loading, formatData, sortDemands])
+  }, [type, hasMore, loading, formatData, sortDemands, options?.dateRange, options?.statusFilter])
 
   return { demands, loading, syncing, refresh: () => fetchDemands(false), hasMore, loadMore }
 }

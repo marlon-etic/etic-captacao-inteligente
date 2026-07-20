@@ -1,9 +1,12 @@
 import { useCallback, useMemo } from 'react'
 import { useSupabaseDemands } from '@/hooks/use-supabase-demands'
 
-export function useAllDemands() {
-  const locacao = useSupabaseDemands('Aluguel')
-  const venda = useSupabaseDemands('Venda')
+export function useAllDemands(options?: {
+  dateRange?: 'today' | '7days' | '30days' | 'all'
+  statusFilter?: 'active' | 'inactive' | 'all'
+}) {
+  const locacao = useSupabaseDemands('Aluguel', options)
+  const venda = useSupabaseDemands('Venda', options)
 
   const allDemands = useMemo(() => {
     return [...locacao.demands, ...venda.demands].sort(

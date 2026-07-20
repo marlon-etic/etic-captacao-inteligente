@@ -26,6 +26,7 @@ import {
   X,
   RefreshCw,
   Star,
+  AlertTriangle,
 } from 'lucide-react'
 import { PrioritizeModal } from '@/components/PrioritizeModal'
 import { toggleDemandPriority } from '@/services/priority-service'
@@ -535,12 +536,31 @@ export const DemandCard = React.memo(function DemandCard({
           </div>
 
           {isPending && !isLost && (
-            <div className="w-full">
+            <div className="w-full space-y-[6px]">
               <Progress
                 value={slaProgress}
                 className="h-[6px] bg-[#E5E5E5] shadow-[inset_0_1px_2px_rgba(0,0,0,0.1)]"
                 indicatorClassName={indicatorColor}
               />
+              {(slaLevel === 'red' || slaLevel === 'yellow' || slaLevel === 'orange') && (
+                <div className="flex items-center gap-1.5">
+                  {slaLevel === 'red' && (
+                    <span className="flex items-center gap-1 text-[11px] font-black text-[#F44336] bg-red-50 px-2 py-0.5 rounded-md border border-red-200 animate-pulse">
+                      <AlertTriangle className="w-3 h-3 fill-current" /> VENCE EM ≤12H
+                    </span>
+                  )}
+                  {slaLevel === 'yellow' && (
+                    <span className="flex items-center gap-1 text-[11px] font-black text-[#FF9800] bg-orange-50 px-2 py-0.5 rounded-md border border-orange-200">
+                      <AlertTriangle className="w-3 h-3" /> VENCE EM ≤24H
+                    </span>
+                  )}
+                  {slaLevel === 'orange' && (
+                    <span className="flex items-center gap-1 text-[11px] font-bold text-[#FF9800] bg-orange-50 px-2 py-0.5 rounded-md border border-orange-200">
+                      <AlertTriangle className="w-3 h-3" /> Aproximando do prazo
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -676,6 +696,17 @@ export const DemandCard = React.memo(function DemandCard({
                   </Button>
                 )}
             </>
+          )}
+
+          {isOwnerOrAdmin && currentUser?.role !== 'captador' && isPending && !isLost && (
+            <Button
+              className="h-11 min-h-[44px] flex-1 font-bold text-[13px] px-2 shadow-sm transition-all duration-150 ease-in-out hover:scale-[1.02] active:shadow-inner bg-[#3B82F6] hover:bg-[#2563EB] text-white border-none relative z-10 w-full lg:w-auto whitespace-nowrap"
+              onClick={handleProrrogar}
+              disabled={isExtending}
+              aria-label={`Estender prazo da demanda ${demand.clientName}`}
+            >
+              <Clock className="w-[16px] h-[16px] mr-1.5" /> Estender Prazo
+            </Button>
           )}
 
           {!isLost && (
