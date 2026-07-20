@@ -76,7 +76,12 @@ export const DemandCard = React.memo(function DemandCard({
 
   // Extrai o prazo real da estrutura mapeada para sincronização em tempo real
   const prazoDb = (demand as any).prazos_captacao?.[0]
-  const isPending = demand.status === 'Pendente' || demand.status === 'aberta'
+  const isPending =
+    demand.status === 'Pendente' ||
+    demand.status === 'aberta' ||
+    demand.status === 'sem_resposta_24h' ||
+    demand.status === 'em busca' ||
+    demand.status === 'em_busca'
 
   const {
     text: slaText,
@@ -111,7 +116,11 @@ export const DemandCard = React.memo(function DemandCard({
   }
 
   const isSale = demand.type === 'Venda'
-  const isLost = demand.status === 'Perdida' || demand.status === 'impossivel'
+  const isLost =
+    demand.status === 'Perdida' ||
+    demand.status === 'impossivel' ||
+    demand.status === 'perdida' ||
+    demand.status === 'PERDIDA_BAIXA'
   const isPrioritized = demand.isPrioritized && !isLost
   const isNew = hoursElapsed <= 24 && isPending && !isLost && !isPrioritized
 
@@ -213,6 +222,13 @@ export const DemandCard = React.memo(function DemandCard({
   } else if (isNew) {
     cardBg = 'bg-[#F2FBF5] border-[#4CAF50]'
     headerBg = 'bg-[#4CAF50]/10 border-[#4CAF50]/30'
+  } else if (
+    demand.status === 'sem_resposta_24h' ||
+    demand.status === 'em busca' ||
+    demand.status === 'em_busca'
+  ) {
+    cardBg = 'bg-[#FFFBF0] border-[#FF9800]/40 hover:border-[#FF9800]/60'
+    headerBg = 'bg-[#FF9800]/5 border-[#FF9800]/20'
   } else {
     cardBg = 'bg-[#FFFFFF] border-[#E5E5E5] hover:border-[#1A3A52]/30'
   }

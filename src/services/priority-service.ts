@@ -28,6 +28,19 @@ export async function toggleDemandPriority(
 
     if (error) throw error
 
+    const { error: logError } = await supabase.from('demand_status_log').insert({
+      demanda_id: demandId,
+      tipo_demanda: type,
+      status_anterior: isPrioritaria ? 'prioritaria' : 'aberta',
+      status_novo: !isPrioritaria ? 'prioritaria' : 'aberta',
+      alterado_por: (await supabase.auth.getUser()).data.user?.id || null,
+      motivo: !isPrioritaria
+        ? `Demanda priorizada: ${motivo || 'Sem motivo especificado'}`
+        : 'Prioridade removida pelo usuario',
+    })
+
+    if (logError) console.error('[priority-service] Failed to log status change:', logError)
+
     return { success: true }
   } catch (err: any) {
     return { success: false, error: err.message }
