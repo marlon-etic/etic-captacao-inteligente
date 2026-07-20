@@ -58,7 +58,12 @@ export function DemandasPerdidasView() {
         }
 
         if (motivoFilter === 'timeout' && !isDemandTimeoutLost(d.motivo_perda)) return false
-        if (motivoFilter !== 'todos' && motivoFilter !== 'timeout' && d.motivo_perda !== motivoFilter) return false
+        if (
+          motivoFilter !== 'todos' &&
+          motivoFilter !== 'timeout' &&
+          d.motivo_perda !== motivoFilter
+        )
+          return false
 
         return true
       })
@@ -90,27 +95,30 @@ export function DemandasPerdidasView() {
               <SelectItem value="todos">📋 Todos os motivos</SelectItem>
               <SelectItem value="timeout">⏰ Timeout (72h)</SelectItem>
               {STANDARDIZED_LOST_REASONS.map((r) => (
-                <SelectItem key={r} value={r}>{r}</SelectItem>
+                <SelectItem key={r} value={r}>
+                  {r}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
           <div className="flex items-center gap-2 w-full sm:w-auto relative">
-          <Search className="w-4 h-4 absolute left-3 text-[#999999]" />
-          <Input
-            placeholder="Buscar cliente ou bairro..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9 w-full sm:w-[250px] h-11"
-          />
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={refresh}
-            title="Atualizar"
-            className="h-11 w-11 shrink-0"
-          >
-            <RefreshCw className="w-4 h-4 text-[#1A3A52]" />
-          </Button>
+            <Search className="w-4 h-4 absolute left-3 text-[#999999]" />
+            <Input
+              placeholder="Buscar cliente ou bairro..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9 w-full sm:w-[250px] h-11"
+            />
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={refresh}
+              title="Atualizar"
+              className="h-11 w-11 shrink-0"
+            >
+              <RefreshCw className="w-4 h-4 text-[#1A3A52]" />
+            </Button>
+          </div>
         </div>
       </div>
 
