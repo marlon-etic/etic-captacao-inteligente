@@ -441,9 +441,9 @@ BEGIN
   IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron') THEN
     BEGIN
       PERFORM cron.unschedule('check_prazo_notifications');
-      PERFORM cron.schedule('check_prazo_notifications', '0 * * * *', $$
+      PERFORM cron.schedule('check_prazo_notifications', '0 * * * *', $cron$
         SELECT public.fn_notificar_prazo_proximo();
-      $$);
+      $cron$);
     EXCEPTION
       WHEN OTHERS THEN
         RAISE NOTICE 'Failed to schedule notification cron job.';
