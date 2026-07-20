@@ -22,6 +22,7 @@ import {
   Zap,
   Calendar,
   ExternalLink,
+  Home,
 } from 'lucide-react'
 import { useSlaCountdown, useTimeElapsed } from '@/hooks/useTimeElapsed'
 import useAppStore from '@/stores/useAppStore'
@@ -446,6 +447,10 @@ function ExpandableDemandCardSDRComponent({
               <span className="font-medium line-clamp-1" title={demand.bairros?.join(', ')}>
                 {demand.bairros?.join(', ') || 'Sem localização'}
               </span>
+            </div>
+            <div className="flex items-center gap-2 text-[14px] text-[#333333]">
+              <Home className="w-4 h-4 text-[#1A3A52] shrink-0" />
+              <span className="font-medium">{demand.tipo_imovel || 'Imóvel Residencial'}</span>
             </div>
           </div>
 

@@ -1,10 +1,10 @@
 export const STANDARDIZED_LOST_REASONS = [
-  'Não existe imóveis no Perfil - Valor',
-  'Não existe imóveis no Perfil - Localização',
-  'Não existe imóveis no Perfil - Perfil do Imóvel',
-  'Cliente já alugou',
-  'Cliente já comprou',
-  'Cliente desistiu',
+  'Perfil não encontrado na região',
+  'Valor fora da realidade de mercado',
+  'Proprietário não aceita garantias',
+  'Imóvel já locado/vendido',
+  'Cliente desistiu da busca',
+  'Timeout - Sem resposta dos captadores',
 ] as const
 
 export const TIMEOUT_LOSS_REASON = 'PERDIDO SEM RESPOSTA (TODOS CAPTADORES)'

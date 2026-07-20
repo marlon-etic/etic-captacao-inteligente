@@ -56,6 +56,9 @@ function DemandListItemComponent({
             <Badge className="text-[9px] font-bold px-1.5 py-0.5 border-none bg-[#1A3A52] text-white">
               {demand.tipo === 'Venda' ? 'VENDA' : 'ALUGUEL'}
             </Badge>
+            <span className="text-[10px] text-[#999999] font-medium truncate">
+              · {demand.tipo_imovel || 'N/A'}
+            </span>
           </div>
           <div className="flex items-center gap-2 text-[12px] text-[#666666] flex-wrap">
             <span className="flex items-center gap-1 font-medium">
@@ -94,6 +97,9 @@ function DemandListItemComponent({
           <Badge className="text-[9px] font-bold px-1.5 py-0.5 border-none shrink-0 bg-[#1A3A52] text-white">
             {demand.tipo === 'Venda' ? 'VENDA' : 'ALUGUEL'}
           </Badge>
+          <span className="text-[11px] text-[#666666] font-medium truncate">
+            · {demand.tipo_imovel || 'N/A'}
+          </span>
         </div>
 
         <div className="flex items-center gap-1.5">

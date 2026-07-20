@@ -416,6 +416,7 @@ export type Database = {
           created_at: string
           demanda_id: string
           id: string
+          motivo: string | null
           status_anterior: string | null
           status_novo: string
           tipo_demanda: string
@@ -425,6 +426,7 @@ export type Database = {
           created_at?: string
           demanda_id: string
           id?: string
+          motivo?: string | null
           status_anterior?: string | null
           status_novo: string
           tipo_demanda: string
@@ -434,6 +436,7 @@ export type Database = {
           created_at?: string
           demanda_id?: string
           id?: string
+          motivo?: string | null
           status_anterior?: string | null
           status_novo?: string
           tipo_demanda?: string

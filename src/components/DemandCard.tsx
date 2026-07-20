@@ -561,6 +561,7 @@ export const DemandCard = React.memo(function DemandCard({
               label="Perfil"
               value={`${demand.bedrooms ?? 0} dorm, ${demand.bathrooms ?? 0} banh, ${demand.parkingSpots ?? 0} vagas`}
             />
+            <InfoItem label="Tipologia" value={(demand as any).tipo_imovel || 'Não especificado'} />
             <InfoItem label="Solicitado por" value={creatorName} />
           </div>
 
