@@ -1,4 +1,5 @@
-import { CheckCircle, XCircle, Zap, AlertTriangle, TrendingUp } from 'lucide-react'
+import { CheckCircle, XCircle, Zap, AlertTriangle, TrendingUp, Clock } from 'lucide-react'
+import { TIMEOUT_LOSS_REASON } from '@/lib/lost-reasons'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
@@ -27,7 +28,7 @@ export function MetricsCards({ metrics, loading, activeFilter, onCardClick }: Me
 
   return (
     <>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
         <Card
           className={cn(
             'rounded-2xl hover:shadow-lg hover:-translate-y-1 transition-all duration-300 border-emerald-100 bg-gradient-to-br from-emerald-50 to-white group cursor-pointer',
@@ -103,6 +104,29 @@ export function MetricsCards({ metrics, loading, activeFilter, onCardClick }: Me
             <p className="text-xs font-bold text-amber-600 mt-1">
               Demandas abertas e sem resposta 72h
             </p>
+          </CardContent>
+        </Card>
+
+        <Card
+          className={cn(
+            'rounded-2xl hover:shadow-lg hover:-translate-y-1 transition-all duration-300 border-purple-100 bg-gradient-to-br from-purple-50 to-white group cursor-pointer',
+            activeFilter === 'timeout' && 'ring-2 ring-purple-500 shadow-md',
+          )}
+          onClick={() => handleCardClick('timeout')}
+        >
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-[14px] font-bold text-purple-800">
+              Perdas por Timeout (72h)
+            </CardTitle>
+            <div className="p-2 bg-purple-100 rounded-full group-hover:scale-110 transition-transform">
+              <Clock className="h-5 w-5 text-purple-600" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-black text-purple-900">
+              {metrics?.timeoutPerdidos || 0}
+            </div>
+            <p className="text-xs font-bold text-purple-600 mt-1">Sem resposta coletiva</p>
           </CardContent>
         </Card>
       </div>

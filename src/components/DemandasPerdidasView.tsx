@@ -6,11 +6,20 @@ import { useAllDemands } from '@/hooks/use-all-demands'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { RefreshCw, Search } from 'lucide-react'
-import { isDemandGloballyLost, isDemandLocallyLost } from '@/lib/demand-status'
+import { isDemandGloballyLost, isDemandLocallyLost, isDemandTimeoutLost } from '@/lib/demand-status'
+import { STANDARDIZED_LOST_REASONS, TIMEOUT_LOSS_REASON } from '@/lib/lost-reasons'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 export function DemandasPerdidasView() {
   const { demands, loading, refresh } = useAllDemands()
   const [searchTerm, setSearchTerm] = useState('')
+  const [motivoFilter, setMotivoFilter] = useState('todos')
 
   useEffect(() => {
     const channelVendas = supabase
@@ -48,10 +57,13 @@ export function DemandasPerdidasView() {
           if (!clientMatch && !locMatch) return false
         }
 
+        if (motivoFilter === 'timeout' && !isDemandTimeoutLost(d.motivo_perda)) return false
+        if (motivoFilter !== 'todos' && motivoFilter !== 'timeout' && d.motivo_perda !== motivoFilter) return false
+
         return true
       })
       .slice(0, 50)
-  }, [demands, searchTerm])
+  }, [demands, searchTerm, motivoFilter])
 
   if (loading) {
     return (
@@ -69,7 +81,20 @@ export function DemandasPerdidasView() {
         <h2 className="text-[16px] font-black text-[#1A3A52] uppercase tracking-wider ml-2">
           Demandas Perdidas
         </h2>
-        <div className="flex items-center gap-2 w-full sm:w-auto relative">
+        <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
+          <Select value={motivoFilter} onValueChange={setMotivoFilter}>
+            <SelectTrigger className="w-full sm:w-[200px] font-bold h-11 border-[#E5E5E5] focus:ring-[#1A3A52]">
+              <SelectValue placeholder="Filtrar por motivo" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">📋 Todos os motivos</SelectItem>
+              <SelectItem value="timeout">⏰ Timeout (72h)</SelectItem>
+              {STANDARDIZED_LOST_REASONS.map((r) => (
+                <SelectItem key={r} value={r}>{r}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <div className="flex items-center gap-2 w-full sm:w-auto relative">
           <Search className="w-4 h-4 absolute left-3 text-[#999999]" />
           <Input
             placeholder="Buscar cliente ou bairro..."

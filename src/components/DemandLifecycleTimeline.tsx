@@ -86,6 +86,12 @@ export function DemandLifecycleTimeline({ demand }: { demand: SupabaseDemand }) 
                     })}
                   </span>
                 </div>
+                {event.userName && (
+                  <span className="text-[9px] font-bold text-muted-foreground/80 block mb-0.5">
+                    por {event.userName}
+                    {event.userRole ? ` (${event.userRole})` : ''}
+                  </span>
+                )}
                 <p className="text-[11px] text-foreground font-medium leading-snug">
                   {event.description}
                 </p>

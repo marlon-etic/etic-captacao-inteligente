@@ -8,6 +8,13 @@ export interface TimelineEvent {
   timestamp: string
   title: string
   description: string
+  userName?: string
+  userRole?: string
+}
+
+interface UserInfo {
+  nome: string
+  role: string
 }
 
 export function useDemandTimeline(demand: SupabaseDemand) {
@@ -37,7 +44,7 @@ export function useDemandTimeline(demand: SupabaseDemand) {
           .order('created_at', { ascending: false }),
         supabase
           .from('audit_log')
-          .select('id, created_at, dados_novos')
+          .select('id, created_at, usuario_id, dados_novos')
           .eq('registro_id', demand.id)
           .eq('acao', 'UPDATE_LINKS')
           .order('created_at', { ascending: false }),
@@ -57,6 +64,37 @@ export function useDemandTimeline(demand: SupabaseDemand) {
           .order('visited_at', { ascending: false })
         visits = visitData || []
       }
+
+      const userIds = new Set<string>()
+      statusLogs.forEach((s: any) => {
+        if (s.alterado_por) userIds.add(s.alterado_por)
+      })
+      auditLinks.forEach((a: any) => {
+        if (a.usuario_id) userIds.add(a.usuario_id)
+      })
+      respostasRef.current.forEach((r: any) => {
+        if (r.captador_id) userIds.add(r.captador_id)
+      })
+
+      let userMap: Record<string, UserInfo> = {}
+      if (userIds.size > 0) {
+        const { data: users } = await supabase
+          .from('users')
+          .select('id, nome, role')
+          .in('id', Array.from(userIds))
+        users?.forEach((u: any) => {
+          userMap[u.id] = { nome: u.nome, role: u.role }
+        })
+      }
+
+      const getUserLabel = (uid: string | null) => {
+        if (!uid || !userMap[uid]) return null
+        return userMap[uid]
+      }
+
+      const isPerdido = (status: string | null) =>
+        !!status &&
+        (status.toLowerCase().includes('perd') || status.toLowerCase().includes('imposs'))
 
       const timelineEvents: TimelineEvent[] = [
         {
@@ -82,6 +120,7 @@ export function useDemandTimeline(demand: SupabaseDemand) {
         const novos = a.dados_novos as any
         const links: string[] = novos?.links_sugeridos || []
         const count = Array.isArray(links) ? links.length : 0
+        const u = getUserLabel(a.usuario_id)
         timelineEvents.push({
           id: `links-${a.id}`,
           type: 'links',
@@ -91,6 +130,8 @@ export function useDemandTimeline(demand: SupabaseDemand) {
             count > 0
               ? `${count} link${count !== 1 ? 's' : ''} sugerido${count !== 1 ? 's' : ''}`
               : 'Links atualizados',
+          userName: u?.nome,
+          userRole: u?.role,
         })
       })
 
@@ -118,22 +159,36 @@ export function useDemandTimeline(demand: SupabaseDemand) {
 
       respostasRef.current.forEach((r: any) => {
         const isNF = r.resposta === 'nao_encontrei' || r.resposta === 'perdido'
+        const u = getUserLabel(r.captador_id)
+        const reason = r.motivo || r.observacao || r.resposta
         timelineEvents.push({
           id: `resp-${r.id}`,
           type: 'response',
           timestamp: r.created_at,
           title: isNF ? 'Não Encontrado' : 'Resposta',
-          description: r.motivo || r.observacao || r.resposta,
+          description: reason,
+          userName: u?.nome,
+          userRole: u?.role,
         })
       })
 
       statusLogs.forEach((s: any) => {
+        const u = getUserLabel(s.alterado_por)
+        let description = `${s.status_anterior || '—'} → ${s.status_novo}`
+        if (isPerdido(s.status_novo)) {
+          const motivo = s.motivo || demand.motivo_perda || 'Não informado'
+          const userName = u?.nome || 'Sistema'
+          const userRole = u?.role || 'automático'
+          description = `${userName} (${userRole}) marcou como perdida — ${motivo}`
+        }
         timelineEvents.push({
           id: `status-${s.id}`,
           type: 'status_change',
           timestamp: s.created_at,
           title: 'Status Alterado',
-          description: `${s.status_anterior || '—'} → ${s.status_novo}`,
+          description,
+          userName: u?.nome,
+          userRole: u?.role,
         })
       })
 
@@ -146,7 +201,7 @@ export function useDemandTimeline(demand: SupabaseDemand) {
     } finally {
       setLoading(false)
     }
-  }, [demand.id, demand.created_at, demand.is_prioritaria])
+  }, [demand.id, demand.created_at, demand.is_prioritaria, demand.motivo_perda])
 
   useEffect(() => {
     fetchTimeline()

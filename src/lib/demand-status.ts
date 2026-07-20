@@ -24,3 +24,8 @@ export function isDemandLocallyLost(statusDemanda: string | undefined | null): b
   if (!statusDemanda) return false
   return LOCALLY_LOST_STATUSES.has(statusDemanda.toLowerCase())
 }
+
+export function isDemandTimeoutLost(motivoPerda: string | undefined | null): boolean {
+  if (!motivoPerda) return false
+  return motivoPerda === 'PERDIDO SEM RESPOSTA (TODOS CAPTADORES)'
+}

@@ -27,7 +27,8 @@ Deno.serve(async (req: Request) => {
     return new Response(
       JSON.stringify({
         success: true,
-        message: 'Demandas processadas: 72h Sem Resposta + 30d Inatividade + Escalation',
+        message:
+          'Demandas processadas: Collective 72h Timeout (0 responses) + 30d Inatividade + Escalation. Individual catcher responses do NOT trigger global timeout.',
         data: result1,
       }),
       {

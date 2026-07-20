@@ -34,6 +34,7 @@ import { Demand } from '@/types'
 import { BAIRROS_ETIC } from '@/lib/bairros'
 import { useToast } from '@/hooks/use-toast'
 import useAppStore from '@/stores/useAppStore'
+import { STANDARDIZED_LOST_REASONS } from '@/lib/lost-reasons'
 
 const encontreiSchema = z
   .object({
@@ -66,13 +67,7 @@ const naoEncontreiSchema = z.object({
   continueSearch: z.boolean().default(true),
 })
 
-const REASONS = [
-  'Valor incompatível',
-  'Não há imóveis no perfil',
-  'Proprietário não aceitou',
-  'Perdido',
-  'Outro',
-]
+const REASONS = [...STANDARDIZED_LOST_REASONS]
 
 import { useState } from 'react'
 import { Loader2 } from 'lucide-react'

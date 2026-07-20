@@ -19,17 +19,9 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { trackEvent } from '@/lib/analytics'
 import { useAuth } from '@/hooks/use-auth'
+import { STANDARDIZED_LOST_REASONS } from '@/lib/lost-reasons'
 
-const LOST_REASONS = [
-  'Cliente já alugou',
-  'Cliente já comprou',
-  'Cliente desistiu da busca',
-  'Cliente alugou com terceiros',
-  'Cliente comprou com terceiros',
-  'Cliente com imóvel fora do perfil',
-  'Cliente com imóvel fora da localização',
-  'Cliente sem imóveis no perfil.',
-] as const
+const LOST_REASONS = STANDARDIZED_LOST_REASONS
 
 interface Props {
   open: boolean
