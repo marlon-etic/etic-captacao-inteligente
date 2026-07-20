@@ -171,7 +171,7 @@ export function StickyFilterBar({
 
   if (isMobile) {
     return (
-      <div className={cn('sticky z-[50] bg-[#F5F5F5] pb-2 -mx-4 px-4 sm:mx-0 sm:px-0', stickyTop)}>
+      <div className={cn('sticky z-[30] bg-[#F5F5F5] pb-2 -mx-4 px-4 sm:mx-0 sm:px-0', stickyTop)}>
         <div className="flex flex-col gap-2">
           <div className="bg-white border border-[#E5E5E5] rounded-[12px] p-2 flex items-center gap-3 shadow-[0_2px_8px_rgba(26,58,82,0.05)] min-h-[60px] w-full">
             <Drawer open={isOpen} onOpenChange={setIsOpen}>
@@ -260,7 +260,7 @@ export function StickyFilterBar({
   }
 
   return (
-    <div className={cn('sticky z-[50] bg-[#F5F5F5] pb-4 -mx-4 px-4 sm:mx-0 sm:px-0', stickyTop)}>
+    <div className={cn('sticky z-[30] bg-[#F5F5F5] pb-4 -mx-4 px-4 sm:mx-0 sm:px-0', stickyTop)}>
       <div className="bg-white border border-[#E5E5E5] rounded-[12px] p-3 flex items-center gap-3 shadow-[0_4px_12px_rgba(26,58,82,0.05)] min-h-[56px] flex-wrap">
         <span className="font-black text-[#1A3A52] mr-2 flex items-center gap-2 uppercase tracking-wide text-[14px]">
           <Filter className="w-4 h-4" /> Filtros

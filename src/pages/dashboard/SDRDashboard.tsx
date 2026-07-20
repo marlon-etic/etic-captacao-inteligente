@@ -48,7 +48,7 @@ export function SDRDashboard() {
           tabs={tabs}
           activeTab={currentTab}
           onTabChange={handleTabChange}
-          className="sticky top-[64px] lg:top-[72px] bg-[#F5F5F5] pt-2 pb-1 z-[35] -mx-4 px-4 sm:mx-0 sm:px-0 shadow-sm"
+          className="sticky top-[64px] lg:top-[72px] bg-[#F5F5F5] pt-2 pb-1 z-[50] -mx-4 px-4 sm:mx-0 sm:px-0 shadow-sm"
         />
 
         <div className="transition-opacity duration-300 ease-in animate-in fade-in relative z-10">

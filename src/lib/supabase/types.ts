@@ -353,6 +353,42 @@ export type Database = {
           },
         ]
       }
+      campanhas_imoveis_descartados: {
+        Row: {
+          campanha_id: string
+          created_at: string
+          id: string
+          imovel_id: string
+        }
+        Insert: {
+          campanha_id: string
+          created_at?: string
+          id?: string
+          imovel_id: string
+        }
+        Update: {
+          campanha_id?: string
+          created_at?: string
+          id?: string
+          imovel_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campanhas_imoveis_descartados_campanha_id_fkey"
+            columns: ["campanha_id"]
+            isOneToOne: false
+            referencedRelation: "campanhas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campanhas_imoveis_descartados_imovel_id_fkey"
+            columns: ["imovel_id"]
+            isOneToOne: false
+            referencedRelation: "imoveis_captados"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cron_execution_log: {
         Row: {
           error_message: string | null

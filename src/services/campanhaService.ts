@@ -195,3 +195,161 @@ export async function fetchCampanhasHistorico(): Promise<CampanhaHistorico[]> {
   if (error) throw error
   return (data || []) as CampanhaHistorico[]
 }
+
+export interface SuggestedImovel {
+  id: string
+  codigo_imovel: string | null
+  endereco: string | null
+  localizacao_texto: string | null
+  preco: number | null
+  valor: number | null
+  tipo_imovel: string | null
+  dormitorios: number | null
+  vagas: number | null
+  status_captacao: string | null
+  user_captador_id: string | null
+  created_at: string | null
+}
+
+function normalizeTipo(tipo: string): string {
+  const t = tipo.toLowerCase().trim()
+  if (t.includes('apart')) return 'apartamento'
+  if (t.includes('casa') || t.includes('sobrado')) return 'casa'
+  if (t.includes('galp')) return 'galpao'
+  if (t.includes('comer') || t.includes('sala') || t.includes('predio')) return 'comercial'
+  return t
+}
+
+export async function discardPropertyFromCampanha(
+  campanhaId: string,
+  imovelId: string,
+): Promise<void> {
+  const { error } = await supabase.from('campanhas_imoveis_descartados').insert({
+    campanha_id: campanhaId,
+    imovel_id: imovelId,
+  })
+
+  if (error) {
+    if (error.code === '23505') return
+    throw error
+  }
+}
+
+export async function fetchSuggestedProperties(campanha: Campanha): Promise<SuggestedImovel[]> {
+  const { data: linkedIds } = await supabase
+    .from('campanhas_imoveis')
+    .select('imovel_id')
+    .eq('campanha_id', campanha.id)
+
+  const linkedSet = new Set((linkedIds || []).map((r: any) => r.imovel_id))
+
+  const { data: discardedIds } = await supabase
+    .from('campanhas_imoveis_descartados')
+    .select('imovel_id')
+    .eq('campanha_id', campanha.id)
+
+  const discardedSet = new Set((discardedIds || []).map((r: any) => r.imovel_id))
+  const campanhaTipoNorm = normalizeTipo(campanha.tipo_imovel)
+  const bairros = campanha.bairros_alvo
+
+  const { data, error } = await supabase
+    .from('imoveis_captados')
+    .select(
+      'id, codigo_imovel, endereco, localizacao_texto, preco, valor, tipo_imovel, dormitorios, vagas, status_captacao, user_captador_id, created_at',
+    )
+    .order('created_at', { ascending: false })
+    .limit(100)
+
+  if (error) throw error
+
+  return (data || []).filter((imovel: any) => {
+    if (linkedSet.has(imovel.id)) return false
+    if (discardedSet.has(imovel.id)) return false
+
+    const imovelTipoNorm = normalizeTipo(imovel.tipo_imovel || '')
+    if (imovelTipoNorm !== campanhaTipoNorm) return false
+
+    const price = imovel.valor || imovel.preco || 0
+    if (price < campanha.faixa_valor_min || price > campanha.faixa_valor_max) return false
+
+    if (bairros && bairros.length > 0) {
+      const locationStr = `${imovel.endereco || ''} ${imovel.localizacao_texto || ''}`.toLowerCase()
+      const bairroMatch = bairros.some((b: string) => locationStr.includes(b.toLowerCase()))
+      if (!bairroMatch) return false
+    }
+
+    return true
+  }) as SuggestedImovel[]
+}
+
+export async function linkPropertyToCampanha(
+  campanhaId: string,
+  imovelId: string,
+  adminUserId: string,
+  captadorId?: string | null,
+): Promise<number> {
+  const { error: insertError } = await supabase.from('campanhas_imoveis').insert({
+    campanha_id: campanhaId,
+    imovel_id: imovelId,
+    captador_id: captadorId || null,
+  })
+
+  if (insertError) {
+    if (insertError.code === '23505') {
+      throw new Error('Este imóvel já está vinculado a esta campanha.')
+    }
+    throw insertError
+  }
+
+  const { count } = await supabase
+    .from('campanhas_imoveis')
+    .select('*', { count: 'exact', head: true })
+    .eq('campanha_id', campanhaId)
+
+  const newProgress = count || 0
+  await supabase.from('campanhas').update({ progresso: newProgress }).eq('id', campanhaId)
+
+  const { error: auditError } = await supabase.from('audit_log').insert({
+    usuario_id: adminUserId,
+    acao: 'LINK_IMOVEL_CAMPANHA',
+    tabela: 'campanhas_imoveis',
+    registro_id: imovelId,
+    dados_novos: { campanha_id: campanhaId, imovel_id: imovelId },
+  })
+  if (auditError) console.warn('Audit log failed:', auditError.message)
+
+  return newProgress
+}
+
+export async function unlinkPropertyFromCampanha(
+  campanhaId: string,
+  imovelId: string,
+  adminUserId: string,
+): Promise<number> {
+  const { error: deleteError } = await supabase
+    .from('campanhas_imoveis')
+    .delete()
+    .eq('campanha_id', campanhaId)
+    .eq('imovel_id', imovelId)
+
+  if (deleteError) throw deleteError
+
+  const { count } = await supabase
+    .from('campanhas_imoveis')
+    .select('*', { count: 'exact', head: true })
+    .eq('campanha_id', campanhaId)
+
+  const newProgress = count || 0
+  await supabase.from('campanhas').update({ progresso: newProgress }).eq('id', campanhaId)
+
+  const { error: auditError } = await supabase.from('audit_log').insert({
+    usuario_id: adminUserId,
+    acao: 'UNLINK_IMOVEL_CAMPANHA',
+    tabela: 'campanhas_imoveis',
+    registro_id: imovelId,
+    dados_antigos: { campanha_id: campanhaId, imovel_id: imovelId },
+  })
+  if (auditError) console.warn('Audit log failed:', auditError.message)
+
+  return newProgress
+}

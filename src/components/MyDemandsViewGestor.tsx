@@ -188,7 +188,7 @@ export function MyDemandsViewGestor({ filterType }: Props) {
             values={filters}
             onChange={handleFilterChange}
             resultsCount={filteredDemands.length}
-            stickyTop="top-[128px] sm:top-[136px]"
+            stickyTop="top-[128px]"
           />
         </div>
 

@@ -25,10 +25,10 @@ export function GestorDashboard() {
           tabs={tabs}
           activeTab={currentTab}
           onTabChange={handleTabChange}
-          className="sticky top-[64px] lg:top-[72px] bg-[#F5F5F5] pt-2 z-[40] -mx-4 px-4 sm:mx-0 sm:px-0"
+          className="sticky top-[64px] lg:top-[72px] bg-[#F5F5F5] pt-2 z-[50] -mx-4 px-4 sm:mx-0 sm:px-0"
         />
 
-        <div className="mt-4 transition-opacity duration-300 ease-in animate-in fade-in">
+        <div className="mt-4">
           <TabsContent value="todas-demandas-venda" className="m-0 border-none">
             <MyDemandsViewGestor filterType="Venda" />
           </TabsContent>

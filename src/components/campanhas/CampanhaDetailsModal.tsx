@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -7,9 +7,19 @@ import {
   DialogClose,
 } from '@/components/ui/dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { X, Building2, User, Calendar, Loader2, Trophy, MapPin } from 'lucide-react'
-import { Campanha, CampanhaImovel, fetchCampanhaImoveis } from '@/services/campanhaService'
+import { Button } from '@/components/ui/button'
+import { X, Building2, User, Calendar, Loader2, Trophy, MapPin, Trash2 } from 'lucide-react'
+import {
+  Campanha,
+  CampanhaImovel,
+  fetchCampanhaImoveis,
+  unlinkPropertyFromCampanha,
+} from '@/services/campanhaService'
+import { CampanhaPropertyManager } from './CampanhaPropertyManager'
 import { Progress } from '@/components/ui/progress'
+import { useUserRole } from '@/hooks/use-user-role'
+import { useAuth } from '@/hooks/use-auth'
+import { useToast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 
 interface CampanhaDetailsModalProps {
@@ -47,23 +57,65 @@ const formatDate = (iso: string) => {
 export function CampanhaDetailsModal({ campanha, isOpen, onClose }: CampanhaDetailsModalProps) {
   const [imoveis, setImoveis] = useState<CampanhaImovel[]>([])
   const [loading, setLoading] = useState(false)
+  const [localProgress, setLocalProgress] = useState(0)
+  const [unlinkingId, setUnlinkingId] = useState<string | null>(null)
+  const [refreshSignal, setRefreshSignal] = useState(0)
+
+  const { isAdmin } = useUserRole()
+  const { user } = useAuth()
+  const { toast } = useToast()
+
+  const loadImoveis = useCallback(async () => {
+    if (!campanha) return
+    setLoading(true)
+    try {
+      const data = await fetchCampanhaImoveis(campanha.id)
+      setImoveis(data)
+      setLocalProgress(data.length)
+    } catch {
+      setImoveis([])
+    } finally {
+      setLoading(false)
+    }
+  }, [campanha])
 
   useEffect(() => {
     if (campanha && isOpen) {
-      setLoading(true)
-      fetchCampanhaImoveis(campanha.id)
-        .then(setImoveis)
-        .catch(() => setImoveis([]))
-        .finally(() => setLoading(false))
+      setLocalProgress(campanha.progresso)
+      loadImoveis()
     } else {
       setImoveis([])
     }
-  }, [campanha, isOpen])
+  }, [campanha, isOpen, loadImoveis])
+
+  const handleUnlink = async (imovelId: string) => {
+    if (!campanha || !user) return
+    setUnlinkingId(imovelId)
+    try {
+      const newProgress = await unlinkPropertyFromCampanha(campanha.id, imovelId, user.id)
+      setImoveis((prev) => prev.filter((i) => i.imovel_id !== imovelId))
+      setLocalProgress(newProgress)
+      setRefreshSignal((s) => s + 1)
+      toast({
+        title: 'Imóvel removido',
+        description: 'O imóvel foi desvinculado da campanha.',
+        className: 'bg-[#2E5F8A] text-white',
+      })
+    } catch (err: any) {
+      toast({
+        title: 'Erro ao remover',
+        description: err.message || 'Erro ao desvincular imóvel da campanha.',
+        variant: 'destructive',
+      })
+    } finally {
+      setUnlinkingId(null)
+    }
+  }
 
   if (!campanha) return null
 
-  const pct = Math.min(100, (campanha.progresso / campanha.meta) * 100)
-  const goalReached = campanha.progresso >= campanha.meta
+  const pct = Math.min(100, (localProgress / campanha.meta) * 100)
+  const goalReached = localProgress >= campanha.meta
 
   return (
     <Dialog open={isOpen} onOpenChange={(v) => !v && onClose()}>
@@ -140,7 +192,7 @@ export function CampanhaDetailsModal({ campanha, isOpen, onClose }: CampanhaDeta
                   goalReached ? 'text-green-600' : 'text-[#1A3A52]',
                 )}
               >
-                {campanha.progresso}/{campanha.meta}
+                {localProgress}/{campanha.meta}
                 {goalReached && <Trophy className="inline-block w-4 h-4 ml-1" />}
               </span>
             </div>
@@ -176,11 +228,11 @@ export function CampanhaDetailsModal({ campanha, isOpen, onClose }: CampanhaDeta
                       key={item.id}
                       className="p-3 flex items-center justify-between hover:bg-[#F8FAFC] transition-colors"
                     >
-                      <div>
+                      <div className="min-w-0 flex-1">
                         <p className="font-bold text-[#1A3A52] text-sm">
                           {item.imovel?.codigo_imovel || 'Sem código'}
                         </p>
-                        <p className="text-xs text-[#999999]">
+                        <p className="text-xs text-[#999999] truncate">
                           {item.imovel?.endereco || 'Endereço não informado'}
                         </p>
                         {item.imovel?.localizacao_texto && (
@@ -201,15 +253,33 @@ export function CampanhaDetailsModal({ campanha, isOpen, onClose }: CampanhaDeta
                           )}
                         </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-xs font-bold text-[#1A3A52] flex items-center gap-1 justify-end">
-                          <User className="w-3 h-3" />
-                          {item.captador?.nome || 'N/D'}
-                        </p>
-                        <p className="text-xs text-[#999999] flex items-center gap-1 justify-end mt-0.5">
-                          <Calendar className="w-3 h-3" />
-                          {formatDate(item.data_adicionado)}
-                        </p>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <div className="text-right">
+                          <p className="text-xs font-bold text-[#1A3A52] flex items-center gap-1 justify-end">
+                            <User className="w-3 h-3" />
+                            {item.captador?.nome || 'N/D'}
+                          </p>
+                          <p className="text-xs text-[#999999] flex items-center gap-1 justify-end mt-0.5">
+                            <Calendar className="w-3 h-3" />
+                            {formatDate(item.data_adicionado)}
+                          </p>
+                        </div>
+                        {isAdmin && (
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            disabled={unlinkingId === item.imovel_id}
+                            onClick={() => handleUnlink(item.imovel_id)}
+                            className="h-8 w-8 text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors"
+                            title="Remover da campanha"
+                          >
+                            {unlinkingId === item.imovel_id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="w-4 h-4" />
+                            )}
+                          </Button>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -217,6 +287,17 @@ export function CampanhaDetailsModal({ campanha, isOpen, onClose }: CampanhaDeta
               )}
             </ScrollArea>
           </div>
+
+          {isAdmin && (
+            <CampanhaPropertyManager
+              campanha={campanha}
+              onLinked={(newProgress) => {
+                setLocalProgress(newProgress)
+                loadImoveis()
+              }}
+              refreshSignal={refreshSignal}
+            />
+          )}
         </div>
       </DialogContent>
     </Dialog>

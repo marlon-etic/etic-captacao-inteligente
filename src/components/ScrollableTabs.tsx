@@ -56,7 +56,7 @@ export function ScrollableTabs({ tabs, activeTab, onTabChange, className }: Scro
   }, [activeTab])
 
   return (
-    <div className={cn('relative w-full overflow-hidden', className)}>
+    <div className={cn('relative w-full overflow-hidden bg-[#F5F5F5]', className)}>
       {canScrollLeft && (
         <div
           className="absolute left-0 top-0 bottom-0 w-[32px] z-10 pointer-events-none"
@@ -67,7 +67,7 @@ export function ScrollableTabs({ tabs, activeTab, onTabChange, className }: Scro
       <div
         ref={scrollRef}
         onScroll={checkScroll}
-        className="overflow-x-auto scrollbar-hide w-full flex items-center scroll-smooth relative z-0"
+        className="overflow-x-auto scrollbar-hide w-full flex items-center scroll-smooth relative z-[1]"
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
         <style
