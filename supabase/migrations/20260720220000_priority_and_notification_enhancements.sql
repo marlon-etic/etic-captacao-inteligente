@@ -128,6 +128,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- 4. Update fn_prorrogar_prazo to log to demand_status_log and reset notification flags
+DROP FUNCTION IF EXISTS public.fn_prorrogar_prazo(uuid, text, integer);
 CREATE OR REPLACE FUNCTION public.fn_prorrogar_prazo(
   p_demanda_id uuid,
   p_tipo_demanda text,
