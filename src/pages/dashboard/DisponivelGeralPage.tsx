@@ -1,15 +1,18 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowLeft, RefreshCw } from 'lucide-react'
+import { ArrowLeft, RefreshCw, LayoutGrid, List } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { BuscarDemandas } from '@/components/captador/BuscarDemandas'
 import { ExpandableDemandCardSDR } from '@/components/ExpandableDemandCardSDR'
+import { DemandListItem } from '@/components/DemandListItem'
 import { DemandDetailsModal } from '@/components/DemandDetailsModal'
+import { DemandCardDialog } from '@/components/DemandCardDialog'
 import { useAllDemands } from '@/hooks/use-all-demands'
 import useAppStore from '@/stores/useAppStore'
 import { isDemandLost } from '@/lib/demand-status'
 import { SupabaseDemand } from '@/hooks/use-supabase-demands'
+import { cn } from '@/lib/utils'
 
 function mapDemandForModal(demand: SupabaseDemand) {
   return {
@@ -46,10 +49,30 @@ function mapDemandForModal(demand: SupabaseDemand) {
   } as any
 }
 
+type ViewMode = 'card' | 'list'
+
 export default function DisponivelGeralPage() {
   const { demands, loading, refresh } = useAllDemands()
   const { currentUser } = useAppStore()
   const [selectedDemand, setSelectedDemand] = useState<SupabaseDemand | null>(null)
+  const [listDialogDemand, setListDialogDemand] = useState<SupabaseDemand | null>(null)
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    try {
+      const saved = localStorage.getItem('disponivel_geral_view_mode')
+      return saved === 'list' ? 'list' : 'card'
+    } catch {
+      return 'card'
+    }
+  })
+
+  const handleViewModeChange = (mode: ViewMode) => {
+    setViewMode(mode)
+    try {
+      localStorage.setItem('disponivel_geral_view_mode', mode)
+    } catch {
+      // ignore
+    }
+  }
 
   useEffect(() => {
     const handleDemandUpdate = (e: Event) => {
@@ -115,15 +138,45 @@ export default function DisponivelGeralPage() {
           <h1 className="text-[24px] md:text-[28px] font-black text-[#1A3A52] tracking-tight truncate">
             {isOwnerFiltered ? 'Minhas Demandas' : 'Demandas Disponíveis'}
           </h1>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={refresh}
-            className="ml-auto h-9 w-9 shrink-0"
-            title="Atualizar"
-          >
-            <RefreshCw className="w-4 h-4" />
-          </Button>
+          <div className="flex items-center gap-2 ml-auto shrink-0">
+            <div className="flex items-center rounded-lg border border-[#E5E5E5] bg-white p-0.5 shadow-sm">
+              <button
+                onClick={() => handleViewModeChange('card')}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-bold transition-all',
+                  viewMode === 'card'
+                    ? 'bg-[#1A3A52] text-white shadow-sm'
+                    : 'text-[#666666] hover:text-[#1A3A52] hover:bg-gray-50',
+                )}
+                title="Visualização em Cartões"
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Cartões</span>
+              </button>
+              <button
+                onClick={() => handleViewModeChange('list')}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-bold transition-all',
+                  viewMode === 'list'
+                    ? 'bg-[#1A3A52] text-white shadow-sm'
+                    : 'text-[#666666] hover:text-[#1A3A52] hover:bg-gray-50',
+                )}
+                title="Visualização em Lista"
+              >
+                <List className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Lista</span>
+              </button>
+            </div>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={refresh}
+              className="h-9 w-9 shrink-0"
+              title="Atualizar"
+            >
+              <RefreshCw className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
         <p className="text-gray-500 font-medium ml-12">
           {isOwnerFiltered
@@ -148,6 +201,24 @@ export default function DisponivelGeralPage() {
               : 'Não há demandas ativas no sistema.'}
           </p>
         </div>
+      ) : viewMode === 'list' ? (
+        <div className="flex flex-col gap-2">
+          <div className="hidden sm:grid grid-cols-[1.5fr_1fr_1.5fr_1fr_auto_auto] gap-3 px-4 py-2 text-[11px] font-black uppercase tracking-wider text-[#999999] border-b border-[#E5E5E5]">
+            <span>Cliente</span>
+            <span>Valor</span>
+            <span>Bairros</span>
+            <span>Tempo</span>
+            <span className="text-center">Matches</span>
+            <span className="text-right">Prioridade</span>
+          </div>
+          {filteredDemands.map((demand) => (
+            <DemandListItem
+              key={demand.id}
+              demand={demand}
+              onClick={() => setListDialogDemand(demand)}
+            />
+          ))}
+        </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-4">
           {filteredDemands.map((demand) => (
@@ -166,6 +237,12 @@ export default function DisponivelGeralPage() {
         open={!!selectedDemand}
         onOpenChange={(open) => !open && setSelectedDemand(null)}
         demand={selectedDemand ? mapDemandForModal(selectedDemand) : null}
+      />
+
+      <DemandCardDialog
+        demand={listDialogDemand}
+        open={!!listDialogDemand}
+        onOpenChange={(open) => !open && setListDialogDemand(null)}
       />
     </div>
   )

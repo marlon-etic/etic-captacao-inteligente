@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useId } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { useUserRole } from '@/hooks/use-user-role'
 import { getTiposVisiveis } from '@/lib/roleFilters'
@@ -7,6 +7,7 @@ export function useMatchCount(type: 'imovel' | 'demanda', id: string) {
   const { role } = useUserRole()
   const [count, setCount] = useState(0)
   const [loading, setLoading] = useState(true)
+  const instanceId = useId()
 
   useEffect(() => {
     let isMounted = true
@@ -39,7 +40,7 @@ export function useMatchCount(type: 'imovel' | 'demanda', id: string) {
     const interval = setInterval(loadMatchCount, 60000)
 
     const channel = supabase
-      .channel(`match_count_realtime_${id}`)
+      .channel(`match_count_${type}_${id}_${instanceId}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'matches_sugestoes' },
@@ -55,7 +56,7 @@ export function useMatchCount(type: 'imovel' | 'demanda', id: string) {
       clearInterval(interval)
       supabase.removeChannel(channel)
     }
-  }, [id, type, role])
+  }, [id, type, role, instanceId])
 
   return { count, loading }
 }

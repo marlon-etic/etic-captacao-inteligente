@@ -21,6 +21,7 @@ import {
   Star,
   Zap,
   Calendar,
+  ExternalLink,
 } from 'lucide-react'
 import { useSlaCountdown, useTimeElapsed } from '@/hooks/useTimeElapsed'
 import useAppStore from '@/stores/useAppStore'
@@ -547,6 +548,28 @@ function ExpandableDemandCardSDRComponent({
               </Button>
             </div>
           )}
+
+          {suggestedLinksCount > 0 && (
+            <div className="pointer-events-auto mt-2 bg-cyan-50 border border-cyan-200 rounded-lg p-2.5">
+              <h4 className="text-[11px] font-bold text-cyan-800 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+                <LinkIcon className="w-3 h-3" /> Links Sugeridos ({suggestedLinksCount})
+              </h4>
+              <div className="space-y-1 max-h-[80px] overflow-y-auto">
+                {((demand.links_sugeridos as string[]) || []).map((link, idx) => (
+                  <a
+                    key={idx}
+                    href={link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[11px] text-[#2E5F8A] hover:underline flex items-center gap-1"
+                  >
+                    <ExternalLink className="w-3 h-3 shrink-0" />
+                    <span className="truncate">{link}</span>
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="px-4 pb-4 pt-2 mt-auto bg-white pointer-events-auto rounded-b-[14px]">
@@ -666,6 +689,7 @@ export const ExpandableDemandCardSDR = memo(ExpandableDemandCardSDRComponent, (p
     prev.demand?.id === next.demand?.id &&
     prev.demand?.updated_at === next.demand?.updated_at &&
     prev.demand?.status_demanda === next.demand?.status_demanda &&
-    prev.demand?.is_prioritaria === next.demand?.is_prioritaria
+    prev.demand?.is_prioritaria === next.demand?.is_prioritaria &&
+    JSON.stringify(prev.demand?.links_sugeridos) === JSON.stringify(next.demand?.links_sugeridos)
   )
 })

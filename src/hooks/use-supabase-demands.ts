@@ -56,6 +56,7 @@ export interface SupabaseDemand {
   corretor_id?: string
   vinculacao_captador_id?: string
   captadores_busca?: any[]
+  links_sugeridos?: string[]
 }
 
 export function useSupabaseDemands(type: 'Aluguel' | 'Venda', options?: { onlyMine?: boolean }) {
@@ -145,6 +146,7 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda', options?: { onlyMi
           corretor_id: d.corretor_id,
           vinculacao_captador_id: d.vinculacao_captador_id,
           captadores_busca: d.captadores_busca || [],
+          links_sugeridos: (d.links_sugeridos as string[]) || [],
           respostas_captador: respostas,
           prazos_captacao: d.prazos_captacao || [],
           imoveis_captados: (d.imoveis_captados || [])
@@ -206,8 +208,8 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda', options?: { onlyMi
         const data = await fetchWithResilience(`demands_${type}_${options?.onlyMine}`, async () => {
           const selectFields =
             type === 'Aluguel'
-              ? 'id, nome_cliente, cliente_nome, telefone, email, bairros, localizacoes, valor_minimo, valor_maximo, orcamento_max, dormitorios, vagas_estacionamento, observacoes, tipo_imovel, nivel_urgencia, urgencia, status_demanda, is_prioritaria, created_at, updated_at, sdr_id, vinculacao_captador_id, captadores_busca, imoveis_captados(id, codigo_imovel, user_captador_id, captador_id, etapa_funil, data_visita, data_fechamento, dormitorios, vagas, observacoes, localizacao_texto, created_at, updated_at), respostas_captador(id, captador_id, resposta, motivo, observacao, created_at), prazos_captacao(id, prazo_resposta, prorrogacoes_usadas, status)'
-              : 'id, nome_cliente, cliente_nome, telefone, email, bairros, localizacoes, valor_minimo, valor_maximo, orcamento_max, dormitorios, vagas_estacionamento, necessidades_especificas, tipo_imovel, nivel_urgencia, urgencia, status_demanda, is_prioritaria, created_at, updated_at, corretor_id, vinculacao_captador_id, captadores_busca, imoveis_captados(id, codigo_imovel, user_captador_id, captador_id, etapa_funil, data_visita, data_fechamento, dormitorios, vagas, observacoes, localizacao_texto, created_at, updated_at), respostas_captador(id, captador_id, resposta, motivo, observacao, created_at), prazos_captacao(id, prazo_resposta, prorrogacoes_usadas, status)'
+              ? 'id, nome_cliente, cliente_nome, telefone, email, bairros, localizacoes, valor_minimo, valor_maximo, orcamento_max, dormitorios, vagas_estacionamento, observacoes, tipo_imovel, nivel_urgencia, urgencia, status_demanda, is_prioritaria, created_at, updated_at, sdr_id, vinculacao_captador_id, captadores_busca, links_sugeridos, imoveis_captados(id, codigo_imovel, user_captador_id, captador_id, etapa_funil, data_visita, data_fechamento, dormitorios, vagas, observacoes, localizacao_texto, created_at, updated_at), respostas_captador(id, captador_id, resposta, motivo, observacao, created_at), prazos_captacao(id, prazo_resposta, prorrogacoes_usadas, status)'
+              : 'id, nome_cliente, cliente_nome, telefone, email, bairros, localizacoes, valor_minimo, valor_maximo, orcamento_max, dormitorios, vagas_estacionamento, necessidades_especificas, tipo_imovel, nivel_urgencia, urgencia, status_demanda, is_prioritaria, created_at, updated_at, corretor_id, vinculacao_captador_id, captadores_busca, links_sugeridos, imoveis_captados(id, codigo_imovel, user_captador_id, captador_id, etapa_funil, data_visita, data_fechamento, dormitorios, vagas, observacoes, localizacao_texto, created_at, updated_at), respostas_captador(id, captador_id, resposta, motivo, observacao, created_at), prazos_captacao(id, prazo_resposta, prorrogacoes_usadas, status)'
 
           let query = supabase
             .from(table)

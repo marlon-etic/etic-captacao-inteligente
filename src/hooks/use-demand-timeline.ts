@@ -4,7 +4,7 @@ import type { SupabaseDemand } from '@/hooks/use-supabase-demands'
 
 export interface TimelineEvent {
   id: string
-  type: 'creation' | 'match' | 'visit' | 'response' | 'status_change' | 'priority'
+  type: 'creation' | 'match' | 'visit' | 'response' | 'status_change' | 'priority' | 'links'
   timestamp: string
   title: string
   description: string
@@ -23,7 +23,7 @@ export function useDemandTimeline(demand: SupabaseDemand) {
     if (!demand.id) return
     setLoading(true)
     try {
-      const [matchesResult, statusLogsResult] = await Promise.all([
+      const [matchesResult, statusLogsResult, auditLinksResult] = await Promise.all([
         supabase
           .from('imovel_demand_match')
           .select(
@@ -35,10 +35,17 @@ export function useDemandTimeline(demand: SupabaseDemand) {
           .select('*')
           .eq('demanda_id', demand.id)
           .order('created_at', { ascending: false }),
+        supabase
+          .from('audit_log')
+          .select('id, created_at, dados_novos')
+          .eq('registro_id', demand.id)
+          .eq('acao', 'UPDATE_LINKS')
+          .order('created_at', { ascending: false }),
       ])
 
       const matches = matchesResult.data || []
       const statusLogs = statusLogsResult.data || []
+      const auditLinks = auditLinksResult.data || []
       const matchIds = matches.map((m: any) => m.id)
 
       let visits: any[] = []
@@ -70,6 +77,22 @@ export function useDemandTimeline(demand: SupabaseDemand) {
           description: 'Demanda marcada como prioritária.',
         })
       }
+
+      auditLinks.forEach((a: any) => {
+        const novos = a.dados_novos as any
+        const links: string[] = novos?.links_sugeridos || []
+        const count = Array.isArray(links) ? links.length : 0
+        timelineEvents.push({
+          id: `links-${a.id}`,
+          type: 'links',
+          timestamp: a.created_at,
+          title: 'Links Sugeridos Adicionados',
+          description:
+            count > 0
+              ? `${count} link${count !== 1 ? 's' : ''} sugerido${count !== 1 ? 's' : ''}`
+              : 'Links atualizados',
+        })
+      })
 
       matches.forEach((m: any) => {
         const p = m.imoveis_captados
@@ -143,6 +166,9 @@ export function useDemandTimeline(demand: SupabaseDemand) {
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'demand_status_log' },
         () => fetchTimeline(),
+      )
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'audit_log' }, () =>
+        fetchTimeline(),
       )
       .subscribe((status) => {
         if (status === 'CHANNEL_ERROR') {

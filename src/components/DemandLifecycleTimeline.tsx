@@ -1,4 +1,13 @@
-import { Flag, Link2, Home, MessageSquare, RefreshCw, Star, Clock } from 'lucide-react'
+import {
+  Flag,
+  Link2,
+  Home,
+  MessageSquare,
+  RefreshCw,
+  Star,
+  Clock,
+  ExternalLink,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -12,6 +21,7 @@ const iconMap = {
   response: MessageSquare,
   status_change: RefreshCw,
   priority: Star,
+  links: ExternalLink,
 }
 
 const colorMap = {
@@ -21,6 +31,7 @@ const colorMap = {
   response: 'bg-amber-100 text-amber-600 border-amber-200',
   status_change: 'bg-indigo-100 text-indigo-600 border-indigo-200',
   priority: 'bg-red-100 text-red-600 border-red-200',
+  links: 'bg-cyan-100 text-cyan-600 border-cyan-200',
 }
 
 export function DemandLifecycleTimeline({ demand }: { demand: SupabaseDemand }) {

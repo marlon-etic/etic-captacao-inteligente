@@ -60,6 +60,19 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <SidebarMenuButton
               asChild
+              isActive={pathname.startsWith('/app/disponivel-geral')}
+              tooltip="Minhas Demandas"
+            >
+              <Link to="/app/disponivel-geral">
+                <MapPin />
+                <span>Minhas Demandas</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              asChild
               isActive={pathname.startsWith('/app/demandas')}
               tooltip="Começar Busca"
               className="text-emerald-700 bg-emerald-50 hover:bg-emerald-100 hover:text-emerald-800 transition-colors"
@@ -95,19 +108,6 @@ export function AppSidebar() {
               <Link to="/app/meus-captados">
                 <Building />
                 <span>Meus Captados</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              isActive={pathname.startsWith('/app/disponivel-geral')}
-              tooltip="Disponível Geral"
-            >
-              <Link to="/app/disponivel-geral">
-                <MapPin />
-                <span>Disponível Geral</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
