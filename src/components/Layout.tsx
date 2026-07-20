@@ -162,7 +162,7 @@ export default function Layout() {
       <AppSidebar />
       <SidebarInset className="flex flex-col min-h-[100dvh] overflow-hidden bg-[#F5F5F5] relative w-full transition-all duration-300">
         <AppHeader onAddPropertyClick={() => setAddPropertyModalOpen(true)} />
-        <main className="flex-1 overflow-y-auto w-full max-w-[1400px] mx-auto px-[16px] min-[480px]:px-[24px] md:px-[32px] pt-[16px] pb-[100px] md:pb-[32px] animate-fade-in-up">
+        <main className="flex-1 overflow-y-auto w-full max-w-[1400px] mx-auto px-[16px] min-[480px]:px-[24px] md:px-[32px] pt-[20px] pb-[100px] md:pb-[32px] animate-fade-in-up relative z-10">
           <Outlet />
         </main>
 
