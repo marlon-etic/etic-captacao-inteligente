@@ -1,8 +1,18 @@
 -- Migration: Update standardized loss reasons to new 6 categories
 -- Idempotent: uses DROP IF EXISTS / CREATE OR REPLACE / IF NOT EXISTS
+-- FIXED: Drop old constraints BEFORE running data normalization UPDATEs
 
 -- ==========================================
--- 1. NORMALIZE EXISTING motivo_perda DATA TO NEW REASONS
+-- 1. DROP OLD CONSTRAINTS FIRST (before data normalization)
+--    so UPDATEs can set new motivo_perda values without violating the old CHECK
+-- ==========================================
+
+ALTER TABLE public.demandas_locacao DROP CONSTRAINT IF EXISTS check_motivo_perda_standardized;
+ALTER TABLE public.demandas_vendas DROP CONSTRAINT IF EXISTS check_motivo_perda_standardized;
+ALTER TABLE public.respostas_captador DROP CONSTRAINT IF EXISTS check_perdido_motivo_standardized;
+
+-- ==========================================
+-- 2. NORMALIZE EXISTING motivo_perda DATA TO NEW REASONS
 -- ==========================================
 
 UPDATE public.demandas_locacao
@@ -83,10 +93,9 @@ UPDATE public.respostas_captador SET motivo = 'Cliente desistiu da busca'
 WHERE resposta = 'perdido' AND (motivo IS NULL OR TRIM(motivo) = '');
 
 -- ==========================================
--- 2. UPDATE CONSTRAINTS FOR NEW 6 REASONS + SYSTEM TIMEOUT
+-- 3. ADD NEW CONSTRAINTS WITH UPDATED REASON LISTS
 -- ==========================================
 
-ALTER TABLE public.demandas_locacao DROP CONSTRAINT IF EXISTS check_motivo_perda_standardized;
 ALTER TABLE public.demandas_locacao ADD CONSTRAINT check_motivo_perda_standardized
   CHECK (motivo_perda IS NULL OR motivo_perda IN (
     'Perfil não encontrado na região',
@@ -98,7 +107,6 @@ ALTER TABLE public.demandas_locacao ADD CONSTRAINT check_motivo_perda_standardiz
     'PERDIDO SEM RESPOSTA (TODOS CAPTADORES)'
   ));
 
-ALTER TABLE public.demandas_vendas DROP CONSTRAINT IF EXISTS check_motivo_perda_standardized;
 ALTER TABLE public.demandas_vendas ADD CONSTRAINT check_motivo_perda_standardized
   CHECK (motivo_perda IS NULL OR motivo_perda IN (
     'Perfil não encontrado na região',
@@ -110,7 +118,6 @@ ALTER TABLE public.demandas_vendas ADD CONSTRAINT check_motivo_perda_standardize
     'PERDIDO SEM RESPOSTA (TODOS CAPTADORES)'
   ));
 
-ALTER TABLE public.respostas_captador DROP CONSTRAINT IF EXISTS check_perdido_motivo_standardized;
 ALTER TABLE public.respostas_captador ADD CONSTRAINT check_perdido_motivo_standardized
   CHECK (resposta != 'perdido' OR motivo IN (
     'Perfil não encontrado na região',
@@ -122,7 +129,7 @@ ALTER TABLE public.respostas_captador ADD CONSTRAINT check_perdido_motivo_standa
   ));
 
 -- ==========================================
--- 3. ENSURE log_demand_status_change INCLUDES motivo
+-- 4. ENSURE log_demand_status_change INCLUDES motivo
 -- ==========================================
 
 ALTER TABLE public.demand_status_log ADD COLUMN IF NOT EXISTS motivo TEXT;
@@ -137,7 +144,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- ==========================================
--- 4. ENSURE fn_marcar_demandas_sem_resposta CHECKS ZERO RESPONSES
+-- 5. ENSURE fn_marcar_demandas_sem_resposta CHECKS ZERO RESPONSES
 -- (Reaffirms the collective 72h timeout: only marks Perdida if NO captador has responded)
 -- ==========================================
 
@@ -220,7 +227,7 @@ END;
 $$;
 
 -- ==========================================
--- 5. UPDATE fn_marcar_demandas_perdidas_inatividade (30-day rule)
+-- 6. UPDATE fn_marcar_demandas_perdidas_inatividade (30-day rule)
 -- ==========================================
 
 CREATE OR REPLACE FUNCTION public.fn_marcar_demandas_perdidas_inatividade()
@@ -243,7 +250,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- ==========================================
--- 6. ENSURE INDIVIDUAL ACTION ISOLATION (no-op triggers, individual responses don't close global demand)
+-- 7. ENSURE INDIVIDUAL ACTION ISOLATION (no-op triggers, individual responses don't close global demand)
 -- ==========================================
 
 CREATE OR REPLACE FUNCTION public.fn_handle_captador_lost_demand()
@@ -268,7 +275,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- ==========================================
--- 7. ENSURE RLS POLICIES
+-- 8. ENSURE RLS POLICIES
 -- ==========================================
 
 DROP POLICY IF EXISTS "authenticated_select_demand_status_log" ON public.demand_status_log;
@@ -288,7 +295,7 @@ CREATE POLICY "Authenticated read respostas" ON public.respostas_captador
   FOR SELECT TO authenticated USING (true);
 
 -- ==========================================
--- 8. ENSURE ADMIN USER EXISTS
+-- 9. ENSURE ADMIN USER EXISTS
 -- ==========================================
 
 DO $$
