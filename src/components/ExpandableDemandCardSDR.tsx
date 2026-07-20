@@ -42,14 +42,21 @@ import { Link as LinkIcon } from 'lucide-react'
 function ExpandableDemandCardSDRComponent({
   demand,
   onAction,
+  matchCount: matchCountProp,
 }: {
   demand: SupabaseDemand
   onAction?: (action: 'details' | 'edit' | 'lost' | 'prioritize', d: SupabaseDemand) => void
+  matchCount?: number
 }) {
   const { currentUser, logSolicitorContactAttempt } = useAppStore()
   const { toast } = useToast()
   const navigate = useNavigate()
-  const { count: matchCount } = useMatchCount('demanda', demand.id || '')
+  const { count: individualMatchCount } = useMatchCount(
+    'demanda',
+    demand.id || '',
+    matchCountProp === undefined,
+  )
+  const matchCount = matchCountProp !== undefined ? matchCountProp : individualMatchCount
   const [isPrioritizeModalOpen, setIsPrioritizeModalOpen] = useState(false)
   const [isPrioritizing, setIsPrioritizing] = useState(false)
   const [showLostModal, setShowLostModal] = useState(false)
@@ -690,6 +697,7 @@ export const ExpandableDemandCardSDR = memo(ExpandableDemandCardSDRComponent, (p
     prev.demand?.updated_at === next.demand?.updated_at &&
     prev.demand?.status_demanda === next.demand?.status_demanda &&
     prev.demand?.is_prioritaria === next.demand?.is_prioritaria &&
+    prev.matchCount === next.matchCount &&
     JSON.stringify(prev.demand?.links_sugeridos) === JSON.stringify(next.demand?.links_sugeridos)
   )
 })

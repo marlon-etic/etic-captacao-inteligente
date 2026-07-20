@@ -63,9 +63,12 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda', options?: { onlyMi
   const [demands, setDemands] = useState<SupabaseDemand[]>([])
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
+  const [hasMore, setHasMore] = useState(true)
   const { users, currentUser } = useAppStore()
   const { fetchWithResilience } = useSmartSync()
 
+  const PAGE_SIZE = 20
+  const offsetRef = useRef(0)
   const usersRef = useRef(users)
   const currentUserRef = useRef(currentUser)
 
@@ -215,7 +218,7 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda', options?: { onlyMi
             .from(table)
             .select(selectFields)
             .order('updated_at', { ascending: false, nullsFirst: false })
-            .limit(100)
+            .limit(PAGE_SIZE)
 
           if (options?.onlyMine && currentUserRef.current?.id) {
             if (type === 'Aluguel') {
@@ -231,6 +234,8 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda', options?: { onlyMi
         })
 
         if (data) {
+          setHasMore(data.length >= PAGE_SIZE)
+          offsetRef.current = PAGE_SIZE
           sessionStorage.setItem(cacheKey, JSON.stringify(data))
           setDemands((prev) => {
             const fetchedFormatted = formatData(data)
@@ -625,5 +630,43 @@ export function useSupabaseDemands(type: 'Aluguel' | 'Venda', options?: { onlyMi
     onFallbackPoll: () => fetchDemands(true),
   })
 
-  return { demands, loading, syncing, refresh: () => fetchDemands(false) }
+  const loadMore = useCallback(async () => {
+    if (loading || !hasMore) return
+    const nextOffset = offsetRef.current
+    const table = type === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
+
+    const selectFields =
+      type === 'Aluguel'
+        ? 'id, nome_cliente, cliente_nome, telefone, email, bairros, localizacoes, valor_minimo, valor_maximo, orcamento_max, dormitorios, vagas_estacionamento, observacoes, tipo_imovel, nivel_urgencia, urgencia, status_demanda, is_prioritaria, created_at, updated_at, sdr_id, vinculacao_captador_id, captadores_busca, links_sugeridos, imoveis_captados(id, codigo_imovel, user_captador_id, captador_id, etapa_funil, data_visita, data_fechamento, dormitorios, vagas, observacoes, localizacao_texto, created_at, updated_at), respostas_captador(id, captador_id, resposta, motivo, observacao, created_at), prazos_captacao(id, prazo_resposta, prorrogacoes_usadas, status)'
+        : 'id, nome_cliente, cliente_nome, telefone, email, bairros, localizacoes, valor_minimo, valor_maximo, orcamento_max, dormitorios, vagas_estacionamento, necessidades_especificas, tipo_imovel, nivel_urgencia, urgencia, status_demanda, is_prioritaria, created_at, updated_at, corretor_id, vinculacao_captador_id, captadores_busca, links_sugeridos, imoveis_captados(id, codigo_imovel, user_captador_id, captador_id, etapa_funil, data_visita, data_fechamento, dormitorios, vagas, observacoes, localizacao_texto, created_at, updated_at), respostas_captador(id, captador_id, resposta, motivo, observacao, created_at), prazos_captacao(id, prazo_resposta, prorrogacoes_usadas, status)'
+
+    let query = supabase
+      .from(table)
+      .select(selectFields)
+      .order('updated_at', { ascending: false, nullsFirst: false })
+      .range(nextOffset, nextOffset + PAGE_SIZE - 1)
+
+    if (options?.onlyMine && currentUserRef.current?.id) {
+      if (type === 'Aluguel') {
+        query = query.eq('sdr_id', currentUserRef.current.id)
+      } else {
+        query = query.eq('corretor_id', currentUserRef.current.id)
+      }
+    }
+
+    const { data: moreData, error } = await query
+    if (error || !moreData) return
+
+    setHasMore(moreData.length >= PAGE_SIZE)
+    offsetRef.current = nextOffset + PAGE_SIZE
+
+    setDemands((prev) => {
+      const formatted = formatData(moreData)
+      const existingIds = new Set(prev.map((d) => d.id))
+      const newOnes = formatted.filter((d) => !existingIds.has(d.id))
+      return sortDemands([...prev, ...newOnes])
+    })
+  }, [type, hasMore, loading, formatData, sortDemands])
+
+  return { demands, loading, syncing, refresh: () => fetchDemands(false), hasMore, loadMore }
 }

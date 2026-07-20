@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase/client'
 import { useUserRole } from '@/hooks/use-user-role'
 import { getTiposVisiveis } from '@/lib/roleFilters'
 
-export function useMatchCount(type: 'imovel' | 'demanda', id: string) {
+export function useMatchCount(type: 'imovel' | 'demanda', id: string, enabled: boolean = true) {
   const { role } = useUserRole()
   const [count, setCount] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -11,6 +11,11 @@ export function useMatchCount(type: 'imovel' | 'demanda', id: string) {
 
   useEffect(() => {
     let isMounted = true
+
+    if (!enabled) {
+      setLoading(false)
+      return
+    }
 
     const loadMatchCount = async () => {
       try {
@@ -56,7 +61,7 @@ export function useMatchCount(type: 'imovel' | 'demanda', id: string) {
       clearInterval(interval)
       supabase.removeChannel(channel)
     }
-  }, [id, type, role, instanceId])
+  }, [id, type, role, instanceId, enabled])
 
   return { count, loading }
 }

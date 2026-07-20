@@ -1,4 +1,5 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
+import { useBatchedMatchCounts } from '@/hooks/use-batched-match-counts'
 import { useSearchParams } from 'react-router-dom'
 import { FilterSidebar } from '@/components/FilterSidebar'
 import { StickyFilterBar, FilterDef } from '@/components/StickyFilterBar'
@@ -75,22 +76,9 @@ export function MyDemandsView({ filterType }: Props) {
   const [searchParams, setSearchParams] = useSearchParams()
 
   const activeType = filterType || (currentUser?.role === 'corretor' ? 'Venda' : 'Aluguel')
-  const { demands, loading, syncing, refresh } = useSupabaseDemands(activeType, { onlyMine: true })
-
-  useEffect(() => {
-    const channelName =
-      activeType === 'Venda' ? 'demandas_vendas_changes' : 'demandas_locacao_changes'
-    const table = activeType === 'Venda' ? 'demandas_vendas' : 'demandas_locacao'
-    const sub = supabase
-      .channel(channelName)
-      .on('postgres_changes', { event: '*', schema: 'public', table }, () => {
-        refresh()
-      })
-      .subscribe()
-    return () => {
-      supabase.removeChannel(sub)
-    }
-  }, [activeType, refresh])
+  const { demands, loading, syncing, refresh, hasMore, loadMore } = useSupabaseDemands(activeType, {
+    onlyMine: true,
+  })
 
   const [filters, setFilters] = useViewFilters('my_demands_view_supabase_' + activeType, {
     prioridade: 'Todos',
@@ -322,6 +310,26 @@ export function MyDemandsView({ filterType }: Props) {
     })
   }, [tabFilteredDemands, filters, currentUser, hiddenDemands, activeTab])
 
+  const demandIds = useMemo(() => filteredDemands.map((d) => d.id), [filteredDemands])
+  const { counts: matchCounts } = useBatchedMatchCounts(demandIds)
+
+  const sentinelRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current
+    if (!sentinel) return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loading) {
+          loadMore()
+        }
+      },
+      { rootMargin: '200px' },
+    )
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [hasMore, loading, loadMore])
+
   const handleClear = () =>
     handleFilterChange({
       prioridade: 'Todos',
@@ -473,8 +481,18 @@ export function MyDemandsView({ filterType }: Props) {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-[16px] w-full items-stretch relative z-0 pt-4 pb-4 mt-2">
             {filteredDemands.map((demand) => (
-              <ExpandableDemandCardSDR key={demand.id} demand={demand} onAction={handleAction} />
+              <ExpandableDemandCardSDR
+                key={demand.id}
+                demand={demand}
+                onAction={handleAction}
+                matchCount={matchCounts[demand.id] || 0}
+              />
             ))}
+          </div>
+        )}
+        {hasMore && !loading && filteredDemands.length > 0 && (
+          <div ref={sentinelRef} className="w-full flex items-center justify-center py-4">
+            <Skeleton className="h-[250px] w-full rounded-[16px] max-w-[400px] animate-fast-pulse" />
           </div>
         )}
       </div>
