@@ -199,7 +199,22 @@ Deno.serve(async (req: Request) => {
         .select('id, visited_at')
         .single()
 
-      if (insertError) throw insertError
+      if (insertError) {
+        if (insertError.code === '23505') {
+          return new Response(
+            JSON.stringify({
+              success: false,
+              error: 'Visit already recorded',
+              message: 'A visit has already been recorded for this property on this date.',
+            }),
+            {
+              status: 400,
+              headers: { 'Content-Type': 'application/json', ...corsHeaders },
+            },
+          )
+        }
+        throw insertError
+      }
 
       // Notify the captador about the registered visit
       if (linkData?.imovel_id) {
@@ -221,21 +236,25 @@ Deno.serve(async (req: Request) => {
             minute: '2-digit',
           })
 
-          await supabaseAdmin.from('notificacoes').insert({
-            usuario_id: captadorId,
-            tipo: 'visita_registrada',
-            titulo: 'Visita Registrada',
-            mensagem: `Uma visita foi registrada para o imóvel "${propertyInfo}" em ${visitDateFormatted}.`,
-            dados_relacionados: {
-              visit_id: newVisit?.id || null,
-              imovel_id: linkData.imovel_id,
-              demanda_id: linkData.demanda_id,
-              sdr_name: userData.nome,
-              visited_at: visitTimestamp,
-            },
-            prioridade: 'normal',
-            lido: false,
-          })
+          try {
+            await supabaseAdmin.from('notificacoes').insert({
+              usuario_id: captadorId,
+              tipo: 'visita_registrada',
+              titulo: 'Visita Registrada',
+              mensagem: `Uma visita foi registrada para o imóvel "${propertyInfo}" em ${visitDateFormatted}.`,
+              dados_relacionados: {
+                visit_id: newVisit?.id || null,
+                imovel_id: linkData.imovel_id,
+                demanda_id: linkData.demanda_id,
+                sdr_name: userData.nome,
+                visited_at: visitTimestamp,
+              },
+              prioridade: 'normal',
+              lido: false,
+            })
+          } catch (notifErr) {
+            console.error('[visit-registration] Notification insert failed:', notifErr)
+          }
         }
       }
 

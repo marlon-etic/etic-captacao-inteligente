@@ -4,7 +4,16 @@ import type { SupabaseDemand } from '@/hooks/use-supabase-demands'
 
 export interface TimelineEvent {
   id: string
-  type: 'creation' | 'match' | 'visit' | 'response' | 'status_change' | 'priority' | 'links'
+  type:
+    | 'creation'
+    | 'match'
+    | 'visit'
+    | 'response'
+    | 'status_change'
+    | 'priority'
+    | 'links'
+    | 'feedback'
+    | 'negotiation'
   timestamp: string
   title: string
   description: string
@@ -61,13 +70,31 @@ export function useDemandTimeline(
       const matchIds = matches.map((m: any) => m.id)
 
       let visits: any[] = []
+      let feedbacks: any[] = []
+      let negotiations: any[] = []
       if (matchIds.length > 0) {
-        const { data: visitData } = await supabase
-          .from('visit_records')
-          .select('id, property_link_id, visited_at, notes')
-          .in('property_link_id', matchIds)
-          .order('visited_at', { ascending: false })
-        visits = visitData || []
+        const [visitsRes, feedbacksRes, negotiationsRes] = await Promise.all([
+          supabase
+            .from('visit_records')
+            .select('id, property_link_id, visited_at, notes')
+            .in('property_link_id', matchIds)
+            .order('visited_at', { ascending: false }),
+          supabase
+            .from('feedback_records')
+            .select('id, property_link_id, interest_level, feedback_text, created_at, sdr_user_id')
+            .in('property_link_id', matchIds)
+            .order('created_at', { ascending: false }),
+          supabase
+            .from('negotiation_records')
+            .select(
+              'id, property_link_id, negotiation_status, notes, negotiation_date, created_at, negotiated_by_user_id',
+            )
+            .in('property_link_id', matchIds)
+            .order('created_at', { ascending: false }),
+        ])
+        visits = visitsRes.data || []
+        feedbacks = feedbacksRes.data || []
+        negotiations = negotiationsRes.data || []
       }
 
       const userIds = new Set<string>()
@@ -79,6 +106,12 @@ export function useDemandTimeline(
       })
       respostasRef.current.forEach((r: any) => {
         if (r.captador_id) userIds.add(r.captador_id)
+      })
+      feedbacks.forEach((f: any) => {
+        if (f.sdr_user_id) userIds.add(f.sdr_user_id)
+      })
+      negotiations.forEach((n: any) => {
+        if (n.negotiated_by_user_id) userIds.add(n.negotiated_by_user_id)
       })
 
       let userMap: Record<string, UserInfo> = {}
@@ -163,6 +196,37 @@ export function useDemandTimeline(
         })
       })
 
+      feedbacks.forEach((f: any) => {
+        const u = getUserLabel(f.sdr_user_id)
+        timelineEvents.push({
+          id: `feedback-${f.id}`,
+          type: 'feedback',
+          timestamp: f.created_at,
+          title:
+            f.interest_level === 'interested' ? 'Cliente Interessado' : 'Cliente Não Interessado',
+          description: f.feedback_text || 'Feedback registrado',
+          userName: u?.nome,
+          userRole: u?.role,
+        })
+      })
+
+      negotiations.forEach((n: any) => {
+        const u = getUserLabel(n.negotiated_by_user_id)
+        timelineEvents.push({
+          id: `negotiation-${n.id}`,
+          type: 'negotiation',
+          timestamp: n.created_at,
+          title: n.negotiation_status === 'negotiated' ? 'Negócio Fechado' : 'Negociação Falhou',
+          description:
+            n.notes ||
+            (n.negotiation_status === 'negotiated'
+              ? 'Negociação concluída com sucesso'
+              : 'Negociação não teve êxito'),
+          userName: u?.nome,
+          userRole: u?.role,
+        })
+      })
+
       respostasRef.current.forEach((r: any) => {
         const isNF = r.resposta === 'nao_encontrei' || r.resposta === 'perdido'
         const u = getUserLabel(r.captador_id)
@@ -229,6 +293,12 @@ export function useDemandTimeline(
         () => fetchTimeline(),
       )
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'audit_log' }, () =>
+        fetchTimeline(),
+      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'feedback_records' }, () =>
+        fetchTimeline(),
+      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'negotiation_records' }, () =>
         fetchTimeline(),
       )
       .subscribe((status) => {

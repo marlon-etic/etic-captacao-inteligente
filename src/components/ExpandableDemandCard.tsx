@@ -18,6 +18,7 @@ import {
   X,
   CheckCircle2,
   Search,
+  ExternalLink,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { isDemandGloballyLost } from '@/lib/demand-status'
@@ -30,6 +31,7 @@ import { PrazoCounter } from './PrazoCounter'
 import { RespostasBadge, RespostasHistory } from './RespostasHistory'
 import { markDemandAsLost } from '@/services/lost-demand-service'
 import { formatCurrency } from '@/lib/format-utils'
+import { getPropertyPublicUrl } from '@/lib/propertyUrl'
 import { LazyModalBoundary } from './LazyModalBoundary'
 
 const CapturePropertyModal = lazy(() =>
@@ -598,6 +600,63 @@ function ExpandableDemandCardInner({ demand }: { demand: SupabaseDemand }) {
 
         {/* Expanded Details - Histórico e Imóveis Captados */}
         <div className="bg-[#FAFAFA] p-4 border-t border-[#E5E5E5] rounded-b-[16px] animate-in fade-in slide-in-from-top-2 relative z-0">
+          {demand.imoveis_captados && demand.imoveis_captados.length > 0 && (
+            <div className="mb-3">
+              <h4 className="text-[13px] font-black text-[#1A3A52] uppercase tracking-wide mb-2">
+                Imóveis Captados ({demand.imoveis_captados.length})
+              </h4>
+              <div className="flex flex-col gap-2">
+                {demand.imoveis_captados.map((imovel) => (
+                  <div
+                    key={imovel.id}
+                    className="bg-white p-3 rounded-lg border border-[#E5E5E5] shadow-sm flex flex-col gap-1.5"
+                  >
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {imovel.codigo_imovel ? (
+                        <a
+                          href={getPropertyPublicUrl(imovel.codigo_imovel)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-black text-blue-600 hover:text-blue-800 hover:underline text-[13px] flex items-center gap-1"
+                        >
+                          {imovel.codigo_imovel}
+                          <ExternalLink className="w-3 h-3 shrink-0" />
+                        </a>
+                      ) : (
+                        <span className="font-bold text-gray-500 text-[13px]">Sem código</span>
+                      )}
+                      {imovel.etapa_funil && (
+                        <span
+                          className={cn(
+                            'text-[9px] px-2 py-0.5 rounded font-bold uppercase shrink-0',
+                            imovel.etapa_funil === 'fechado'
+                              ? 'bg-[#D1FAE5] text-[#065F46]'
+                              : imovel.etapa_funil === 'perdido'
+                                ? 'bg-[#FEE2E2] text-[#EF4444]'
+                                : imovel.etapa_funil === 'visitado'
+                                  ? 'bg-[#FEF3C7] text-[#B45309]'
+                                  : 'bg-[#E0E7FF] text-[#3730A3]',
+                          )}
+                        >
+                          {imovel.etapa_funil}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1.5 text-[12px] text-gray-600">
+                      <MapPin className="w-3.5 h-3.5 shrink-0 text-gray-400" />
+                      <span className="truncate">
+                        {imovel.endereco || 'Endereço não informado'}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-[14px] font-bold text-[#10B981]">
+                      <DollarSign className="w-4 h-4 shrink-0" />
+                      {formatCurrency(imovel.preco || 0)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           <RespostasHistory respostas={respostasNaoEncontrei} />
         </div>
 

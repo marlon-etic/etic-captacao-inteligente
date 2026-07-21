@@ -90,6 +90,14 @@ export function VisitRegistrationModal({
         description: `Visita para ${new Date(visitedAt).toLocaleString('pt-BR')}. O captador foi notificado.`,
         className: 'bg-[#10B981] text-white border-none',
       })
+      window.dispatchEvent(
+        new CustomEvent('demanda-updated', {
+          detail: {
+            tipo: tipoDemanda,
+            data: { id: demandId, _visitRegistered: true },
+          },
+        }),
+      )
       onOpenChange(false)
       setNotes('')
     } catch (err: any) {

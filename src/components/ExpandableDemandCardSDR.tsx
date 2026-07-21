@@ -510,7 +510,7 @@ function ExpandableDemandCardSDRComponent({
             className="font-bold text-[#1A3A52] hover:bg-gray-50 text-[13px] h-9 w-max mx-auto"
             onClick={() => setShowTimeline(!showTimeline)}
           >
-            {showTimeline ? 'Ocultar Detalhes' : 'Ver Detalhes e Linha do Tempo'}
+            {showTimeline ? 'Ocultar Linha do Tempo' : 'Ver Linha do Tempo'}
           </Button>
           {showTimeline && (
             <div className="flex flex-col gap-4 bg-[#FAFAFA] p-4 rounded-[12px] border border-gray-100 animate-in fade-in slide-in-from-top-2">

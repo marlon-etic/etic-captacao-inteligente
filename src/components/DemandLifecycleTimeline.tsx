@@ -7,6 +7,8 @@ import {
   Star,
   Clock,
   ExternalLink,
+  ThumbsUp,
+  Handshake,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
@@ -22,6 +24,8 @@ const iconMap: Record<string, any> = {
   status_change: RefreshCw,
   priority: Star,
   links: ExternalLink,
+  feedback: ThumbsUp,
+  negotiation: Handshake,
 }
 
 const colorMap: Record<string, string> = {
@@ -32,6 +36,8 @@ const colorMap: Record<string, string> = {
   status_change: 'bg-indigo-100 text-indigo-600 border-indigo-200',
   priority: 'bg-red-100 text-red-600 border-red-200',
   links: 'bg-cyan-100 text-cyan-600 border-cyan-200',
+  feedback: 'bg-green-100 text-green-600 border-green-200',
+  negotiation: 'bg-violet-100 text-violet-600 border-violet-200',
 }
 
 export function DemandLifecycleTimeline({ demand }: { demand: SupabaseDemand }) {
