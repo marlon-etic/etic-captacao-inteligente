@@ -115,19 +115,6 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <SidebarMenuButton
               asChild
-              isActive={pathname.startsWith('/app/match-inteligentes')}
-              tooltip="Matches Inteligentes"
-            >
-              <Link to="/app/match-inteligentes">
-                <Zap />
-                <span>Matches Inteligentes</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
               isActive={pathname.startsWith('/app/historico')}
               tooltip="Histórico"
             >

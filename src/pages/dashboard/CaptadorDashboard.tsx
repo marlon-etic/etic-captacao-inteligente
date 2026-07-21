@@ -7,7 +7,6 @@ import { ImoveisCadastradosList } from '@/components/dashboard/ImoveisCadastrado
 import { DemandasAbertasTable } from '@/components/dashboard/DemandasAbertasTable'
 import { ImoveisPerdidosTable } from '@/components/dashboard/ImoveisPerdidosTable'
 import { ModalDetalhesImovel } from '@/components/dashboard/ModalDetalhesImovel'
-import { BuscarDemandas } from '@/components/captador/BuscarDemandas'
 import { DemandasAbertasWidget } from '@/components/dashboard/DemandasAbertasWidget'
 import { DashboardFoco } from '@/components/dashboard/DashboardFoco'
 import { useCaptadorDashboard } from '@/hooks/use-captador-dashboard'
@@ -30,8 +29,6 @@ export function CaptadorDashboard() {
     status?: string
     card?: string
   }>({})
-  const [activeTab, setActiveTab] = useState<'meus-captados' | 'buscar-imoveis'>('meus-captados')
-
   useEffect(() => {
     const lastShown = localStorage.getItem('captador_engajamento_modal_last_shown')
     const today = new Date().toDateString()
@@ -123,128 +120,94 @@ export function CaptadorDashboard() {
         <DemandasAbertasWidget />
       </div>
 
-      <div className="mb-6">
-        <div className="flex gap-4 border-b border-gray-200 overflow-x-auto pb-1">
-          <button
-            onClick={() => setActiveTab('meus-captados')}
-            className={`px-4 py-3 font-bold text-sm transition-colors whitespace-nowrap ${
-              activeTab === 'meus-captados'
-                ? 'text-[#2E5F8A] border-b-2 border-[#2E5F8A]'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            Meus Captados
-          </button>
-          <button
-            onClick={() => setActiveTab('buscar-imoveis')}
-            className={`px-4 py-3 font-bold text-sm transition-colors whitespace-nowrap ${
-              activeTab === 'buscar-imoveis'
-                ? 'text-[#2E5F8A] border-b-2 border-[#2E5F8A]'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            Buscar Imóveis
-          </button>
-        </div>
-      </div>
+      <div className="animate-in fade-in duration-300">
+        <PeriodSelector />
 
-      {activeTab === 'meus-captados' && (
-        <div className="animate-in fade-in duration-300">
-          <PeriodSelector />
-
-          <div className="mb-6 mt-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <h2 className="text-[18px] font-bold text-[#1A3A52]">
-              Seu Desempenho <span className="text-blue-600">{periodLabel}</span> ({transactionType}
-              )
-            </h2>
-            {Object.values(activeFilters).some((v) => v !== undefined) && (
-              <div className="flex flex-wrap items-center gap-2 animate-in fade-in zoom-in-95 duration-200">
-                <span className="text-xs font-bold text-gray-500 uppercase mr-1">
-                  Filtros Ativos:
-                </span>
-                {activeFilters.card && (
-                  <Badge
-                    variant="secondary"
-                    className="bg-indigo-50 text-indigo-700 hover:bg-indigo-100 cursor-pointer shadow-sm border-indigo-200"
-                    onClick={() => clearFilter('card')}
-                  >
-                    Card: {activeFilters.card} <X className="w-3 h-3 ml-1" />
-                  </Badge>
-                )}
-                {activeFilters.tipo && (
-                  <Badge
-                    variant="secondary"
-                    className="bg-blue-50 text-blue-700 hover:bg-blue-100 cursor-pointer shadow-sm border-blue-200"
-                    onClick={() => clearFilter('tipo')}
-                  >
-                    Tipo: {activeFilters.tipo} <X className="w-3 h-3 ml-1" />
-                  </Badge>
-                )}
-                {activeFilters.faixa && (
-                  <Badge
-                    variant="secondary"
-                    className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 cursor-pointer shadow-sm border-emerald-200"
-                    onClick={() => clearFilter('faixa')}
-                  >
-                    Faixa: {activeFilters.faixa} <X className="w-3 h-3 ml-1" />
-                  </Badge>
-                )}
-                {activeFilters.status && (
-                  <Badge
-                    variant="secondary"
-                    className="bg-amber-50 text-amber-700 hover:bg-amber-100 cursor-pointer shadow-sm border-amber-200"
-                    onClick={() => clearFilter('status')}
-                  >
-                    Status: {activeFilters.status} <X className="w-3 h-3 ml-1" />
-                  </Badge>
-                )}
-                <button
-                  onClick={() => setActiveFilters({})}
-                  className="text-xs text-gray-400 hover:text-gray-700 font-bold transition-colors ml-2"
+        <div className="mb-6 mt-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <h2 className="text-[18px] font-bold text-[#1A3A52]">
+            Seu Desempenho <span className="text-blue-600">{periodLabel}</span> ({transactionType})
+          </h2>
+          {Object.values(activeFilters).some((v) => v !== undefined) && (
+            <div className="flex flex-wrap items-center gap-2 animate-in fade-in zoom-in-95 duration-200">
+              <span className="text-xs font-bold text-gray-500 uppercase mr-1">
+                Filtros Ativos:
+              </span>
+              {activeFilters.card && (
+                <Badge
+                  variant="secondary"
+                  className="bg-indigo-50 text-indigo-700 hover:bg-indigo-100 cursor-pointer shadow-sm border-indigo-200"
+                  onClick={() => clearFilter('card')}
                 >
-                  Limpar Todos
-                </button>
-              </div>
-            )}
-          </div>
+                  Card: {activeFilters.card} <X className="w-3 h-3 ml-1" />
+                </Badge>
+              )}
+              {activeFilters.tipo && (
+                <Badge
+                  variant="secondary"
+                  className="bg-blue-50 text-blue-700 hover:bg-blue-100 cursor-pointer shadow-sm border-blue-200"
+                  onClick={() => clearFilter('tipo')}
+                >
+                  Tipo: {activeFilters.tipo} <X className="w-3 h-3 ml-1" />
+                </Badge>
+              )}
+              {activeFilters.faixa && (
+                <Badge
+                  variant="secondary"
+                  className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 cursor-pointer shadow-sm border-emerald-200"
+                  onClick={() => clearFilter('faixa')}
+                >
+                  Faixa: {activeFilters.faixa} <X className="w-3 h-3 ml-1" />
+                </Badge>
+              )}
+              {activeFilters.status && (
+                <Badge
+                  variant="secondary"
+                  className="bg-amber-50 text-amber-700 hover:bg-amber-100 cursor-pointer shadow-sm border-amber-200"
+                  onClick={() => clearFilter('status')}
+                >
+                  Status: {activeFilters.status} <X className="w-3 h-3 ml-1" />
+                </Badge>
+              )}
+              <button
+                onClick={() => setActiveFilters({})}
+                className="text-xs text-gray-400 hover:text-gray-700 font-bold transition-colors ml-2"
+              >
+                Limpar Todos
+              </button>
+            </div>
+          )}
+        </div>
 
-          <MetricsCards
-            metrics={metrics}
+        <MetricsCards
+          metrics={metrics}
+          loading={loading}
+          activeFilter={activeFilters.card}
+          onCardClick={handleCardClick}
+        />
+
+        <DashboardCharts charts={charts} loading={loading} onFilterClick={handleFilterClick} />
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6 mb-8">
+          <ChartsSdr
+            data={{ demandas, imoveisLivres: [], imoveisSobDemanda: imoveis }}
             loading={loading}
-            activeFilter={activeFilters.card}
-            onCardClick={handleCardClick}
           />
+        </div>
 
-          <DashboardCharts charts={charts} loading={loading} onFilterClick={handleFilterClick} />
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6 mb-8">
-            <ChartsSdr
-              data={{ demandas, imoveisLivres: [], imoveisSobDemanda: imoveis }}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-8">
+          <div className="lg:col-span-7 flex flex-col gap-6">
+            <ImoveisCadastradosList
+              imoveis={imoveisFiltrados}
               loading={loading}
+              onSelect={setSelectedImovel}
             />
           </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-8">
-            <div className="lg:col-span-7 flex flex-col gap-6">
-              <ImoveisCadastradosList
-                imoveis={imoveisFiltrados}
-                loading={loading}
-                onSelect={setSelectedImovel}
-              />
-            </div>
-            <div className="lg:col-span-5 flex flex-col gap-6">
-              <DemandasAbertasTable demandas={demandasFiltradas} />
-              {activeFilters.card === 'perdidos' && <ImoveisPerdidosTable perdidos={perdidos} />}
-            </div>
+          <div className="lg:col-span-5 flex flex-col gap-6">
+            <DemandasAbertasTable demandas={demandasFiltradas} />
+            {activeFilters.card === 'perdidos' && <ImoveisPerdidosTable perdidos={perdidos} />}
           </div>
         </div>
-      )}
-
-      {activeTab === 'buscar-imoveis' && (
-        <div className="mb-8 animate-in fade-in duration-300">
-          <BuscarDemandas />
-        </div>
-      )}
+      </div>
 
       <div className="fixed bottom-6 left-0 right-0 pointer-events-none flex justify-center z-40 px-4">
         <div className="bg-white/90 backdrop-blur-md border border-gray-200 shadow-xl rounded-2xl p-2 flex gap-2 pointer-events-auto">
