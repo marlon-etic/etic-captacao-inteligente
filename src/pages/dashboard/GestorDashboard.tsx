@@ -1,12 +1,36 @@
+import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Tabs, TabsContent } from '@/components/ui/tabs'
 import { MyDemandsViewGestor } from '@/components/MyDemandsViewGestor'
 import { CapturedPropertiesView } from '@/components/CapturedPropertiesView'
 import { ScrollableTabs } from '@/components/ScrollableTabs'
+import { DemandCardDialog } from '@/components/DemandCardDialog'
+import { fetchDemandById } from '@/services/fetch-demand'
+import { SupabaseDemand } from '@/hooks/use-supabase-demands'
 
 export function GestorDashboard() {
   const [searchParams, setSearchParams] = useSearchParams()
   const currentTab = searchParams.get('tab') || 'todas-demandas-venda'
+  const [dialogDemand, setDialogDemand] = useState<SupabaseDemand | null>(null)
+  const [dialogOpen, setDialogOpen] = useState(false)
+
+  useEffect(() => {
+    const demandId = searchParams.get('demandId')
+    const demandType = searchParams.get('type')
+    if (!demandId || !demandType) return
+
+    fetchDemandById(demandId, demandType as 'locacao' | 'vendas').then((demand) => {
+      if (demand) {
+        setDialogDemand(demand)
+        setDialogOpen(true)
+      }
+    })
+
+    const newParams = new URLSearchParams(searchParams)
+    newParams.delete('demandId')
+    newParams.delete('type')
+    setSearchParams(newParams, { replace: true })
+  }, [searchParams, setSearchParams])
 
   const handleTabChange = (val: string) => {
     setSearchParams({ tab: val })
@@ -40,6 +64,7 @@ export function GestorDashboard() {
           </TabsContent>
         </div>
       </Tabs>
+      <DemandCardDialog demand={dialogDemand} open={dialogOpen} onOpenChange={setDialogOpen} />
     </div>
   )
 }

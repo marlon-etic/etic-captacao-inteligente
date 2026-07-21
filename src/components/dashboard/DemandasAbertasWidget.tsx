@@ -6,11 +6,13 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useNavigate } from 'react-router-dom'
 import { Building2, Home, MapPin, User, Clock, Link as LinkIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import useAppStore from '@/stores/useAppStore'
 
 export function DemandasAbertasWidget() {
   const [demandas, setDemandas] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const navigate = useNavigate()
+  const { currentUser } = useAppStore()
 
   const fetchDemandas = async () => {
     try {
@@ -111,9 +113,18 @@ export function DemandasAbertasWidget() {
     }).format(val || 0)
   }
 
-  const handleCardClick = (id: string) => {
-    console.log('[DEMANDAS_ABERTAS] Clicked demand:', id)
-    navigate(`/app/buscar-imoveis?demanda_id=${id}`)
+  const handleCardClick = (id: string, tipoTransacao: string) => {
+    const type = tipoTransacao === 'Locação' ? 'locacao' : 'vendas'
+    const role = currentUser?.role
+    if (role === 'sdr' || role === 'corretor') {
+      navigate(`/app/sdr-corretor/dashboard?tab=minhas-demandas&demandId=${id}&type=${type}`)
+    } else if (role === 'captador') {
+      navigate(`/app/buscar-imoveis?demanda_id=${id}`)
+    } else {
+      navigate(
+        `/app?tab=todas-demandas-${type === 'locacao' ? 'aluguel' : 'venda'}&demandId=${id}&type=${type}`,
+      )
+    }
   }
 
   if (loading) {
@@ -139,7 +150,7 @@ export function DemandasAbertasWidget() {
       {demandas.map((d) => (
         <Card
           key={d.id}
-          onClick={() => handleCardClick(d.id)}
+          onClick={() => handleCardClick(d.id, d.tipo_transacao)}
           className="p-4 rounded-xl border border-gray-200 cursor-pointer transition-all duration-200 hover:border-blue-400 hover:shadow-md group flex flex-col h-full bg-white relative overflow-hidden"
         >
           <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500 group-hover:bg-blue-500 transition-colors"></div>

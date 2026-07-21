@@ -19,6 +19,8 @@ import { useToast } from '@/hooks/use-toast'
 import { SyncIndicator } from './SyncIndicator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { isDemandLost } from '@/lib/demand-status'
+import { DemandCardDialog } from '@/components/DemandCardDialog'
+import { fetchDemandById } from '@/services/fetch-demand'
 
 interface Props {
   filterType?: 'Venda' | 'Aluguel'
@@ -93,44 +95,32 @@ export function MyDemandsView({ filterType }: Props) {
   const [actionDemand, setActionDemand] = useState<SupabaseDemand | null>(null)
   const [modalType, setModalType] = useState<'details' | 'edit' | 'lost' | null>(null)
   const [hiddenDemands, setHiddenDemands] = useState<Set<string>>(new Set())
+  const [dialogDemand, setDialogDemand] = useState<SupabaseDemand | null>(null)
+  const [dialogOpen, setDialogOpen] = useState(false)
 
   useEffect(() => {
-    const id = searchParams.get('id')
-    if (!id || loading) return
+    const demandId = searchParams.get('demandId')
+    const demandType = searchParams.get('type')
+    if (!demandId || loading) return
 
-    const targetDemand = demands.find((d) => d.id === id)
+    const targetDemand = demands.find((d) => d.id === demandId)
     if (targetDemand) {
-      setFilters({
-        prioridade: 'Todos',
-        status: 'Todos',
-        urgencia: 'Todos',
-        data: 'Todos',
-        bairro: '',
-      })
-
-      setActionDemand(targetDemand)
-      setModalType('details')
-
-      const newParams = new URLSearchParams(searchParams)
-      newParams.delete('id')
-      setSearchParams(newParams, { replace: true })
-
-      setTimeout(() => {
-        const el = document.getElementById(`demand-card-${id}`)
-        if (el) {
-          el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-          el.classList.add(
-            'ring-4',
-            'ring-[#2E5F8A]',
-            'ring-offset-2',
-            'transition-all',
-            'duration-500',
-          )
-          setTimeout(() => el.classList.remove('ring-4', 'ring-[#2E5F8A]', 'ring-offset-2'), 3000)
+      setDialogDemand(targetDemand)
+      setDialogOpen(true)
+    } else if (demandType) {
+      fetchDemandById(demandId, demandType as 'locacao' | 'vendas').then((demand) => {
+        if (demand) {
+          setDialogDemand(demand)
+          setDialogOpen(true)
         }
-      }, 500)
+      })
     }
-  }, [searchParams, demands, loading, setFilters, setSearchParams])
+
+    const newParams = new URLSearchParams(searchParams)
+    newParams.delete('demandId')
+    newParams.delete('type')
+    setSearchParams(newParams, { replace: true })
+  }, [searchParams, demands, loading, setSearchParams])
 
   const handleAction = async (
     action: 'details' | 'edit' | 'lost' | 'prioritize',
@@ -526,6 +516,8 @@ export function MyDemandsView({ filterType }: Props) {
         onOpenChange={(o) => !o && setModalType(null)}
         onConfirm={handleLostConfirm}
       />
+
+      <DemandCardDialog demand={dialogDemand} open={dialogOpen} onOpenChange={setDialogOpen} />
 
       <SyncIndicator isSyncing={syncing} />
     </div>

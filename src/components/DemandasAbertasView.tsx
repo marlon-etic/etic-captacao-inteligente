@@ -8,12 +8,14 @@ import {
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ExpandableDemandCardCaptador } from '@/components/ExpandableDemandCardCaptador'
+import { DemandCardDialog } from '@/components/DemandCardDialog'
+import { SupabaseDemand } from '@/hooks/use-supabase-demands'
 import { useEffect, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useAllDemands } from '@/hooks/use-all-demands'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { RefreshCw, Search } from 'lucide-react'
+import { RefreshCw, Search, Eye } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { isDemandLost } from '@/lib/demand-status'
 
@@ -23,6 +25,8 @@ export function DemandasAbertasView() {
   const [statusFilter, setStatusFilter] = useState('Todas')
   const [searchTerm, setSearchTerm] = useState('')
   const [highlightedId, setHighlightedId] = useState<string | null>(null)
+  const [selectedDemand, setSelectedDemand] = useState<SupabaseDemand | null>(null)
+  const [dialogOpen, setDialogOpen] = useState(false)
   const itemRefs = useRef<Record<string, HTMLDivElement | null>>({})
 
   const filteredDemands = useMemo(() => {
@@ -76,23 +80,17 @@ export function DemandasAbertasView() {
 
     if (demandaId && !loading && filteredDemands.length > 0) {
       setHighlightedId(demandaId)
-      console.log('[DEMANDAS_ABERTAS] Highlighting demand:', demandaId)
-
+      const targetDemand = filteredDemands.find((d) => d.id === demandaId)
+      if (targetDemand) {
+        setSelectedDemand(targetDemand)
+        setDialogOpen(true)
+      }
       setTimeout(() => {
         const el = itemRefs.current[demandaId]
         if (el) {
           el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-
-          const buttonToClick = el.querySelector('button') as HTMLButtonElement | null
-          if (buttonToClick) {
-            buttonToClick.click()
-          } else {
-            const firstChild = el.firstElementChild as HTMLElement
-            if (firstChild) firstChild.click()
-          }
         }
       }, 500)
-
       window.history.replaceState({}, document.title, window.location.pathname)
     }
   }, [location.search, loading, filteredDemands])
@@ -170,18 +168,37 @@ export function DemandasAbertasView() {
                 key={demand.id}
                 ref={(el) => (itemRefs.current[demand.id] = el)}
                 className={cn(
-                  'opacity-0 animate-cascade-fade h-full transition-all duration-500 rounded-xl',
+                  'opacity-0 animate-cascade-fade h-full transition-all duration-500 rounded-xl relative group',
                   isHighlighted &&
                     'ring-4 ring-blue-500 ring-offset-2 bg-blue-50/50 scale-[1.02] shadow-xl z-10',
                 )}
                 style={{ animationDelay: `${index * 50}ms` }}
               >
                 <ExpandableDemandCardCaptador demand={demand} />
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setSelectedDemand(demand)
+                    setDialogOpen(true)
+                  }}
+                  className="absolute top-2 right-2 z-20 bg-[#1A3A52] text-white rounded-full px-3 py-1.5 text-[11px] font-bold flex items-center gap-1 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-[#2E5F8A]"
+                >
+                  <Eye className="w-3 h-3" /> Ver Detalhes
+                </button>
               </div>
             )
           })}
         </div>
       )}
+
+      <DemandCardDialog
+        demand={selectedDemand}
+        open={dialogOpen}
+        onOpenChange={(o) => {
+          setDialogOpen(o)
+          if (!o) setSelectedDemand(null)
+        }}
+      />
     </div>
   )
 }

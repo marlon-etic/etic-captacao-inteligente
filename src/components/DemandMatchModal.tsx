@@ -17,8 +17,9 @@ import { calculateMatching } from '@/lib/matching'
 import { isResidential, hasBedrooms } from '@/lib/residential-filter'
 import { useToast } from '@/hooks/use-toast'
 import useAppStore from '@/stores/useAppStore'
-import { X, MapPin, CheckCircle, Loader2, Calendar, Zap } from 'lucide-react'
+import { X, MapPin, CheckCircle, Loader2, Calendar, Zap, MessageSquare } from 'lucide-react'
 import { VisitRegistrationModal } from './VisitRegistrationModal'
+import { FeedbackRegistrationModal } from './FeedbackRegistrationModal'
 
 interface MatchProperty {
   id: string
@@ -52,6 +53,10 @@ export function DemandMatchModal({ demand, open, onOpenChange }: Props) {
   const [visitTarget, setVisitTarget] = useState<{
     imovelId: string
     matchId?: string
+    label: string
+  } | null>(null)
+  const [feedbackTarget, setFeedbackTarget] = useState<{
+    matchId: string
     label: string
   } | null>(null)
 
@@ -270,7 +275,7 @@ export function DemandMatchModal({ demand, open, onOpenChange }: Props) {
                         {prop.dormitorios || 0} dorm • {prop.vagas || 0} vagas
                       </span>
                     </p>
-                    <div className="flex gap-2 mt-2">
+                    <div className="flex gap-2 mt-2 flex-wrap">
                       <Button
                         size="sm"
                         variant="outline"
@@ -285,6 +290,21 @@ export function DemandMatchModal({ demand, open, onOpenChange }: Props) {
                       >
                         <Calendar className="w-3 h-3 mr-1" /> Registrar Visita
                       </Button>
+                      {prop.isLinked && prop.matchId && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-[11px] font-bold"
+                          onClick={() =>
+                            setFeedbackTarget({
+                              matchId: prop.matchId!,
+                              label: `${prop.codigo_imovel || prop.tipo_imovel} - ${prop.endereco || prop.localizacao_texto || ''}`,
+                            })
+                          }
+                        >
+                          <MessageSquare className="w-3 h-3 mr-1" /> Feedback
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -302,6 +322,13 @@ export function DemandMatchModal({ demand, open, onOpenChange }: Props) {
         imovelId={visitTarget?.imovelId}
         propertyLinkId={visitTarget?.matchId}
         propertyLabel={visitTarget?.label}
+      />
+
+      <FeedbackRegistrationModal
+        open={!!feedbackTarget}
+        onOpenChange={(o) => !o && setFeedbackTarget(null)}
+        propertyLinkId={feedbackTarget?.matchId || ''}
+        propertyLabel={feedbackTarget?.label || ''}
       />
     </>
   )

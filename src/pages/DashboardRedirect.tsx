@@ -38,6 +38,6 @@ export default function DashboardRedirect() {
     case 'captador':
       return <CaptadorDashboard />
     default:
-      return <Navigate to="/app/demandas" replace />
+      return <CaptadorDashboard />
   }
 }

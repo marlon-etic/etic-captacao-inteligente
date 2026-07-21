@@ -11,6 +11,7 @@ import { ChartsSdr } from '@/components/sdr-dashboard/ChartsSdr'
 import { ActiveCampaignsWidget } from '@/components/campanhas/ActiveCampaignsWidget'
 import { DashboardFoco } from '@/components/dashboard/DashboardFoco'
 import { useAuth } from '@/hooks/use-auth'
+import { MyDemandsView } from '@/components/MyDemandsView'
 
 export function SDRDashboard() {
   const { data, loading } = useSdrQueries()
@@ -27,6 +28,7 @@ export function SDRDashboard() {
 
   const tabs = [
     { value: 'visao-geral', label: 'Visão Geral' },
+    { value: 'minhas-demandas', label: 'Minhas Demandas' },
     { value: 'ultimos-imoveis', label: 'Últimos Imóveis' },
   ]
 
@@ -71,6 +73,12 @@ export function SDRDashboard() {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
                 <ChartsSdr data={data} loading={loading} />
               </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="minhas-demandas" className="m-0 border-none">
+            <div className="p-4 md:p-8 pt-6 pb-24 md:pb-8">
+              <MyDemandsView filterType={isLocacao ? 'Aluguel' : 'Venda'} />
             </div>
           </TabsContent>
 

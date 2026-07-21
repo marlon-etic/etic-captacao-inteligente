@@ -9,8 +9,26 @@ import {
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { useNavigate } from 'react-router-dom'
+import useAppStore from '@/stores/useAppStore'
 
 export function DemandasAbertasTable({ demandas }: { demandas: any[] }) {
+  const navigate = useNavigate()
+  const { currentUser } = useAppStore()
+
+  const handleRowClick = (id: string, tipo: string) => {
+    const type = tipo === 'Locação' ? 'locacao' : 'vendas'
+    const role = currentUser?.role
+    if (role === 'sdr' || role === 'corretor') {
+      navigate(`/app/sdr-corretor/dashboard?tab=minhas-demandas&demandId=${id}&type=${type}`)
+    } else if (role === 'captador') {
+      navigate(`/app/buscar-imoveis?demanda_id=${id}`)
+    } else {
+      navigate(
+        `/app?tab=todas-demandas-${type === 'locacao' ? 'aluguel' : 'venda'}&demandId=${id}&type=${type}`,
+      )
+    }
+  }
   const hoje = new Date()
   hoje.setHours(0, 0, 0, 0)
 
@@ -72,7 +90,11 @@ export function DemandasAbertasTable({ demandas }: { demandas: any[] }) {
           </TableHeader>
           <TableBody>
             {list.map((d) => (
-              <TableRow key={d.id} className="hover:bg-blue-50/50 transition-colors">
+              <TableRow
+                key={d.id}
+                className="hover:bg-blue-50/50 transition-colors cursor-pointer"
+                onClick={() => handleRowClick(d.id, d.tipo)}
+              >
                 <TableCell className="font-bold text-gray-800">
                   <div className="flex flex-col gap-1">
                     <span className="text-sm">{d.nome_cliente || d.cliente_nome}</span>

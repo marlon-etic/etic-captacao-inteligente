@@ -54,6 +54,37 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [])
 
+  useEffect(() => {
+    if (!user) return
+
+    const ensureProfile = async () => {
+      try {
+        const { data: existing } = await supabase
+          .from('users')
+          .select('id')
+          .eq('id', user.id)
+          .maybeSingle()
+
+        if (!existing) {
+          const metaRoleRaw = (user.user_metadata?.role as string) || 'captador'
+          const validRoles = ['admin', 'sdr', 'corretor', 'captador', 'gestor']
+          const metaRole = validRoles.includes(metaRoleRaw) ? metaRoleRaw : 'captador'
+          await supabase.from('users').upsert({
+            id: user.id,
+            email: user.email || '',
+            nome: user.user_metadata?.name || user.email?.split('@')[0] || 'Usuário',
+            role: metaRole as any,
+            status: 'ativo',
+          })
+        }
+      } catch (e) {
+        console.error('[useAuth] Error ensuring profile:', e)
+      }
+    }
+
+    ensureProfile()
+  }, [user])
+
   const signUp = async (email: string, password: string) => {
     const { error } = await supabase.auth.signUp({
       email,

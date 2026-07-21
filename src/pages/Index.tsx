@@ -36,12 +36,14 @@ export default function Index() {
   const indexRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (authLoading || isRestoringUser) return
+    if (authLoading) return
 
-    if (currentUser && session) {
+    if (session) {
       navigate('/app', { replace: true })
-    } else if (currentUser && !session) {
-      // Prevent race conditions where session is momentarily null during login
+      return
+    }
+
+    if (currentUser && !session) {
       supabase.auth
         .getSession()
         .then(({ data: { session: activeSession } }) => {
@@ -59,7 +61,7 @@ export default function Index() {
           logout()
         })
     }
-  }, [currentUser, session, authLoading, isRestoringUser, navigate, logout])
+  }, [currentUser, session, authLoading, navigate, logout])
 
   const attemptSignIn = async (
     cleanEmail: string,
@@ -132,17 +134,18 @@ export default function Index() {
         }
       }
 
-      await login(cleanEmail, cleanPassword)
+      navigate('/app', { replace: true })
 
-      // Trigger data validation if user is admin
+      login(cleanEmail, cleanPassword).catch((err) => {
+        console.error('[Index] Error loading user profile:', err)
+      })
+
       supabase.auth.getUser().then(async ({ data }) => {
         const role = data.user?.user_metadata?.role || data.user?.app_metadata?.role
         if (role === 'admin' || role === 'gestor') {
           import('@/lib/data-validation').then((m) => m.validateDataIntegrity())
         }
       })
-
-      navigate('/app', { replace: true })
     } catch (err: any) {
       setInitError({ title: 'Erro de Autenticação', message: err.message })
     } finally {
@@ -203,17 +206,18 @@ export default function Index() {
         }
       }
 
-      await login(mockEmail, pass)
+      navigate('/app', { replace: true })
 
-      // Trigger data validation if user is admin
+      login(mockEmail, pass).catch((err) => {
+        console.error('[Index] Error loading user profile:', err)
+      })
+
       supabase.auth.getUser().then(async ({ data }) => {
         const role = data.user?.user_metadata?.role || data.user?.app_metadata?.role
         if (role === 'admin' || role === 'gestor') {
           import('@/lib/data-validation').then((m) => m.validateDataIntegrity())
         }
       })
-
-      navigate('/app', { replace: true })
     } catch (err: any) {
       toast({
         title: 'Erro de Autenticação',
@@ -225,7 +229,7 @@ export default function Index() {
     }
   }
 
-  if (authLoading || isRestoringUser) {
+  if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#F5F5F5]">
         <Loader2 className="w-10 h-10 animate-spin text-[#1A3A52]" />
@@ -233,7 +237,7 @@ export default function Index() {
     )
   }
 
-  if (currentUser) return null
+  if (session || currentUser) return null
 
   return (
     <div

@@ -471,6 +471,8 @@ export type Database = {
           motivo_priorizacao: string | null
           nivel_urgencia: string | null
           nome_cliente: string | null
+          notificada_12h: boolean | null
+          notificada_24h: boolean | null
           observacoes: string | null
           orcamento_max: number | null
           prorrogacoes_count: number | null
@@ -518,6 +520,8 @@ export type Database = {
           motivo_priorizacao?: string | null
           nivel_urgencia?: string | null
           nome_cliente?: string | null
+          notificada_12h?: boolean | null
+          notificada_24h?: boolean | null
           observacoes?: string | null
           orcamento_max?: number | null
           prorrogacoes_count?: number | null
@@ -565,6 +569,8 @@ export type Database = {
           motivo_priorizacao?: string | null
           nivel_urgencia?: string | null
           nome_cliente?: string | null
+          notificada_12h?: boolean | null
+          notificada_24h?: boolean | null
           observacoes?: string | null
           orcamento_max?: number | null
           prorrogacoes_count?: number | null
@@ -667,6 +673,8 @@ export type Database = {
           necessidades_especificas: string | null
           nivel_urgencia: string | null
           nome_cliente: string | null
+          notificada_12h: boolean | null
+          notificada_24h: boolean | null
           orcamento_max: number | null
           prorrogacoes_count: number | null
           quartos: number | null
@@ -711,6 +719,8 @@ export type Database = {
           necessidades_especificas?: string | null
           nivel_urgencia?: string | null
           nome_cliente?: string | null
+          notificada_12h?: boolean | null
+          notificada_24h?: boolean | null
           orcamento_max?: number | null
           prorrogacoes_count?: number | null
           quartos?: number | null
@@ -755,6 +765,8 @@ export type Database = {
           necessidades_especificas?: string | null
           nivel_urgencia?: string | null
           nome_cliente?: string | null
+          notificada_12h?: boolean | null
+          notificada_24h?: boolean | null
           orcamento_max?: number | null
           prorrogacoes_count?: number | null
           quartos?: number | null
@@ -2138,6 +2150,7 @@ export type Database = {
           tabela: string
         }[]
       }
+      fn_notificar_prazo_proximo: { Args: never; Returns: undefined }
       fn_processar_webhook_queue: {
         Args: never
         Returns: {

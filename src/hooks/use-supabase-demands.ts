@@ -78,6 +78,7 @@ export function useSupabaseDemands(
   const offsetRef = useRef(0)
   const usersRef = useRef(users)
   const currentUserRef = useRef(currentUser)
+  const userIdRef = useRef<string | null>(null)
 
   useEffect(() => {
     usersRef.current = users
@@ -190,6 +191,8 @@ export function useSupabaseDemands(
         const { data: userData, error: userError } = await supabase.auth.getUser()
         if (userError || !userData?.user) return
 
+        userIdRef.current = userData.user.id
+
         // Prevent SDR from loading Venda, and Corretor from loading Aluguel
         const role = currentUserRef.current?.role
         if (role === 'sdr' && type === 'Venda') {
@@ -227,11 +230,11 @@ export function useSupabaseDemands(
             .order('updated_at', { ascending: false, nullsFirst: false })
             .limit(PAGE_SIZE)
 
-          if (options?.onlyMine && currentUserRef.current?.id) {
+          if (options?.onlyMine && userIdRef.current) {
             if (type === 'Aluguel') {
-              query = query.eq('sdr_id', currentUserRef.current.id)
+              query = query.eq('sdr_id', userIdRef.current)
             } else {
-              query = query.eq('corretor_id', currentUserRef.current.id)
+              query = query.eq('corretor_id', userIdRef.current)
             }
           }
 
@@ -683,11 +686,11 @@ export function useSupabaseDemands(
       .order('updated_at', { ascending: false, nullsFirst: false })
       .range(nextOffset, nextOffset + PAGE_SIZE - 1)
 
-    if (options?.onlyMine && currentUserRef.current?.id) {
+    if (options?.onlyMine && userIdRef.current) {
       if (type === 'Aluguel') {
-        query = query.eq('sdr_id', currentUserRef.current.id)
+        query = query.eq('sdr_id', userIdRef.current)
       } else {
-        query = query.eq('corretor_id', currentUserRef.current.id)
+        query = query.eq('corretor_id', userIdRef.current)
       }
     }
 
