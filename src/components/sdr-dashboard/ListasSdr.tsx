@@ -1,4 +1,5 @@
 import { useState, memo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useSdrStore } from '@/hooks/use-sdr-store'
 import {
   Table,
@@ -19,7 +20,6 @@ import {
   DialogHeader,
   DialogDescription,
 } from '@/components/ui/dialog'
-import { DemandDetailsModal } from '@/components/DemandDetailsModal'
 import { LogVisitSection } from '@/components/checkin/LogVisitSection'
 import { LogClosingSection } from '@/components/checkin/LogClosingSection'
 import {
@@ -48,7 +48,7 @@ function ListasSdrBase({
   const { cardFiltrado } = useSdrStore()
   const { currentUser } = useAppStore()
   const [selectedProperty, setSelectedProperty] = useState<any>(null)
-  const [selectedDemand, setSelectedDemand] = useState<any>(null)
+  const navigate = useNavigate()
   const [linkingDemandaId, setLinkingDemandaId] = useState<string>('')
   const [isLinking, setIsLinking] = useState(false)
   const [prioritizeDemand, setPrioritizeDemand] = useState<any>(null)
@@ -102,19 +102,13 @@ function ListasSdrBase({
     }
   }
 
-  const handleLostDemand = async (demandId: string) => {
-    try {
-      const table = isLocacao ? 'demandas_locacao' : 'demandas_vendas'
-      const { error } = await supabase
-        .from(table)
-        .update({ status_demanda: 'perdido' })
-        .eq('id', demandId)
-      if (error) throw error
-      toast({ title: 'Sucesso', description: 'Demanda marcada como perdida instantaneamente.' })
-      setSelectedDemand(null)
-    } catch (err: any) {
-      toast({ title: 'Erro', description: err.message, variant: 'destructive' })
-    }
+  const handleDemandClick = (d: any) => {
+    const tipo = d.tipo_demanda || d.tipo || (isLocacao ? 'Locação' : 'Venda')
+    const typeParam =
+      tipo.toLowerCase().includes('loc') || tipo.toLowerCase().includes('alug')
+        ? 'locacao'
+        : 'vendas'
+    navigate(`/app/sdr-corretor/dashboard?tab=minhas-demandas&demandId=${d.id}&type=${typeParam}`)
   }
 
   const handlePrioritize = async (reason: string) => {
@@ -193,7 +187,7 @@ function ListasSdrBase({
       <TableRow
         key={d.id}
         className="hover:bg-gray-50 cursor-pointer"
-        onClick={() => setSelectedDemand(d)}
+        onClick={() => handleDemandClick(d)}
       >
         <TableCell className="font-bold text-gray-800">
           {d.nome_cliente || d.cliente_nome || 'N/A'}
@@ -252,7 +246,7 @@ function ListasSdrBase({
       <TableRow
         key={d.id}
         className="hover:bg-gray-50 cursor-pointer"
-        onClick={() => setSelectedDemand(d)}
+        onClick={() => handleDemandClick(d)}
       >
         <TableCell className="font-bold text-gray-800">
           {d.nome_cliente || d.cliente_nome || 'N/A'}
@@ -460,40 +454,6 @@ function ListasSdrBase({
           </TableBody>
         </Table>
       </div>
-
-      <DemandDetailsModal
-        open={!!selectedDemand}
-        onOpenChange={(open) => !open && setSelectedDemand(null)}
-        demand={
-          selectedDemand
-            ? ({
-                id: selectedDemand.id,
-                type: isLocacao ? 'Locação' : 'Venda',
-                clientName: selectedDemand.nome_cliente || selectedDemand.cliente_nome || 'Cliente',
-                contactPhone: selectedDemand.telefone,
-                contactEmail: selectedDemand.email,
-                location: selectedDemand.bairros || [],
-                minBudget: selectedDemand.valor_minimo || 0,
-                maxBudget: selectedDemand.valor_maximo || 0,
-                bedrooms: selectedDemand.dormitorios,
-                bathrooms: selectedDemand.banheiros,
-                parkingSpots: selectedDemand.vagas_estacionamento,
-                timeframe: selectedDemand.nivel_urgencia || 'Normal',
-                status: selectedDemand.status_demanda || 'Aberta',
-                description:
-                  selectedDemand.observacoes || selectedDemand.necessidades_especificas || '',
-                createdAt: selectedDemand.created_at,
-                createdBy: selectedDemand.sdr_id || selectedDemand.corretor_id || '',
-                capturedProperties:
-                  selectedDemand.imovel_demand_match?.map((m: any) => ({
-                    ...m.imoveis_captados,
-                    imovel_demand_match: [m],
-                  })) || [],
-              } as any)
-            : undefined
-        }
-        onLost={() => handleLostDemand(selectedDemand?.id)}
-      />
 
       <Dialog open={!!selectedProperty} onOpenChange={(open) => !open && setSelectedProperty(null)}>
         <DialogContent className="max-w-2xl bg-white max-h-[90vh] overflow-y-auto">
