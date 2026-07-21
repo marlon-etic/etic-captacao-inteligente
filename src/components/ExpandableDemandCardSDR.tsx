@@ -18,7 +18,7 @@ import {
   Zap,
   Calendar,
   Home,
-  Link as LinkIcon
+  Link as LinkIcon,
 } from 'lucide-react'
 import { useSlaCountdown, useTimeElapsed } from '@/hooks/useTimeElapsed'
 import useAppStore from '@/stores/useAppStore'
@@ -123,8 +123,7 @@ function ExpandableDemandCardSDRComponent({
       currency: 'BRL',
       maximumFractionDigits: 0,
     })
-    return (val: number) => formatter.format(val).replace('R
-, '').trim()
+    return (val: number) => formatter.format(val).replace('R$', '').trim()
   }, [])
 
   const capturedCount = demand.imoveis_captados?.length || 0
