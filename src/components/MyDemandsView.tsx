@@ -21,6 +21,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { isDemandLost } from '@/lib/demand-status'
 import { DemandCardDialog } from '@/components/DemandCardDialog'
 import { fetchDemandById } from '@/services/fetch-demand'
+import { markDemandAsLost } from '@/services/lost-demand-service'
 
 interface Props {
   filterType?: 'Venda' | 'Aluguel'
@@ -158,7 +159,6 @@ export function MyDemandsView({ filterType }: Props) {
 
   const handleLostConfirm = async (reason: string, obs: string) => {
     if (!actionDemand) return
-    const table = actionDemand.tipo === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
 
     const currentObs =
       actionDemand.tipo === 'Aluguel'
@@ -168,57 +168,52 @@ export function MyDemandsView({ filterType }: Props) {
       ? `${currentObs}\n\n[PERDIDO - ${new Date().toLocaleDateString()}]: ${reason} - ${obs}`
       : `[PERDIDO - ${new Date().toLocaleDateString()}]: ${reason} - ${obs}`
 
-    const updateData: any = {
-      status_demanda: 'Perdida',
-      motivo_perda: reason,
-      motivo_perda_descricao: obs,
-      updated_at: new Date().toISOString(),
-    }
+    const extraUpdate: Record<string, any> = {}
     if (actionDemand.tipo === 'Aluguel') {
-      updateData.observacoes = newObs
+      extraUpdate.observacoes = newObs
     } else {
-      updateData.necessidades_especificas = newObs
+      extraUpdate.necessidades_especificas = newObs
     }
 
-    try {
-      const { error } = await supabase.from(table).update(updateData).eq('id', actionDemand.id)
-      if (error) throw error
+    const result = await markDemandAsLost({
+      demandId: actionDemand.id,
+      tipo: actionDemand.tipo,
+      reason,
+      observacao: obs,
+      userId: currentUser?.id,
+      extraUpdate,
+    })
 
-      await supabase.from('audit_log').insert({
-        usuario_id: currentUser?.id || null,
-        acao: 'UPDATE',
-        tabela: table,
-        registro_id: actionDemand.id,
-        dados_novos: {
-          status_demanda: 'Perdida',
-          motivo_perda: reason,
-          motivo_perda_descricao: obs,
-        },
-      })
-
-      window.dispatchEvent(
-        new CustomEvent('demanda-updated', {
-          detail: {
-            tipo: actionDemand.tipo,
-            data: { id: actionDemand.id, status_demanda: 'Perdida', db_status_demanda: 'Perdida' },
-          },
-        }),
-      )
-
-      setHiddenDemands((prev) => {
-        const next = new Set(prev)
-        next.add(actionDemand.id)
-        return next
-      })
-
+    if (result.error) {
       toast({
-        title: 'Demanda Marcada como Perdida',
-        description: `Motivo: ${reason}. Os captadores associados foram notificados.`,
-        className: 'bg-[#EF4444] text-white border-none',
+        title: 'Erro ao atualizar demanda',
+        description: result.error,
+        variant: 'destructive',
       })
-    } catch (e: any) {
-      toast({ title: 'Erro ao atualizar demanda', description: e.message, variant: 'destructive' })
+      setModalType(null)
+      return
     }
+
+    window.dispatchEvent(
+      new CustomEvent('demanda-updated', {
+        detail: {
+          tipo: actionDemand.tipo,
+          data: { id: actionDemand.id, status_demanda: 'perdida', db_status_demanda: 'perdida' },
+        },
+      }),
+    )
+
+    setHiddenDemands((prev) => {
+      const next = new Set(prev)
+      next.add(actionDemand.id)
+      return next
+    })
+
+    toast({
+      title: 'Demanda Marcada como Perdida',
+      description: `Motivo: ${reason}. Os captadores associados foram notificados.`,
+      className: 'bg-[#EF4444] text-white border-none',
+    })
     setModalType(null)
   }
 

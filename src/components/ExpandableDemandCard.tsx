@@ -33,6 +33,7 @@ import { toggleDemandPriority } from '@/services/priority-service'
 import { PrazoCounter } from './PrazoCounter'
 import { RespostasBadge, RespostasHistory } from './RespostasHistory'
 import { LostModal } from './LostModal'
+import { markDemandAsLost } from '@/services/lost-demand-service'
 
 export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
   const { currentUser, users } = useAppStore()
@@ -300,9 +301,12 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
 
       setIsNaoEncontreiModalOpen(false)
     } catch (err: any) {
+      const desc = err?.message?.includes('check_perdido_motivo_standardized')
+        ? 'Motivo não permitido. Selecione uma opção válida da lista.'
+        : err?.message || 'Tente novamente.'
       toast({
         title: 'Erro ao registrar resposta',
-        description: 'Tente novamente.',
+        description: desc,
         variant: 'destructive',
       })
     } finally {
@@ -311,57 +315,41 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
   }
 
   const handleLostConfirm = async (reason: string, obs: string) => {
-    try {
-      const table = demand.tipo === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
-      const { error } = await supabase
-        .from(table)
-        .update({
-          status_demanda: 'perdida',
-          motivo_perda: reason,
-          motivo_perda_descricao: obs,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', demand.id)
+    const result = await markDemandAsLost({
+      demandId: demand.id,
+      tipo: demand.tipo,
+      reason,
+      observacao: obs,
+      userId: currentUser?.id,
+    })
 
-      if (error) throw error
-
-      await supabase.from('audit_log').insert({
-        usuario_id: currentUser?.id || null,
-        acao: 'UPDATE',
-        tabela: table,
-        registro_id: demand.id,
-        dados_novos: {
-          status_demanda: 'perdida',
-          motivo_perda: reason,
-          motivo_perda_descricao: obs,
-        },
-      })
-
-      window.dispatchEvent(
-        new CustomEvent('demanda-updated', {
-          detail: {
-            tipo: demand.tipo,
-            data: {
-              id: demand.id,
-              status_demanda: 'perdida',
-              db_status_demanda: 'perdida',
-            },
-          },
-        }),
-      )
-
-      toast({
-        title: 'Sucesso',
-        description: 'Demanda marcada como perdida com sucesso.',
-        className: 'bg-[#10B981] text-white border-none',
-      })
-    } catch (err: any) {
+    if (result.error) {
       toast({
         title: 'Falha ao marcar como perdida',
-        description: err.message,
+        description: result.error,
         variant: 'destructive',
       })
+      return
     }
+
+    window.dispatchEvent(
+      new CustomEvent('demanda-updated', {
+        detail: {
+          tipo: demand.tipo,
+          data: {
+            id: demand.id,
+            status_demanda: 'perdida',
+            db_status_demanda: 'perdida',
+          },
+        },
+      }),
+    )
+
+    toast({
+      title: 'Sucesso',
+      description: 'Demanda marcada como perdida com sucesso.',
+      className: 'bg-[#10B981] text-white border-none',
+    })
   }
 
   const openDetails = (e: React.MouseEvent) => {

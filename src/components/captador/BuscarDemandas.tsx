@@ -20,6 +20,8 @@ const ModalVinculador = lazy(() =>
 )
 import { ModalSugerirLinks } from './ModalSugerirLinks'
 import { isDemandLost } from '@/lib/demand-status'
+import { STANDARDIZED_LOST_REASONS } from '@/lib/lost-reasons'
+import { markDemandAsLost } from '@/services/lost-demand-service'
 import useAppStore from '@/stores/useAppStore'
 import { useTimeElapsed } from '@/hooks/use-time-elapsed'
 import { useToast } from '@/hooks/use-toast'
@@ -280,18 +282,6 @@ const DemandCard = React.memo(function DemandCard({
   )
 })
 
-const PERDIDO_REASONS = [
-  'Sem imóveis no perfil - Valor (Aluguel)',
-  'Sem imóveis no perfil - Localização (Aluguel)',
-  'Imóvel de perfil inexistente (Aluguel)',
-  'Sem imóveis no perfil - Valor (Venda)',
-  'Sem imóveis no perfil - Localização (Venda)',
-  'Imóvel de perfil inexistente (Venda)',
-  'Abaixo valor mínimo R$ 2.000,00',
-  'Abaixo valor mínimo R$ 250.000,00',
-  'Outros',
-] as const
-
 function ModalDarPerdido({
   demanda,
   onClose,
@@ -305,8 +295,7 @@ function ModalDarPerdido({
   const [observacao, setObservacao] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const isOutros = motivo === 'Outros'
-  const canSubmit = motivo !== '' && (!isOutros || observacao.trim().length > 0)
+  const canSubmit = motivo !== ''
 
   const handleSubmit = async () => {
     if (!canSubmit) return
@@ -342,14 +331,13 @@ function ModalDarPerdido({
               value={motivo}
               onValueChange={(val) => {
                 setMotivo(val)
-                if (val !== 'Outros') setObservacao('')
               }}
             >
               <SelectTrigger className="min-h-[48px] text-sm font-medium border-gray-200 focus:ring-red-500/50">
                 <SelectValue placeholder="Selecione um motivo..." />
               </SelectTrigger>
               <SelectContent>
-                {PERDIDO_REASONS.map((r) => (
+                {STANDARDIZED_LOST_REASONS.map((r) => (
                   <SelectItem key={r} value={r} className="min-h-[44px] text-sm cursor-pointer">
                     {r}
                   </SelectItem>
@@ -359,18 +347,13 @@ function ModalDarPerdido({
           </div>
           <div className="space-y-2">
             <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">
-              Observações{' '}
-              {isOutros ? (
-                <span className="text-red-500">*</span>
-              ) : (
-                <span className="text-gray-400 font-normal normal-case">(Opcional)</span>
-              )}
+              Observações <span className="text-gray-400 font-normal normal-case">(Opcional)</span>
             </label>
             <textarea
               value={observacao}
               onChange={(e) => setObservacao(e.target.value.slice(0, 500))}
               className="w-full border border-gray-200 rounded-lg p-3 text-sm min-h-[80px] focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-red-500"
-              placeholder={isOutros ? 'Descreva o motivo...' : 'Detalhes adicionais...'}
+              placeholder="Detalhes adicionais..."
             />
             <div className="text-right text-[11px] text-gray-400 font-medium">
               {observacao.length}/500
@@ -827,7 +810,29 @@ export function BuscarDemandas() {
     if (!selectedPerdido || !currentUser) return
     try {
       console.log(`[NOTIFICACAO] Atualizando status para Perdido na demanda ${selectedPerdido.id}`)
-      const { error } = await supabase.from('respostas_captador').insert({
+
+      const tipoDemanda = selectedPerdido.tipo === 'locacao' ? 'Aluguel' : 'Venda'
+
+      const { error: lostError } = await markDemandAsLost({
+        demandId: selectedPerdido.id,
+        tipo: tipoDemanda,
+        reason: motivo,
+        observacao,
+        userId: currentUser.id,
+      })
+
+      if (lostError) {
+        toast({
+          title: 'Erro ao marcar como perdida',
+          description: lostError.includes('check_motivo_perda_standardized')
+            ? 'Motivo não permitido. Selecione uma opção válida da lista.'
+            : lostError,
+          variant: 'destructive',
+        })
+        return
+      }
+
+      const { error: respError } = await supabase.from('respostas_captador').insert({
         captador_id: currentUser.id,
         resposta: 'perdido',
         motivo: motivo,
@@ -835,7 +840,10 @@ export function BuscarDemandas() {
         demanda_locacao_id: selectedPerdido.tipo === 'locacao' ? selectedPerdido.id : null,
         demanda_venda_id: selectedPerdido.tipo === 'venda' ? selectedPerdido.id : null,
       })
-      if (error) throw error
+
+      if (respError) {
+        console.warn('[BuscarDemandas] respostas_captador insert warning:', respError.message)
+      }
 
       const removedId = selectedPerdido.id
       setDemands((prev) => {
@@ -846,14 +854,18 @@ export function BuscarDemandas() {
       setFilteredDemands((prev) => prev.filter((d) => d.id !== removedId))
 
       toast({
-        title: 'Perdido Registrado',
-        description: 'O dono da demanda foi notificado com sucesso.',
+        title: 'Demanda marcada como perdida com sucesso',
+        description: 'O status da demanda foi atualizado e o criador foi notificado.',
         className: 'bg-[#10B981] text-white border-none',
       })
       setSelectedPerdido(null)
       loadDemands(false, true)
     } catch (err: any) {
-      toast({ title: 'Erro ao dar perdido', description: err.message, variant: 'destructive' })
+      toast({
+        title: 'Erro ao marcar como perdida',
+        description: 'Ocorreu um erro inesperado. Tente novamente.',
+        variant: 'destructive',
+      })
     }
   }
 

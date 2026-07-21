@@ -30,6 +30,7 @@ import {
 } from 'lucide-react'
 import { PrioritizeModal } from '@/components/PrioritizeModal'
 import { toggleDemandPriority } from '@/services/priority-service'
+import { markDemandAsLost } from '@/services/lost-demand-service'
 import { DemandCampaignSection } from '@/components/DemandCampaignSection'
 
 interface DemandCardProps {
@@ -824,58 +825,41 @@ export const DemandCard = React.memo(function DemandCard({
           open={showLostModal}
           onOpenChange={setShowLostModal}
           onConfirm={async (reason, obs) => {
-            try {
-              const table = demand.type === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
-              const { error } = await supabase
-                .from(table)
-                .update({
-                  status_demanda: 'perdida',
-                  motivo_perda: reason,
-                  motivo_perda_descricao: obs,
-                  updated_at: new Date().toISOString(),
-                })
-                .eq('id', demand.id)
+            const result = await markDemandAsLost({
+              demandId: demand.id,
+              tipo: demand.type,
+              reason,
+              observacao: obs,
+              userId: currentUser?.id,
+            })
 
-              if (error) throw error
-
-              await supabase.from('audit_log').insert({
-                usuario_id: currentUser?.id || null,
-                acao: 'UPDATE',
-                tabela: table,
-                registro_id: demand.id,
-                dados_novos: {
-                  status_demanda: 'Perdida',
-                  motivo_perda: reason,
-                  motivo_perda_descricao: obs,
-                },
-              })
-
-              window.dispatchEvent(
-                new CustomEvent('demanda-updated', {
-                  detail: {
-                    tipo: demand.type,
-                    data: {
-                      id: demand.id,
-                      status_demanda: 'perdida',
-                      db_status_demanda: 'perdida',
-                    },
-                  },
-                }),
-              )
-
+            if (result.error) {
               toast({
-                title: 'Sucesso',
-                description: 'Demanda marcada como perdida com sucesso.',
-                className: 'bg-[#10B981] text-white border-none',
-              })
-            } catch (err: any) {
-              toast({
-                title: 'Falha ao marcar como perdido',
-                description: err.message,
+                title: 'Falha ao marcar como perdida',
+                description: result.error,
                 variant: 'destructive',
               })
-              console.error(err)
+              return
             }
+
+            window.dispatchEvent(
+              new CustomEvent('demanda-updated', {
+                detail: {
+                  tipo: demand.type,
+                  data: {
+                    id: demand.id,
+                    status_demanda: 'perdida',
+                    db_status_demanda: 'perdida',
+                  },
+                },
+              }),
+            )
+
+            toast({
+              title: 'Sucesso',
+              description: 'Demanda marcada como perdida com sucesso.',
+              className: 'bg-[#10B981] text-white border-none',
+            })
           }}
         />
       )}
