@@ -270,6 +270,31 @@ export function useSupabaseDemands(
 
           const { data: resData, error } = await query
           if (error) throw error
+
+          if (resData && resData.length > 0) {
+            const demandIds = resData.map((d: any) => d.id)
+            const { data: matches } = await supabase
+              .from('imovel_demand_match')
+              .select(
+                'demanda_id, imovel_id, imoveis_captados(id, codigo_imovel, user_captador_id, captador_id, etapa_funil, data_visita, data_fechamento, dormitorios, vagas, observacoes, localizacao_texto, created_at, updated_at)',
+              )
+              .in('demanda_id', demandIds)
+
+            if (matches) {
+              matches.forEach((match) => {
+                const demand = resData.find((d: any) => d.id === match.demanda_id)
+                if (demand && match.imoveis_captados) {
+                  demand.imoveis_captados = demand.imoveis_captados || []
+                  if (
+                    !demand.imoveis_captados.some((i: any) => i.id === match.imoveis_captados.id)
+                  ) {
+                    demand.imoveis_captados.push(match.imoveis_captados)
+                  }
+                }
+              })
+            }
+          }
+
           return resData
         })
 
@@ -642,6 +667,90 @@ export function useSupabaseDemands(
         )
         .on(
           'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'imovel_demand_match' },
+          async (payload) => {
+            const match = payload.new
+            setSyncing(true)
+
+            const { data: imv } = await supabase
+              .from('imoveis_captados')
+              .select(
+                'id, codigo_imovel, user_captador_id, captador_id, etapa_funil, data_visita, data_fechamento, dormitorios, vagas, observacoes, localizacao_texto, created_at, updated_at',
+              )
+              .eq('id', match.imovel_id)
+              .single()
+
+            if (!imv) {
+              setSyncing(false)
+              return
+            }
+
+            setDemands((prev) => {
+              return prev.map((d) => {
+                if (d.id === match.demanda_id) {
+                  if (d.imoveis_captados?.some((i: any) => i.id === imv.id)) return d
+
+                  const captador = usersRef.current.find(
+                    (u) => u.id === (imv.user_captador_id || imv.captador_id),
+                  )
+                  const enrichedImv = {
+                    ...imv,
+                    captador_nome: captador?.name || 'Captador',
+                    etapa_funil: imv.etapa_funil || 'capturado',
+                    observacoes: imv.observacoes || imv.localizacao_texto,
+                  }
+
+                  let newStatus = d.db_status_demanda || d.status_demanda
+                  if (newStatus !== 'ganho') newStatus = 'atendida'
+                  const st = evalStatusDemanda(newStatus, d.respostas_captador || [])
+
+                  return {
+                    ...d,
+                    db_status_demanda: newStatus,
+                    status_demanda: st,
+                    imoveis_captados: [enrichedImv, ...(d.imoveis_captados || [])],
+                  }
+                }
+                return d
+              })
+            })
+            setTimeout(() => setSyncing(false), 500)
+          },
+        )
+        .on(
+          'postgres_changes',
+          { event: 'DELETE', schema: 'public', table: 'imovel_demand_match' },
+          (payload) => {
+            const match = payload.old
+            setSyncing(true)
+            setDemands((prev) => {
+              return prev.map((d) => {
+                if (d.id === match.demanda_id) {
+                  const newImoveis = (d.imoveis_captados || []).filter(
+                    (i: any) => i.id !== match.imovel_id,
+                  )
+                  let newStatus = d.db_status_demanda || d.status_demanda
+                  const hasClosed = newImoveis.some((i: any) => i.etapa_funil === 'fechado')
+                  if (!hasClosed && newStatus === 'ganho')
+                    newStatus = newImoveis.length > 0 ? 'atendida' : 'aberta'
+                  if (newImoveis.length === 0 && newStatus === 'atendida') newStatus = 'aberta'
+
+                  const st = evalStatusDemanda(newStatus, d.respostas_captador || [])
+                  return {
+                    ...d,
+                    db_status_demanda: newStatus,
+                    status_demanda: st,
+                    imoveis_captados: newImoveis,
+                  }
+                }
+                return d
+              })
+            })
+            setTimeout(() => setSyncing(false), 500)
+          },
+        )
+        .on(
+          'postgres_changes',
           { event: '*', schema: 'public', table: 'prazos_captacao' },
           (payload) => {
             if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
@@ -721,6 +830,28 @@ export function useSupabaseDemands(
 
     const { data: moreData, error } = await query
     if (error || !moreData) return
+
+    if (moreData.length > 0) {
+      const demandIds = moreData.map((d: any) => d.id)
+      const { data: matches } = await supabase
+        .from('imovel_demand_match')
+        .select(
+          'demanda_id, imovel_id, imoveis_captados(id, codigo_imovel, user_captador_id, captador_id, etapa_funil, data_visita, data_fechamento, dormitorios, vagas, observacoes, localizacao_texto, created_at, updated_at)',
+        )
+        .in('demanda_id', demandIds)
+
+      if (matches) {
+        matches.forEach((match) => {
+          const demand = moreData.find((d: any) => d.id === match.demanda_id)
+          if (demand && match.imoveis_captados) {
+            demand.imoveis_captados = demand.imoveis_captados || []
+            if (!demand.imoveis_captados.some((i: any) => i.id === match.imoveis_captados.id)) {
+              demand.imoveis_captados.push(match.imoveis_captados)
+            }
+          }
+        })
+      }
+    }
 
     setHasMore(moreData.length >= PAGE_SIZE)
     offsetRef.current = nextOffset + PAGE_SIZE

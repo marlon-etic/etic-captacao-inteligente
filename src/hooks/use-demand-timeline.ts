@@ -10,6 +10,7 @@ export interface TimelineEvent {
   description: string
   userName?: string
   userRole?: string
+  links?: string[]
 }
 
 interface UserInfo {
@@ -17,7 +18,11 @@ interface UserInfo {
   role: string
 }
 
-export function useDemandTimeline(demand: SupabaseDemand) {
+export function useDemandTimeline(
+  demand: SupabaseDemand,
+  options: { enabled?: boolean } = { enabled: true },
+) {
+  const { enabled = true } = options
   const [events, setEvents] = useState<TimelineEvent[]>([])
   const [loading, setLoading] = useState(true)
   const respostasRef = useRef(demand.respostas_captador || [])
@@ -27,7 +32,7 @@ export function useDemandTimeline(demand: SupabaseDemand) {
   }, [demand.respostas_captador])
 
   const fetchTimeline = useCallback(async () => {
-    if (!demand.id) return
+    if (!demand.id || !enabled) return
     setLoading(true)
     try {
       const [matchesResult, statusLogsResult, auditLinksResult] = await Promise.all([
@@ -132,6 +137,7 @@ export function useDemandTimeline(demand: SupabaseDemand) {
               : 'Links atualizados',
           userName: u?.nome,
           userRole: u?.role,
+          links,
         })
       })
 

@@ -21,6 +21,25 @@ export async function fetchDemandById(
 
   if (error || !data) return null
 
+  const { data: matches } = await supabase
+    .from('imovel_demand_match')
+    .select(
+      'imovel_id, imoveis_captados(id, codigo_imovel, user_captador_id, captador_id, etapa_funil, data_visita, data_fechamento, dormitorios, vagas, observacoes, localizacao_texto, created_at, updated_at)',
+    )
+    .eq('demanda_id', demandId)
+
+  if (matches) {
+    data.imoveis_captados = data.imoveis_captados || []
+    matches.forEach((match) => {
+      if (
+        match.imoveis_captados &&
+        !data.imoveis_captados.some((i: any) => i.id === match.imoveis_captados.id)
+      ) {
+        data.imoveis_captados.push(match.imoveis_captados)
+      }
+    })
+  }
+
   const respostas = (data.respostas_captador || []).sort(
     (a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
   )
