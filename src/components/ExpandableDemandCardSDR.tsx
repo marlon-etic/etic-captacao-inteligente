@@ -19,6 +19,7 @@ import {
   Calendar,
   Home,
   Link as LinkIcon,
+  ExternalLink,
 } from 'lucide-react'
 import { useSlaCountdown, useTimeElapsed } from '@/hooks/useTimeElapsed'
 import useAppStore from '@/stores/useAppStore'
@@ -29,6 +30,8 @@ import { toggleDemandPriority } from '@/services/priority-service'
 import { supabase } from '@/lib/supabase/client'
 import type { LinkedProperty } from './VisitRegistrationModal'
 import { formatCurrency } from '@/lib/format-utils'
+import { getPropertyPublicUrl } from '@/lib/propertyUrl'
+import { useDemandProperties } from '@/hooks/use-demand-properties'
 import { LazyModalBoundary } from './LazyModalBoundary'
 
 const PrioritizeModal = lazy(() =>
@@ -74,6 +77,10 @@ function ExpandableDemandCardSDRComponent({
   const [showTimeline, setShowTimeline] = useState(false)
   const [linkedProperties, setLinkedProperties] = useState<LinkedProperty[]>([])
   const [showLinksModal, setShowLinksModal] = useState(false)
+  const { properties: demandProperties, loading: propertiesLoading } = useDemandProperties(
+    demand.id || '',
+    showTimeline,
+  )
 
   const canPrioritize = ['sdr', 'admin', 'gestor', 'corretor'].includes(currentUser?.role || '')
   const canAddLinks = currentUser?.role === 'sdr' || currentUser?.role === 'admin'
@@ -467,7 +474,7 @@ function ExpandableDemandCardSDRComponent({
             variant="outline"
             className="text-gray-500 font-bold border-gray-200 bg-white px-3 py-1 text-[11px] sm:text-[12px]"
           >
-            {capturedCount} imóveis captados
+            {Math.max(capturedCount, demandProperties.length)} imóveis captados
           </Badge>
           {isPending && !isLost && !isPrioritized && canPrioritize && (
             <Button
@@ -503,12 +510,83 @@ function ExpandableDemandCardSDRComponent({
             className="font-bold text-[#1A3A52] hover:bg-gray-50 text-[13px] h-9 w-max mx-auto"
             onClick={() => setShowTimeline(!showTimeline)}
           >
-            {showTimeline ? 'Ocultar Linha do Tempo' : 'Ver Linha do Tempo'}
+            {showTimeline ? 'Ocultar Detalhes' : 'Ver Detalhes e Linha do Tempo'}
           </Button>
           {showTimeline && (
-            <LazyModalBoundary>
-              <DemandLifecycleTimeline demand={demand} />
-            </LazyModalBoundary>
+            <div className="flex flex-col gap-4 bg-[#FAFAFA] p-4 rounded-[12px] border border-gray-100 animate-in fade-in slide-in-from-top-2">
+              <div className="flex flex-col gap-2">
+                <h4 className="text-[13px] font-black text-[#1A3A52] uppercase tracking-wide">
+                  Imóveis Vinculados ({demandProperties.length})
+                </h4>
+                {propertiesLoading ? (
+                  <div className="flex flex-col gap-2">
+                    {[1, 2].map((i) => (
+                      <div key={i} className="h-[72px] rounded-lg bg-gray-100 animate-pulse" />
+                    ))}
+                  </div>
+                ) : demandProperties.length === 0 ? (
+                  <div className="text-[13px] text-gray-400 py-3 border border-dashed border-gray-200 rounded-lg text-center">
+                    Nenhum imóvel vinculado a esta demanda.
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    {demandProperties.map((prop) => (
+                      <div
+                        key={prop.matchId}
+                        className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm flex flex-col gap-1.5 hover:border-[#1A3A52]/30 transition-colors"
+                      >
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {prop.codigo_imovel ? (
+                            <a
+                              href={getPropertyPublicUrl(prop.codigo_imovel)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="font-black text-blue-600 hover:text-blue-800 hover:underline text-[13px] flex items-center gap-1"
+                            >
+                              {prop.codigo_imovel}
+                              <ExternalLink className="w-3 h-3 shrink-0" />
+                            </a>
+                          ) : (
+                            <span className="font-bold text-gray-500 text-[13px]">Sem código</span>
+                          )}
+                          {prop.etapa_funil && (
+                            <Badge
+                              className={cn(
+                                'text-[9px] px-2 py-0.5 border-none font-bold uppercase shrink-0',
+                                prop.etapa_funil === 'fechado'
+                                  ? 'bg-[#D1FAE5] text-[#065F46]'
+                                  : prop.etapa_funil === 'perdido'
+                                    ? 'bg-[#FEE2E2] text-[#EF4444]'
+                                    : prop.etapa_funil === 'visitado'
+                                      ? 'bg-[#FEF3C7] text-[#B45309]'
+                                      : 'bg-[#E0E7FF] text-[#3730A3]',
+                              )}
+                            >
+                              {prop.etapa_funil}
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1.5 text-[12px] text-gray-600">
+                          <MapPin className="w-3.5 h-3.5 shrink-0 text-gray-400" />
+                          <span className="truncate">
+                            {prop.endereco || prop.localizacao_texto || 'Endereço não informado'}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-[14px] font-bold text-[#10B981]">
+                          <DollarSign className="w-4 h-4 shrink-0" />
+                          {formatCurrency(prop.preco || prop.valor || 0)}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <LazyModalBoundary>
+                <DemandLifecycleTimeline demand={demand} />
+              </LazyModalBoundary>
+            </div>
           )}
 
           {canAddLinks && (
@@ -649,6 +727,7 @@ export const ExpandableDemandCardSDR = memo(ExpandableDemandCardSDRComponent, (p
     prev.demand?.status_demanda === next.demand?.status_demanda &&
     prev.demand?.is_prioritaria === next.demand?.is_prioritaria &&
     prev.matchCount === next.matchCount &&
+    prev.demand?.imoveis_captados?.length === next.demand?.imoveis_captados?.length &&
     JSON.stringify(prev.demand?.links_sugeridos) === JSON.stringify(next.demand?.links_sugeridos)
   )
 })
