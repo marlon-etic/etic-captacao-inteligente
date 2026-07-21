@@ -176,7 +176,7 @@ export function useConsolidatedSync({
         if (navigator.onLine) {
           pollRef.current()
         }
-      }, 120000) // Alterado de 60s para 120s para reduzir carga no DB
+      }, 180000) // 3 minutes polling to reduce DB load
     }
 
     const delayTimeout = setTimeout(startPolling, initialDelay)

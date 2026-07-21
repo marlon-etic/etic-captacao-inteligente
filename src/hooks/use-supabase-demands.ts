@@ -184,7 +184,7 @@ export function useSupabaseDemands(
   )
 
   const fetchDemands = useCallback(
-    async (isBackground = false) => {
+    async (isBackground = false, forceFetch = false) => {
       try {
         if (!isBackground) setLoading(true)
 
@@ -209,12 +209,19 @@ export function useSupabaseDemands(
         const table = type === 'Aluguel' ? 'demandas_locacao' : 'demandas_vendas'
 
         const cacheKey = `demands_cache_${type}`
+        const cacheTsKey = `demands_cache_ts_${type}`
+        const CACHE_TTL = 30000
+
         if (!isBackground) {
           const cached = sessionStorage.getItem(cacheKey)
+          const cachedTs = sessionStorage.getItem(cacheTsKey)
           if (cached) {
             const parsed = JSON.parse(cached)
             setDemands(sortDemands(formatData(parsed)))
             setLoading(false)
+            if (cachedTs && Date.now() - parseInt(cachedTs) < CACHE_TTL && !forceFetch) {
+              return
+            }
           }
         }
 
@@ -302,6 +309,7 @@ export function useSupabaseDemands(
           setHasMore(data.length >= PAGE_SIZE)
           offsetRef.current = PAGE_SIZE
           sessionStorage.setItem(cacheKey, JSON.stringify(data))
+          sessionStorage.setItem(cacheTsKey, Date.now().toString())
           setDemands((prev) => {
             const fetchedFormatted = formatData(data)
             const fetchedIds = new Set(fetchedFormatted.map((f) => f.id))
@@ -356,7 +364,7 @@ export function useSupabaseDemands(
     }
 
     const handleForceRefresh = () => {
-      fetchDemands(false)
+      fetchDemands(false, true)
     }
 
     window.addEventListener('global-delete-imovel', handleGlobalDeleteImovel as EventListener)
@@ -864,5 +872,5 @@ export function useSupabaseDemands(
     })
   }, [type, hasMore, loading, formatData, sortDemands, options?.dateRange, options?.statusFilter])
 
-  return { demands, loading, syncing, refresh: () => fetchDemands(false), hasMore, loadMore }
+  return { demands, loading, syncing, refresh: () => fetchDemands(false, true), hasMore, loadMore }
 }

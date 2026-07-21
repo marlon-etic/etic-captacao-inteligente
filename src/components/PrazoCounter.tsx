@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react'
+import { memo, useEffect, useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Clock, AlertTriangle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-export function PrazoCounter({
+function PrazoCounterInner({
   prazoResposta,
   isExpired,
 }: {
@@ -85,3 +85,5 @@ export function PrazoCounter({
     </div>
   )
 }
+
+export const PrazoCounter = memo(PrazoCounterInner)

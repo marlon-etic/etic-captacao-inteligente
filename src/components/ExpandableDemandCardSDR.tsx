@@ -1,4 +1,4 @@
-import { useState, memo, useMemo, useCallback } from 'react'
+import { useState, memo, useMemo, useCallback, lazy } from 'react'
 import { LinkText } from '@/lib/link-formatter'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -25,14 +25,28 @@ import useAppStore from '@/stores/useAppStore'
 import { useToast } from '@/hooks/use-toast'
 import { useMatchCount } from '@/hooks/use-match-count'
 import { useNavigate } from 'react-router-dom'
-import { PrioritizeModal } from './PrioritizeModal'
 import { toggleDemandPriority } from '@/services/priority-service'
-import { LostModal } from './LostModal'
 import { supabase } from '@/lib/supabase/client'
-import { DemandMatchModal } from './DemandMatchModal'
-import { VisitRegistrationModal, type LinkedProperty } from './VisitRegistrationModal'
-import { DemandLifecycleTimeline } from './DemandLifecycleTimeline'
-import { SugerirLinksModal } from './SugerirLinksModal'
+import type { LinkedProperty } from './VisitRegistrationModal'
+import { formatCurrency } from '@/lib/format-utils'
+import { LazyModalBoundary } from './LazyModalBoundary'
+
+const PrioritizeModal = lazy(() =>
+  import('./PrioritizeModal').then((m) => ({ default: m.PrioritizeModal })),
+)
+const LostModal = lazy(() => import('./LostModal').then((m) => ({ default: m.LostModal })))
+const DemandMatchModal = lazy(() =>
+  import('./DemandMatchModal').then((m) => ({ default: m.DemandMatchModal })),
+)
+const VisitRegistrationModal = lazy(() =>
+  import('./VisitRegistrationModal').then((m) => ({ default: m.VisitRegistrationModal })),
+)
+const DemandLifecycleTimeline = lazy(() =>
+  import('./DemandLifecycleTimeline').then((m) => ({ default: m.DemandLifecycleTimeline })),
+)
+const SugerirLinksModal = lazy(() =>
+  import('./SugerirLinksModal').then((m) => ({ default: m.SugerirLinksModal })),
+)
 
 function ExpandableDemandCardSDRComponent({
   demand,
@@ -118,12 +132,7 @@ function ExpandableDemandCardSDRComponent({
   }
 
   const formatPrice = useMemo(() => {
-    const formatter = new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-      maximumFractionDigits: 0,
-    })
-    return (val: number) => formatter.format(val).replace('R$', '').trim()
+    return (val: number) => formatCurrency(val).replace('R$', '').trim()
   }, [])
 
   const capturedCount = demand.imoveis_captados?.length || 0
@@ -496,7 +505,11 @@ function ExpandableDemandCardSDRComponent({
           >
             {showTimeline ? 'Ocultar Linha do Tempo' : 'Ver Linha do Tempo'}
           </Button>
-          {showTimeline && <DemandLifecycleTimeline demand={demand} />}
+          {showTimeline && (
+            <LazyModalBoundary>
+              <DemandLifecycleTimeline demand={demand} />
+            </LazyModalBoundary>
+          )}
 
           {canAddLinks && (
             <Button
@@ -585,43 +598,46 @@ function ExpandableDemandCardSDRComponent({
         </div>
       </Card>
 
-      <PrioritizeModal
-        open={isPrioritizeModalOpen}
-        onOpenChange={setIsPrioritizeModalOpen}
-        onConfirm={handlePrioritize}
-        similarCount={demand.interestedClientsCount || 0}
-      />
+      <LazyModalBoundary>
+        <PrioritizeModal
+          open={isPrioritizeModalOpen}
+          onOpenChange={setIsPrioritizeModalOpen}
+          onConfirm={handlePrioritize}
+          similarCount={demand.interestedClientsCount || 0}
+        />
 
-      <LostModal
-        open={showLostModal}
-        onOpenChange={setShowLostModal}
-        onConfirm={handleLostConfirm}
-      />
+        <LostModal
+          open={showLostModal}
+          onOpenChange={setShowLostModal}
+          onConfirm={handleLostConfirm}
+        />
 
-      <DemandMatchModal demand={demand} open={showMatchModal} onOpenChange={setShowMatchModal} />
+        <DemandMatchModal demand={demand} open={showMatchModal} onOpenChange={setShowMatchModal} />
 
-      <VisitRegistrationModal
-        open={showVisitModal}
-        onOpenChange={setShowVisitModal}
-        demandId={demand.id || ''}
-        tipoDemanda={demand.tipo || ''}
-        imovelId={demand.imoveis_captados?.[0]?.id}
-        propertyLabel={
-          demand.imoveis_captados?.[0]?.endereco || demand.imoveis_captados?.[0]?.localizacao_texto
-        }
-        linkedProperties={linkedProperties}
-      />
+        <VisitRegistrationModal
+          open={showVisitModal}
+          onOpenChange={setShowVisitModal}
+          demandId={demand.id || ''}
+          tipoDemanda={demand.tipo || ''}
+          imovelId={demand.imoveis_captados?.[0]?.id}
+          propertyLabel={
+            demand.imoveis_captados?.[0]?.endereco ||
+            demand.imoveis_captados?.[0]?.localizacao_texto
+          }
+          linkedProperties={linkedProperties}
+        />
 
-      <SugerirLinksModal
-        demanda={{
-          id: demand.id,
-          tipo: demand.tipo,
-          links_sugeridos: demand.links_sugeridos as string[] | null,
-        }}
-        open={showLinksModal}
-        onOpenChange={setShowLinksModal}
-        onSuccess={handleLinksSaved}
-      />
+        <SugerirLinksModal
+          demanda={{
+            id: demand.id,
+            tipo: demand.tipo,
+            links_sugeridos: demand.links_sugeridos as string[] | null,
+          }}
+          open={showLinksModal}
+          onOpenChange={setShowLinksModal}
+          onSuccess={handleLinksSaved}
+        />
+      </LazyModalBoundary>
     </>
   )
 }

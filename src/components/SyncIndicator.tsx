@@ -1,6 +1,7 @@
+import { memo } from 'react'
 import { Loader2 } from 'lucide-react'
 
-export function SyncIndicator({ isSyncing }: { isSyncing?: boolean }) {
+function SyncIndicatorInner({ isSyncing }: { isSyncing?: boolean }) {
   if (!isSyncing) return null
 
   return (
@@ -10,3 +11,5 @@ export function SyncIndicator({ isSyncing }: { isSyncing?: boolean }) {
     </div>
   )
 }
+
+export const SyncIndicator = memo(SyncIndicatorInner)

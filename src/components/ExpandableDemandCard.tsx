@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, lazy, memo } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -25,17 +25,28 @@ import { SupabaseDemand } from '@/hooks/use-supabase-demands'
 import useAppStore from '@/stores/useAppStore'
 import { supabase } from '@/lib/supabase/client'
 import { useToast } from '@/hooks/use-toast'
-import { CapturePropertyModal } from './CapturePropertyModal'
-import { DemandDetailsModal } from './DemandDetailsModal'
-import { NaoEncontreiModal } from './NaoEncontreiModal'
-import { PrioritizeModal } from './PrioritizeModal'
 import { toggleDemandPriority } from '@/services/priority-service'
 import { PrazoCounter } from './PrazoCounter'
 import { RespostasBadge, RespostasHistory } from './RespostasHistory'
-import { LostModal } from './LostModal'
 import { markDemandAsLost } from '@/services/lost-demand-service'
+import { formatCurrency } from '@/lib/format-utils'
+import { LazyModalBoundary } from './LazyModalBoundary'
 
-export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
+const CapturePropertyModal = lazy(() =>
+  import('./CapturePropertyModal').then((m) => ({ default: m.CapturePropertyModal })),
+)
+const DemandDetailsModal = lazy(() =>
+  import('./DemandDetailsModal').then((m) => ({ default: m.DemandDetailsModal })),
+)
+const NaoEncontreiModal = lazy(() =>
+  import('./NaoEncontreiModal').then((m) => ({ default: m.NaoEncontreiModal })),
+)
+const PrioritizeModal = lazy(() =>
+  import('./PrioritizeModal').then((m) => ({ default: m.PrioritizeModal })),
+)
+const LostModal = lazy(() => import('./LostModal').then((m) => ({ default: m.LostModal })))
+
+function ExpandableDemandCardInner({ demand }: { demand: SupabaseDemand }) {
   const { currentUser, users } = useAppStore()
   const { toast } = useToast()
 
@@ -235,13 +246,7 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
     }
   }
 
-  const formatPrice = (val: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-      maximumFractionDigits: 0,
-    }).format(val)
-  }
+  const formatPrice = formatCurrency
 
   const handleEncontrei = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -615,56 +620,68 @@ export function ExpandableDemandCard({ demand }: { demand: SupabaseDemand }) {
           )}
       </Card>
 
-      <DemandDetailsModal
-        open={isDetailsModalOpen}
-        onOpenChange={setIsDetailsModalOpen}
-        demand={mappedDemand}
-        onEncontrei={
-          currentUser?.role === 'captador' &&
-          (demand.status_demanda === 'aberta' || demand.status_demanda === 'sem_resposta_24h')
-            ? () => {
-                setIsDetailsModalOpen(false)
-                setTimeout(() => setIsCaptureModalOpen(true), 300)
-              }
-            : undefined
-        }
-        onLost={
-          isOwnerOrAdmin
-            ? () => {
-                setIsDetailsModalOpen(false)
-                setTimeout(() => setShowLostModal(true), 300)
-              }
-            : undefined
-        }
-      />
+      <LazyModalBoundary>
+        <DemandDetailsModal
+          open={isDetailsModalOpen}
+          onOpenChange={setIsDetailsModalOpen}
+          demand={mappedDemand}
+          onEncontrei={
+            currentUser?.role === 'captador' &&
+            (demand.status_demanda === 'aberta' || demand.status_demanda === 'sem_resposta_24h')
+              ? () => {
+                  setIsDetailsModalOpen(false)
+                  setTimeout(() => setIsCaptureModalOpen(true), 300)
+                }
+              : undefined
+          }
+          onLost={
+            isOwnerOrAdmin
+              ? () => {
+                  setIsDetailsModalOpen(false)
+                  setTimeout(() => setShowLostModal(true), 300)
+                }
+              : undefined
+          }
+        />
 
-      <CapturePropertyModal
-        isOpen={isCaptureModalOpen}
-        onClose={() => setIsCaptureModalOpen(false)}
-        demand={demand}
-        onSuccess={() => {
-          setIsCaptureModalOpen(false)
-        }}
-      />
+        <CapturePropertyModal
+          isOpen={isCaptureModalOpen}
+          onClose={() => setIsCaptureModalOpen(false)}
+          demand={demand}
+          onSuccess={() => {
+            setIsCaptureModalOpen(false)
+          }}
+        />
 
-      <NaoEncontreiModal
-        isOpen={isNaoEncontreiModalOpen}
-        onClose={() => setIsNaoEncontreiModalOpen(false)}
-        onConfirm={handleNaoEncontreiConfirm}
-      />
+        <NaoEncontreiModal
+          isOpen={isNaoEncontreiModalOpen}
+          onClose={() => setIsNaoEncontreiModalOpen(false)}
+          onConfirm={handleNaoEncontreiConfirm}
+        />
 
-      <PrioritizeModal
-        open={isPrioritizeModalOpen}
-        onOpenChange={setIsPrioritizeModalOpen}
-        onConfirm={handlePrioritizeConfirm}
-        similarCount={demand.interestedClientsCount || 0}
-      />
+        <PrioritizeModal
+          open={isPrioritizeModalOpen}
+          onOpenChange={setIsPrioritizeModalOpen}
+          onConfirm={handlePrioritizeConfirm}
+          similarCount={demand.interestedClientsCount || 0}
+        />
 
-      <LostModal
-        open={showLostModal}
-        onOpenChange={setShowLostModal}
-        onConfirm={handleLostConfirm}
-      />
+        <LostModal
+          open={showLostModal}
+          onOpenChange={setShowLostModal}
+          onConfirm={handleLostConfirm}
+        />
+      </LazyModalBoundary>
     </>
   )
 }
+
+export const ExpandableDemandCard = memo(ExpandableDemandCardInner, (prev, next) => {
+  return (
+    prev.demand?.id === next.demand?.id &&
+    prev.demand?.updated_at === next.demand?.updated_at &&
+    prev.demand?.status_demanda === next.demand?.status_demanda &&
+    prev.demand?.is_prioritaria === next.demand?.is_prioritaria &&
+    prev.demand?.imoveis_captados?.length === next.demand?.imoveis_captados?.length
+  )
+})

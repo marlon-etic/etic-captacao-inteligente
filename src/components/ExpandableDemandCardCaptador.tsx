@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, lazy, memo } from 'react'
 import { LinkText } from '@/lib/link-formatter'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -33,15 +33,24 @@ import { SupabaseDemand } from '@/hooks/use-supabase-demands'
 import { supabase } from '@/lib/supabase/client'
 import { toast } from '@/hooks/use-toast'
 import useAppStore from '@/stores/useAppStore'
-import { DemandDetailModal } from './DemandDetailModal'
-import { CapturePropertyModal } from './CapturePropertyModal'
-import { NaoEncontreiModal } from './NaoEncontreiModal'
 import { PrazoCounter } from './PrazoCounter'
 import { RespostasBadge, RespostasHistory } from './RespostasHistory'
 import { useMatchCount } from '@/hooks/use-match-count'
 import { useNavigate } from 'react-router-dom'
+import { formatCurrency } from '@/lib/format-utils'
+import { LazyModalBoundary } from './LazyModalBoundary'
 
-export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDemand }) {
+const DemandDetailModal = lazy(() =>
+  import('./DemandDetailModal').then((m) => ({ default: m.DemandDetailModal })),
+)
+const CapturePropertyModal = lazy(() =>
+  import('./CapturePropertyModal').then((m) => ({ default: m.CapturePropertyModal })),
+)
+const NaoEncontreiModal = lazy(() =>
+  import('./NaoEncontreiModal').then((m) => ({ default: m.NaoEncontreiModal })),
+)
+
+function ExpandableDemandCardCaptadorInner({ demand }: { demand: SupabaseDemand }) {
   const [expanded, setExpanded] = useState(false)
   const [detailsModalOpen, setDetailsModalOpen] = useState(false)
   const [captureModalOpen, setCaptureModalOpen] = useState(false)
@@ -169,13 +178,7 @@ export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDeman
     }
   }
 
-  const formatPrice = (val: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-      maximumFractionDigits: 0,
-    }).format(val)
-  }
+  const formatPrice = formatCurrency
 
   const handleEncontrei = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -776,30 +779,45 @@ export function ExpandableDemandCardCaptador({ demand }: { demand: SupabaseDeman
         )}
       </Card>
 
-      <DemandDetailModal
-        demand={demand}
-        isOpen={detailsModalOpen}
-        onClose={() => setDetailsModalOpen(false)}
-        onFoundProperty={() => {
-          setDetailsModalOpen(false)
-          setCaptureModalOpen(true)
-        }}
-      />
+      <LazyModalBoundary>
+        <DemandDetailModal
+          demand={demand}
+          isOpen={detailsModalOpen}
+          onClose={() => setDetailsModalOpen(false)}
+          onFoundProperty={() => {
+            setDetailsModalOpen(false)
+            setCaptureModalOpen(true)
+          }}
+        />
 
-      <CapturePropertyModal
-        demand={demand}
-        isOpen={captureModalOpen}
-        onClose={() => setCaptureModalOpen(false)}
-        onSuccess={() => {
-          setCaptureModalOpen(false)
-        }}
-      />
+        <CapturePropertyModal
+          demand={demand}
+          isOpen={captureModalOpen}
+          onClose={() => setCaptureModalOpen(false)}
+          onSuccess={() => {
+            setCaptureModalOpen(false)
+          }}
+        />
 
-      <NaoEncontreiModal
-        isOpen={naoEncontreiModalOpen}
-        onClose={() => setNaoEncontreiModalOpen(false)}
-        onConfirm={handleNaoEncontreiConfirm}
-      />
+        <NaoEncontreiModal
+          isOpen={naoEncontreiModalOpen}
+          onClose={() => setNaoEncontreiModalOpen(false)}
+          onConfirm={handleNaoEncontreiConfirm}
+        />
+      </LazyModalBoundary>
     </>
   )
 }
+
+export const ExpandableDemandCardCaptador = memo(
+  ExpandableDemandCardCaptadorInner,
+  (prev, next) => {
+    return (
+      prev.demand?.id === next.demand?.id &&
+      prev.demand?.updated_at === next.demand?.updated_at &&
+      prev.demand?.status_demanda === next.demand?.status_demanda &&
+      prev.demand?.is_prioritaria === next.demand?.is_prioritaria &&
+      prev.demand?.imoveis_captados?.length === next.demand?.imoveis_captados?.length
+    )
+  },
+)
