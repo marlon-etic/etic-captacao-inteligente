@@ -143,6 +143,19 @@ export function useSdrQueries() {
           return data || []
         }
 
+        const fetchVisitas = async () => {
+          let q = supabase
+            .from('visitas_imovel')
+            .select(
+              'id, demanda_id, tipo_demanda, imovel_id, novo_imovel_endereco, novo_imovel_valor, user_sdr_id, data_visita, qtd_imoveis_visitados, created_at, imoveis_captados(id, codigo_imovel, endereco, preco, valor, tipo_imovel, tipo, fotos, dormitorios, vagas, banheiros, localizacao_texto, observacoes, status_captacao, etapa_funil)',
+            )
+          if (!isAdmin) q = q.eq('user_sdr_id', user.id)
+          if (applyDateFilter) q = q.gte('created_at', startIso).lte('created_at', endIso)
+          q = q.order('data_visita', { ascending: false, nullsFirst: false })
+          const { data } = await q
+          return data || []
+        }
+
         const buildImoveisQuery = () => {
           let q = supabase
             .from('imoveis_captados')
@@ -186,7 +199,7 @@ export function useSdrQueries() {
           ),
           qCreated,
           qActive,
-          !isCaptador ? fetchActivities('visitas_imovel', 'data_visita') : Promise.resolve([]),
+          !isCaptador ? fetchVisitas() : Promise.resolve([]),
           !isCaptador ? fetchActivities('fechamentos', 'created_at') : Promise.resolve([]),
         ])
 

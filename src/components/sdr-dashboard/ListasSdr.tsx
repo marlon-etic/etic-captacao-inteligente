@@ -35,6 +35,7 @@ import { PrioritizeModal } from '@/components/PrioritizeModal'
 import { toggleDemandPriority } from '@/services/priority-service'
 import useAppStore from '@/stores/useAppStore'
 import { Star } from 'lucide-react'
+import { VisitDetailsModal } from '@/components/sdr-dashboard/VisitDetailsModal'
 
 function ListasSdrBase({
   data,
@@ -53,6 +54,7 @@ function ListasSdrBase({
   const [isLinking, setIsLinking] = useState(false)
   const [prioritizeDemand, setPrioritizeDemand] = useState<any>(null)
   const [isPrioritizing, setIsPrioritizing] = useState(false)
+  const [selectedVisit, setSelectedVisit] = useState<any>(null)
   const { toast } = useToast()
 
   const canPrioritize = ['sdr', 'admin', 'gestor'].includes(currentUser?.role)
@@ -332,21 +334,41 @@ function ListasSdrBase({
     )
   } else if (cardFiltrado === 'visitas') {
     listData = visitasList
-    columns = ['Data Visita', 'Tipo', 'Endereço', 'Ações']
-    renderRow = (v) => (
-      <TableRow key={v.id} className="hover:bg-gray-50">
-        <TableCell className="font-bold text-gray-800">
-          {format(new Date(v.data_visita || v.created_at), 'dd/MM/yyyy HH:mm')}
-        </TableCell>
-        <TableCell className="text-gray-500">{v.tipo_demanda}</TableCell>
-        <TableCell className="text-gray-500">{v.novo_imovel_endereco || 'N/A'}</TableCell>
-        <TableCell>
-          <Button size="sm" variant="outline" className="h-8 font-bold">
-            Detalhes
-          </Button>
-        </TableCell>
-      </TableRow>
-    )
+    columns = ['Data Visita', 'Endereço', 'Tipo', 'Valor', 'Ações']
+    renderRow = (v) => {
+      const property = v.imoveis_captados
+      const address = property?.endereco || v.novo_imovel_endereco || 'Sem endereço'
+      const value = property?.preco || property?.valor || v.novo_imovel_valor || 0
+      return (
+        <TableRow key={v.id} className="hover:bg-gray-50">
+          <TableCell className="font-bold text-gray-800 whitespace-nowrap">
+            {format(new Date(v.data_visita || v.created_at), 'dd/MM/yyyy HH:mm')}
+          </TableCell>
+          <TableCell className="text-gray-700 font-medium">
+            {address}
+            {property?.localizacao_texto && (
+              <span className="block text-xs text-gray-400">{property.localizacao_texto}</span>
+            )}
+          </TableCell>
+          <TableCell className="text-gray-500">
+            {v.tipo_demanda || property?.tipo_imovel || 'N/A'}
+          </TableCell>
+          <TableCell className="font-medium text-emerald-600 whitespace-nowrap">
+            {value > 0 ? `R$ ${value}` : '—'}
+          </TableCell>
+          <TableCell>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 font-bold"
+              onClick={() => setSelectedVisit(v)}
+            >
+              Detalhes
+            </Button>
+          </TableCell>
+        </TableRow>
+      )
+    }
   } else if (cardFiltrado === 'fechados') {
     listData = fechadosList
     columns = ['Data', 'Tipo', 'Valor', 'Status']
@@ -584,6 +606,12 @@ function ListasSdrBase({
         onOpenChange={(open) => !open && setPrioritizeDemand(null)}
         onConfirm={handlePrioritize}
         similarCount={prioritizeDemand?.interestedClientsCount || 0}
+      />
+
+      <VisitDetailsModal
+        visit={selectedVisit}
+        open={!!selectedVisit}
+        onOpenChange={(open) => !open && setSelectedVisit(null)}
       />
     </div>
   )
