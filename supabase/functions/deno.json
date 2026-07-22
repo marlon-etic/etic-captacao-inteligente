@@ -4,8 +4,8 @@
     "monitor-realtime": 5,
     "marcar-demandas-sem-resposta": 6,
     "send-daily-reports": 2,
-    "visit-registration": 4,
-    "feedback-registration": 1,
+    "visit-registration": 5,
+    "feedback-registration": 2,
     "negotiation-registration": 1
   }
 }

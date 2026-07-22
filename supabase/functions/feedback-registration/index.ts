@@ -50,12 +50,12 @@ Deno.serve(async (req: Request) => {
       .eq('id', user.id)
       .single()
 
-    if (userError || !userData || userData.role !== 'sdr') {
+    if (userError || !userData || !['sdr', 'corretor', 'admin', 'gestor'].includes(userData.role)) {
       return new Response(
         JSON.stringify({
           success: false,
           error: 'Forbidden',
-          message: 'User does not have the required sdr role',
+          message: 'User does not have the required role',
         }),
         {
           status: 403,
@@ -95,10 +95,9 @@ Deno.serve(async (req: Request) => {
       )
     }
 
-    // Check if property_link_id exists
     const { data: linkData, error: linkError } = await supabaseAdmin
       .from('imovel_demand_match')
-      .select('id')
+      .select('id, imovel_id, demanda_id, tipo_demanda, captador_id')
       .eq('id', property_link_id)
       .single()
 
@@ -112,7 +111,6 @@ Deno.serve(async (req: Request) => {
       )
     }
 
-    // Check for duplicate feedback
     const { data: existingFeedback, error: checkError } = await supabaseAdmin
       .from('feedback_records')
       .select('id')
@@ -137,7 +135,6 @@ Deno.serve(async (req: Request) => {
       )
     }
 
-    // Insert new feedback
     const now = new Date().toISOString()
     const { data: newFeedback, error: insertError } = await supabaseAdmin
       .from('feedback_records')
@@ -153,6 +150,60 @@ Deno.serve(async (req: Request) => {
 
     if (insertError) {
       throw insertError
+    }
+
+    if (linkData.imovel_id) {
+      const { data: imovelData } = await supabaseAdmin
+        .from('imoveis_captados')
+        .select('captador_id, user_captador_id, endereco, localizacao_texto')
+        .eq('id', linkData.imovel_id)
+        .maybeSingle()
+
+      const captadorId =
+        linkData.captador_id || imovelData?.user_captador_id || imovelData?.captador_id
+
+      if (captadorId) {
+        const propertyInfo = imovelData?.endereco || imovelData?.localizacao_texto || 'imóvel'
+        const interestLabel = interest_level === 'interested' ? 'interessado' : 'não interessado'
+
+        try {
+          await supabaseAdmin.from('notificacoes').insert({
+            usuario_id: captadorId,
+            tipo: 'feedback_registrado',
+            titulo: 'Feedback Registrado',
+            mensagem: `O cliente está ${interestLabel} no imóvel "${propertyInfo}".`,
+            dados_relacionados: {
+              feedback_id: newFeedback.id,
+              imovel_id: linkData.imovel_id,
+              demanda_id: linkData.demanda_id,
+              sdr_name: userData.nome,
+              interest_level,
+            },
+            prioridade: 'normal',
+            lido: false,
+          })
+        } catch (notifErr) {
+          console.error('[feedback-registration] Notification insert failed:', notifErr)
+        }
+      }
+    }
+
+    try {
+      await supabaseAdmin.from('audit_log').insert({
+        usuario_id: user.id,
+        acao: 'INSERT',
+        tabela: 'feedback_records',
+        registro_id: newFeedback.id,
+        dados_novos: {
+          property_link_id,
+          sdr_user_id: user.id,
+          interest_level,
+          feedback_text: feedback_text || null,
+          sdr_name: userData.nome,
+        },
+      })
+    } catch (auditErr) {
+      console.error('[feedback-registration] Audit log insert failed:', auditErr)
     }
 
     return new Response(

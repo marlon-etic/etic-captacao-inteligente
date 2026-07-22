@@ -20,6 +20,7 @@ import {
   Home,
   Link as LinkIcon,
   ExternalLink,
+  ThumbsUp,
 } from 'lucide-react'
 import { useSlaCountdown, useTimeElapsed } from '@/hooks/useTimeElapsed'
 import useAppStore from '@/stores/useAppStore'
@@ -50,6 +51,9 @@ const DemandLifecycleTimeline = lazy(() =>
 const SugerirLinksModal = lazy(() =>
   import('./SugerirLinksModal').then((m) => ({ default: m.SugerirLinksModal })),
 )
+const FeedbackRegistrationModal = lazy(() =>
+  import('./FeedbackRegistrationModal').then((m) => ({ default: m.FeedbackRegistrationModal })),
+)
 
 function ExpandableDemandCardSDRComponent({
   demand,
@@ -77,6 +81,7 @@ function ExpandableDemandCardSDRComponent({
   const [showTimeline, setShowTimeline] = useState(false)
   const [linkedProperties, setLinkedProperties] = useState<LinkedProperty[]>([])
   const [showLinksModal, setShowLinksModal] = useState(false)
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false)
   const { properties: demandProperties, loading: propertiesLoading } = useDemandProperties(
     demand.id || '',
     showTimeline,
@@ -289,7 +294,7 @@ function ExpandableDemandCardSDRComponent({
     }
   }
 
-  const handleOpenVisitModal = useCallback(async () => {
+  const fetchLinkedProperties = useCallback(async () => {
     try {
       const { data: matches } = await supabase
         .from('imovel_demand_match')
@@ -309,8 +314,17 @@ function ExpandableDemandCardSDRComponent({
     } catch (err) {
       console.error('Error fetching linked properties:', err)
     }
-    setShowVisitModal(true)
   }, [demand.id])
+
+  const handleOpenVisitModal = useCallback(async () => {
+    await fetchLinkedProperties()
+    setShowVisitModal(true)
+  }, [fetchLinkedProperties])
+
+  const handleOpenFeedbackModal = useCallback(async () => {
+    await fetchLinkedProperties()
+    setShowFeedbackModal(true)
+  }, [fetchLinkedProperties])
 
   const handleLinksSaved = useCallback(
     (links: string[]) => {
@@ -633,6 +647,20 @@ function ExpandableDemandCardSDRComponent({
             </Button>
           )}
 
+          {isPending && !isLost && (
+            <Button
+              variant="outline"
+              className="w-full font-bold border-green-200 text-green-600 hover:bg-green-50 text-[13px] sm:text-[14px] h-[44px] sm:h-[48px] shadow-sm"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                handleOpenFeedbackModal()
+              }}
+            >
+              <ThumbsUp className="w-4 h-4 mr-2" /> Feedback do Cliente
+            </Button>
+          )}
+
           <div className="grid grid-cols-2 gap-3 mt-1">
             <Button
               variant="outline"
@@ -714,6 +742,14 @@ function ExpandableDemandCardSDRComponent({
           open={showLinksModal}
           onOpenChange={setShowLinksModal}
           onSuccess={handleLinksSaved}
+        />
+
+        <FeedbackRegistrationModal
+          open={showFeedbackModal}
+          onOpenChange={setShowFeedbackModal}
+          linkedProperties={linkedProperties}
+          demandId={demand.id || ''}
+          tipoDemanda={demand.tipo || ''}
         />
       </LazyModalBoundary>
     </>

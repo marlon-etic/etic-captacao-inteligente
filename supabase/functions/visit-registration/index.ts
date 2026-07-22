@@ -258,6 +258,24 @@ Deno.serve(async (req: Request) => {
         }
       }
 
+      try {
+        await supabaseAdmin.from('audit_log').insert({
+          usuario_id: user.id,
+          acao: 'INSERT',
+          tabela: 'visit_records',
+          registro_id: newVisit.id,
+          dados_novos: {
+            property_link_id: matchId,
+            sdr_user_id: user.id,
+            visited_at: visitTimestamp,
+            notes: notes || null,
+            sdr_name: userData.nome,
+          },
+        })
+      } catch (auditErr) {
+        console.error('[visit-registration] Audit log insert failed:', auditErr)
+      }
+
       return new Response(
         JSON.stringify({
           success: true,
@@ -270,6 +288,25 @@ Deno.serve(async (req: Request) => {
           headers: { 'Content-Type': 'application/json', ...corsHeaders },
         },
       )
+    }
+
+    try {
+      await supabaseAdmin.from('audit_log').insert({
+        usuario_id: user.id,
+        acao: 'INSERT',
+        tabela: 'visitas_imovel',
+        registro_id: demanda_id,
+        dados_novos: {
+          demanda_id,
+          tipo_demanda: normalizedTipo,
+          imovel_id: imovel_id || null,
+          user_sdr_id: user.id,
+          data_visita: visitTimestamp,
+          sdr_name: userData.nome,
+        },
+      })
+    } catch (auditErr) {
+      console.error('[visit-registration] Audit log insert failed:', auditErr)
     }
 
     return new Response(
