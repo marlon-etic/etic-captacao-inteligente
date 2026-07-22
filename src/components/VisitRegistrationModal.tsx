@@ -15,6 +15,7 @@ import { Loader2, Calendar, MapPin } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { supabase } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
+import { formatBRL, parseBRL } from '@/lib/currency-utils'
 
 export interface LinkedProperty {
   matchId: string
@@ -47,11 +48,14 @@ export function VisitRegistrationModal({
   const [visitDate, setVisitDate] = useState(new Date().toISOString().split('T')[0])
   const [visitTime, setVisitTime] = useState('10:00')
   const [notes, setNotes] = useState('')
+  const [valorAluguel, setValorAluguel] = useState('')
+  const [manualPropertyRef, setManualPropertyRef] = useState('')
   const [loading, setLoading] = useState(false)
   const [selectedProperty, setSelectedProperty] = useState<string>('')
 
   const hasLinkedProperties = linkedProperties && linkedProperties.length > 0
   const showSelector = hasLinkedProperties && !propertyLinkId
+  const showManualRef = !hasLinkedProperties && !propertyLinkId && !imovelId
 
   useEffect(() => {
     if (open && hasLinkedProperties && !propertyLinkId) {
@@ -61,23 +65,36 @@ export function VisitRegistrationModal({
     }
   }, [open, linkedProperties, propertyLinkId])
 
+  useEffect(() => {
+    if (open) {
+      setNotes('')
+      setValorAluguel('')
+      setManualPropertyRef('')
+    }
+  }, [open])
+
   const selectedProp = linkedProperties?.find((p) => p.matchId === selectedProperty)
 
   const handleSubmit = async () => {
     if (!demandId) return
+    if (showManualRef && !manualPropertyRef.trim()) return
     setLoading(true)
     try {
       const visitedAt = new Date(`${visitDate}T${visitTime}:00`).toISOString()
+      const parsedValor = parseBRL(valorAluguel)
       const body: any = {
         demanda_id: demandId,
         tipo_demanda: tipoDemanda,
         visited_at: visitedAt,
         notes: notes || undefined,
+        valor_aluguel: parsedValor > 0 ? parsedValor : undefined,
       }
 
       if (showSelector && selectedProp) {
         body.property_link_id = selectedProp.matchId
         body.imovel_id = selectedProp.imovelId
+      } else if (showManualRef) {
+        body.manual_property_ref = manualPropertyRef.trim()
       } else {
         body.property_link_id = propertyLinkId
         body.imovel_id = imovelId
@@ -100,6 +117,8 @@ export function VisitRegistrationModal({
       )
       onOpenChange(false)
       setNotes('')
+      setValorAluguel('')
+      setManualPropertyRef('')
     } catch (err: any) {
       toast({
         title: 'Erro ao registrar visita',
@@ -111,6 +130,9 @@ export function VisitRegistrationModal({
     }
   }
 
+  const isDisabled =
+    loading || (showSelector && !selectedProperty) || (showManualRef && !manualPropertyRef.trim())
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md z-[1200]">
@@ -121,7 +143,9 @@ export function VisitRegistrationModal({
               ? `Imóvel: ${selectedProp.label}`
               : propertyLabel
                 ? `Imóvel: ${propertyLabel}`
-                : 'Registre a data e hora da visita ao imóvel.'}
+                : showManualRef
+                  ? 'Informe a referência do imóvel visitado.'
+                  : 'Registre a data e hora da visita ao imóvel.'}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
@@ -149,6 +173,19 @@ export function VisitRegistrationModal({
               </div>
             </div>
           )}
+          {showManualRef && (
+            <div className="space-y-2">
+              <Label htmlFor="manual-ref">
+                Referência do Imóvel <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="manual-ref"
+                value={manualPropertyRef}
+                onChange={(e) => setManualPropertyRef(e.target.value)}
+                placeholder="Digite o código/referência do imóvel"
+              />
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="visit-date">Data da Visita</Label>
@@ -170,6 +207,22 @@ export function VisitRegistrationModal({
             </div>
           </div>
           <div className="space-y-2">
+            <Label htmlFor="valor-aluguel">Valor do Aluguel</Label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#1A3A52] font-bold text-sm pointer-events-none">
+                R$
+              </span>
+              <Input
+                id="valor-aluguel"
+                inputMode="numeric"
+                value={valorAluguel}
+                onChange={(e) => setValorAluguel(formatBRL(e.target.value))}
+                placeholder="0,00"
+                className="pl-10 font-bold text-[#1A3A52]"
+              />
+            </div>
+          </div>
+          <div className="space-y-2">
             <Label htmlFor="visit-notes">Observações (Opcional)</Label>
             <Textarea
               id="visit-notes"
@@ -187,7 +240,7 @@ export function VisitRegistrationModal({
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={loading || (showSelector && !selectedProperty)}
+            disabled={isDisabled}
             className="bg-blue-600 hover:bg-blue-700 text-white"
           >
             {loading ? (

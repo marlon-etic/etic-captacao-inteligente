@@ -346,7 +346,7 @@ export function DemandDetailModal({
         demandId={demand.id}
         tipoDemanda={demand.tipo === 'Venda' ? 'Venda' : 'Locação'}
         imovelId={demand.imoveis_captados?.[0]?.id}
-        propertyLabel={demand.imoveis_captados?.[0]?.codigo_imovel || demand.nome_cliente}
+        propertyLabel={demand.imoveis_captados?.[0]?.codigo_imovel || undefined}
       />
     </>
   )

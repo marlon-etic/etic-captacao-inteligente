@@ -14,6 +14,8 @@ export const recordVisitWithDetails = async (params: {
   tipo_demanda?: string
   visited_at?: string
   notes?: string
+  valor_aluguel?: number
+  manual_property_ref?: string
 }) => {
   const { data, error } = await supabase.functions.invoke('visit-registration', {
     body: params,

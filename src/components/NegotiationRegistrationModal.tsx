@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
+import { formatBRL, parseBRL } from '@/lib/currency-utils'
 import type { LinkedProperty } from './VisitRegistrationModal'
 
 interface Props {
@@ -30,18 +31,6 @@ interface Props {
   demandId: string
   tipoDemanda: string
   linkedProperties?: LinkedProperty[]
-}
-
-function formatBRL(input: string): string {
-  const digits = input.replace(/\D/g, '')
-  if (!digits) return ''
-  const value = Number(digits) / 100
-  return value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
-
-function parseBRL(formatted: string): number {
-  const digits = formatted.replace(/\D/g, '')
-  return digits ? Number(digits) / 100 : 0
 }
 
 export function NegotiationRegistrationModal({

@@ -1,20 +1,11 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/textarea'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogDescription,
-} from '@/components/ui/dialog'
 import { toast } from '@/components/ui/use-toast'
 import { Calendar, CheckCircle2, XCircle, Handshake, Loader2, MessageSquare } from 'lucide-react'
 import { useUserRole } from '@/hooks/use-user-role'
 import useAppStore from '@/stores/useAppStore'
-import { Label } from '@/components/ui/label'
+import { VisitRegistrationModal } from '@/components/VisitRegistrationModal'
 import { NegotiationRegistrationModal } from '@/components/NegotiationRegistrationModal'
 import type { LinkedProperty } from '@/components/VisitRegistrationModal'
 
@@ -33,7 +24,7 @@ export function SdrPropertyActions({
   const [visitOpen, setVisitOpen] = useState(false)
   const [negOpen, setNegOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [visitNotes, setVisitNotes] = useState('')
+  const [visitPropertyLabel, setVisitPropertyLabel] = useState('')
   const [negLinkedProperty, setNegLinkedProperty] = useState<LinkedProperty | null>(null)
 
   const { role } = useUserRole()
@@ -120,9 +111,6 @@ export function SdrPropertyActions({
     }
   }, [matchId])
 
-  const [negStatus] = useState<'negotiated' | 'failed'>('negotiated')
-  const [negNotes] = useState('')
-
   const ensureMatchId = async () => {
     if (matchId) return matchId
 
@@ -184,29 +172,21 @@ export function SdrPropertyActions({
   })
   const hasNegotiation = negotiations.length > 0
 
-  const handleVisit = async () => {
+  const handleOpenVisit = async () => {
     setIsLoading(true)
-    const currentMatchId = await ensureMatchId()
-    if (!currentMatchId) {
-      setIsLoading(false)
-      return
-    }
-    const { error } = await supabase.functions.invoke('visit-registration', {
-      body: { property_link_id: currentMatchId, notes: visitNotes },
-    })
+    const { data: propData } = await supabase
+      .from('imoveis_captados')
+      .select('codigo_imovel, endereco, localizacao_texto')
+      .eq('id', propertyId)
+      .maybeSingle()
+
+    const label = propData?.codigo_imovel
+      ? `${propData.codigo_imovel}${propData.endereco ? ' - ' + propData.endereco : ''}`
+      : propData?.endereco || propData?.localizacao_texto || 'Imóvel'
+
+    setVisitPropertyLabel(label)
     setIsLoading(false)
-    if (error) {
-      toast({ title: 'Erro', description: error.message, variant: 'destructive' })
-    } else {
-      toast({ title: 'Sucesso', description: 'Visita registrada com sucesso!' })
-      window.dispatchEvent(
-        new CustomEvent('demanda-updated', {
-          detail: { data: { id: demandId, _visitRegistered: true } },
-        }),
-      )
-      setVisitOpen(false)
-      setVisitNotes('')
-    }
+    setVisitOpen(true)
   }
 
   const handleOpenNegotiation = async () => {
@@ -227,7 +207,7 @@ export function SdrPropertyActions({
       ? `${propData.codigo_imovel}${propData.endereco ? ' - ' + propData.endereco : ''}`
       : propData?.endereco || propData?.localizacao_texto || 'Imóvel'
 
-    setNegLinkedProperty({ matchId: currentMatchId, label })
+    setNegLinkedProperty({ matchId: currentMatchId, imovelId: propertyId, label })
     setIsLoading(false)
     setNegOpen(true)
   }
@@ -255,11 +235,15 @@ export function SdrPropertyActions({
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setVisitOpen(true)}
-            disabled={hasVisitToday}
+            onClick={handleOpenVisit}
+            disabled={hasVisitToday || isLoading}
             className="flex-1 min-w-[120px] bg-white border-[#E5E5E5] hover:bg-blue-50 text-blue-700 hover:text-blue-800"
           >
-            <Calendar className="w-4 h-4 mr-2" />
+            {isLoading ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <Calendar className="w-4 h-4 mr-2" />
+            )}
             {hasVisitToday ? 'Visita Hoje ✓' : 'Registrar Visita'}
           </Button>
 
@@ -327,6 +311,15 @@ export function SdrPropertyActions({
                       })}
                     </div>
                   )}
+                {ev.type === 'visit' && ev.data.valor_aluguel > 0 && (
+                  <div className="text-sm text-blue-700 font-bold mb-1">
+                    Valor do Aluguel: R${' '}
+                    {Number(ev.data.valor_aluguel).toLocaleString('pt-BR', {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
+                  </div>
+                )}
                 {ev.data.notes && (
                   <div className="text-sm text-slate-600 bg-slate-50 p-2.5 rounded-md flex gap-2 items-start border border-slate-100">
                     <MessageSquare className="w-4 h-4 mt-0.5 text-slate-400 shrink-0" />
@@ -339,37 +332,15 @@ export function SdrPropertyActions({
         </div>
       )}
 
-      <Dialog open={visitOpen} onOpenChange={setVisitOpen}>
-        <DialogContent className="sm:max-w-md z-[1200]">
-          <DialogHeader>
-            <DialogTitle>Registrar Visita</DialogTitle>
-            <DialogDescription>Confirme a visita realizada a este imóvel.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Observações da Visita (Opcional)</Label>
-              <Textarea
-                value={visitNotes}
-                onChange={(e) => setVisitNotes(e.target.value)}
-                placeholder="Como foi a visita? Detalhes relevantes..."
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setVisitOpen(false)} disabled={isLoading}>
-              Cancelar
-            </Button>
-            <Button
-              onClick={handleVisit}
-              disabled={isLoading}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              {isLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Confirmar Visita
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <VisitRegistrationModal
+        open={visitOpen}
+        onOpenChange={setVisitOpen}
+        demandId={demandId}
+        tipoDemanda={tipoDemanda}
+        propertyLinkId={matchId || undefined}
+        imovelId={propertyId}
+        propertyLabel={visitPropertyLabel}
+      />
 
       {negLinkedProperty && (
         <NegotiationRegistrationModal
