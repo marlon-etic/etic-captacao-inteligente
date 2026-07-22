@@ -202,6 +202,11 @@ export function SdrPropertyActions({
       toast({ title: 'Erro', description: error.message, variant: 'destructive' })
     } else {
       toast({ title: 'Sucesso', description: 'Visita registrada com sucesso!' })
+      window.dispatchEvent(
+        new CustomEvent('demanda-updated', {
+          detail: { data: { id: demandId, _visitRegistered: true } },
+        }),
+      )
       setVisitOpen(false)
       setVisitNotes('')
     }
@@ -222,6 +227,11 @@ export function SdrPropertyActions({
       toast({ title: 'Erro', description: error.message, variant: 'destructive' })
     } else {
       toast({ title: 'Sucesso', description: 'Negociação registrada com sucesso!' })
+      window.dispatchEvent(
+        new CustomEvent('demanda-updated', {
+          detail: { data: { id: demandId, _negotiationRegistered: true } },
+        }),
+      )
       setNegOpen(false)
       setNegNotes('')
     }
@@ -320,7 +330,7 @@ export function SdrPropertyActions({
       )}
 
       <Dialog open={visitOpen} onOpenChange={setVisitOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md z-[1200]">
           <DialogHeader>
             <DialogTitle>Registrar Visita</DialogTitle>
             <DialogDescription>Confirme a visita realizada a este imóvel.</DialogDescription>
@@ -352,7 +362,7 @@ export function SdrPropertyActions({
       </Dialog>
 
       <Dialog open={negOpen} onOpenChange={setNegOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md z-[1200]">
           <DialogHeader>
             <DialogTitle>Status da Negociação</DialogTitle>
             <DialogDescription>

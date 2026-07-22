@@ -101,10 +101,9 @@ Deno.serve(async (req: Request) => {
       )
     }
 
-    // Check if property_link_id exists
     const { data: linkData, error: linkError } = await supabaseAdmin
       .from('imovel_demand_match')
-      .select('id')
+      .select('id, imovel_id, demanda_id, tipo_demanda, captador_id')
       .eq('id', property_link_id)
       .single()
 
@@ -118,7 +117,6 @@ Deno.serve(async (req: Request) => {
       )
     }
 
-    // Check for duplicate negotiation
     const { data: existingNegotiation, error: checkError } = await supabaseAdmin
       .from('negotiation_records')
       .select('id')
@@ -143,7 +141,6 @@ Deno.serve(async (req: Request) => {
       )
     }
 
-    // Insert new negotiation
     const now = new Date().toISOString()
     const { data: newNegotiation, error: insertError } = await supabaseAdmin
       .from('negotiation_records')
@@ -161,6 +158,61 @@ Deno.serve(async (req: Request) => {
 
     if (insertError) {
       throw insertError
+    }
+
+    if (linkData?.imovel_id) {
+      const { data: imovelData } = await supabaseAdmin
+        .from('imoveis_captados')
+        .select('captador_id, user_captador_id, endereco, localizacao_texto')
+        .eq('id', linkData.imovel_id)
+        .maybeSingle()
+
+      const captadorId =
+        linkData.captador_id || imovelData?.user_captador_id || imovelData?.captador_id
+
+      if (captadorId) {
+        const propertyInfo = imovelData?.endereco || imovelData?.localizacao_texto || 'imóvel'
+        const statusText =
+          negotiation_status === 'negotiated' ? 'Negócio fechado' : 'Negociação falhou'
+
+        try {
+          await supabaseAdmin.from('notificacoes').insert({
+            usuario_id: captadorId,
+            tipo: 'negociacao_registrada',
+            titulo: 'Negociação Registrada',
+            mensagem: `${statusText} para o imóvel "${propertyInfo}".`,
+            dados_relacionados: {
+              negotiation_id: newNegotiation.id,
+              imovel_id: linkData.imovel_id,
+              demanda_id: linkData.demanda_id,
+              negotiation_status,
+              sdr_name: userData.nome,
+            },
+            prioridade: negotiation_status === 'negotiated' ? 'alta' : 'normal',
+            lido: false,
+          })
+        } catch (notifErr) {
+          console.error('[negotiation-registration] Notification insert failed:', notifErr)
+        }
+      }
+    }
+
+    try {
+      await supabaseAdmin.from('audit_log').insert({
+        usuario_id: user.id,
+        acao: 'INSERT',
+        tabela: 'negotiation_records',
+        registro_id: newNegotiation.id,
+        dados_novos: {
+          property_link_id,
+          negotiated_by_user_id: user.id,
+          negotiation_status,
+          notes: notes || null,
+          sdr_name: userData.nome,
+        },
+      })
+    } catch (auditErr) {
+      console.error('[negotiation-registration] Audit log insert failed:', auditErr)
     }
 
     return new Response(
