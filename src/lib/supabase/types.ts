@@ -1840,6 +1840,7 @@ export type Database = {
           property_link_id: string
           sdr_user_id: string
           updated_at: string
+          valor_aluguel: number | null
           visited_at: string
           visited_date: string
         }
@@ -1850,6 +1851,7 @@ export type Database = {
           property_link_id: string
           sdr_user_id: string
           updated_at?: string
+          valor_aluguel?: number | null
           visited_at?: string
           visited_date?: string
         }
@@ -1860,6 +1862,7 @@ export type Database = {
           property_link_id?: string
           sdr_user_id?: string
           updated_at?: string
+          valor_aluguel?: number | null
           visited_at?: string
           visited_date?: string
         }

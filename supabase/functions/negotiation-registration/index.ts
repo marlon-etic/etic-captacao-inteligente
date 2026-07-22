@@ -71,14 +71,20 @@ Deno.serve(async (req: Request) => {
     }
 
     const body = await req.json()
-    const { property_link_id, negotiation_status, notes, valor_fechado } = body
+    const {
+      property_link_id,
+      negotiation_status,
+      notes,
+      valor_fechado,
+      manual_property_reference,
+    } = body
 
-    if (!property_link_id || !negotiation_status) {
+    if (!negotiation_status) {
       return new Response(
         JSON.stringify({
           success: false,
           error: 'Bad Request',
-          message: 'property_link_id and negotiation_status are required',
+          message: 'negotiation_status is required',
         }),
         {
           status: 400,
@@ -93,6 +99,20 @@ Deno.serve(async (req: Request) => {
           success: false,
           error: 'Bad Request',
           message: 'negotiation_status must be "negotiated" or "failed"',
+        }),
+        {
+          status: 400,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        },
+      )
+    }
+
+    if (!property_link_id && !manual_property_reference) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Bad Request',
+          message: 'Either property_link_id or manual_property_reference is required',
         }),
         {
           status: 400,
@@ -122,59 +142,74 @@ Deno.serve(async (req: Request) => {
       )
     }
 
-    const { data: linkData, error: linkError } = await supabaseAdmin
-      .from('imovel_demand_match')
-      .select('id, imovel_id, demanda_id, tipo_demanda, captador_id')
-      .eq('id', property_link_id)
-      .single()
+    let linkData: any = null
+    const isManual = !property_link_id && !!manual_property_reference
 
-    if (linkError || !linkData) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Not Found', message: 'Property link not found' }),
-        {
-          status: 404,
-          headers: { 'Content-Type': 'application/json', ...corsHeaders },
-        },
-      )
-    }
+    if (property_link_id) {
+      const { data: linkResult, error: linkError } = await supabaseAdmin
+        .from('imovel_demand_match')
+        .select('id, imovel_id, demanda_id, tipo_demanda, captador_id')
+        .eq('id', property_link_id)
+        .single()
 
-    const { data: existingNegotiation, error: checkError } = await supabaseAdmin
-      .from('negotiation_records')
-      .select('id')
-      .eq('property_link_id', property_link_id)
-      .maybeSingle()
+      if (linkError || !linkResult) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: 'Not Found',
+            message: 'Property link not found',
+          }),
+          {
+            status: 404,
+            headers: { 'Content-Type': 'application/json', ...corsHeaders },
+          },
+        )
+      }
+      linkData = linkResult
 
-    if (checkError) {
-      throw checkError
-    }
+      const { data: existingNegotiation } = await supabaseAdmin
+        .from('negotiation_records')
+        .select('id')
+        .eq('property_link_id', property_link_id)
+        .maybeSingle()
 
-    if (existingNegotiation) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: 'Negotiation already recorded',
-          message: 'A negotiation has already been recorded for this property.',
-        }),
-        {
-          status: 400,
-          headers: { 'Content-Type': 'application/json', ...corsHeaders },
-        },
-      )
+      if (existingNegotiation) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: 'Negotiation already recorded',
+            message: 'A negotiation has already been recorded for this property.',
+          }),
+          {
+            status: 400,
+            headers: { 'Content-Type': 'application/json', ...corsHeaders },
+          },
+        )
+      }
     }
 
     const now = new Date().toISOString()
+    const insertData: any = {
+      negotiated_by_user_id: user.id,
+      negotiation_status,
+      notes: notes || null,
+      valor_fechado: negotiation_status === 'negotiated' ? Number(valor_fechado) : 0,
+      negotiation_date: now,
+      created_at: now,
+      updated_at: now,
+    }
+
+    if (property_link_id) {
+      insertData.property_link_id = property_link_id
+    }
+
+    if (manual_property_reference) {
+      insertData.manual_property_reference = manual_property_reference
+    }
+
     const { data: newNegotiation, error: insertError } = await supabaseAdmin
       .from('negotiation_records')
-      .insert({
-        property_link_id,
-        negotiated_by_user_id: user.id,
-        negotiation_status,
-        notes: notes || null,
-        valor_fechado: negotiation_status === 'negotiated' ? Number(valor_fechado) : 0,
-        negotiation_date: now,
-        created_at: now,
-        updated_at: now,
-      })
+      .insert(insertData)
       .select('id, negotiation_date')
       .single()
 
@@ -182,7 +217,8 @@ Deno.serve(async (req: Request) => {
       throw insertError
     }
 
-    if (linkData?.imovel_id) {
+    // Only send captador notification if we have a property_link_id (not manual)
+    if (!isManual && linkData?.imovel_id) {
       const { data: imovelData } = await supabaseAdmin
         .from('imoveis_captados')
         .select('captador_id, user_captador_id, endereco, localizacao_texto, codigo_imovel')
@@ -235,7 +271,8 @@ Deno.serve(async (req: Request) => {
         tabela: 'negotiation_records',
         registro_id: newNegotiation.id,
         dados_novos: {
-          property_link_id,
+          property_link_id: property_link_id || null,
+          manual_property_reference: manual_property_reference || null,
           negotiated_by_user_id: user.id,
           negotiation_status,
           valor_fechado: negotiation_status === 'negotiated' ? Number(valor_fechado) : 0,
@@ -253,6 +290,7 @@ Deno.serve(async (req: Request) => {
         negotiation_id: newNegotiation.id,
         status: negotiation_status,
         negotiation_date: newNegotiation.negotiation_date,
+        is_manual: isManual,
       }),
       {
         status: 201,

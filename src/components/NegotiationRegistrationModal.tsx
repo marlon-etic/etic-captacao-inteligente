@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -11,7 +11,8 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { Loader2, Handshake, MapPin } from 'lucide-react'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Loader2, Handshake, MapPin, Search, AlertTriangle, Link2, Edit3 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { supabase } from '@/lib/supabase/client'
 import {
@@ -24,6 +25,13 @@ import {
 import { cn } from '@/lib/utils'
 import { formatBRL, parseBRL } from '@/lib/currency-utils'
 import type { LinkedProperty } from './VisitRegistrationModal'
+import {
+  searchProperties,
+  ensureMatchExists,
+  type PropertySearchResult,
+} from '@/services/negotiation-service'
+
+type SelectionMode = 'linked' | 'search' | 'manual'
 
 interface Props {
   open: boolean
@@ -46,6 +54,15 @@ export function NegotiationRegistrationModal({
   const [valorFechado, setValorFechado] = useState('')
   const [loading, setLoading] = useState(false)
   const [selectedProperty, setSelectedProperty] = useState<string>('')
+  const [mode, setMode] = useState<SelectionMode>('linked')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState<PropertySearchResult[]>([])
+  const [searching, setSearching] = useState(false)
+  const [selectedSearchResult, setSelectedSearchResult] = useState<PropertySearchResult | null>(
+    null,
+  )
+  const [manualRef, setManualRef] = useState('')
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const hasLinkedProperties = linkedProperties && linkedProperties.length > 0
   const isNegotiated = negStatus === 'negotiated'
@@ -53,7 +70,10 @@ export function NegotiationRegistrationModal({
 
   useEffect(() => {
     if (open && hasLinkedProperties) {
+      setMode('linked')
       setSelectedProperty(linkedProperties![0].matchId)
+    } else if (open && !hasLinkedProperties) {
+      setMode('search')
     }
   }, [open, linkedProperties])
 
@@ -62,26 +82,82 @@ export function NegotiationRegistrationModal({
       setNegStatus('negotiated')
       setNotes('')
       setValorFechado('')
+      setSearchQuery('')
+      setSearchResults([])
+      setSelectedSearchResult(null)
+      setManualRef('')
     }
   }, [open])
+
+  useEffect(() => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current)
+    }
+    if (mode !== 'search' || searchQuery.trim().length < 2) {
+      setSearchResults([])
+      return
+    }
+    setSearching(true)
+    searchTimeoutRef.current = setTimeout(async () => {
+      const results = await searchProperties(searchQuery.trim())
+      setSearchResults(results)
+      setSearching(false)
+    }, 400)
+    return () => {
+      if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current)
+    }
+  }, [searchQuery, mode])
 
   const selectedProp = linkedProperties?.find((p) => p.matchId === selectedProperty)
 
   const handleSubmit = async () => {
-    if (!demandId || !selectedProperty) return
+    if (!demandId) return
+    if (mode === 'linked' && !selectedProperty) return
+    if (mode === 'search' && !selectedSearchResult) return
+    if (mode === 'manual' && !manualRef.trim()) return
     if (isNegotiated && !valorFechado) return
+
     setLoading(true)
     try {
       const parsedValue = isNegotiated ? parseBRL(valorFechado) : 0
-      const { error } = await supabase.functions.invoke('negotiation-registration', {
-        body: {
-          property_link_id: selectedProperty,
-          negotiation_status: negStatus,
-          notes: notes || undefined,
-          valor_fechado: isNegotiated ? parsedValue : undefined,
-        },
-      })
+      let propertyLinkId: string | null = null
+      let manualReference: string | null = null
+
+      if (mode === 'linked') {
+        propertyLinkId = selectedProperty
+      } else if (mode === 'search' && selectedSearchResult) {
+        const linkedIds = new Set((linkedProperties || []).map((p) => p.imovelId))
+        if (linkedIds.has(selectedSearchResult.id)) {
+          const existing = linkedProperties!.find((p) => p.imovelId === selectedSearchResult.id)
+          propertyLinkId = existing?.matchId || null
+        } else {
+          const newMatchId = await ensureMatchExists(demandId, selectedSearchResult.id, tipoDemanda)
+          if (newMatchId) {
+            propertyLinkId = newMatchId
+          } else {
+            throw new Error('Falha ao vincular imóvel à demanda.')
+          }
+        }
+      } else if (mode === 'manual') {
+        manualReference = manualRef.trim()
+      }
+
+      const body: Record<string, unknown> = {
+        negotiation_status: negStatus,
+        notes: notes || undefined,
+        valor_fechado: isNegotiated ? parsedValue : undefined,
+      }
+
+      if (propertyLinkId) {
+        body.property_link_id = propertyLinkId
+      }
+      if (manualReference) {
+        body.manual_property_reference = manualReference
+      }
+
+      const { error } = await supabase.functions.invoke('negotiation-registration', { body })
       if (error) throw error
+
       toast({
         title: 'Negociação Registrada!',
         description:
@@ -90,6 +166,7 @@ export function NegotiationRegistrationModal({
             : 'Negociação registrada como falhou.',
         className: 'bg-[#10B981] text-white border-none',
       })
+
       window.dispatchEvent(
         new CustomEvent('demanda-updated', {
           detail: {
@@ -98,9 +175,13 @@ export function NegotiationRegistrationModal({
           },
         }),
       )
+
       onOpenChange(false)
       setNotes('')
       setValorFechado('')
+      setManualRef('')
+      setSearchQuery('')
+      setSelectedSearchResult(null)
     } catch (err: any) {
       toast({
         title: 'Erro ao registrar negociação',
@@ -112,6 +193,13 @@ export function NegotiationRegistrationModal({
     }
   }
 
+  const isDisabled =
+    loading ||
+    valorError ||
+    (mode === 'linked' && !selectedProperty) ||
+    (mode === 'search' && !selectedSearchResult) ||
+    (mode === 'manual' && !manualRef.trim())
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md z-[1200]">
@@ -120,12 +208,59 @@ export function NegotiationRegistrationModal({
           <DialogDescription>
             {selectedProp
               ? `Imóvel: ${selectedProp.label}`
-              : 'Selecione o imóvel e o resultado da negociação.'}
+              : selectedSearchResult
+                ? `Imóvel: ${selectedSearchResult.codigo_imovel || selectedSearchResult.endereco || 'Sem identificação'}`
+                : mode === 'manual'
+                  ? 'Referência manual informada'
+                  : 'Selecione o imóvel e o resultado da negociação.'}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
-          {hasLinkedProperties && (
-            <div className="space-y-2">
+          {/* Mode tabs */}
+          <div className="flex gap-2">
+            {hasLinkedProperties && (
+              <Button
+                type="button"
+                variant={mode === 'linked' ? 'default' : 'outline'}
+                size="sm"
+                className={cn(
+                  'flex-1 text-xs font-bold',
+                  mode === 'linked' ? 'bg-[#8B5CF6] hover:bg-[#7C3AED] text-white' : '',
+                )}
+                onClick={() => setMode('linked')}
+              >
+                <Link2 className="w-3.5 h-3.5 mr-1" /> Vinculados
+              </Button>
+            )}
+            <Button
+              type="button"
+              variant={mode === 'search' ? 'default' : 'outline'}
+              size="sm"
+              className={cn(
+                'flex-1 text-xs font-bold',
+                mode === 'search' ? 'bg-[#8B5CF6] hover:bg-[#7C3AED] text-white' : '',
+              )}
+              onClick={() => setMode('search')}
+            >
+              <Search className="w-3.5 h-3.5 mr-1" /> Buscar
+            </Button>
+            <Button
+              type="button"
+              variant={mode === 'manual' ? 'default' : 'outline'}
+              size="sm"
+              className={cn(
+                'flex-1 text-xs font-bold',
+                mode === 'manual' ? 'bg-[#8B5CF6] hover:bg-[#7C3AED] text-white' : '',
+              )}
+              onClick={() => setMode('manual')}
+            >
+              <Edit3 className="w-3.5 h-3.5 mr-1" /> Manual
+            </Button>
+          </div>
+
+          {/* Linked properties selection */}
+          {mode === 'linked' && hasLinkedProperties && (
+            <div className="space-y-2 animate-fade-in-up">
               <Label>
                 {linkedProperties!.length === 1 ? 'Imóvel Vinculado' : 'Selecione o Imóvel'}
               </Label>
@@ -159,6 +294,105 @@ export function NegotiationRegistrationModal({
               )}
             </div>
           )}
+
+          {/* Database search */}
+          {mode === 'search' && (
+            <div className="space-y-2 animate-fade-in-up">
+              <Label>Buscar Imóvel na Base</Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Input
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value)
+                    setSelectedSearchResult(null)
+                  }}
+                  placeholder="Digite código ou endereço..."
+                  className="pl-9"
+                />
+                {searching && (
+                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-gray-400" />
+                )}
+              </div>
+              {searchResults.length > 0 && !selectedSearchResult && (
+                <div className="space-y-1 max-h-48 overflow-y-auto border border-gray-200 rounded-lg p-1">
+                  {searchResults.map((result) => (
+                    <button
+                      key={result.id}
+                      onClick={() => setSelectedSearchResult(result)}
+                      className="w-full text-left p-2.5 rounded-md hover:bg-purple-50 transition-colors flex items-start gap-2"
+                    >
+                      <MapPin className="w-3.5 h-3.5 text-[#8B5CF6] shrink-0 mt-0.5" />
+                      <div className="flex flex-col min-w-0">
+                        {result.codigo_imovel && (
+                          <span className="text-xs font-bold text-[#1A3A52]">
+                            {result.codigo_imovel}
+                          </span>
+                        )}
+                        <span className="text-xs text-gray-600 line-clamp-1">
+                          {result.endereco || result.localizacao_texto || 'Sem endereço'}
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {selectedSearchResult && (
+                <div className="p-3 rounded-lg border border-[#8B5CF6] bg-purple-50 ring-2 ring-[#8B5CF6]/20 flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-[#8B5CF6] shrink-0" />
+                  <div className="flex flex-col min-w-0 flex-1">
+                    {selectedSearchResult.codigo_imovel && (
+                      <span className="text-sm font-bold text-[#1A3A52]">
+                        {selectedSearchResult.codigo_imovel}
+                      </span>
+                    )}
+                    <span className="text-xs text-gray-600 line-clamp-1">
+                      {selectedSearchResult.endereco ||
+                        selectedSearchResult.localizacao_texto ||
+                        'Sem endereço'}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => setSelectedSearchResult(null)}
+                    className="text-gray-400 hover:text-gray-600 shrink-0"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+              {searchQuery.trim().length >= 2 &&
+                !searching &&
+                searchResults.length === 0 &&
+                !selectedSearchResult && (
+                  <p className="text-xs text-gray-400 text-center py-2">
+                    Nenhum imóvel encontrado.
+                  </p>
+                )}
+            </div>
+          )}
+
+          {/* Manual reference */}
+          {mode === 'manual' && (
+            <div className="space-y-2 animate-fade-in-up">
+              <Label htmlFor="manual-ref-neg">
+                Referência do Imóvel <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="manual-ref-neg"
+                value={manualRef}
+                onChange={(e) => setManualRef(e.target.value)}
+                placeholder="Digite a referência do imóvel"
+              />
+              <Alert className="border-amber-200 bg-amber-50">
+                <AlertTriangle className="w-4 h-4 text-amber-600" />
+                <AlertDescription className="text-amber-800 text-xs font-medium">
+                  Atenção: Como não há um captador vinculado a esta referência manual, a comunicação
+                  automática não será enviada.
+                </AlertDescription>
+              </Alert>
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label>Resultado da Negociação</Label>
             <Select value={negStatus} onValueChange={(val: any) => setNegStatus(val)}>
@@ -217,7 +451,7 @@ export function NegotiationRegistrationModal({
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={loading || (hasLinkedProperties && !selectedProperty) || valorError}
+            disabled={isDisabled}
             className="bg-purple-600 hover:bg-purple-700 text-white"
           >
             {loading ? (
