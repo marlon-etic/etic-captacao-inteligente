@@ -47,7 +47,7 @@ export async function ensureMatchExists(
       demanda_id: demandaId,
       imovel_id: imovelId,
       tipo_demanda: tipoDemanda,
-      tipo_vinculacao: 'negociacao',
+      tipo_vinculacao: 'sdr_selection',
     })
     .select('id')
     .single()

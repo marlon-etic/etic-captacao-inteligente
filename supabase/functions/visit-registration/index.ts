@@ -78,7 +78,9 @@ Deno.serve(async (req: Request) => {
       tipo_demanda,
       valor_aluguel,
       manual_property_ref,
+      manual_property_reference,
     } = body
+    const manualRef = manual_property_reference || manual_property_ref
 
     const normalizedTipo =
       tipo_demanda === 'Aluguel' || tipo_demanda === 'Locação' ? 'Locação' : 'Venda'
@@ -90,11 +92,11 @@ Deno.serve(async (req: Request) => {
 
     let resolvedImovelId = imovel_id || null
 
-    if (!resolvedImovelId && manual_property_ref) {
+    if (!resolvedImovelId && manualRef) {
       const { data: propByCode } = await supabaseAdmin
         .from('imoveis_captados')
         .select('id')
-        .eq('codigo_imovel', manual_property_ref.trim())
+        .eq('codigo_imovel', manualRef.trim())
         .maybeSingle()
       if (propByCode) {
         resolvedImovelId = propByCode.id
@@ -120,7 +122,7 @@ Deno.serve(async (req: Request) => {
             imovel_id: resolvedImovelId,
             demanda_id,
             tipo_demanda: normalizedTipo,
-            tipo_vinculacao: 'manual',
+            tipo_vinculacao: 'sdr_selection',
             compatibilidade_pct: 0,
           })
           .select('id')
@@ -151,12 +153,13 @@ Deno.serve(async (req: Request) => {
       })
     }
 
-    if (!matchId && !demanda_id) {
+    if (!matchId && !demanda_id && !manualRef) {
       return new Response(
         JSON.stringify({
           success: false,
           error: 'Bad Request',
-          message: 'property_link_id or (imovel_id + demanda_id) or demanda_id is required',
+          message:
+            'property_link_id or (imovel_id + demanda_id) or demanda_id or manual_property_reference is required',
         }),
         {
           status: 400,
@@ -320,6 +323,30 @@ Deno.serve(async (req: Request) => {
       )
     }
 
+    let manualVisitId: string | null = null
+
+    if (manualRef) {
+      const { data: manualVisit, error: manualVisitError } = await supabaseAdmin
+        .from('visit_records')
+        .insert({
+          property_link_id: null,
+          manual_property_reference: manualRef,
+          sdr_user_id: user.id,
+          notes: notes || null,
+          visited_at: visitTimestamp,
+          visited_date: visitDateOnly,
+          valor_aluguel: parsedValorAluguel || null,
+          created_at: visitTimestamp,
+          updated_at: visitTimestamp,
+        })
+        .select('id')
+        .single()
+
+      if (!manualVisitError && manualVisit) {
+        manualVisitId = manualVisit.id
+      }
+    }
+
     try {
       await supabaseAdmin.from('audit_log').insert({
         usuario_id: user.id,
@@ -333,7 +360,8 @@ Deno.serve(async (req: Request) => {
           user_sdr_id: user.id,
           data_visita: visitTimestamp,
           valor_aluguel: parsedValorAluguel || null,
-          manual_property_ref: manual_property_ref || null,
+          manual_property_reference: manualRef || null,
+          visit_record_id: manualVisitId,
           sdr_name: userData.nome,
         },
       })
@@ -344,12 +372,12 @@ Deno.serve(async (req: Request) => {
     return new Response(
       JSON.stringify({
         success: true,
-        visit_id: null,
+        visit_id: manualVisitId,
         visited_at: visitTimestamp,
         sdr_name: userData.nome,
         message:
-          manual_property_ref && !resolvedImovelId
-            ? 'Visit recorded for demand. Property reference not found in database.'
+          manualRef && !resolvedImovelId
+            ? 'Visit recorded with manual reference. Property not found in database.'
             : 'Visit recorded for demand',
       }),
       {

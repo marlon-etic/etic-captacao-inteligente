@@ -26,6 +26,7 @@ export function SdrPropertyActions({
   const [isLoading, setIsLoading] = useState(false)
   const [visitPropertyLabel, setVisitPropertyLabel] = useState('')
   const [negLinkedProperty, setNegLinkedProperty] = useState<LinkedProperty | null>(null)
+  const [visitLinkedProperties, setVisitLinkedProperties] = useState<LinkedProperty[]>([])
 
   const { role } = useUserRole()
   const { users } = useAppStore()
@@ -77,6 +78,31 @@ export function SdrPropertyActions({
     if (resVisits.data) setVisits(resVisits.data)
     if (resNeg.data) setNegotiations(resNeg.data)
   }
+
+  useEffect(() => {
+    async function fetchAllLinked() {
+      if (!demandId) return
+      const { data } = await supabase
+        .from('imovel_demand_match')
+        .select('id, imovel_id, imoveis_captados(id, codigo_imovel, endereco, localizacao_texto)')
+        .eq('demanda_id', demandId)
+      if (data) {
+        setVisitLinkedProperties(
+          data.map((m: any) => {
+            const im = m.imoveis_captados
+            return {
+              matchId: m.id,
+              imovelId: m.imovel_id,
+              label: im?.codigo_imovel
+                ? `${im.codigo_imovel}${im.endereco ? ' - ' + im.endereco : ''}`
+                : im?.endereco || im?.localizacao_texto || 'Imóvel',
+            }
+          }),
+        )
+      }
+    }
+    fetchAllLinked()
+  }, [demandId])
 
   useEffect(() => {
     if (!matchId) return
@@ -340,6 +366,7 @@ export function SdrPropertyActions({
         propertyLinkId={matchId || undefined}
         imovelId={propertyId}
         propertyLabel={visitPropertyLabel}
+        linkedProperties={visitLinkedProperties}
       />
 
       {negLinkedProperty && (

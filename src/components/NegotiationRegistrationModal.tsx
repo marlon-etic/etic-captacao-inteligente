@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Loader2, Handshake, MapPin, Search, AlertTriangle, Link2, Edit3 } from 'lucide-react'
+import { Loader2, Handshake, MapPin, Search, AlertTriangle, Link2, Edit3, X } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { supabase } from '@/lib/supabase/client'
 import {
@@ -162,7 +162,7 @@ export function NegotiationRegistrationModal({
         title: 'Negociação Registrada!',
         description:
           negStatus === 'negotiated'
-            ? `Negócio fechado${parsedValue > 0 ? ` no valor de R$ ${formatBRL(String(parsedValue * 100))}` : ''}!`
+            ? `Negócio fechado${parsedValue > 0 ? ` no valor de R$ ${parsedValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : ''}!`
             : 'Negociação registrada como falhou.',
         className: 'bg-[#10B981] text-white border-none',
       })

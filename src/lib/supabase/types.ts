@@ -1319,6 +1319,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          manual_property_reference: string | null
           negotiated_by_user_id: string
           negotiation_date: string
           negotiation_status: string
@@ -1330,6 +1331,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          manual_property_reference?: string | null
           negotiated_by_user_id: string
           negotiation_date?: string
           negotiation_status: string
@@ -1341,6 +1343,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          manual_property_reference?: string | null
           negotiated_by_user_id?: string
           negotiation_date?: string
           negotiation_status?: string
