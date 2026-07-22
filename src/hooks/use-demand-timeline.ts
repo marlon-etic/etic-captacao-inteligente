@@ -314,5 +314,19 @@ export function useDemandTimeline(
     }
   }, [demand.id, fetchTimeline])
 
+  useEffect(() => {
+    const handleDemandUpdate = (e: Event) => {
+      const detail = (e as CustomEvent).detail
+      if (
+        detail?.data?.id === demand.id &&
+        (detail?.data?._visitRegistered || detail?.data?._feedbackRegistered)
+      ) {
+        fetchTimeline()
+      }
+    }
+    window.addEventListener('demanda-updated', handleDemandUpdate)
+    return () => window.removeEventListener('demanda-updated', handleDemandUpdate)
+  }, [demand.id, fetchTimeline])
+
   return { events, loading, refresh: fetchTimeline }
 }

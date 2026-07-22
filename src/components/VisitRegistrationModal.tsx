@@ -113,7 +113,7 @@ export function VisitRegistrationModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md z-[1200]">
         <DialogHeader>
           <DialogTitle>Registrar Visita</DialogTitle>
           <DialogDescription>

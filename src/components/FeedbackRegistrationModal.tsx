@@ -54,6 +54,7 @@ export function FeedbackRegistrationModal({
 
   const selectedProp = linkedProperties?.find((p) => p.matchId === selectedProperty)
   const currentPropertyLabel = selectedProp?.label || propertyLabel || 'Imóvel'
+  const effectivePropertyLinkId = showSelector ? selectedProperty : propertyLinkId
 
   const handleSubmit = async () => {
     if (!interestLevel) return
@@ -110,7 +111,7 @@ export function FeedbackRegistrationModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md z-[1200]">
         <DialogHeader>
           <DialogTitle>Registrar Feedback</DialogTitle>
           <DialogDescription className="truncate">{currentPropertyLabel}</DialogDescription>
@@ -211,8 +212,4 @@ export function FeedbackRegistrationModal({
       </DialogContent>
     </Dialog>
   )
-
-  function effectivePropertyLinkId() {
-    return showSelector ? selectedProperty : propertyLinkId
-  }
 }

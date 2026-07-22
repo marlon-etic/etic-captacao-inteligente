@@ -1,4 +1,4 @@
-import { useState, memo, useMemo, useCallback, lazy } from 'react'
+import { useState, useEffect, memo, useMemo, useCallback, lazy } from 'react'
 import { LinkText } from '@/lib/link-formatter'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -344,6 +344,20 @@ function ExpandableDemandCardSDRComponent({
     },
     [demand.id, demand.tipo],
   )
+
+  useEffect(() => {
+    const handleDemandUpdate = (e: Event) => {
+      const detail = (e as CustomEvent).detail
+      if (
+        detail?.data?.id === demand.id &&
+        (detail?.data?._visitRegistered || detail?.data?._feedbackRegistered)
+      ) {
+        setShowTimeline(true)
+      }
+    }
+    window.addEventListener('demanda-updated', handleDemandUpdate)
+    return () => window.removeEventListener('demanda-updated', handleDemandUpdate)
+  }, [demand.id])
 
   return (
     <>
