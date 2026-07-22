@@ -87,7 +87,7 @@ export function useDemandTimeline(
           supabase
             .from('negotiation_records')
             .select(
-              'id, property_link_id, negotiation_status, notes, negotiation_date, created_at, negotiated_by_user_id',
+              'id, property_link_id, negotiation_status, notes, negotiation_date, created_at, negotiated_by_user_id, valor_fechado',
             )
             .in('property_link_id', matchIds)
             .order('created_at', { ascending: false }),
@@ -212,16 +212,31 @@ export function useDemandTimeline(
 
       negotiations.forEach((n: any) => {
         const u = getUserLabel(n.negotiated_by_user_id)
+        const valorFormatado =
+          n.negotiation_status === 'negotiated' && n.valor_fechado
+            ? Number(n.valor_fechado).toLocaleString('pt-BR', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })
+            : null
+        let description = n.notes
+        if (!description) {
+          if (n.negotiation_status === 'negotiated') {
+            description = valorFormatado
+              ? `Negócio Fechado: R$ ${valorFormatado}`
+              : 'Negociação concluída com sucesso'
+          } else {
+            description = 'Negociação não teve êxito'
+          }
+        } else if (n.negotiation_status === 'negotiated' && valorFormatado) {
+          description = `Negócio Fechado: R$ ${valorFormatado} — ${description}`
+        }
         timelineEvents.push({
           id: `negotiation-${n.id}`,
           type: 'negotiation',
           timestamp: n.created_at,
           title: n.negotiation_status === 'negotiated' ? 'Negócio Fechado' : 'Negociação Falhou',
-          description:
-            n.notes ||
-            (n.negotiation_status === 'negotiated'
-              ? 'Negociação concluída com sucesso'
-              : 'Negociação não teve êxito'),
+          description,
           userName: u?.nome,
           userRole: u?.role,
         })

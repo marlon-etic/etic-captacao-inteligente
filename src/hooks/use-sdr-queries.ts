@@ -160,7 +160,7 @@ export function useSdrQueries() {
           let q = supabase
             .from('negotiation_records')
             .select(
-              'id, negotiation_status, notes, negotiation_date, created_at, negotiated_by_user_id, property_link_id, imovel_demand_match(id, demanda_id, imovel_id, tipo_demanda, imoveis_captados(id, codigo_imovel, endereco, preco, valor, tipo_imovel, localizacao_texto))',
+              'id, negotiation_status, notes, negotiation_date, created_at, negotiated_by_user_id, property_link_id, valor_fechado, imovel_demand_match(id, demanda_id, imovel_id, tipo_demanda, imoveis_captados(id, codigo_imovel, endereco, preco, valor, tipo_imovel, localizacao_texto))',
             )
           if (!isAdmin) q = q.eq('negotiated_by_user_id', user.id)
           if (applyDateFilter) q = q.gte('created_at', startIso).lte('created_at', endIso)

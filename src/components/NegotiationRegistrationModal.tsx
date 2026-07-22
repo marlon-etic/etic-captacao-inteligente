@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Loader2, Handshake, MapPin } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
@@ -31,6 +32,18 @@ interface Props {
   linkedProperties?: LinkedProperty[]
 }
 
+function formatBRL(input: string): string {
+  const digits = input.replace(/\D/g, '')
+  if (!digits) return ''
+  const value = Number(digits) / 100
+  return value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+function parseBRL(formatted: string): number {
+  const digits = formatted.replace(/\D/g, '')
+  return digits ? Number(digits) / 100 : 0
+}
+
 export function NegotiationRegistrationModal({
   open,
   onOpenChange,
@@ -41,10 +54,13 @@ export function NegotiationRegistrationModal({
   const { toast } = useToast()
   const [negStatus, setNegStatus] = useState<'negotiated' | 'failed'>('negotiated')
   const [notes, setNotes] = useState('')
+  const [valorFechado, setValorFechado] = useState('')
   const [loading, setLoading] = useState(false)
   const [selectedProperty, setSelectedProperty] = useState<string>('')
 
   const hasLinkedProperties = linkedProperties && linkedProperties.length > 0
+  const isNegotiated = negStatus === 'negotiated'
+  const valorError = isNegotiated && !valorFechado
 
   useEffect(() => {
     if (open && hasLinkedProperties) {
@@ -52,17 +68,28 @@ export function NegotiationRegistrationModal({
     }
   }, [open, linkedProperties])
 
+  useEffect(() => {
+    if (open) {
+      setNegStatus('negotiated')
+      setNotes('')
+      setValorFechado('')
+    }
+  }, [open])
+
   const selectedProp = linkedProperties?.find((p) => p.matchId === selectedProperty)
 
   const handleSubmit = async () => {
     if (!demandId || !selectedProperty) return
+    if (isNegotiated && !valorFechado) return
     setLoading(true)
     try {
+      const parsedValue = isNegotiated ? parseBRL(valorFechado) : 0
       const { error } = await supabase.functions.invoke('negotiation-registration', {
         body: {
           property_link_id: selectedProperty,
           negotiation_status: negStatus,
           notes: notes || undefined,
+          valor_fechado: isNegotiated ? parsedValue : undefined,
         },
       })
       if (error) throw error
@@ -70,7 +97,7 @@ export function NegotiationRegistrationModal({
         title: 'Negociação Registrada!',
         description:
           negStatus === 'negotiated'
-            ? 'Negócio fechado com sucesso!'
+            ? `Negócio fechado${parsedValue > 0 ? ` no valor de R$ ${formatBRL(String(parsedValue * 100))}` : ''}!`
             : 'Negociação registrada como falhou.',
         className: 'bg-[#10B981] text-white border-none',
       })
@@ -84,6 +111,7 @@ export function NegotiationRegistrationModal({
       )
       onOpenChange(false)
       setNotes('')
+      setValorFechado('')
     } catch (err: any) {
       toast({
         title: 'Erro ao registrar negociação',
@@ -143,6 +171,34 @@ export function NegotiationRegistrationModal({
               </SelectContent>
             </Select>
           </div>
+          {isNegotiated && (
+            <div className="space-y-2 animate-fade-in-up">
+              <Label htmlFor="valor-fechado">
+                Valor do Aluguel Fechado <span className="text-red-500">*</span>
+              </Label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#1A3A52] font-bold text-sm pointer-events-none">
+                  R$
+                </span>
+                <Input
+                  id="valor-fechado"
+                  inputMode="numeric"
+                  value={valorFechado}
+                  onChange={(e) => setValorFechado(formatBRL(e.target.value))}
+                  placeholder="0,00"
+                  className={cn(
+                    'pl-10 font-bold text-[#1A3A52]',
+                    valorError && 'border-red-500 focus-visible:ring-red-500',
+                  )}
+                />
+              </div>
+              {valorError && (
+                <p className="text-xs text-red-500 font-medium">
+                  Informe o valor do aluguel fechado.
+                </p>
+              )}
+            </div>
+          )}
           <div className="space-y-2">
             <Label htmlFor="neg-notes">Observações (Opcional)</Label>
             <Textarea
@@ -161,7 +217,7 @@ export function NegotiationRegistrationModal({
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={loading || (hasLinkedProperties && !selectedProperty)}
+            disabled={loading || (hasLinkedProperties && !selectedProperty) || valorError}
             className="bg-purple-600 hover:bg-purple-700 text-white"
           >
             {loading ? (

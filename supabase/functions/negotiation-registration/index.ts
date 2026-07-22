@@ -71,7 +71,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const body = await req.json()
-    const { property_link_id, negotiation_status, notes } = body
+    const { property_link_id, negotiation_status, notes, valor_fechado } = body
 
     if (!property_link_id || !negotiation_status) {
       return new Response(
@@ -93,6 +93,27 @@ Deno.serve(async (req: Request) => {
           success: false,
           error: 'Bad Request',
           message: 'negotiation_status must be "negotiated" or "failed"',
+        }),
+        {
+          status: 400,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        },
+      )
+    }
+
+    if (
+      negotiation_status === 'negotiated' &&
+      (valor_fechado === undefined ||
+        valor_fechado === null ||
+        isNaN(Number(valor_fechado)) ||
+        Number(valor_fechado) <= 0)
+    ) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Bad Request',
+          message:
+            'valor_fechado is required and must be a positive number when negotiation_status is "negotiated"',
         }),
         {
           status: 400,
@@ -149,6 +170,7 @@ Deno.serve(async (req: Request) => {
         negotiated_by_user_id: user.id,
         negotiation_status,
         notes: notes || null,
+        valor_fechado: negotiation_status === 'negotiated' ? Number(valor_fechado) : 0,
         negotiation_date: now,
         created_at: now,
         updated_at: now,
@@ -174,18 +196,23 @@ Deno.serve(async (req: Request) => {
         const propertyInfo = imovelData?.endereco || imovelData?.localizacao_texto || 'imóvel'
         const statusText =
           negotiation_status === 'negotiated' ? 'Negócio fechado' : 'Negociação falhou'
+        const valorFormatado =
+          negotiation_status === 'negotiated' && Number(valor_fechado) > 0
+            ? ` no valor de R$ ${Number(valor_fechado).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+            : ''
 
         try {
           await supabaseAdmin.from('notificacoes').insert({
             usuario_id: captadorId,
             tipo: 'negociacao_registrada',
             titulo: 'Negociação Registrada',
-            mensagem: `${statusText} para o imóvel "${propertyInfo}".`,
+            mensagem: `${statusText}${valorFormatado} para o imóvel "${propertyInfo}".`,
             dados_relacionados: {
               negotiation_id: newNegotiation.id,
               imovel_id: linkData.imovel_id,
               demanda_id: linkData.demanda_id,
               negotiation_status,
+              valor_fechado: negotiation_status === 'negotiated' ? Number(valor_fechado) : 0,
               sdr_name: userData.nome,
             },
             prioridade: negotiation_status === 'negotiated' ? 'alta' : 'normal',
@@ -207,6 +234,7 @@ Deno.serve(async (req: Request) => {
           property_link_id,
           negotiated_by_user_id: user.id,
           negotiation_status,
+          valor_fechado: negotiation_status === 'negotiated' ? Number(valor_fechado) : 0,
           notes: notes || null,
           sdr_name: userData.nome,
         },

@@ -40,6 +40,9 @@ function NegotiationsListBase({ data }: { data: any }) {
                   Status
                 </TableHead>
                 <TableHead className="font-bold text-gray-500 uppercase tracking-wider text-xs h-10">
+                  Valor Fechado
+                </TableHead>
+                <TableHead className="font-bold text-gray-500 uppercase tracking-wider text-xs h-10">
                   Ações
                 </TableHead>
               </TableRow>
@@ -48,7 +51,7 @@ function NegotiationsListBase({ data }: { data: any }) {
               {negociacoesList.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={4}
+                    colSpan={5}
                     className="text-center py-12 text-gray-400 font-bold bg-white"
                   >
                     Nenhuma negociação registrada ainda.
@@ -86,6 +89,11 @@ function NegotiationsListBase({ data }: { data: any }) {
                         >
                           {isNegotiated ? 'Fechado' : 'Falhou'}
                         </Badge>
+                      </TableCell>
+                      <TableCell className="font-bold text-emerald-700 whitespace-nowrap">
+                        {isNegotiated && n.valor_fechado
+                          ? `R$ ${Number(n.valor_fechado).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                          : '-'}
                       </TableCell>
                       <TableCell>
                         <Button
