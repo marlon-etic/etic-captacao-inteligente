@@ -21,6 +21,7 @@ import {
   Link as LinkIcon,
   ExternalLink,
   ThumbsUp,
+  Handshake,
 } from 'lucide-react'
 import { useSlaCountdown, useTimeElapsed } from '@/hooks/useTimeElapsed'
 import useAppStore from '@/stores/useAppStore'
@@ -54,6 +55,11 @@ const SugerirLinksModal = lazy(() =>
 const FeedbackRegistrationModal = lazy(() =>
   import('./FeedbackRegistrationModal').then((m) => ({ default: m.FeedbackRegistrationModal })),
 )
+const NegotiationRegistrationModal = lazy(() =>
+  import('./NegotiationRegistrationModal').then((m) => ({
+    default: m.NegotiationRegistrationModal,
+  })),
+)
 
 function ExpandableDemandCardSDRComponent({
   demand,
@@ -82,6 +88,7 @@ function ExpandableDemandCardSDRComponent({
   const [linkedProperties, setLinkedProperties] = useState<LinkedProperty[]>([])
   const [showLinksModal, setShowLinksModal] = useState(false)
   const [showFeedbackModal, setShowFeedbackModal] = useState(false)
+  const [showNegotiationModal, setShowNegotiationModal] = useState(false)
   const { properties: demandProperties, loading: propertiesLoading } = useDemandProperties(
     demand.id || '',
     showTimeline,
@@ -326,6 +333,11 @@ function ExpandableDemandCardSDRComponent({
     setShowFeedbackModal(true)
   }, [fetchLinkedProperties])
 
+  const handleOpenNegotiationModal = useCallback(async () => {
+    await fetchLinkedProperties()
+    setShowNegotiationModal(true)
+  }, [fetchLinkedProperties])
+
   const handleLinksSaved = useCallback(
     (links: string[]) => {
       window.dispatchEvent(
@@ -350,7 +362,9 @@ function ExpandableDemandCardSDRComponent({
       const detail = (e as CustomEvent).detail
       if (
         detail?.data?.id === demand.id &&
-        (detail?.data?._visitRegistered || detail?.data?._feedbackRegistered)
+        (detail?.data?._visitRegistered ||
+          detail?.data?._feedbackRegistered ||
+          detail?.data?._negotiationRegistered)
       ) {
         setShowTimeline(true)
       }
@@ -675,6 +689,20 @@ function ExpandableDemandCardSDRComponent({
             </Button>
           )}
 
+          {isPending && !isLost && (
+            <Button
+              variant="outline"
+              className="w-full font-bold border-purple-200 text-purple-600 hover:bg-purple-50 text-[13px] sm:text-[14px] h-[44px] sm:h-[48px] shadow-sm"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                handleOpenNegotiationModal()
+              }}
+            >
+              <Handshake className="w-4 h-4 mr-2" /> Registrar Negociação
+            </Button>
+          )}
+
           <div className="grid grid-cols-2 gap-3 mt-1">
             <Button
               variant="outline"
@@ -764,6 +792,14 @@ function ExpandableDemandCardSDRComponent({
           linkedProperties={linkedProperties}
           demandId={demand.id || ''}
           tipoDemanda={demand.tipo || ''}
+        />
+
+        <NegotiationRegistrationModal
+          open={showNegotiationModal}
+          onOpenChange={setShowNegotiationModal}
+          demandId={demand.id || ''}
+          tipoDemanda={demand.tipo || ''}
+          linkedProperties={linkedProperties}
         />
       </LazyModalBoundary>
     </>

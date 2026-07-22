@@ -6,6 +6,7 @@ import { useSdrQueries } from '@/hooks/use-sdr-queries'
 import { FilterBar } from '@/components/sdr-dashboard/FilterBar'
 import { MetricsCardsSdr } from '@/components/sdr-dashboard/MetricsCardsSdr'
 import { ListasSdr } from '@/components/sdr-dashboard/ListasSdr'
+import { NegotiationsList } from '@/components/sdr-dashboard/NegotiationsList'
 import { AlertasBannerSdr } from '@/components/sdr-dashboard/AlertasBannerSdr'
 import { ChartsSdr } from '@/components/sdr-dashboard/ChartsSdr'
 import { ActiveCampaignsWidget } from '@/components/campanhas/ActiveCampaignsWidget'
@@ -69,6 +70,8 @@ export function SDRDashboard() {
               <MetricsCardsSdr data={data} loading={loading} />
 
               <ListasSdr data={data} loading={loading} isLocacao={isLocacao} />
+
+              <NegotiationsList data={data} />
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
                 <ChartsSdr data={data} loading={loading} />

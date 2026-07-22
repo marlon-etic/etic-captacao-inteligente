@@ -11,16 +11,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog'
 import { toast } from '@/components/ui/use-toast'
-import {
-  Calendar,
-  ThumbsUp,
-  ThumbsDown,
-  CheckCircle2,
-  XCircle,
-  Handshake,
-  Loader2,
-  MessageSquare,
-} from 'lucide-react'
+import { Calendar, CheckCircle2, XCircle, Handshake, Loader2, MessageSquare } from 'lucide-react'
 import { useUserRole } from '@/hooks/use-user-role'
 import useAppStore from '@/stores/useAppStore'
 import {
@@ -41,7 +32,6 @@ export function SdrPropertyActions({
 }) {
   const [matchId, setMatchId] = useState<string | null>(null)
   const [visits, setVisits] = useState<any[]>([])
-  const [feedbacks, setFeedbacks] = useState<any[]>([])
   const [negotiations, setNegotiations] = useState<any[]>([])
 
   const { role } = useUserRole()
@@ -87,13 +77,11 @@ export function SdrPropertyActions({
 
   const fetchRecords = async () => {
     if (!matchId) return
-    const [resVisits, resFeedbacks, resNeg] = await Promise.all([
+    const [resVisits, resNeg] = await Promise.all([
       supabase.from('visit_records').select('*').eq('property_link_id', matchId),
-      supabase.from('feedback_records').select('*').eq('property_link_id', matchId),
       supabase.from('negotiation_records').select('*').eq('property_link_id', matchId),
     ])
     if (resVisits.data) setVisits(resVisits.data)
-    if (resFeedbacks.data) setFeedbacks(resFeedbacks.data)
     if (resNeg.data) setNegotiations(resNeg.data)
   }
 
@@ -118,16 +106,6 @@ export function SdrPropertyActions({
         {
           event: '*',
           schema: 'public',
-          table: 'feedback_records',
-          filter: `property_link_id=eq.${matchId}`,
-        },
-        fetchRecords,
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
           table: 'negotiation_records',
           filter: `property_link_id=eq.${matchId}`,
         },
@@ -140,21 +118,12 @@ export function SdrPropertyActions({
     }
   }, [matchId])
 
-  // Modals state
   const [visitOpen, setVisitOpen] = useState(false)
-  const [feedbackOpen, setFeedbackOpen] = useState(false)
   const [negOpen, setNegOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
 
-  // Visit Form
   const [visitNotes, setVisitNotes] = useState('')
-
-  // Feedback Form
-  const [interestLevel, setInterestLevel] = useState<'interested' | 'not_interested'>('interested')
-  const [feedbackText, setFeedbackText] = useState('')
-
-  // Negotiation Form
-  const [negStatus, setNegStatus] = useState<'negociado' | 'falhou'>('negociado')
+  const [negStatus, setNegStatus] = useState<'negotiated' | 'failed'>('negotiated')
   const [negNotes, setNegNotes] = useState('')
 
   const ensureMatchId = async () => {
@@ -216,7 +185,6 @@ export function SdrPropertyActions({
     const vDate = new Date(v.visited_date || v.created_at).toDateString()
     return vDate === new Date().toDateString()
   })
-  const hasFeedback = feedbacks.length > 0
   const hasNegotiation = negotiations.length > 0
 
   const handleVisit = async () => {
@@ -236,30 +204,6 @@ export function SdrPropertyActions({
       toast({ title: 'Sucesso', description: 'Visita registrada com sucesso!' })
       setVisitOpen(false)
       setVisitNotes('')
-    }
-  }
-
-  const handleFeedback = async () => {
-    setIsLoading(true)
-    const currentMatchId = await ensureMatchId()
-    if (!currentMatchId) {
-      setIsLoading(false)
-      return
-    }
-    const { error } = await supabase.functions.invoke('feedback-registration', {
-      body: {
-        property_link_id: currentMatchId,
-        interest_level: interestLevel,
-        feedback_text: feedbackText,
-      },
-    })
-    setIsLoading(false)
-    if (error) {
-      toast({ title: 'Erro', description: error.message, variant: 'destructive' })
-    } else {
-      toast({ title: 'Sucesso', description: 'Feedback registrado com sucesso!' })
-      setFeedbackOpen(false)
-      setFeedbackText('')
     }
   }
 
@@ -288,13 +232,12 @@ export function SdrPropertyActions({
 
   const timelineEvents = [
     ...visits.map((v) => ({
-      type: 'visit',
+      type: 'visit' as const,
       date: new Date(v.visited_at || v.created_at),
       data: v,
     })),
-    ...feedbacks.map((f) => ({ type: 'feedback', date: new Date(f.created_at), data: f })),
     ...negotiations.map((n) => ({
-      type: 'negotiation',
+      type: 'negotiation' as const,
       date: new Date(n.negotiation_date || n.created_at),
       data: n,
     })),
@@ -318,34 +261,6 @@ export function SdrPropertyActions({
           <Button
             variant="outline"
             size="sm"
-            onClick={() => {
-              setInterestLevel('interested')
-              setFeedbackOpen(true)
-            }}
-            disabled={hasFeedback}
-            className="flex-1 min-w-[120px] bg-white border-[#E5E5E5] hover:bg-green-50 text-green-700 hover:text-green-800"
-          >
-            <ThumbsUp className="w-4 h-4 mr-2" />
-            Gostei
-          </Button>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              setInterestLevel('not_interested')
-              setFeedbackOpen(true)
-            }}
-            disabled={hasFeedback}
-            className="flex-1 min-w-[120px] bg-white border-[#E5E5E5] hover:bg-red-50 text-red-700 hover:text-red-800"
-          >
-            <ThumbsDown className="w-4 h-4 mr-2" />
-            Não Gostei
-          </Button>
-
-          <Button
-            variant="outline"
-            size="sm"
             onClick={() => setNegOpen(true)}
             disabled={hasNegotiation}
             className="flex-1 min-w-[120px] bg-white border-[#E5E5E5] hover:bg-purple-50 text-purple-700 hover:text-purple-800"
@@ -362,16 +277,10 @@ export function SdrPropertyActions({
             <div key={i} className="relative flex items-start gap-4">
               <div className="flex items-center justify-center w-8 h-8 rounded-full border-2 border-white bg-slate-100 text-slate-500 shadow-sm shrink-0 z-10 relative">
                 {ev.type === 'visit' && <Calendar className="w-4 h-4 text-blue-500" />}
-                {ev.type === 'feedback' && ev.data.interest_level === 'interested' && (
-                  <ThumbsUp className="w-4 h-4 text-green-500" />
-                )}
-                {ev.type === 'feedback' && ev.data.interest_level === 'not_interested' && (
-                  <ThumbsDown className="w-4 h-4 text-red-500" />
-                )}
-                {ev.type === 'negotiation' && ev.data.negotiation_status === 'negociado' && (
+                {ev.type === 'negotiation' && ev.data.negotiation_status === 'negotiated' && (
                   <CheckCircle2 className="w-4 h-4 text-purple-500" />
                 )}
-                {ev.type === 'negotiation' && ev.data.negotiation_status === 'falhou' && (
+                {ev.type === 'negotiation' && ev.data.negotiation_status === 'failed' && (
                   <XCircle className="w-4 h-4 text-slate-500" />
                 )}
               </div>
@@ -379,17 +288,11 @@ export function SdrPropertyActions({
                 <div className="flex justify-between items-start mb-1 gap-2">
                   <span className="font-bold text-slate-700 text-sm">
                     {ev.type === 'visit' && 'Visita Realizada'}
-                    {ev.type === 'feedback' &&
-                      ev.data.interest_level === 'interested' &&
-                      'Cliente Interessado'}
-                    {ev.type === 'feedback' &&
-                      ev.data.interest_level === 'not_interested' &&
-                      'Cliente Não Interessado'}
                     {ev.type === 'negotiation' &&
-                      ev.data.negotiation_status === 'negociado' &&
+                      ev.data.negotiation_status === 'negotiated' &&
                       'Negócio Fechado'}
                     {ev.type === 'negotiation' &&
-                      ev.data.negotiation_status === 'falhou' &&
+                      ev.data.negotiation_status === 'failed' &&
                       'Negociação Falhou'}
                   </span>
                   <span className="text-xs text-slate-400 whitespace-nowrap bg-slate-50 px-2 py-0.5 rounded-full border border-slate-100">
@@ -404,12 +307,10 @@ export function SdrPropertyActions({
                 <div className="text-[11px] font-medium text-slate-500 uppercase tracking-wider mb-2">
                   Por {getUserName(ev.data.sdr_user_id || ev.data.negotiated_by_user_id)}
                 </div>
-                {(ev.data.notes || ev.data.feedback_text) && (
+                {ev.data.notes && (
                   <div className="text-sm text-slate-600 bg-slate-50 p-2.5 rounded-md flex gap-2 items-start border border-slate-100">
                     <MessageSquare className="w-4 h-4 mt-0.5 text-slate-400 shrink-0" />
-                    <span className="leading-relaxed">
-                      {ev.data.notes || ev.data.feedback_text}
-                    </span>
+                    <span className="leading-relaxed">{ev.data.notes}</span>
                   </div>
                 )}
               </div>
@@ -450,46 +351,6 @@ export function SdrPropertyActions({
         </DialogContent>
       </Dialog>
 
-      <Dialog open={feedbackOpen} onOpenChange={setFeedbackOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Registrar Feedback</DialogTitle>
-            <DialogDescription>
-              {interestLevel === 'interested'
-                ? 'O cliente gostou do imóvel.'
-                : 'O cliente não gostou do imóvel.'}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Motivo / Feedback (Opcional)</Label>
-              <Textarea
-                value={feedbackText}
-                onChange={(e) => setFeedbackText(e.target.value)}
-                placeholder="Detalhes do que o cliente achou..."
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setFeedbackOpen(false)} disabled={isLoading}>
-              Cancelar
-            </Button>
-            <Button
-              onClick={handleFeedback}
-              disabled={isLoading}
-              className={
-                interestLevel === 'interested'
-                  ? 'bg-green-600 hover:bg-green-700 text-white'
-                  : 'bg-red-600 hover:bg-red-700 text-white'
-              }
-            >
-              {isLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Confirmar Feedback
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       <Dialog open={negOpen} onOpenChange={setNegOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -506,8 +367,8 @@ export function SdrPropertyActions({
                   <SelectValue placeholder="Selecione o resultado" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="negociado">Negócio Fechado (Sucesso)</SelectItem>
-                  <SelectItem value="falhou">Negociação Falhou</SelectItem>
+                  <SelectItem value="negotiated">Negócio Fechado (Sucesso)</SelectItem>
+                  <SelectItem value="failed">Negociação Falhou</SelectItem>
                 </SelectContent>
               </Select>
             </div>

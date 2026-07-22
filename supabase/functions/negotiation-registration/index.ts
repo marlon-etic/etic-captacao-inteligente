@@ -50,12 +50,12 @@ Deno.serve(async (req: Request) => {
       .eq('id', user.id)
       .single()
 
-    if (userError || !userData || (userData.role !== 'sdr' && userData.role !== 'corretor')) {
+    if (userError || !userData || !['sdr', 'corretor', 'admin', 'gestor'].includes(userData.role)) {
       return new Response(
         JSON.stringify({
           success: false,
           error: 'Forbidden',
-          message: 'User does not have the required role (sdr or corretor)',
+          message: 'User does not have the required role',
         }),
         {
           status: 403,

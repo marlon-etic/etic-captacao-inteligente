@@ -36,6 +36,7 @@ import { toggleDemandPriority } from '@/services/priority-service'
 import useAppStore from '@/stores/useAppStore'
 import { Star } from 'lucide-react'
 import { VisitDetailsModal } from '@/components/sdr-dashboard/VisitDetailsModal'
+import { NegotiationDetailsModal } from '@/components/sdr-dashboard/NegotiationDetailsModal'
 
 function ListasSdrBase({
   data,
@@ -55,6 +56,7 @@ function ListasSdrBase({
   const [prioritizeDemand, setPrioritizeDemand] = useState<any>(null)
   const [isPrioritizing, setIsPrioritizing] = useState(false)
   const [selectedVisit, setSelectedVisit] = useState<any>(null)
+  const [selectedNegotiation, setSelectedNegotiation] = useState<any>(null)
   const { toast } = useToast()
 
   const canPrioritize = ['sdr', 'admin', 'gestor'].includes(currentUser?.role)
@@ -66,6 +68,7 @@ function ListasSdrBase({
   const imoveisSobDemandaList = Array.isArray(data?.imoveisSobDemanda) ? data.imoveisSobDemanda : []
   const visitasList = Array.isArray(data?.visitas) ? data.visitas : []
   const fechadosList = Array.isArray(data?.fechados) ? data.fechados : []
+  const negociacoesList = Array.isArray(data?.negociacoes) ? data.negociacoes : []
 
   const activeDemands =
     demandasList
@@ -351,7 +354,7 @@ function ListasSdrBase({
             )}
           </TableCell>
           <TableCell className="text-gray-500">
-            {v.tipo_demanda || property?.tipo_imovel || 'N/A'}
+            {v.tipo_demanda || property?.tipo_imovel || 'Visita'}
           </TableCell>
           <TableCell className="font-medium text-emerald-600 whitespace-nowrap">
             {value > 0 ? `R$ ${value}` : '—'}
@@ -386,6 +389,49 @@ function ListasSdrBase({
         </TableCell>
       </TableRow>
     )
+  } else if (cardFiltrado === 'negociacoes') {
+    listData = negociacoesList
+    columns = ['Imóvel', 'Data', 'Status', 'Ações']
+    renderRow = (n) => {
+      const property = n.imovel_demand_match?.imoveis_captados
+      const address =
+        property?.endereco || property?.localizacao_texto || property?.codigo_imovel || 'N/A'
+      const isNegotiated = n.negotiation_status === 'negotiated'
+      return (
+        <TableRow key={n.id} className="hover:bg-gray-50">
+          <TableCell className="font-bold text-gray-800">
+            {address}
+            {property?.codigo_imovel && (
+              <span className="block text-xs text-gray-400">{property.codigo_imovel}</span>
+            )}
+          </TableCell>
+          <TableCell className="text-gray-500 whitespace-nowrap">
+            {format(new Date(n.negotiation_date || n.created_at), 'dd/MM/yyyy')}
+          </TableCell>
+          <TableCell>
+            <Badge
+              className={
+                isNegotiated
+                  ? 'bg-emerald-100 text-emerald-800 border-none font-bold uppercase tracking-wider text-[10px]'
+                  : 'bg-red-100 text-red-800 border-none font-bold uppercase tracking-wider text-[10px]'
+              }
+            >
+              {isNegotiated ? 'Fechado' : 'Falhou'}
+            </Badge>
+          </TableCell>
+          <TableCell>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 font-bold"
+              onClick={() => setSelectedNegotiation(n)}
+            >
+              Detalhes
+            </Button>
+          </TableCell>
+        </TableRow>
+      )
+    }
   } else {
     listData = []
     columns = ['N/A']
@@ -612,6 +658,12 @@ function ListasSdrBase({
         visit={selectedVisit}
         open={!!selectedVisit}
         onOpenChange={(open) => !open && setSelectedVisit(null)}
+      />
+
+      <NegotiationDetailsModal
+        negotiation={selectedNegotiation}
+        open={!!selectedNegotiation}
+        onOpenChange={(open) => !open && setSelectedNegotiation(null)}
       />
     </div>
   )

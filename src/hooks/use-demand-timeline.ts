@@ -319,7 +319,9 @@ export function useDemandTimeline(
       const detail = (e as CustomEvent).detail
       if (
         detail?.data?.id === demand.id &&
-        (detail?.data?._visitRegistered || detail?.data?._feedbackRegistered)
+        (detail?.data?._visitRegistered ||
+          detail?.data?._feedbackRegistered ||
+          detail?.data?._negotiationRegistered)
       ) {
         fetchTimeline()
       }

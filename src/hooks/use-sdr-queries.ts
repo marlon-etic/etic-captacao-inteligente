@@ -156,6 +156,19 @@ export function useSdrQueries() {
           return data || []
         }
 
+        const fetchNegotiations = async () => {
+          let q = supabase
+            .from('negotiation_records')
+            .select(
+              'id, negotiation_status, notes, negotiation_date, created_at, negotiated_by_user_id, property_link_id, imovel_demand_match(id, demanda_id, imovel_id, tipo_demanda, imoveis_captados(id, codigo_imovel, endereco, preco, valor, tipo_imovel, localizacao_texto))',
+            )
+          if (!isAdmin) q = q.eq('negotiated_by_user_id', user.id)
+          if (applyDateFilter) q = q.gte('created_at', startIso).lte('created_at', endIso)
+          q = q.order('created_at', { ascending: false, nullsFirst: false })
+          const { data } = await q
+          return data || []
+        }
+
         const buildImoveisQuery = () => {
           let q = supabase
             .from('imoveis_captados')
@@ -188,6 +201,7 @@ export function useSdrQueries() {
           { data: imActive },
           visitasResult,
           fechadosResult,
+          negotiationsResult,
         ] = await Promise.all([
           fetchDemandas('demandas_locacao', 'sdr_id', 'Locação', 'observacoes', visLocacao),
           fetchDemandas(
@@ -201,6 +215,7 @@ export function useSdrQueries() {
           qActive,
           !isCaptador ? fetchVisitas() : Promise.resolve([]),
           !isCaptador ? fetchActivities('fechamentos', 'created_at') : Promise.resolve([]),
+          !isCaptador ? fetchNegotiations() : Promise.resolve([]),
         ])
 
         let todasDemandas = [...resLocacao.demandas, ...resVendas.demandas]
@@ -302,6 +317,7 @@ export function useSdrQueries() {
           imoveisSobDemanda,
           visitas: visitasResult,
           fechados: fechadosResult,
+          negociacoes: negotiationsResult,
         })
       } catch (e) {
         console.error(e)

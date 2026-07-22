@@ -1907,7 +1907,15 @@ export type Database = {
           tipo_demanda?: string
           user_sdr_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "visitas_imovel_imovel_id_fkey"
+            columns: ["imovel_id"]
+            isOneToOne: false
+            referencedRelation: "imoveis_captados"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       vistasoft_cache: {
         Row: {
