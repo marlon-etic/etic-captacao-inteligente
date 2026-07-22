@@ -14,25 +14,27 @@ import { toast } from '@/components/ui/use-toast'
 import { Calendar, CheckCircle2, XCircle, Handshake, Loader2, MessageSquare } from 'lucide-react'
 import { useUserRole } from '@/hooks/use-user-role'
 import useAppStore from '@/stores/useAppStore'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
+import { NegotiationRegistrationModal } from '@/components/NegotiationRegistrationModal'
+import type { LinkedProperty } from '@/components/VisitRegistrationModal'
 
 export function SdrPropertyActions({
   propertyId,
   demandId,
+  tipoDemanda = 'Locação',
 }: {
   propertyId: string
   demandId: string
+  tipoDemanda?: string
 }) {
   const [matchId, setMatchId] = useState<string | null>(null)
   const [visits, setVisits] = useState<any[]>([])
   const [negotiations, setNegotiations] = useState<any[]>([])
+  const [visitOpen, setVisitOpen] = useState(false)
+  const [negOpen, setNegOpen] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [visitNotes, setVisitNotes] = useState('')
+  const [negLinkedProperty, setNegLinkedProperty] = useState<LinkedProperty | null>(null)
 
   const { role } = useUserRole()
   const { users } = useAppStore()
@@ -118,13 +120,8 @@ export function SdrPropertyActions({
     }
   }, [matchId])
 
-  const [visitOpen, setVisitOpen] = useState(false)
-  const [negOpen, setNegOpen] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-
-  const [visitNotes, setVisitNotes] = useState('')
-  const [negStatus, setNegStatus] = useState<'negotiated' | 'failed'>('negotiated')
-  const [negNotes, setNegNotes] = useState('')
+  const [negStatus] = useState<'negotiated' | 'failed'>('negotiated')
+  const [negNotes] = useState('')
 
   const ensureMatchId = async () => {
     if (matchId) return matchId
@@ -134,14 +131,14 @@ export function SdrPropertyActions({
       .select('tipo')
       .eq('id', demandId)
       .maybeSingle()
-    let tipoDemanda = locData?.tipo
-    if (!tipoDemanda) {
+    let tipoDem = locData?.tipo
+    if (!tipoDem) {
       const { data: venData } = await supabase
         .from('demandas_vendas')
         .select('tipo')
         .eq('id', demandId)
         .maybeSingle()
-      tipoDemanda = venData?.tipo || 'Ambos'
+      tipoDem = venData?.tipo || 'Ambos'
     }
 
     const { data, error } = await supabase
@@ -149,7 +146,7 @@ export function SdrPropertyActions({
       .insert({
         imovel_id: propertyId,
         demanda_id: demandId,
-        tipo_demanda: tipoDemanda,
+        tipo_demanda: tipoDem,
         tipo_vinculacao: 'manual',
         compatibilidade_pct: 0,
       })
@@ -212,29 +209,27 @@ export function SdrPropertyActions({
     }
   }
 
-  const handleNegotiation = async () => {
+  const handleOpenNegotiation = async () => {
     setIsLoading(true)
     const currentMatchId = await ensureMatchId()
     if (!currentMatchId) {
       setIsLoading(false)
       return
     }
-    const { error } = await supabase.functions.invoke('negotiation-registration', {
-      body: { property_link_id: currentMatchId, negotiation_status: negStatus, notes: negNotes },
-    })
+
+    const { data: propData } = await supabase
+      .from('imoveis_captados')
+      .select('codigo_imovel, endereco, localizacao_texto')
+      .eq('id', propertyId)
+      .maybeSingle()
+
+    const label = propData?.codigo_imovel
+      ? `${propData.codigo_imovel}${propData.endereco ? ' - ' + propData.endereco : ''}`
+      : propData?.endereco || propData?.localizacao_texto || 'Imóvel'
+
+    setNegLinkedProperty({ matchId: currentMatchId, label })
     setIsLoading(false)
-    if (error) {
-      toast({ title: 'Erro', description: error.message, variant: 'destructive' })
-    } else {
-      toast({ title: 'Sucesso', description: 'Negociação registrada com sucesso!' })
-      window.dispatchEvent(
-        new CustomEvent('demanda-updated', {
-          detail: { data: { id: demandId, _negotiationRegistered: true } },
-        }),
-      )
-      setNegOpen(false)
-      setNegNotes('')
-    }
+    setNegOpen(true)
   }
 
   const getUserName = (id: string) =>
@@ -271,11 +266,15 @@ export function SdrPropertyActions({
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setNegOpen(true)}
-            disabled={hasNegotiation}
+            onClick={handleOpenNegotiation}
+            disabled={hasNegotiation || isLoading}
             className="flex-1 min-w-[120px] bg-white border-[#E5E5E5] hover:bg-purple-50 text-purple-700 hover:text-purple-800"
           >
-            <Handshake className="w-4 h-4 mr-2" />
+            {isLoading ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <Handshake className="w-4 h-4 mr-2" />
+            )}
             {hasNegotiation ? 'Negociado ✓' : 'Negociação'}
           </Button>
         </div>
@@ -317,6 +316,17 @@ export function SdrPropertyActions({
                 <div className="text-[11px] font-medium text-slate-500 uppercase tracking-wider mb-2">
                   Por {getUserName(ev.data.sdr_user_id || ev.data.negotiated_by_user_id)}
                 </div>
+                {ev.type === 'negotiation' &&
+                  ev.data.negotiation_status === 'negotiated' &&
+                  ev.data.valor_fechado > 0 && (
+                    <div className="text-sm text-purple-700 font-bold mb-1">
+                      Valor Fechado: R${' '}
+                      {Number(ev.data.valor_fechado).toLocaleString('pt-BR', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                    </div>
+                  )}
                 {ev.data.notes && (
                   <div className="text-sm text-slate-600 bg-slate-50 p-2.5 rounded-md flex gap-2 items-start border border-slate-100">
                     <MessageSquare className="w-4 h-4 mt-0.5 text-slate-400 shrink-0" />
@@ -361,51 +371,15 @@ export function SdrPropertyActions({
         </DialogContent>
       </Dialog>
 
-      <Dialog open={negOpen} onOpenChange={setNegOpen}>
-        <DialogContent className="sm:max-w-md z-[1200]">
-          <DialogHeader>
-            <DialogTitle>Status da Negociação</DialogTitle>
-            <DialogDescription>
-              Atualize o resultado das negociações para este imóvel.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Resultado</Label>
-              <Select value={negStatus} onValueChange={(val: any) => setNegStatus(val)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o resultado" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="negotiated">Negócio Fechado (Sucesso)</SelectItem>
-                  <SelectItem value="failed">Negociação Falhou</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Observações (Opcional)</Label>
-              <Textarea
-                value={negNotes}
-                onChange={(e) => setNegNotes(e.target.value)}
-                placeholder="Valores acordados, motivo da falha..."
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setNegOpen(false)} disabled={isLoading}>
-              Cancelar
-            </Button>
-            <Button
-              onClick={handleNegotiation}
-              disabled={isLoading}
-              className="bg-purple-600 hover:bg-purple-700 text-white"
-            >
-              {isLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Salvar Negociação
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {negLinkedProperty && (
+        <NegotiationRegistrationModal
+          open={negOpen}
+          onOpenChange={setNegOpen}
+          demandId={demandId}
+          tipoDemanda={tipoDemanda}
+          linkedProperties={[negLinkedProperty]}
+        />
+      )}
     </div>
   )
 }

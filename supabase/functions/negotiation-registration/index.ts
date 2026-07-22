@@ -185,7 +185,7 @@ Deno.serve(async (req: Request) => {
     if (linkData?.imovel_id) {
       const { data: imovelData } = await supabaseAdmin
         .from('imoveis_captados')
-        .select('captador_id, user_captador_id, endereco, localizacao_texto')
+        .select('captador_id, user_captador_id, endereco, localizacao_texto, codigo_imovel')
         .eq('id', linkData.imovel_id)
         .maybeSingle()
 
@@ -193,7 +193,9 @@ Deno.serve(async (req: Request) => {
         linkData.captador_id || imovelData?.user_captador_id || imovelData?.captador_id
 
       if (captadorId) {
-        const propertyInfo = imovelData?.endereco || imovelData?.localizacao_texto || 'imóvel'
+        const propertyCode = imovelData?.codigo_imovel
+        const propertyAddress = imovelData?.endereco || imovelData?.localizacao_texto || 'imóvel'
+        const propertyInfo = propertyCode ? `${propertyCode} - ${propertyAddress}` : propertyAddress
         const statusText =
           negotiation_status === 'negotiated' ? 'Negócio fechado' : 'Negociação falhou'
         const valorFormatado =
@@ -212,6 +214,8 @@ Deno.serve(async (req: Request) => {
               imovel_id: linkData.imovel_id,
               demanda_id: linkData.demanda_id,
               negotiation_status,
+              property_code: imovelData?.codigo_imovel || null,
+              property_address: imovelData?.endereco || imovelData?.localizacao_texto || null,
               valor_fechado: negotiation_status === 'negotiated' ? Number(valor_fechado) : 0,
               sdr_name: userData.nome,
             },

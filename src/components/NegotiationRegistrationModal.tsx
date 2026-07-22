@@ -137,26 +137,37 @@ export function NegotiationRegistrationModal({
         <div className="space-y-4 py-4">
           {hasLinkedProperties && (
             <div className="space-y-2">
-              <Label>Selecione o Imóvel</Label>
-              <div className="space-y-2 max-h-40 overflow-y-auto">
-                {linkedProperties!.map((prop) => (
-                  <button
-                    key={prop.matchId}
-                    onClick={() => setSelectedProperty(prop.matchId)}
-                    className={cn(
-                      'w-full text-left p-3 rounded-lg border transition-all flex items-center gap-2',
-                      selectedProperty === prop.matchId
-                        ? 'border-[#8B5CF6] bg-purple-50 ring-2 ring-[#8B5CF6]/20'
-                        : 'border-[#E5E5E5] hover:border-[#8B5CF6]/30',
-                    )}
-                  >
-                    <MapPin className="w-4 h-4 text-[#8B5CF6] shrink-0" />
-                    <span className="text-sm font-medium text-[#1A3A52] line-clamp-1">
-                      {prop.label}
-                    </span>
-                  </button>
-                ))}
-              </div>
+              <Label>
+                {linkedProperties!.length === 1 ? 'Imóvel Vinculado' : 'Selecione o Imóvel'}
+              </Label>
+              {linkedProperties!.length === 1 ? (
+                <div className="p-3 rounded-lg border border-[#8B5CF6] bg-purple-50 ring-2 ring-[#8B5CF6]/20 flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-[#8B5CF6] shrink-0" />
+                  <span className="text-sm font-medium text-[#1A3A52] line-clamp-1">
+                    {linkedProperties![0].label}
+                  </span>
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-40 overflow-y-auto">
+                  {linkedProperties!.map((prop) => (
+                    <button
+                      key={prop.matchId}
+                      onClick={() => setSelectedProperty(prop.matchId)}
+                      className={cn(
+                        'w-full text-left p-3 rounded-lg border transition-all flex items-center gap-2',
+                        selectedProperty === prop.matchId
+                          ? 'border-[#8B5CF6] bg-purple-50 ring-2 ring-[#8B5CF6]/20'
+                          : 'border-[#E5E5E5] hover:border-[#8B5CF6]/30',
+                      )}
+                    >
+                      <MapPin className="w-4 h-4 text-[#8B5CF6] shrink-0" />
+                      <span className="text-sm font-medium text-[#1A3A52] line-clamp-1">
+                        {prop.label}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
           <div className="space-y-2">

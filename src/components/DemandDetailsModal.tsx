@@ -256,7 +256,11 @@ export function DemandDetailsModal({
                           demand={demand}
                           isOwnerOrAdmin={isOwnerOrAdmin}
                         />
-                        <SdrPropertyActions propertyId={p.id} demandId={demand.id} />
+                        <SdrPropertyActions
+                          propertyId={p.id}
+                          demandId={demand.id}
+                          tipoDemanda={demand.type === 'Venda' ? 'Venda' : 'Locação'}
+                        />
                       </div>
                     ),
                   )}

@@ -36,9 +36,16 @@ export const recordNegotiation = async (
   property_link_id: string,
   negotiation_status: 'negotiated' | 'failed',
   notes?: string,
+  valor_fechado?: number,
 ) => {
   const { data, error } = await supabase.functions.invoke('negotiation-registration', {
-    body: { property_link_id, negotiation_status, notes },
+    body: {
+      property_link_id,
+      negotiation_status,
+      notes,
+      valor_fechado:
+        negotiation_status === 'negotiated' && valor_fechado ? valor_fechado : undefined,
+    },
   })
   return { data, error }
 }

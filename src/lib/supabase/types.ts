@@ -1325,6 +1325,7 @@ export type Database = {
           notes: string | null
           property_link_id: string
           updated_at: string
+          valor_fechado: number | null
         }
         Insert: {
           created_at?: string
@@ -1335,6 +1336,7 @@ export type Database = {
           notes?: string | null
           property_link_id: string
           updated_at?: string
+          valor_fechado?: number | null
         }
         Update: {
           created_at?: string
@@ -1345,6 +1347,7 @@ export type Database = {
           notes?: string | null
           property_link_id?: string
           updated_at?: string
+          valor_fechado?: number | null
         }
         Relationships: [
           {
